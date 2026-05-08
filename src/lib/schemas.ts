@@ -164,6 +164,32 @@ function normalizeChartField(chart: unknown): unknown {
   return { ...c, kind: "pie" };
 }
 
+// Timeline entry (`generic.object.timeline` cards)
+export const TimelineEntryDataSchema = z.object({
+  id: z.string(),
+  t: z.number().optional(),
+  label: z.string().optional(),
+  richLabel: z.array(RichTextRunSchema).optional(),
+  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(),
+  backgroundColor: z.string().optional(),
+  backgroundColors: z.array(z.string()).optional(),
+  gradientAngle: z.number().optional(),
+  frostedDiffusion: z.number().min(0).max(1).optional(),
+  frostedTransparency: z.number().min(0).max(1).optional(),
+  frostedPerlinNoise: z.number().min(0).max(10).optional(),
+  borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(),
+  borderColor: z.string().optional(),
+  borderColors: z.array(z.string()).optional(),
+  borderGradientAngle: z.number().optional(),
+  shadow: z.boolean().optional(),
+  textColor: z.string().optional(),
+  cornerRadius: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  cardNormalOffsetPx: z.number().optional(),
+  cardSide: z.enum(['above', 'below']).optional(),
+});
+
 // Schema for DiagramNodeData based on actual types
 export const DiagramNodeDataSchema = z.object({
   id: z.string(),
@@ -314,6 +340,18 @@ export const DiagramNodeDataSchema = z.object({
     }).optional(),
     dividerLineWidth: z.number().optional(),
   }).optional(),
+  timelineEntries: z.array(TimelineEntryDataSchema).optional(),
+  timelineDistribution: z.enum(['even', 'manual']).optional(),
+  timelineCardSide: z.enum(['above', 'below', 'alternate']).optional(),
+  timelineSections: z.number().int().min(0).optional(),
+  timelineCardW: z.number().optional(),
+  timelineCardH: z.number().optional(),
+  timelineCornerRadius: z.number().optional(),
+  timelineOffsetPx: z.number().optional(),
+  timelineCardFillMode: z.enum(['solid', 'theme-hues']).optional(),
+  timelineHueStepDeg: z.number().optional(),
+  timelineConnectorWidth: z.number().optional(),
+  timelineDotRadius: z.number().optional(),
 });
 
 // Schema for DiagramConnectionData 

@@ -2,14 +2,18 @@
 
 Living doc for the **timeline** composite shape: a spine (straight or curved, same mechanics as **`generic.object.line`**) with **N rounded rectangles** (entries), connectors from spine → marker dot → card, optional **section splits**, auto-spacing vs drag overrides, and styling aligned with existing **line / visual / text** tooling.
 
-**Status:** planning / not implemented yet.
+**Status:** initial integration shipped — spine/rendering/palette/move/context **Line** parity; **per-entry** styling from **Visual/Text** panels still incremental (see § below).
+
+**Done (this pass):** types/schemas/layout helpers; **`TimelineShape`**; **`diagram-node`** spine chrome + entry interaction hooks (**double-click** opens **`TextboxRichEditor`** overlay per card); **`timelineActiveEntryId`** wiring; **`canvas-operations`** / **`measureNodeDims`** / **`use-canvas-drag-drop`** spine parity; context menu + toolbar **Line styling** for timeline; **`resource-generic`** **Timeline** tile; context menu **Add timeline card**, **Remove selected card** (needs active entry), **Sequential card hues** (`timelineCardFillMode` **`solid` ↔ `theme-hues`**); **`timeline-hues`** stepping via **`timelineHueStepDeg`** / theme step.
+
+**Remaining / incremental:** route **Visual/Text** panel patches to **`timelineActiveEntryId`** via **`timeline-styling.ts`** from **`context-toolbar`** / **`visual-styling-panel`** (when entry focused); **`even`** reshape redistribution verification.
 
 ---
 
 ## 1. Product goals
 
 - **Easy cardinality**: add/remove entries without manual pixel positioning.
-- **Auto layout**: default **even spacing along path length** (arc-length parameterization — reuse **`pointAtLengthRatio`** / spine sampling like **`LineShape`**).
+- **Auto layout**: default **even spacing along path length** uses **`(i+1)/(n+1)`** (inset from endpoints); context menu **Space cards start → end** switches to **manual** with **`t = i/(n-1)`** so first/last sit at spine ends.
 - **Spine resize ⇄ layout**: while **`timelineDistribution === 'even'`**, dragging the **start or end** endpoint (spine vertex handles) **continuously** recomputes entry positions along the **current** path — items stay **evenly distributed** in arc-length terms as the spine lengthens, shortens, or rotates; section markers use the same updated geometry. No stale pixel anchors tied to the old spine length.
 - **Flexible placement**: cards **above** spine, **below**, or **alternating**.
 - **User refinement**: drag an entry along the spine → stores a **per-entry parameter** `t ∈ [0,1]` (arc-length ratio); optionally toggle global mode **`even` vs `manual`** (see §5).

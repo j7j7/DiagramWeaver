@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { cn, isConnectorLineNodeType, isShapeNodeType } from '@/lib/utils';
+import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isShapeNodeType, isTimelineNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -71,10 +71,27 @@ interface ContextMenuProps {
   onToggleConnectorLineSmoothJoints?: () => void;
   /** Connector line with start ≈ end: allow Visual Styling (fill / gradient). */
   connectorLineClosed?: boolean;
+  /** Timeline node: append a card row (preserves even vs manual distribution). */
+  onTimelineAddCard?: () => void;
+  /** Timeline node: remove the actively selected card if allowed. */
+  onTimelineRemoveCard?: () => void;
+  timelineCanRemoveCard?: boolean;
+  /** Timeline node: `theme-hues` vs solid fills per card. */
+  timelineSequentialHues?: boolean;
+  onTimelineToggleSequentialHues?: () => void;
+  /** Timeline: alternate cards above/below spine vs same side (`above`). */
+  timelineAlternateSides?: boolean;
+  onTimelineToggleAlternateSides?: () => void;
+  /** Timeline: anchor cards from spine start through end with even spacing (`manual` + `t`). */
+  onTimelineSpaceEndpoints?: () => void;
 }
 
-// Helper function to check if a node type is a line
-const isLineNodeType = (nodeType?: string): boolean => isConnectorLineNodeType(nodeType);
+// Connector-only lines hide root label/text tooling; timeline keeps Text actions like shapes.
+const isConnectorPolylineOnlyNodeType = (nodeType?: string): boolean => isConnectorLineNodeType(nodeType);
+
+/** Spine shared by connector lines + timeline — curved segment / interior points / smooth joints */
+const isSpineGeometryMenuNodeType = (nodeType?: string): boolean =>
+  isConnectorLikeSpineNodeType(nodeType);
 
 const isUmlClassNodeType = (nodeType?: string): boolean => {
   return nodeType === 'generic.object.uml-class' || (nodeType?.endsWith('.uml-class') ?? false);
@@ -140,6 +157,14 @@ export function ContextMenu({
   connectorLineSmoothJoints = false,
   onToggleConnectorLineSmoothJoints,
   connectorLineClosed = false,
+  onTimelineAddCard,
+  onTimelineRemoveCard,
+  timelineCanRemoveCard = false,
+  timelineSequentialHues = false,
+  onTimelineToggleSequentialHues,
+  timelineAlternateSides = false,
+  onTimelineToggleAlternateSides,
+  onTimelineSpaceEndpoints,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -272,7 +297,7 @@ export function ContextMenu({
         </button>
       )}
 
-      {onTextStyling && !isLineNodeType(nodeType) && (
+      {onTextStyling && !isConnectorPolylineOnlyNodeType(nodeType) && (
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
           onClick={() => {
@@ -304,8 +329,8 @@ export function ContextMenu({
         const isTextbox = t === 'generic.text.textbox';
         const isLucide = t.startsWith('generic.icon.');
         const isText = t.startsWith('generic.text.');
-        const isResourceItem = !isShape && !isText && !isLineNodeType(t);
-        const closedLineFill = isLineNodeType(t) && connectorLineClosed;
+        const isResourceItem = !isShape && !isText && !isConnectorPolylineOnlyNodeType(t);
+        const closedLineFill = isConnectorPolylineOnlyNodeType(t) && connectorLineClosed;
         return isShape || isTextbox || isLucide || isResourceItem || isEmoji || closedLineFill;
       })() && (
         <button
@@ -333,7 +358,7 @@ export function ContextMenu({
         </button>
       )}
 
-      {isLineNodeType(nodeType) && onToggleConnectorLineCurved && (
+      {isSpineGeometryMenuNodeType(nodeType) && onToggleConnectorLineCurved && (
         <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground">
           <input
             type="checkbox"
@@ -347,7 +372,7 @@ export function ContextMenu({
         </label>
       )}
 
-      {isLineNodeType(nodeType) && onAddConnectorLinePoint && (
+      {isSpineGeometryMenuNodeType(nodeType) && onAddConnectorLinePoint && (
         <button
           type="button"
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
@@ -361,7 +386,7 @@ export function ContextMenu({
         </button>
       )}
 
-      {isLineNodeType(nodeType) &&
+      {isSpineGeometryMenuNodeType(nodeType) &&
         connectorLineShowSmoothJointsOption &&
         onToggleConnectorLineSmoothJoints && (
         <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground">
@@ -374,6 +399,85 @@ export function ContextMenu({
             }}
           />
           Smooth joints
+        </label>
+      )}
+
+      {isTimelineNodeType(nodeType) && onTimelineAddCard && (
+        <button
+          type="button"
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onTimelineAddCard();
+            onClose();
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          Add timeline card
+        </button>
+      )}
+
+      {isTimelineNodeType(nodeType) && onTimelineSpaceEndpoints && (
+        <button
+          type="button"
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onTimelineSpaceEndpoints();
+            onClose();
+          }}
+        >
+          <ArrowLeftRight className="w-4 h-4" />
+          Space cards start → end
+        </button>
+      )}
+
+      {isTimelineNodeType(nodeType) && onTimelineRemoveCard && (
+        <button
+          type="button"
+          disabled={!timelineCanRemoveCard}
+          className={cn(
+            "w-full px-3 py-2 text-sm text-left flex items-center gap-2",
+            timelineCanRemoveCard
+              ? "hover:bg-accent hover:text-accent-foreground"
+              : "opacity-40 cursor-not-allowed",
+          )}
+          onClick={() => {
+            if (!timelineCanRemoveCard) return;
+            onTimelineRemoveCard();
+            onClose();
+          }}
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete card
+        </button>
+      )}
+
+      {isTimelineNodeType(nodeType) && onTimelineToggleSequentialHues && (
+        <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground">
+          <input
+            type="checkbox"
+            className="rounded border-border"
+            checked={timelineSequentialHues}
+            onChange={() => {
+              onTimelineToggleSequentialHues();
+            }}
+          />
+          <Activity className="w-4 h-4 shrink-0" />
+          Sequential card hues
+        </label>
+      )}
+
+      {isTimelineNodeType(nodeType) && onTimelineToggleAlternateSides && (
+        <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground">
+          <input
+            type="checkbox"
+            className="rounded border-border"
+            checked={timelineAlternateSides}
+            onChange={() => {
+              onTimelineToggleAlternateSides();
+            }}
+          />
+          <FlipVertical className="w-4 h-4 shrink-0" />
+          Alternate cards above/below
         </label>
       )}
 
@@ -621,7 +725,9 @@ export function ContextMenu({
         </div>
       )}
 
-      {(itemType === 'node' || itemType === 'zone') && !isLineNodeType(nodeType) && (
+      {(itemType === 'node' || itemType === 'zone') &&
+        !isConnectorPolylineOnlyNodeType(nodeType) &&
+        !isTimelineNodeType(nodeType) && (
         <>
           <div className="border-t border-border my-1" />
           

@@ -1,4 +1,5 @@
 import type { DiagramConnectionData, DiagramData, Slide } from "@/lib/types";
+import { isTimelineNodeType } from "@/lib/utils";
 import { stableDiagramConnectionId } from "@/lib/connection-order-utils";
 import { projectVisibleDiagram } from "@/lib/presentation-delta";
 import type { PresentationDeltaMode } from "@/lib/presentation-slide-chain";
@@ -65,7 +66,12 @@ export function collectConnectSourceIdsFromDiagram(
   const seen = new Set<string>();
   for (const id of selectedItemIds) {
     if (seen.has(id)) continue;
-    if (nodeIds.has(id) || zoneIds.has(id)) {
+    if (nodeIds.has(id)) {
+      const node = diagram.nodes.find((n) => n.id === id);
+      if (node && isTimelineNodeType(node.type)) continue;
+      result.push(id);
+      seen.add(id);
+    } else if (zoneIds.has(id)) {
       result.push(id);
       seen.add(id);
     }

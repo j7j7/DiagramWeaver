@@ -42,6 +42,16 @@ export function isConnectorLineNodeType(type: string | undefined): boolean {
   return type === 'generic.object.line' || type.endsWith('.line')
 }
 
+/** Composite timeline (`generic.object.timeline`) — spine behaves like a connector line; not `*.line`. */
+export function isTimelineNodeType(type: string | undefined): boolean {
+  return type === 'generic.object.timeline'
+}
+
+/** Line or timeline — shared move / duplicate / vertex UX. */
+export function isConnectorLikeSpineNodeType(type: string | undefined): boolean {
+  return isConnectorLineNodeType(type) || isTimelineNodeType(type)
+}
+
 /**
  * Highlight pulse uses animated `filter: drop-shadow` on the shape subtree so the glow follows
  * painted geometry (SVG alpha). `false` for rectangular box-like objects and connector lines.
@@ -49,6 +59,7 @@ export function isConnectorLineNodeType(type: string | undefined): boolean {
 export function isHighlightPulseShapeSilhouetteType(type: string | undefined): boolean {
   if (!type || !type.startsWith('generic.object.')) return false
   if (isConnectorLineNodeType(type)) return false
+  if (isTimelineNodeType(type)) return false
   if (type === 'generic.object.square' || type.endsWith('.square')) return false
   if (type === 'generic.object.rounded-rectangle' || type.endsWith('.rounded-rectangle')) return false
   if (type === 'generic.object.text-box-heading' || type.endsWith('.text-box-heading')) return false
@@ -60,7 +71,8 @@ export function isHighlightPulseShapeSilhouetteType(type: string | undefined): b
 export function isShapeNodeType(nodeType: string): boolean {
   if (isIconOrEmojiType(nodeType)) return false
   if (isChartNodeType(nodeType)) return true
-  return nodeType === 'generic.object.square' ||
+  return nodeType === 'generic.object.timeline' ||
+         nodeType === 'generic.object.square' ||
          nodeType === 'generic.object.circle' ||
          nodeType === 'generic.object.point' ||
          nodeType === 'generic.object.rectangle' ||

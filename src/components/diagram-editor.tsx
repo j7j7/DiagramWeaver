@@ -50,7 +50,13 @@ import {
   connectionSelectionIdMatches,
   selectionSetContainsConnection,
 } from '@/lib/connection-order-utils';
-import { GRID_STEP, snapToGrid, snapDimensionToGrid } from '@/components/editor/canvas-constants';
+import {
+  GRID_STEP,
+  snapToGrid,
+  snapDimensionToGrid,
+  measureNodeDims,
+  type PositionedNode,
+} from '@/components/editor/canvas-constants';
 import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch, getDownstreamAnimationChainNodes } from '@/lib/connection-animation';
 import {
   applyDiagramDelta,
@@ -77,7 +83,7 @@ import {
   syncClosedConnectorLineBorderWidth,
   syncClosedConnectorVisualBorderFromLineStyling,
 } from '@/lib/line-styling';
-import { isConnectorLineNodeType } from '@/lib/utils';
+import { isConnectorLikeSpineNodeType, isTimelineNodeType } from '@/lib/utils';
 
 import type { SelectedItem, PaletteResource, PaletteSelection } from '@/components/editor/diagram-editor-types';
 export type { SelectedItem } from '@/components/editor/diagram-editor-types';
@@ -108,6 +114,49 @@ import { usePresentationThumbnails } from '@/hooks/use-presentation-thumbnails';
 import { createDiagramSaveHandler } from '@/lib/diagram-editor/diagram-editor-save-handler';
 import { createDiagramExportHandlers } from '@/lib/diagram-editor/diagram-editor-export-handlers';
 import type { DiagramEditorToastFn } from '@/components/editor/diagram-editor-inner-props';
+
+/** Align / layout steps often patch only `x,y`; spine nodes must translate stored vertices too (same idea as canvas move). */
+function positionNodeWithSpineTranslate(
+  node: DiagramNodeData,
+  newX: number,
+  newY: number,
+): DiagramNodeData {
+  const prevX = node.x ?? 0;
+  const prevY = node.y ?? 0;
+  const dx = newX - prevX;
+  const dy = newY - prevY;
+  if (!isConnectorLikeSpineNodeType(node.type) || (dx === 0 && dy === 0)) {
+    return { ...node, x: newX, y: newY };
+  }
+  const currentStartPos =
+    (node as DiagramNodeData & { startPos?: { x: number; y: number } }).startPos || {
+      x: prevX,
+      y: prevY,
+    };
+  const currentEndPos =
+    (node as DiagramNodeData & { endPos?: { x: number; y: number } }).endPos || {
+      x: prevX + 150,
+      y: prevY,
+    };
+  const ctrls = (node as DiagramNodeData & { lineControlPoints?: { x: number; y: number }[] })
+    .lineControlPoints;
+  return {
+    ...node,
+    x: newX,
+    y: newY,
+    startPos: { x: currentStartPos.x + dx, y: currentStartPos.y + dy },
+    endPos: { x: currentEndPos.x + dx, y: currentEndPos.y + dy },
+    ...(ctrls?.length
+      ? {
+          lineControlPoints: ctrls.map((c) => ({
+            ...c,
+            x: c.x + dx,
+            y: c.y + dy,
+          })),
+        }
+      : {}),
+  };
+}
 
 function getFilenameStem(filename: string) {
   return filename.replace(/\.[^.]+$/, '') || filename;
@@ -651,8 +700,11 @@ export default function DiagramEditor() {
     vertexIndex: number;
   } | null>(null);
 
+  const [timelineActiveEntryId, setTimelineActiveEntryId] = React.useState<string | null>(null);
+
   React.useEffect(() => {
     setConnectorLineFocusedVertex(null);
+    setTimelineActiveEntryId(null);
   }, [activeTabId]);
 
   // Sub-diagram navigation stack: empty = root; non-empty = viewing sub-diagram
@@ -1053,6 +1105,7 @@ export default function DiagramEditor() {
 
   const handleItemSelect = React.useCallback((item: SelectedItem | null, shiftKey = false) => {
     setConnectorLineFocusedVertex(null);
+    setTimelineActiveEntryId(null);
 
     if (isConnectMode && !item) {
       setIsConnectMode(false);
@@ -1136,7 +1189,8 @@ export default function DiagramEditor() {
   const handleConnectorLineVertexFocus = React.useCallback(
     (nodeId: string, vertexIndex: number) => {
       const node = currentDiagramData.nodes.find((n) => n.id === nodeId);
-      if (!node || !isConnectorLineNodeType(node.type)) return;
+      if (!node || !isConnectorLikeSpineNodeType(node.type)) return;
+      setTimelineActiveEntryId(null);
       setSelectedItem({ ...node, itemType: 'node' });
       setSelectedItemIds(new Set([nodeId]));
       setConnectorLineFocusedVertex({ nodeId, vertexIndex });
@@ -1146,6 +1200,7 @@ export default function DiagramEditor() {
 
   const handleBatchSelect = React.useCallback((itemIds: string[]) => {
     setConnectorLineFocusedVertex(null);
+    setTimelineActiveEntryId(null);
     if (itemIds.length === 0) {
       setSelectedItem(null);
       setSelectedItemIds(new Set());
@@ -1634,13 +1689,18 @@ export default function DiagramEditor() {
       return true;
     });
 
+    sourceIds = sourceIds.filter((id) => {
+      const srcNode = currentDiagramData.nodes.find((n) => n.id === id);
+      return !(srcNode && isTimelineNodeType(srcNode.type));
+    });
+
     if (!isConnectMode || sourceIds.length === 0) {
       clearPendingConnectionWindowState();
       setIsConnectMode(false);
       return;
     }
 
-    if (isConnectorLineNodeType(targetItem.type)) {
+    if (isConnectorLikeSpineNodeType(targetItem.type)) {
       return;
     }
 
@@ -1681,6 +1741,11 @@ export default function DiagramEditor() {
       }
     }
 
+    sourceIds = sourceIds.filter((id) => {
+      const n = currentDiagramData.nodes.find((nn) => nn.id === id);
+      return !(n && isTimelineNodeType(n.type));
+    });
+
     if (sourceIds.length === 0) return;
 
     setIsConnectMode(true);
@@ -1693,7 +1758,7 @@ export default function DiagramEditor() {
       const f = connectorLineFocusedVertex;
       if (!f || f.nodeId !== nodeId) return false;
       const node = currentDiagramData.nodes.find((n) => n.id === nodeId);
-      if (!node || !isConnectorLineNodeType(node.type)) return false;
+      if (!node || !isConnectorLikeSpineNodeType(node.type)) return false;
       const wasClosed = isConnectorLineGeometryClosed(node);
       const nextGeom = removeConnectorLineVertexAtIndex(node, f.vertexIndex);
       if (!nextGeom) return false;
@@ -1725,7 +1790,7 @@ export default function DiagramEditor() {
     (itemToDelete: SelectedItem) => {
       if (
         itemToDelete.itemType === 'node' &&
-        isConnectorLineNodeType(itemToDelete.type) &&
+        isConnectorLikeSpineNodeType(itemToDelete.type) &&
         tryDeleteConnectorLineVertexBeforeNodeDelete(itemToDelete.id)
       ) {
         return;
@@ -3211,7 +3276,15 @@ export default function DiagramEditor() {
     const getObjectDimensions = (item: SelectedItem): { width: number; height: number } => {
       if (item.itemType === 'node') {
         const node = item as any;
-        
+
+        if (isConnectorLikeSpineNodeType(node.type)) {
+          return measureNodeDims({
+            ...node,
+            x: node.x ?? 0,
+            y: node.y ?? 0,
+          } as PositionedNode);
+        }
+
         // Check if it's a shape node
         const isShapeNode = node.type === 'generic.object.square' ||
                            node.type === 'generic.object.circle' ||
@@ -3365,7 +3438,10 @@ export default function DiagramEditor() {
         newPositions.forEach(pos => {
           const nodeIndex = newNodes.findIndex(n => n.id === pos.id);
           if (nodeIndex !== -1) {
-            newNodes[nodeIndex] = { ...newNodes[nodeIndex], ...pos };
+            const prev = newNodes[nodeIndex];
+            const nextX = pos.x !== undefined ? pos.x : prev.x ?? 0;
+            const nextY = pos.y !== undefined ? pos.y : prev.y ?? 0;
+            newNodes[nodeIndex] = positionNodeWithSpineTranslate(prev, nextX, nextY);
           }
         });
         return { ...prevData, nodes: newNodes };
@@ -3431,7 +3507,9 @@ export default function DiagramEditor() {
               break;
           }
           
-          newNodes[nodeIndex] = { ...node, x: newX, y: newY };
+          const fx = newX ?? node.x ?? 0;
+          const fy = newY ?? node.y ?? 0;
+          newNodes[nodeIndex] = positionNodeWithSpineTranslate(node, fx, fy);
         }
       });
 
@@ -3541,32 +3619,24 @@ export default function DiagramEditor() {
           if (idx === n - 1) {
             if (node.locked) return node;
             if (direction === 'vertical-curve') {
-              return { ...node, x: p0.x, y: p1.y };
+              return positionNodeWithSpineTranslate(node, p0.x, p1.y);
             }
-            return {
-              ...node,
-              x: snapToGrid(node.x || 0),
-              y: p0.y,
-            };
+            return positionNodeWithSpineTranslate(node, snapToGrid(node.x || 0), p0.y);
           }
           if (node.locked) return node;
           const t = idx / (n - 1);
           const w = curveW(t);
           if (direction === 'vertical-curve') {
             const yLine = p0.y + spanY * t;
-            return {
-              ...node,
-              x: snapToGrid(p0.x + bulge * w),
-              y: snapToGrid(yLine),
-            };
+            return positionNodeWithSpineTranslate(
+              node,
+              snapToGrid(p0.x + bulge * w),
+              snapToGrid(yLine),
+            );
           }
           const xKeep = snapToGrid(node.x || 0);
           const yLine = p0.y + spanY * t + bulge * w;
-          return {
-            ...node,
-            x: xKeep,
-            y: snapToGrid(yLine),
-          };
+          return positionNodeWithSpineTranslate(node, xKeep, snapToGrid(yLine));
         };
 
         const applyCurveZone = (z: (typeof zlist)[0], idx: number) => {
@@ -3725,17 +3795,17 @@ export default function DiagramEditor() {
         if (idx === 0) return n;
         if (n.locked) return n;
         if (direction === 'vertical-down') {
-          return {
-            ...n,
-            x: snapToGrid(ax - idx * steps * GRID_STEP),
-            y: snapToGrid(n.y || 0),
-          };
+          return positionNodeWithSpineTranslate(
+            n,
+            snapToGrid(ax - idx * steps * GRID_STEP),
+            snapToGrid(n.y || 0),
+          );
         }
-        return {
-          ...n,
-          x: snapToGrid(n.x || 0),
-          y: snapToGrid(ay + idx * steps * GRID_STEP),
-        };
+        return positionNodeWithSpineTranslate(
+          n,
+          snapToGrid(n.x || 0),
+          snapToGrid(ay + idx * steps * GRID_STEP),
+        );
       });
       const newZones = zlist.map((z) => {
         if (!targetSet.has(z.id)) return z;
@@ -4651,6 +4721,8 @@ export default function DiagramEditor() {
         connectorLineFocusedVertex={connectorLineFocusedVertex}
         handleConnectorLineVertexFocus={handleConnectorLineVertexFocus}
         tryDeleteConnectorLineVertexBeforeNodeDelete={tryDeleteConnectorLineVertexBeforeNodeDelete}
+        timelineActiveEntryId={timelineActiveEntryId}
+        onTimelineEntrySelect={setTimelineActiveEntryId}
         handleResourceSelect={handleResourceSelect}
         handleResourceActivate={handleResourceActivate}
         handleResourceActivateAtPosition={handleResourceActivateAtPosition}

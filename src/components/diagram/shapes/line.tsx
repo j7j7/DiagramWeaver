@@ -28,15 +28,15 @@ interface LineShapeProps {
   slideColorTransition?: string;
 }
 
-// Helper to render different line cap styles
-const renderLineCap = (
+/** SVG cap glyphs for connector/timeline line endpoints (viewBox-relative coords). */
+export function renderConnectorLineCapSvg(
   capType: 'none' | 'arrow' | 'dot' | 'square' | undefined,
   x: number,
   y: number,
   angle: number,
   color: string,
   size: number = 10
-) => {
+) {
   if (!capType || capType === 'none') return null;
 
   const angleRad = (angle * Math.PI) / 180;
@@ -103,7 +103,7 @@ const renderLineCap = (
   }
 
   return null;
-};
+}
 
 function normalizeTwoColors(value: unknown, fallbackA: string, fallbackB: string): [string, string] {
   if (Array.isArray(value)) {
@@ -405,7 +405,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
         
         {/* Closed paths: no start/end caps (same vertex). */}
         {!closed &&
-          renderLineCap(
+          renderConnectorLineCapSvg(
             startCap,
             relStartX - svgMinX,
             relStartY - svgMinY,
@@ -414,7 +414,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             capSize,
           )}
         {!closed &&
-          renderLineCap(
+          renderConnectorLineCapSvg(
             endCap,
             relEndX - svgMinX,
             relEndY - svgMinY,

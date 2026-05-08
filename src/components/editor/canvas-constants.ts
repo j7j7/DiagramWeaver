@@ -1,6 +1,7 @@
 import type { DiagramNodeData, DiagramZoneData } from "@/lib/types";
-import { isConnectorLineNodeType, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
+import { isConnectorLineNodeType, isIconOrEmojiType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { connectorLinePointBounds, getConnectorLineVertices } from "@/lib/line-curve-path";
+import { computeTimelineOuterBounds } from "@/lib/timeline-layout";
 import { getPlainTextFromRuns } from "@/lib/rich-text";
 import { getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
@@ -59,6 +60,14 @@ export const measureNodeDims = (n: PositionedNode) => {
     const padding = 30;
     const w = Math.max(150, b.maxX - b.minX + padding * 2);
     const h = Math.max(100, b.maxY - b.minY + padding * 2);
+    return { width: snapDimensionToGrid(w, 150), height: snapDimensionToGrid(h, 100) };
+  }
+
+  if (isTimelineNodeType(n.type)) {
+    const b = computeTimelineOuterBounds(n as DiagramNodeData);
+    const pad = 8;
+    const w = Math.max(150, b.maxX - b.minX + pad * 2);
+    const h = Math.max(100, b.maxY - b.minY + pad * 2);
     return { width: snapDimensionToGrid(w, 150), height: snapDimensionToGrid(h, 100) };
   }
 

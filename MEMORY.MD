@@ -3,6 +3,30 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-08 – Timeline card drag: flip above/below spine
+Per-entry **`cardSide`** (`'above' \| 'below'`) overrides node **`timelineCardSide`** for that row. **`timelineDragSolveFromDiagramPoint`** uses signed **`dot(W, N)`** vs spine normal to pick side + distance (deadband keeps stability on the spine). Patch bumped.
+
+### 2026-05-08 – Timeline: hues by spine order, perpendicular drag, alternate sides toggle
+**Sequential hues** use **`theme-hues`** rank sorted by arc **`t`** (tie **`entryIndex`**) so swapping positions swaps hues. Per-entry **`cardNormalOffsetPx`** stores perpendicular drag (**`timelineDragSolveFromDiagramPoint`**); **`timelineEntriesMaterializedRatios`** freezes ghost **`even`** ratios when committing **`manual`**. Context menu **Alternate cards above/below** toggles **`timelineCardSide`** **`alternate` ↔ `above`**. Patch bumped.
+
+### 2026-05-08 – Align / grid-step: spine lines kept geometry in sync
+**`diagram-editor`** **`handleAlignObjects`** (align + distribute) and **`handleLayoutGridStep`** (linear + curved variants) previously patched only **`node.x` / `node.y`** for **`isConnectorLikeSpineNodeType`** nodes. **`startPos` / `endPos` / `lineControlPoints`** stayed on old canvas coords, so axis-aligned connector/timeline spines often appeared missing after alignment or stepping. **`positionNodeWithSpineTranslate`** mirrors canvas move deltas; **`getObjectDimensions`** uses **`measureNodeDims`** for spines instead of **`80×50`**. Patch bumped.
+
+### 2026-05-08 – Timeline excluded from diagram connections UX
+**`generic.object.timeline`**: no **Connect** / **Disconnect** / **Connections** in **`context-menu`** or **`context-toolbar`** on-node controls; **`ConnectHandle`** hidden (**`spineLikeNode`**). **`collectConnectSourceIdsFromDiagram`** / **`startConnecting`** / **`handleConnect`** drop timeline node ids as sources (targets already blocked via **`isConnectorLikeSpineNodeType`**). Patch bumped.
+
+### 2026-05-08 – Timeline **Add card** inserts by spine click position
+**`timeline-layout`** **`insertTimelineEntryNearArcRatio`** freezes existing **`t`** values, switches **`manual`**, splices new row where projected arc ratio falls between neighbors. **`TimelineShape`** spine **`contextmenu`** maps screen→diagram→**`projectDiagramPointToTimelineStrokeRatio`**; **`useCanvasContextMenu`** stores **`timelineSpineArcRatio`**. Opening menu from a card (no spine ratio) keeps append-at-end. Patch bumped.
+
+### 2026-05-08 – Timeline: card context menu, spine spacing helper, line caps on spine
+**`TimelineShape`** renders **`startCap` / `endCap`** like **`LineShape`** (**`renderConnectorLineCapSvg`** exported from **`line.tsx`**). **`applyTimelineEntriesSpacedEndpoints`** (**`timeline-layout`**) sets **manual** **`t`** = **`i/(n-1)`** (single row **`0.5`**). **`use-canvas-context-menu`** **`timelineEntryId`** + **`handleTimelineEntryContextMenu`** → **`Delete card`** targets card-under-menu / fallback selected row; **Space cards start → end** context action; selected cards use **primary** stroke ring. Patch bumped.
+
+### 2026-05-08 – Timeline cards: inline label edit, context add/remove, sequential hues toggle
+**`diagram-node`**: **`TextboxRichEditor`** overlay on **double-click** a card (**`onEntryDoubleClick`** → **`timelineEntryOverlayBoundsRelativeToNodeContainer`**); guards Popover / touch-move / hover while **`isEditingTimelineEntryLabel`**. **`context-menu`** / **`editor-canvas`**: **Add timeline card**, **Remove selected card** (active **`timelineActiveEntryId`**, keep ≥1 row), **Sequential card hues** checkbox (**`timelineCardFillMode`** **`solid` ↔ `theme-hues`**). Patch bumped.
+
+### 2026-05-08 – **`generic.object.timeline`** (initial ship)
+Composite timeline shape: palette **`Timeline`** + **`timeline.png`** (copied from **`line.png`** placeholder); **`canvas-operations`** / **`measureNodeDims`** / drag-move / duplicate use **`isConnectorLikeSpineNodeType`**; **`diagram-node`** **`spineLikeNode`** chrome (**vertex handles**, **`timelineLiveLayoutDims`**, glow/highlight parity); **`diagram-editor`** **`timelineActiveEntryId`** → **`EditorCanvas`** → **`DiagramNode`**; context menu spine actions + toolbar **Line styling** include timeline; **`timeline-styling`** **`unknown`** casts for strict **`tsc`**. Per-entry panel routing remains incremental — see **`timelineobject.md`**.
+
 ### 2026-05-08 – Progress bar sidebar tile: `DraggableResourceItem` used PNG over `ResourceIcon`
 **`draggable-resource-item`**: **`progress-bar`** added next to **cloud** / charts — **`ResourceIcon`** **`generic.object.progress-bar`** instead of **`iconPath`** **`<img>`** (**`progress-bar.png`**), which bypassed **`PaletteProgressBarGlyph`**. Patch bumped.
 
@@ -29,9 +53,6 @@ Older behavior wrote **`progressTrack*`** explicitly; newer line above uses them
 
 ### 2026-05-08 – **`generic.object.progress-bar`** shape object (**track note superseded**)
 Rounded bar with **corner radius**, **drag-to-set percent**, **`progressShowPercent`**, label placement, **completion fill** **`progressFill*`**; **unfilled** paint is node **`background*`** (see newer **“unfilled strip = Background”** entry). Palette + **`ShapeText`** stacking + slide crossfades as before.
-
-### 2026-05-08 – Timeline shape: planning doc (`timelineobject.md`)
-New composite shape **planned**: **`generic.object.timeline`** — spine reusing connector-line geometry, **N** entry cards, **per-entry** visual/text editing via sub-selection. **`timelineobject.md`**: **even** mode recomputes spacing along the path when spine **start/end** or interior geometry changes; **manual** keeps stored per-entry **`t`** on reshape (“Redistribute evenly” optional). Not implemented yet.
 
 ### 2026-05-02 – Connector line: SVG path click/context menu lacked `data-node-id` wiring
 **`editor-canvas`**: **`onDiagramNodeClickStable`** / **`onDiagramNodeContextMenuStable`** read **`data-node-id`** **`from`** **`currentTarget`**; **`LineShape`** / **`LoopShape`** **`<path>`** targets have none, so **`line`** never selected (no vertex handles) and right-click **`return`** **`ed`** **`early`**. **`LineShape`** **`already`** **`passes`** **`(e`** **`,` **`node)`** **`—`** **`optional`** **`nodeHint`** **on** **`Stable`** **`+`** **`id`** **`from`** **`DOM`** **`(`**`**`closest`****`)`** **first** **`then`** **`fallback`** **`hint`** **`+`** **`ref`** **`/`** **`hint`** **`resolution`**. **`Loop`** **`path`** **`events`** **`inherit`** **`the`** **`same`** **`handler`**. Patch bumped.

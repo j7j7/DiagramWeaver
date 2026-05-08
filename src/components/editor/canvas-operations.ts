@@ -15,7 +15,14 @@ import {
   type PositionedNode,
   type PositionedGroup,
 } from "./canvas-constants";
-import { isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType } from "@/lib/utils";
+import {
+  isConnectorLikeSpineNodeType,
+  isConnectorLineNodeType,
+  isIconOrEmojiType,
+  isShapeNodeType,
+  isTimelineNodeType,
+} from "@/lib/utils";
+import { TIMELINE_NODE_TYPE } from "@/lib/timeline-layout";
 import { defaultChartSpecForNodeType } from "@/lib/chart-node";
 // Zones removed - no zone layout
 
@@ -102,6 +109,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.jigsaw' ||
                                 itemType === 'generic.object.arrowhead' ||
                                 itemType === 'generic.object.chevron' ||
+                                itemType === TIMELINE_NODE_TYPE ||
                                 itemType === 'generic.object.uml-class' ||
                                 itemType === 'generic.chart.pie' ||
                                 itemType?.startsWith('generic.chart.') ||
@@ -124,6 +132,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.octagon') ||
                                 itemType?.endsWith('.jigsaw') ||
                                 itemType?.endsWith('.arrowhead') ||
+                                itemType?.endsWith('.timeline') ||
                                 itemType?.endsWith('.uml-class'));
       
       // Check if this is a textbox resource
@@ -146,8 +155,9 @@ export function useCanvasOperations({
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
         // Special handling for shape resources - make them resizable
+        const newNodeId = generateSequentialId(itemType, prevData);
         let newNode: DiagramNodeData = {
-          id: generateSequentialId(itemType, prevData),
+          id: newNodeId,
           type: itemType,
           // Set label based on type - shapes get no default text (never use resource name like "Rectangle", "Circle")
           // Icons/objects: omit resource name + info when defaultTextLabelsEnabled is off (text/textbox still use catalog label)
@@ -168,7 +178,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.progress-bar' ? 80 :
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
-             itemType === 'generic.object.line' ? 150 :
+             itemType === 'generic.object.line' || itemType === TIMELINE_NODE_TYPE ? 150 :
              itemType === 'generic.chart.line' ? 470 :
              itemType === 'generic.chart.bar' ? 380 :
              itemType === 'generic.chart.pie' ? 410 :
@@ -182,7 +192,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.progress-bar' ? 50 :
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
-             itemType === 'generic.object.line' ? 100 :
+             itemType === 'generic.object.line' || itemType === TIMELINE_NODE_TYPE ? 100 :
              itemType === 'generic.chart.line' ? 320 :
              itemType === 'generic.chart.bar' ? 280 :
              itemType === 'generic.chart.pie' ? 320 :
@@ -224,6 +234,23 @@ export function useCanvasOperations({
             endCap: 'none',
             lineThickness: 2.5,
             lineColor: '#6b7280',
+          }),
+          ...(itemType === TIMELINE_NODE_TYPE && !isFromScratchPad && {
+            startPos: { x: position.x, y: position.y },
+            endPos: { x: position.x + 150, y: position.y },
+            x: position.x,
+            y: position.y,
+            startCap: 'none',
+            endCap: 'none',
+            lineThickness: 2.5,
+            lineColor: '#6b7280',
+            timelineDistribution: 'even' as const,
+            timelineCardSide: 'alternate' as const,
+            timelineEntries: [
+              { id: `${newNodeId}-te0`, label: 'Step 1' },
+              { id: `${newNodeId}-te1`, label: 'Step 2' },
+              { id: `${newNodeId}-te2`, label: 'Step 3' },
+            ],
           }),
           // Default placeholder text for UML class (only if not from scratchpad)
           ...((itemType === 'generic.object.uml-class' || itemType?.endsWith('.uml-class')) && !isFromScratchPad && {
@@ -472,7 +499,7 @@ export function useCanvasOperations({
           importId: undefined,
           groupId: undefined,
         };
-        if (isConnectorLineNodeType(original.type)) {
+        if (isConnectorLikeSpineNodeType(original.type)) {
           const ox = original.x ?? 0;
           const oy = original.y ?? 0;
           const ddx = snappedX - ox;
@@ -494,6 +521,18 @@ export function useCanvasOperations({
                 }
               : {}),
           };
+          if (isTimelineNodeType(original.type)) {
+            const entries = original.timelineEntries;
+            if (entries?.length) {
+              next = {
+                ...next,
+                timelineEntries: entries.map((e, i) => ({
+                  ...e,
+                  id: `${newId}-te${i}`,
+                })),
+              };
+            }
+          }
         }
         additions.push(next);
         idMap.set(item.id, next.id);
@@ -577,7 +616,7 @@ export function useCanvasOperations({
             currentNodes = currentNodes.map(n => {
               if (n.id === item.id) {
                 // Special handling for line shapes - move both endpoints
-                if (isConnectorLineNodeType(n.type)) {
+                if (isConnectorLikeSpineNodeType(n.type)) {
                   const currentStartPos = (n as any).startPos || { x: n.x || 0, y: (n.y || 0) + 50 };
                   const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: (n.y || 0) + 50 };
                   const deltaX = snappedX - (n.x || 0);
@@ -830,7 +869,7 @@ export function useCanvasOperations({
              currentNodes = currentNodes.map(n => {
                if (n.id === item.id) {
                  // Special handling for line shapes - move both endpoints
-                 if (isConnectorLineNodeType(n.type)) {
+                 if (isConnectorLikeSpineNodeType(n.type)) {
                    const currentStartPos = (n as any).startPos || { x: n.x || 0, y: n.y || 0 };
                    const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: n.y || 0 };
                    const deltaX = snappedX - originalX;

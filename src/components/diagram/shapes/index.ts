@@ -18,6 +18,7 @@ export { JigsawShape } from './jigsaw';
 export { ArrowheadShape } from './arrowhead';
 export { ChevronShape } from './chevron';
 export { LineShape } from './line';
+export { TimelineShape } from './timeline';
 export { LoopShape } from './loop';
 export { UmlClassShape } from './uml-class';
 export { PieChartShape } from './pie-chart-shape';

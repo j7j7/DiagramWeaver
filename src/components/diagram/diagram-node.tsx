@@ -13,7 +13,7 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
-import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
+import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
@@ -42,6 +42,7 @@ import {
   ArrowheadShape,
   ChevronShape,
   LineShape,
+  TimelineShape,
   LoopShape,
   UmlClassShape,
   PieChartShape,
@@ -55,7 +56,14 @@ import {
 } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { ResizeHandles } from "./resize-handles";
 import { LineVertexHandles } from "./line-endpoint-handles";
-import { getConnectorLineVertices, isConnectorLineGeometryClosed, connectorLinePointBounds } from "@/lib/line-curve-path";
+import { getConnectorLineVertices, isConnectorLineGeometryClosed, connectorLinePointBounds, type LinePathStyle } from "@/lib/line-curve-path";
+import {
+  computeTimelineOuterBounds,
+  timelineDragSolveFromDiagramPoint,
+  timelineEntriesMaterializedRatios,
+  timelineEntryOverlayBoundsRelativeToNodeContainer,
+  resolveEntryCardSide,
+} from "@/lib/timeline-layout";
 import {
   syncClosedConnectorLineBorderWidth,
   syncClosedConnectorVisualBorderFromLineStyling,
@@ -231,6 +239,13 @@ interface DiagramNodeProps {
   /** Click (no drag) on a line vertex handle — selects that vertex for delete-point */
   onConnectorLineVertexFocus?: (nodeId: string, vertexIndex: number) => void;
   connectorLineFocusedVertexIndex?: number | null;
+  /** Timeline: focused entry for styling panels */
+  timelineActiveEntryId?: string | null;
+  onTimelineEntrySelect?: (entryId: string | null) => void;
+  /** Right-click context menu from a timeline card hit-target */
+  onTimelineEntryContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, entryId: string) => void;
+  /** Right-click on spine — arc ratio (0–1) used when adding a card */
+  onTimelineSpineContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, arcRatio: number) => void;
 }
 
 function isProgressBarType(t: string | undefined): boolean {
@@ -291,6 +306,26 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     if (pLine.linePathStyle !== nLine.linePathStyle) return false;
     if (pLine.lineSmoothJoints !== nLine.lineSmoothJoints) return false;
     if (JSON.stringify(pLine.lineControlPoints ?? []) !== JSON.stringify(nLine.lineControlPoints ?? [])) return false;
+    if (isTimelineNodeType(p.type) || isTimelineNodeType(n.type)) {
+      const tlSig = (x: DiagramNodeData) =>
+        JSON.stringify([
+          (x as any).timelineEntries,
+          (x as any).timelineDistribution,
+          (x as any).timelineCardSide,
+          (x as any).timelineSections,
+          (x as any).timelineCardW,
+          (x as any).timelineCardH,
+          (x as any).timelineCornerRadius,
+          (x as any).timelineOffsetPx,
+          (x as any).timelineCardFillMode,
+          (x as any).timelineHueStepDeg,
+          (x as any).timelineConnectorWidth,
+          (x as any).timelineDotRadius,
+          (x as any).startCap,
+          (x as any).endCap,
+        ]);
+      if (tlSig(p) !== tlSig(n)) return false;
+    }
   }
   return prev.isSelected === next.isSelected &&
     prev.isMultiSelected === next.isMultiSelected &&
@@ -327,17 +362,66 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onRotationPointerDown === next.onRotationPointerDown &&
     prev.isRotationDragging === next.isRotationDragging &&
     prev.onConnectorLineVertexFocus === next.onConnectorLineVertexFocus &&
-    prev.connectorLineFocusedVertexIndex === next.connectorLineFocusedVertexIndex;
+    prev.connectorLineFocusedVertexIndex === next.connectorLineFocusedVertexIndex &&
+    prev.timelineActiveEntryId === next.timelineActiveEntryId &&
+    prev.onTimelineEntrySelect === next.onTimelineEntrySelect &&
+    prev.onTimelineEntryContextMenu === next.onTimelineEntryContextMenu &&
+    prev.onTimelineSpineContextMenu === next.onTimelineSpineContextMenu;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onChartValueDragSessionChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false, highlightAnimStaggerIndex, highlightAnimStaggerCount, rotationHandleVisible = false, onRotationPointerDown, isRotationDragging = false, onConnectorLineVertexFocus, connectorLineFocusedVertexIndex = null }: DiagramNodeProps) {
+function DiagramNodeInner({
+  node,
+  isSelected,
+  isTargetable,
+  isHighlighted,
+  isMultiSelected,
+  isGroupMember,
+  onClick,
+  onContextMenu,
+  onLabelUpdate,
+  onTagUpdate,
+  onResize,
+  onResizeStart,
+  onResizeEnd,
+  onPositionUpdate,
+  onDraggingChange,
+  onChartValueDragSessionChange,
+  onUpdate,
+  hoverEnabled = true,
+  isReadOnly = false,
+  onHoverChange,
+  onConnect,
+  isConnectMode,
+  transform,
+  canvasRef,
+  stackZIndex,
+  pointerEventsPassThrough = false,
+  animationStyle,
+  onSubDiagramDoubleClick,
+  hasLinkedSubDiagram,
+  showUrlHandleWhenReadOnly,
+  isDuplicateDragPreview = false,
+  highlightAnimStaggerIndex,
+  highlightAnimStaggerCount,
+  rotationHandleVisible = false,
+  onRotationPointerDown,
+  isRotationDragging = false,
+  onConnectorLineVertexFocus,
+  connectorLineFocusedVertexIndex = null,
+  timelineActiveEntryId = null,
+  onTimelineEntrySelect,
+  onTimelineEntryContextMenu,
+  onTimelineSpineContextMenu,
+}: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
   const [editRuns, setEditRuns] = useState<RichTextRun[]>([]);
   const [editTagText, setEditTagText] = useState(node.tag || '');
-  
+  const [isEditingTimelineEntryLabel, setIsEditingTimelineEntryLabel] = useState(false);
+  const [timelineEditEntryId, setTimelineEditEntryId] = useState<string | null>(null);
+
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<'top' | 'left' | 'right' | 'bottom' | 'bottom-right' | null>(null);
@@ -351,6 +435,18 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const latestResizeDimensionsRef = useRef<{ width: number; height: number; x?: number; y?: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setIsEditingTimelineEntryLabel(false);
+    setTimelineEditEntryId(null);
+  }, [node.id]);
+
+  useEffect(() => {
+    if (!isSelected || isMultiSelected) {
+      setIsEditingTimelineEntryLabel(false);
+      setTimelineEditEntryId(null);
+    }
+  }, [isSelected, isMultiSelected]);
   
   // Line vertex dragging (endpoints + curve control points)
   const [isDraggingLineEndpoint, setIsDraggingLineEndpoint] = useState(false);
@@ -366,6 +462,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     move: (e: PointerEvent) => void;
     up: (e: PointerEvent) => void;
   } | null>(null);
+
+  const timelineEntryPointerDownRef = useRef<(e: React.PointerEvent, entryId: string) => void>(() => {});
 
   const removeLineVertexDocListeners = useCallback(() => {
     const L = lineVertexDocListenersRef.current;
@@ -885,6 +983,64 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       return <ArrowheadShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.chevron' || nodeType?.endsWith('.chevron')) {
       return <ChevronShape {...shapeProps} />;
+    } else if (isTimelineNodeType(nodeType)) {
+      const lineNodeWithLocalPos = {
+        ...visualNode,
+        ...(localStartPos && { __localStartPos: localStartPos }),
+        ...(localEndPos && { __localEndPos: localEndPos }),
+        ...(localControlPoints && { __localControlPoints: localControlPoints }),
+      };
+      const tlNode =
+        timelineDragPreview
+          ? {
+              ...lineNodeWithLocalPos,
+              timelineDistribution: "manual" as const,
+              timelineEntries: timelineEntriesMaterializedRatios(lineNodeWithLocalPos as DiagramNodeData).map((e) =>
+                e.id === timelineDragPreview.entryId
+                  ? {
+                      ...e,
+                      t: timelineDragPreview.t,
+                      cardNormalOffsetPx: timelineDragPreview.cardNormalOffsetPx,
+                      cardSide: timelineDragPreview.cardSide,
+                    }
+                  : e,
+              ),
+            }
+          : lineNodeWithLocalPos;
+      return (
+        <TimelineShape
+          node={tlNode as DiagramNodeData & typeof tlNode}
+          onClick={onClick}
+          onContextMenu={onContextMenu}
+          onTimelineSpineContextMenu={
+            onTimelineSpineContextMenu && !isReadOnly
+              ? (ev, arcRatio) => {
+                  onTimelineSpineContextMenu(ev as React.MouseEvent, visualNode, arcRatio);
+                }
+              : undefined
+          }
+          onSpinePointerDown={() => onTimelineEntrySelect?.(null)}
+          activeEntryId={timelineActiveEntryId ?? undefined}
+          onEntryPointerDown={(ev, entryId) => timelineEntryPointerDownRef.current(ev, entryId)}
+          onEntryClick={(ev, entryId) => {
+            onTimelineEntrySelect?.(entryId);
+            onClick?.(ev as any, visualNode);
+          }}
+          onEntryDoubleClick={handleTimelineEntryDoubleClick}
+          onEntryContextMenu={
+            onTimelineEntryContextMenu && !isReadOnly
+              ? (ev, entryId) => {
+                  onTimelineEntryContextMenu(ev as React.MouseEvent, visualNode, entryId);
+                }
+              : undefined
+          }
+          slideColorTransition={
+            animationStyle?.visualColorMergeTransition !== undefined && !animationStyle?.visualColorCrossfade
+              ? (animationStyle.visualColorMergeTransition as string)
+              : undefined
+          }
+        />
+      );
     } else if (isConnectorLineNodeType(nodeType)) {
       const lineNodeWithLocalPos = {
         ...visualNode,
@@ -1210,21 +1366,68 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const isTextboxNode = node.type === 'generic.text.textbox';
   const isRichTextBoxLike = isTextNode || isTextboxNode;
   const isLineNode = isConnectorLineNodeType(node.type);
+  const isTimelineNode = isTimelineNodeType(node.type);
+  const spineLikeNode = isLineNode || isTimelineNode;
   /** Hover uses `filter: drop-shadow` on the frame, which makes a backdrop root and breaks frosted `backdrop-filter`. */
   const isFrostedBackground = (node as DiagramNodeData).backgroundStyle === "frosted";
   const isLoopNode = node.type === 'generic.object.loop' || node.type?.endsWith('.loop');
-  const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode);
+  const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode || isTimelineNode);
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
   /** Highlight pulse uses drop-shadow on the shape subtree for non-rect `generic.object.*` types (star, kite, charts excluded on outer frame path). */
   const highlightPulseUsesShapeSilhouette =
-    !isLineNode && isHighlightPulseShapeSilhouetteType(node.type);
+    !isLineNode && !isTimelineNode && isHighlightPulseShapeSilhouetteType(node.type);
    const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
    const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode;
-  const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode;
+  const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode && !isTimelineNode;
   const isIconNode = !isTextNode && !isTextboxNode && !isShapeNode && !isLineNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const iconNodeDims = isIconNode ? measureNodeDims(node as any) : null;
+
+  const timelineEntryEditRuns = useMemo(() => {
+    if (!timelineEditEntryId) return [] as RichTextRun[];
+    const ent = (node.timelineEntries ?? []).find((x) => x.id === timelineEditEntryId);
+    return ent ? ent.richLabel ?? labelToRuns(ent.label ?? "") : [];
+  }, [timelineEditEntryId, node.timelineEntries]);
+
+  const handleTimelineEntryDoubleClick = useCallback(
+    (e: React.MouseEvent, entryId: string) => {
+      if (isReadOnly || !onUpdate || !isTimelineNode) return;
+      e.stopPropagation();
+      e.preventDefault();
+      setIsEditingLabel(false);
+      setIsOpen(false);
+      onTimelineEntrySelect?.(entryId);
+      const entry = (node.timelineEntries ?? []).find((x) => x.id === entryId);
+      if (!entry) return;
+      setTimelineEditEntryId(entryId);
+      setIsEditingTimelineEntryLabel(true);
+    },
+    [isReadOnly, onUpdate, isTimelineNode, node.timelineEntries, onTimelineEntrySelect],
+  );
+
+  const handleTimelineEntryRichSubmit = useCallback(
+    (plainText: string, runs: RichTextRun[]) => {
+      if (!onUpdate || !timelineEditEntryId) {
+        setIsEditingTimelineEntryLabel(false);
+        setTimelineEditEntryId(null);
+        return;
+      }
+      const nextPlain = plainText.trim();
+      const normNew = normalizeRuns(runs);
+      const entries = (node.timelineEntries ?? []).map((e) => {
+        if (e.id !== timelineEditEntryId) return e;
+        const normPrev = normalizeRuns(e.richLabel ?? labelToRuns(e.label ?? ""));
+        if (!isMultiSelected && JSON.stringify(normNew) === JSON.stringify(normPrev)) return e;
+        return { ...e, label: nextPlain, richLabel: normNew };
+      });
+      onUpdate({ ...node, timelineEntries: entries });
+      setIsEditingTimelineEntryLabel(false);
+      setTimelineEditEntryId(null);
+    },
+    [onUpdate, timelineEditEntryId, node, isMultiSelected],
+  );
+
   const rotation = (node as any).rotation || 0;
   // During resize, use local dimensions for instant visual feedback
   const displayWidth = resizeDimensions ? resizeDimensions.width : (
@@ -1242,7 +1445,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const highlightAnimStyle = useMemo(
     () =>
       getHighlightAnimStyleForNode(node as DiagramNodeData & { x: number; y: number }, {
-        isLineNode,
+        isLineNode: spineLikeNode,
         isDuplicateDragPreview,
         positionX: positionXForHighlight,
         positionY: positionYForHighlight,
@@ -1251,7 +1454,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         pulseFollowsShapeSilhouette: highlightPulseUsesShapeSilhouette,
       }),
     [
-      isLineNode,
+      spineLikeNode,
       isDuplicateDragPreview,
       highlightPulseUsesShapeSilhouette,
       node.highlightAnim,
@@ -1285,6 +1488,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       !isReadOnly &&
       !isEditingLabel &&
       !isEditingTag &&
+      !isEditingTimelineEntryLabel &&
       !chartValueDragInteractionRef.current,
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
@@ -1295,7 +1499,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     onDragEnd: () => {
       onDraggingChange?.(false);
     },
-  }), [node, node.id, node.x, node.y, onDraggingChange, isLocked, isReadOnly, isEditingLabel, isEditingTag, isDuplicateDragPreview]);
+  }), [node, node.id, node.x, node.y, onDraggingChange, isLocked, isReadOnly, isEditingLabel, isEditingTag, isEditingTimelineEntryLabel, isDuplicateDragPreview]);
 
   useEffect(() => {
     preview(getEmptyImage(), { captureDraggingState: true });
@@ -1494,11 +1698,24 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const [localStartPos, setLocalStartPos] = useState<{ x: number; y: number } | null>(null);
   const [localEndPos, setLocalEndPos] = useState<{ x: number; y: number } | null>(null);
   const [localControlPoints, setLocalControlPoints] = useState<Array<{ x: number; y: number }> | null>(null);
+  /** Timeline: live preview ratio while dragging a card along the spine */
+  const [timelineDragPreview, setTimelineDragPreview] = useState<{
+    entryId: string;
+    t: number;
+    cardNormalOffsetPx: number;
+    cardSide: "above" | "below";
+  } | null>(null);
+  /** Last solved drag pose for timeline card (fallback when pointer-up can't map to diagram coords). */
+  const timelineEntryDragLiveRef = useRef<{
+    t: number;
+    cardNormalOffsetPx: number;
+    cardSide: "above" | "below";
+  } | null>(null);
   const latestPositionsRef = useRef<{ startPos: { x: number; y: number } | null; endPos: { x: number; y: number } | null }>({ startPos: null, endPos: null });
   
   // Initialize and sync local state with node positions (but not during drag)
   useEffect(() => {
-    if (!isDraggingLineEndpoint && isLineNode) {
+    if (!isDraggingLineEndpoint && spineLikeNode) {
       const startPos = (node as any).startPos || { x: node.x || 0, y: node.y || 0 };
       const endPos = (node as any).endPos || { x: (node.x || 0) + 150, y: node.y || 0 };
       const ctrls = ((node as any).lineControlPoints ?? []) as { x: number; y: number }[];
@@ -1534,7 +1751,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     (node as any).linePathStyle,
     (node as any).lineSmoothJoints,
     isDraggingLineEndpoint,
-    isLineNode,
+    spineLikeNode,
   ]);
 
   /** Line nodes only render `position:absolute` SVG children — `width/height: auto` collapses the box to 0×0, so hits never reach the line. */
@@ -1568,6 +1785,103 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     localStartPos,
     localEndPos,
     localControlPoints,
+  ]);
+
+  const timelineLiveLayoutDims = useMemo(() => {
+    if (!isTimelineNode) return null;
+    const synth = {
+      ...node,
+      ...(localStartPos && { __localStartPos: localStartPos }),
+      ...(localEndPos && { __localEndPos: localEndPos }),
+      ...(localControlPoints && { __localControlPoints: localControlPoints }),
+    };
+    const boundsNode: DiagramNodeData =
+      timelineDragPreview
+        ? ({
+            ...node,
+            timelineDistribution: "manual",
+            timelineEntries: timelineEntriesMaterializedRatios(node as DiagramNodeData).map((e) =>
+              e.id === timelineDragPreview.entryId
+                ? {
+                    ...e,
+                    t: timelineDragPreview.t,
+                    cardNormalOffsetPx: timelineDragPreview.cardNormalOffsetPx,
+                    cardSide: timelineDragPreview.cardSide,
+                  }
+                : e,
+            ),
+          } as DiagramNodeData)
+        : (node as DiagramNodeData);
+    const b = computeTimelineOuterBounds(boundsNode, synth as any);
+    const pad = 18;
+    const w = Math.max(150, b.maxX - b.minX + pad * 2);
+    const h = Math.max(100, b.maxY - b.minY + pad * 2);
+    return {
+      width: snapDimensionToGrid(w, 150),
+      height: snapDimensionToGrid(h, 100),
+    };
+  }, [
+    isTimelineNode,
+    node,
+    node.id,
+    JSON.stringify((node as any).timelineEntries ?? []),
+    (node as any).timelineCardSide,
+    (node as any).timelineCardW,
+    (node as any).timelineCardH,
+    (node as any).timelineOffsetPx,
+    (node as any).timelineSections,
+    (node as any).startPos?.x,
+    (node as any).startPos?.y,
+    (node as any).endPos?.x,
+    (node as any).endPos?.y,
+    JSON.stringify((node as any).lineControlPoints ?? []),
+    (node as any).linePathStyle,
+    localStartPos,
+    localEndPos,
+    localControlPoints,
+    timelineDragPreview,
+  ]);
+
+  const timelineNodeForEditLayout = useMemo((): DiagramNodeData => {
+    if (!timelineDragPreview) return node as DiagramNodeData;
+    return {
+      ...node,
+      timelineDistribution: "manual",
+      timelineEntries: timelineEntriesMaterializedRatios(node as DiagramNodeData).map((e) =>
+        e.id === timelineDragPreview.entryId
+          ? {
+              ...e,
+              t: timelineDragPreview.t,
+              cardNormalOffsetPx: timelineDragPreview.cardNormalOffsetPx,
+              cardSide: timelineDragPreview.cardSide,
+            }
+          : e,
+      ),
+    } as DiagramNodeData;
+  }, [node, timelineDragPreview]);
+
+  const timelineLayoutSynthForEdit = useMemo(
+    () => ({
+      ...(localStartPos && { __localStartPos: localStartPos }),
+      ...(localEndPos && { __localEndPos: localEndPos }),
+      ...(localControlPoints && { __localControlPoints: localControlPoints }),
+    }),
+    [localStartPos, localEndPos, localControlPoints],
+  );
+
+  const timelineEntryEditBounds = useMemo(() => {
+    if (!isTimelineNode || !isEditingTimelineEntryLabel || !timelineEditEntryId) return null;
+    return timelineEntryOverlayBoundsRelativeToNodeContainer(
+      timelineNodeForEditLayout,
+      timelineEditEntryId,
+      timelineLayoutSynthForEdit as { __localStartPos?: { x: number; y: number }; __localEndPos?: { x: number; y: number }; __localControlPoints?: { x: number; y: number }[] },
+    );
+  }, [
+    isTimelineNode,
+    isEditingTimelineEntryLabel,
+    timelineEditEntryId,
+    timelineNodeForEditLayout,
+    timelineLayoutSynthForEdit,
   ]);
 
   const beginRealLineVertexDrag = useCallback(
@@ -1733,6 +2047,122 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     ],
   );
 
+  const handleTimelineEntryPointerDown = useCallback(
+    (e: React.PointerEvent, entryId: string) => {
+      if (isReadOnly || !isTimelineNode || !onUpdate) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onTimelineEntrySelect?.(entryId);
+      onDraggingChange?.(true);
+
+      const synth = {
+        ...node,
+        ...(localStartPos && { __localStartPos: localStartPos }),
+        ...(localEndPos && { __localEndPos: localEndPos }),
+        ...(localControlPoints && { __localControlPoints: localControlPoints }),
+      } as DiagramNodeData;
+      const verts = getConnectorLineVertices(synth as any);
+      const lp = (node as DiagramNodeData).linePathStyle as LinePathStyle | undefined;
+      const sj = (node as DiagramNodeData).lineSmoothJoints === true;
+      const entriesList = node.timelineEntries ?? [];
+      const idx = entriesList.findIndex((x) => x.id === entryId);
+      if (idx < 0) return;
+
+      const mat0 = timelineEntriesMaterializedRatios(node as DiagramNodeData);
+      const te0 = mat0[idx];
+      timelineEntryDragLiveRef.current = {
+        t: typeof te0.t === "number" && Number.isFinite(te0.t) ? te0.t : 0.5,
+        cardNormalOffsetPx:
+          typeof te0.cardNormalOffsetPx === "number" && Number.isFinite(te0.cardNormalOffsetPx)
+            ? te0.cardNormalOffsetPx
+            : 0,
+        cardSide: resolveEntryCardSide(node as DiagramNodeData, te0, idx),
+      };
+
+      const onMove = (ev: PointerEvent) => {
+        const diag = canvasClientToDiagram(ev.clientX, ev.clientY);
+        if (!diag || !timelineEntryDragLiveRef.current) return;
+        const prefer = timelineEntryDragLiveRef.current.cardSide;
+        const solved = timelineDragSolveFromDiagramPoint(
+          diag.x,
+          diag.y,
+          node,
+          idx,
+          verts,
+          lp,
+          sj,
+          prefer,
+        );
+        timelineEntryDragLiveRef.current = solved;
+        setTimelineDragPreview({
+          entryId,
+          t: solved.t,
+          cardNormalOffsetPx: solved.cardNormalOffsetPx,
+          cardSide: solved.cardSide,
+        });
+      };
+
+      const onUp = (ev: PointerEvent) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        document.removeEventListener("pointermove", onMove, true);
+        document.removeEventListener("pointerup", onUp, true);
+        document.removeEventListener("pointercancel", onUp, true);
+        const diag = canvasClientToDiagram(ev.clientX, ev.clientY);
+        const preferFallback =
+          timelineEntryDragLiveRef.current?.cardSide ??
+          resolveEntryCardSide(node as DiagramNodeData, entriesList[idx], idx);
+        const solved =
+          diag != null
+            ? timelineDragSolveFromDiagramPoint(
+                diag.x,
+                diag.y,
+                node,
+                idx,
+                verts,
+                lp,
+                sj,
+                preferFallback,
+              )
+            : timelineEntryDragLiveRef.current;
+        timelineEntryDragLiveRef.current = null;
+        setTimelineDragPreview(null);
+        if (!solved) {
+          onDraggingChange?.(false);
+          return;
+        }
+        const snappedOff = snapToGrid(Math.round(solved.cardNormalOffsetPx));
+        const materialized = timelineEntriesMaterializedRatios(node as DiagramNodeData);
+        materialized[idx] = {
+          ...materialized[idx],
+          t: Math.max(0, Math.min(1, solved.t)),
+          cardNormalOffsetPx: snappedOff,
+          cardSide: solved.cardSide,
+        };
+        onUpdate({ ...node, timelineDistribution: "manual", timelineEntries: materialized });
+        onDraggingChange?.(false);
+      };
+
+      document.addEventListener("pointermove", onMove, true);
+      document.addEventListener("pointerup", onUp, true);
+      document.addEventListener("pointercancel", onUp, true);
+    },
+    [
+      isReadOnly,
+      isTimelineNode,
+      onUpdate,
+      node,
+      localStartPos,
+      localEndPos,
+      localControlPoints,
+      canvasClientToDiagram,
+      onDraggingChange,
+      onTimelineEntrySelect,
+    ],
+  );
+
+  timelineEntryPointerDownRef.current = handleTimelineEntryPointerDown;
+
   // Global pointer events for resize (mouse + touch).
   useEffect(() => {
     if (isResizing) {
@@ -1851,7 +2281,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     !isReadOnly &&
     !isEditingLabel &&
     !isEditingTag &&
-    !isLineNode;
+    !isEditingTimelineEntryLabel &&
+    !spineLikeNode;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const rawTarget = e.target;
@@ -1978,19 +2409,19 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       className={cn(
         "absolute group duration-200 ease-in-out rounded-lg",
         // Highlight pulse animates box-shadow; transitioning `filter` here can fight keyframes on some browsers (e.g. Chrome/Win).
-        node.highlightAnim && !isDuplicateDragPreview && !isLineNode && !highlightPulseUsesShapeSilhouette
+        node.highlightAnim && !isDuplicateDragPreview && !spineLikeNode && !highlightPulseUsesShapeSilhouette
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
-        !isLineNode && !(isDragging || isTouchCanvasDrag) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && !isFrostedBackground && "node-glow-hover",
-        !isLineNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !isFrostedBackground && "node-glow-subdiagram",
-        !isLineNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static",
-        !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && "node-glow-green-static",
+        !spineLikeNode && !(isDragging || isTouchCanvasDrag) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && !isFrostedBackground && "node-glow-hover",
+        !spineLikeNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !isFrostedBackground && "node-glow-subdiagram",
+        !spineLikeNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static",
+        !spineLikeNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && "node-glow-green-static",
         (isDragging || isTouchCanvasDrag) && "cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
       onClick={
-        isLineNode
+        spineLikeNode
           ? undefined
           : (e) => {
               if (suppressNextClickRef.current) {
@@ -2007,48 +2438,48 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
               onClick?.(e, node);
             }
       }
-      onDoubleClick={isLineNode ? undefined : (e) => {
+      onDoubleClick={spineLikeNode ? undefined : (e) => {
         if (node.subDiagramId && onSubDiagramDoubleClick) {
           e.stopPropagation();
           onSubDiagramDoubleClick(node);
         }
       }}
-      onContextMenu={isLineNode ? undefined : (e) => onContextMenu && onContextMenu(e, node)} // Lines handle context menu in their SVG (not on container)
+      onContextMenu={spineLikeNode ? undefined : (e) => onContextMenu && onContextMenu(e, node)} // Lines handle context menu in their SVG (not on container)
       style={{
         zIndex: stackZIndex ?? 2,
         // For lines during drag, keep container position stable (use initial position)
         // This prevents handles from drifting - they're positioned relative to stable container
         // For top/left resize, use resizePosition for instant feedback
-        left: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
+        left: spineLikeNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.x
           : (resizePosition?.x ?? node.x) + (touchDragOffsetDiag?.x ?? 0),
-        top: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
+        top: spineLikeNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.y
           : (resizePosition?.y ?? node.y) + (touchDragOffsetDiag?.y ?? 0),
-         width: isLineNode
-           ? lineLiveLayoutDims?.width ?? (node.width as number) ?? 150
+         width: spineLikeNode
+           ? (isTimelineNode ? timelineLiveLayoutDims?.width : lineLiveLayoutDims?.width) ?? (node.width as number) ?? 150
            : (typeof displayWidth === 'number' ? displayWidth :
                 (isShapeNode ? (node.width || 60) :
                 isRichTextBoxLike ?
                  (node.sizeMode === 'custom' && node.width ? node.width : 'auto') :
                  (iconNodeDims ? iconNodeDims.width : NODE_WIDTH))),
-         minWidth: isLineNode ? 0 : // Lines don't need min width
+         minWidth: spineLikeNode ? 0 : // Lines don't need min width
                    (resizeDimensions ? (isShapeNode ? 20 : isRichTextBoxLike ? 40 : 80) : // During resize: allow shrinking to match new dimensions (like textbox)
                     isShapeNode ? (node.width || 60) :
                     isRichTextBoxLike ? 40 :
                    isRotatableNode ? 80 : (isIconNode ? (iconNodeDims?.width ?? getNodeSizeDimensions((node as any).nodeSize).container) : NODE_WIDTH)),
-         maxWidth: isLineNode ? 'none' : // Lines don't need max width
+         maxWidth: spineLikeNode ? 'none' : // Lines don't need max width
                    (resizeDimensions ? 'none' : // During resize: allow growing without constraint
                     isShapeNode ? (node.width || 60) :
                     isRichTextBoxLike ? (node.sizeMode === 'custom' ? 'none' : 400) :
                    isRotatableNode ? 200 : (isIconNode ? 400 : NODE_WIDTH)),
-         height: isLineNode
-           ? lineLiveLayoutDims?.height ?? (node.height as number) ?? 100
+         height: spineLikeNode
+           ? (isTimelineNode ? timelineLiveLayoutDims?.height : lineLiveLayoutDims?.height) ?? (node.height as number) ?? 100
            : (typeof displayHeight === 'number' ? displayHeight :
                  (isShapeNode ? (node.height || 60) :
                  isRichTextBoxLike && node.sizeMode === 'custom' ? (node.height || 40) :
                  isRichTextBoxLike ? nodeHeight : (iconNodeDims ? iconNodeDims.height : 'auto'))),
-         ...(resizeDimensions && !isLineNode && (isShapeNode || isRichTextBoxLike) && {
+         ...(resizeDimensions && !spineLikeNode && (isShapeNode || isRichTextBoxLike) && {
            minHeight: isShapeNode ? 20 : 40,
          }),
         touchAction: 'none',
@@ -2056,7 +2487,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         transformOrigin: 'center',
         // For lines: container doesn't intercept clicks, but children (endpoint handles) can still receive events
         // pointerEventsPassThrough: when selected item is behind this, let clicks pass through to it for resize/drag
-        ...(isLineNode && { pointerEvents: 'none' }),
+        ...(spineLikeNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
         ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette ? highlightAnimStyle : {}),
@@ -2072,14 +2503,14 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         }),
       }}
       onMouseEnter={() => { 
-        if (!isDragging && !isEditingLabel && !isEditingTag) { 
+        if (!isDragging && !isEditingLabel && !isEditingTag && !isEditingTimelineEntryLabel) { 
           setIsOpen(hoverEnabled); 
           setIsHovered(true);
           onHoverChange?.(node.id, 'node', true);
         } 
       }}
       onMouseLeave={() => { 
-        if (!isEditingLabel && !isEditingTag) { 
+        if (!isEditingLabel && !isEditingTag && !isEditingTimelineEntryLabel) { 
           setIsOpen(false); 
           setIsHovered(false);
           onHoverChange?.(node.id, 'node', false);
@@ -2108,7 +2539,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       }}
     >
       <SlideShapeShadowTransitionProvider animationStyle={animationStyle}>
-      <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag} onOpenChange={setIsOpen}>
+      <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag && !isEditingTimelineEntryLabel} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div
             className={cn(
@@ -2135,6 +2566,35 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
                   >
                     {renderShape()}
                   </div>
+                  {isTimelineNode &&
+                    isEditingTimelineEntryLabel &&
+                    timelineEntryEditBounds &&
+                    onUpdate && (
+                      <div
+                        className="absolute z-[70] pointer-events-auto rounded-md border border-primary bg-background/95 shadow-md overflow-hidden min-h-[4rem]"
+                        style={{
+                          left: timelineEntryEditBounds.left,
+                          top: timelineEntryEditBounds.top,
+                          width: timelineEntryEditBounds.width,
+                          height: Math.max(timelineEntryEditBounds.height, 72),
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        <TextboxRichEditor
+                          key={timelineEditEntryId ?? "tl-edit"}
+                          node={node}
+                          runs={timelineEntryEditRuns}
+                          onSubmit={handleTimelineEntryRichSubmit}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              e.preventDefault();
+                              setIsEditingTimelineEntryLabel(false);
+                              setTimelineEditEntryId(null);
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
                 </div>
              ) : (
               wrapSlideVisualCrossfade((vn) => renderIconNodeContentForVisualNode(vn))
@@ -2154,7 +2614,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
        {/* Resize handles - textbox, text, shapes, or icon nodes (label width) */}
         {!isReadOnly && (isResizing || isSelected || isMultiSelected) &&
-         (isRichTextBoxLike || (isShapeNode && !isPointNode && !isLineNode) || isIconNode) && (
+         (isRichTextBoxLike || (isShapeNode && !isPointNode && !spineLikeNode) || isIconNode) && (
           <ResizeHandles
             visible={true}
             activeHandle={resizeHandle}
@@ -2167,7 +2627,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
        )}
        
        {/* Line endpoint handles for line shapes - only show when THIS line is selected (not in multi-select with other items) */}
-       {!isReadOnly && isLineNode && isSelected && !isMultiSelected && (() => {
+       {!isReadOnly && spineLikeNode && isSelected && !isMultiSelected && (() => {
          const handleSynth = {
            ...node,
            ...(localStartPos && { __localStartPos: localStartPos }),
@@ -2202,7 +2662,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
        })()}
 
        {/* Connect handle - show when selected (not for lines) */}
-       {!isReadOnly && (isSelected || isMultiSelected) && onConnect && !isLineNode && (
+       {!isReadOnly && (isSelected || isMultiSelected) && onConnect && !spineLikeNode && (
          <ConnectHandle
            visible={true}
            onConnect={() => onConnect({ style: 'bezier', curvature: 0.6 })}
@@ -2236,7 +2696,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
        )}
 
        {/* Rotation handle — top-left; parent decides visibility (excludes lines/points) */}
-       {!isReadOnly && rotationHandleVisible && onRotationPointerDown && !isLineNode && (
+       {!isReadOnly && rotationHandleVisible && onRotationPointerDown && !spineLikeNode && (
          <RotationHandle
            visible={Boolean(isSelected || isMultiSelected)}
            onPointerDown={onRotationPointerDown}

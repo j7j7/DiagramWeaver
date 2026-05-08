@@ -60,7 +60,7 @@ import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
 import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEFAULT_UML_CLASS_TEXT_STYLING } from '@/lib/uml-text-styling';
-import { cn, isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
+import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType, isTimelineNodeType } from '@/lib/utils';
 import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { extractLineStylingFromNode, applyLineStylingToNode, syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
@@ -485,6 +485,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type === 'generic.object.jigsaw' ||
     (selectedItem as any)?.type === 'generic.object.arrowhead' ||
     (selectedItem as any)?.type === 'generic.object.chevron' ||
+    (selectedItem as any)?.type === 'generic.object.timeline' ||
     isConnectorLineNodeType((selectedItem as any)?.type) ||
     (selectedItem as any)?.type?.startsWith('generic.chart.') ||
     (selectedItem as any)?.type?.endsWith('.square') ||
@@ -508,6 +509,8 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.chevron')
   );
   const isLineNode = isNode && isConnectorLineNodeType((selectedItem as any)?.type);
+  const isTimelineNode = isNode && isTimelineNodeType((selectedItem as any)?.type);
+  const showSpineLineStyling = isLineNode || isTimelineNode;
   const isClosedConnectorLine = useMemo(() => {
     if (!isLineNode || !diagramData || !selectedItem?.id) return false;
     const n = diagramData.nodes.find((nn) => nn.id === selectedItem.id);
@@ -556,14 +559,14 @@ export function ContextToolbar({
 
   const getCurrentLineStyling = useMemo(() => {
     if (!selectedItem || !diagramData) return {};
-    if (!isNode || !isLineNode) return {};
+    if (!isNode || (!isLineNode && !isTimelineNode)) return {};
     let currentItem = selectedItem;
     if (selectedItemIds && selectedItemIds.size > 1) {
       const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
       currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
     }
     return extractLineStylingFromNode(currentItem as any);
-  }, [selectedItem, isNode, isLineNode, selectedItemIds, diagramData]);
+  }, [selectedItem, isNode, isLineNode, isTimelineNode, selectedItemIds, diagramData]);
 
   const getAllConnections = useMemo(() => {
     if (!selectedItem || !diagramData) return [];
@@ -1265,7 +1268,7 @@ export function ContextToolbar({
       
       // Update nodes (only line nodes)
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
-        if (selectedItemIds.has(node.id) && isConnectorLineNodeType(node.type)) {
+        if (selectedItemIds.has(node.id) && isConnectorLikeSpineNodeType(node.type)) {
           return applyLineStylingToNode(node, styling);
         }
         return node;
@@ -1274,7 +1277,7 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - get fresh node data from diagramData to preserve startPos/endPos
-      if (isNode && isLineNode && diagramData) {
+      if (isNode && showSpineLineStyling && diagramData) {
         // Get the latest node data from diagramData to ensure we have current startPos/endPos
         const freshNode = diagramData.nodes.find(n => n.id === selectedItem.id);
         const nodeToUpdate = freshNode || selectedItem;
@@ -1325,7 +1328,7 @@ export function ContextToolbar({
       
       // Update nodes (only line nodes)
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
-        if (selectedItemIds.has(node.id) && isConnectorLineNodeType(node.type)) {
+        if (selectedItemIds.has(node.id) && isConnectorLikeSpineNodeType(node.type)) {
           return applyLineStylingToNode(node, defaultStyling);
         }
         return node;
@@ -1334,7 +1337,7 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection
-      if (isNode && isLineNode) {
+      if (isNode && showSpineLineStyling) {
         const updatedNode = applyLineStylingToNode(selectedItem as any, defaultStyling);
         onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
       }
@@ -1567,8 +1570,8 @@ export function ContextToolbar({
           </Tooltip>
         )}
 
-        {/* Connect Button - Hide for lines */}
-        {isNode && !isLineNode && (
+        {/* Connect Button - Hide for connector lines and timeline (no diagram connections) */}
+        {isNode && !isLineNode && !isTimelineNode && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -1585,8 +1588,8 @@ export function ContextToolbar({
         )}
 
 
-        {/* Connections Arrow Toggle - Show if there are multiple connections */}
-        {isNode && getAllConnections.length > 0 && (
+        {/* Connections popover — hidden for timeline */}
+        {isNode && !isTimelineNode && getAllConnections.length > 0 && (
           <Popover open={connectionsOpen} onOpenChange={setConnectionsOpen}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -2249,7 +2252,7 @@ export function ContextToolbar({
         )}
 
         {/* Line Styling Button - Only for line nodes */}
-        {selectedItem && isLineNode && (
+        {selectedItem && showSpineLineStyling && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>

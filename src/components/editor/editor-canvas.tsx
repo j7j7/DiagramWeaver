@@ -65,7 +65,8 @@ import { SearchResourcesModal } from "./search-resources-modal";
 import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
-import { cn, isConnectorLineNodeType, isShapeNodeType } from "@/lib/utils";
+import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
+import { applyTimelineEntriesSpacedEndpoints, insertTimelineEntryNearArcRatio } from "@/lib/timeline-layout";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import {
   getConnectorLineVertices,
@@ -397,6 +398,8 @@ interface EditorCanvasProps {
   onRemoveSubDiagramLink?: (nodeId: string) => void;
   /** Pause connection animations while a canvas context menu / overlay is open (same effective flag as top menubar). */
   onPauseConnectionAnimationsForOverlayUi?: () => void;
+  timelineActiveEntryId?: string | null;
+  onTimelineEntrySelect?: (entryId: string | null) => void;
   /** Connector line: vertex handle click target for delete-point */
   connectorLineFocusedVertex?: { nodeId: string; vertexIndex: number } | null;
   onConnectorLineVertexFocus?: (nodeId: string, vertexIndex: number) => void;
@@ -438,7 +441,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineActiveEntryId = null, onTimelineEntrySelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -636,7 +639,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
     
     // Helper to check if a node is a line or point (exclude from rotation)
-    const isLineNode = (node: any) => isConnectorLineNodeType(node?.type);
+    const isLineNode = (node: any) => isConnectorLikeSpineNodeType(node?.type);
     const isPointNode = (node: any) => {
       return node?.type === 'generic.object.point' || node?.type?.endsWith('.point');
     };
@@ -1142,7 +1145,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     // Apply single item drag override
     if (dragPosition?.itemId && result[dragPosition.itemId]) {
       const node = result[dragPosition.itemId];
-      const isLineNode = isConnectorLineNodeType(node.type);
+      const isLineNode = isConnectorLikeSpineNodeType(node.type);
       
       if (isLineNode && dragPosition.deltaX !== undefined && dragPosition.deltaY !== undefined) {
         // For line nodes, also update startPos and endPos
@@ -1190,7 +1193,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       Object.entries(multiDragPositions).forEach(([itemId, pos]) => {
         if (result[itemId]) {
           const node = result[itemId];
-          const isLineNode = isConnectorLineNodeType(node.type);
+          const isLineNode = isConnectorLikeSpineNodeType(node.type);
           
           if (isLineNode) {
             // For line nodes, calculate delta and update startPos and endPos
@@ -1660,6 +1663,71 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     setLastRightClickItemId(node.id);
     handleContextMenu(e, node.id, 'node'); // Opens context menu
   }, [simulationModeEnabled, openSimulationMenu, selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
+
+  const handleTimelineEntryContextMenu = useCallback(
+    (e: React.MouseEvent, node: DiagramNodeData, entryId: string) => {
+      e.stopPropagation();
+      e.preventDefault();
+      setSimulationMenuState(null);
+      if (simulationModeEnabled) {
+        openSimulationMenu(e, node.id, "node");
+        return;
+      }
+      if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
+        // keep multi-selection
+      } else if (selectedItemId !== node.id) {
+        onItemSelect({ ...node, itemType: "node" }, false);
+      }
+      onTimelineEntrySelect?.(entryId);
+      onResetConnectionSettingsTrigger?.();
+      setLastRightClickItemId(node.id);
+      handleContextMenu(e, node.id, "node", { timelineEntryId: entryId, timelineSpineArcRatio: undefined });
+    },
+    [
+      simulationModeEnabled,
+      openSimulationMenu,
+      selectedItemIds,
+      selectedItemId,
+      onItemSelect,
+      onTimelineEntrySelect,
+      onResetConnectionSettingsTrigger,
+      handleContextMenu,
+    ],
+  );
+
+  const handleTimelineSpineContextMenu = useCallback(
+    (e: React.MouseEvent, node: DiagramNodeData, arcRatio: number) => {
+      e.stopPropagation();
+      e.preventDefault();
+      setSimulationMenuState(null);
+      if (simulationModeEnabled) {
+        openSimulationMenu(e, node.id, "node");
+        return;
+      }
+      if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
+        // keep multi-selection
+      } else if (selectedItemId !== node.id) {
+        onItemSelect({ ...node, itemType: "node" }, false);
+      }
+      onTimelineEntrySelect?.(null);
+      onResetConnectionSettingsTrigger?.();
+      setLastRightClickItemId(node.id);
+      handleContextMenu(e, node.id, "node", {
+        timelineSpineArcRatio: arcRatio,
+        timelineEntryId: undefined,
+      });
+    },
+    [
+      simulationModeEnabled,
+      openSimulationMenu,
+      selectedItemIds,
+      selectedItemId,
+      onItemSelect,
+      onTimelineEntrySelect,
+      onResetConnectionSettingsTrigger,
+      handleContextMenu,
+    ],
+  );
 
   nodeClickHandlerRef.current = handleNodeClick;
   nodeContextMenuHandlerRef.current = handleNodeContextMenu;
@@ -2684,6 +2752,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       : null
                   }
                   onConnectorLineVertexFocus={onConnectorLineVertexFocus}
+                  timelineActiveEntryId={timelineActiveEntryId}
+                  onTimelineEntrySelect={onTimelineEntrySelect}
+                  onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
+                  onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
                 />
               ) : zone ? null : null;
                   return nodeEl;
@@ -2788,6 +2860,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                         : null
                     }
                     onConnectorLineVertexFocus={onConnectorLineVertexFocus}
+                    timelineActiveEntryId={timelineActiveEntryId}
+                    onTimelineEntrySelect={onTimelineEntrySelect}
+                    onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
+                    onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
                   />
                 ) : zone ? null : null;
                 return [
@@ -3148,7 +3224,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             }}
             onLineStyling={contextMenu.itemType === 'node' && (() => {
               const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-              return node && isConnectorLineNodeType(node.type);
+              return node && isConnectorLikeSpineNodeType(node.type);
             })() ? () => {
               if (onTriggerLineStylingPanel) {
                 onTriggerLineStylingPanel();
@@ -3181,7 +3257,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               contextMenu.itemType === 'node' &&
               (() => {
                 const n = diagramData.nodes.find((nn) => nn.id === contextMenu.itemId);
-                return n && isConnectorLineNodeType(n.type);
+                return n && isConnectorLikeSpineNodeType(n.type);
               })()
                 ? () => {
                     const id = contextMenu.itemId;
@@ -3212,7 +3288,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               contextMenu.itemType === 'node' &&
               (() => {
                 const n = diagramData.nodes.find((nn) => nn.id === contextMenu.itemId);
-                return n && isConnectorLineNodeType(n.type);
+                return n && isConnectorLikeSpineNodeType(n.type);
               })()
                 ? () => {
                     const id = contextMenu.itemId;
@@ -3250,7 +3326,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               contextMenu.itemType === 'node'
                 ? (() => {
                     const c = diagramData.nodes.find((n) => n.id === contextMenu.itemId) as any;
-                    if (!c || !isConnectorLineNodeType(c.type)) return false;
+                    if (!c || !isConnectorLikeSpineNodeType(c.type)) return false;
                     if (c.linePathStyle === 'curved') return false;
                     return ((c.lineControlPoints?.length ?? 0) as number) >= 1;
                   })()
@@ -3268,7 +3344,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 const c = diagramData.nodes.find((n) => n.id === contextMenu.itemId) as any;
                 return (
                   c &&
-                  isConnectorLineNodeType(c.type) &&
+                  isConnectorLikeSpineNodeType(c.type) &&
                   c.linePathStyle !== 'curved' &&
                   (c.lineControlPoints?.length ?? 0) >= 1
                 );
@@ -3287,6 +3363,110 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   }
                 : undefined
             }
+            {...(() => {
+              const ctx =
+                contextMenu.itemType === "node"
+                  ? diagramData.nodes.find((n) => n.id === contextMenu.itemId)
+                  : undefined;
+              const timelineCtx =
+                ctx && isTimelineNodeType(ctx.type) ? (ctx as DiagramNodeData) : null;
+              const menuNodeId = contextMenu.itemId;
+              if (!timelineCtx || !menuNodeId) {
+                return {
+                  onTimelineAddCard: undefined,
+                  onTimelineRemoveCard: undefined,
+                  onTimelineSpaceEndpoints: undefined,
+                  timelineCanRemoveCard: false,
+                  timelineSequentialHues: false,
+                  onTimelineToggleSequentialHues: undefined,
+                  timelineAlternateSides: false,
+                  onTimelineToggleAlternateSides: undefined,
+                };
+              }
+              const entryTarget =
+                contextMenu.timelineEntryId ?? timelineActiveEntryId ?? null;
+              return {
+                onTimelineAddCard: () => {
+                  const spineR = contextMenu.timelineSpineArcRatio;
+                  setDiagramData((prev) => ({
+                    ...prev,
+                    nodes: prev.nodes.map((n) => {
+                      if (n.id !== menuNodeId || !isTimelineNodeType(n.type)) return n;
+                      if (typeof spineR === "number" && Number.isFinite(spineR)) {
+                        return insertTimelineEntryNearArcRatio(n, spineR);
+                      }
+                      const entries = [...(n.timelineEntries ?? [])];
+                      const newId = `${n.id}-te-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
+                      const manual = n.timelineDistribution === "manual";
+                      let t: number | undefined;
+                      if (manual) {
+                        const ratios = entries.map((e) => e.t ?? 0.5);
+                        const maxT = ratios.length ? Math.max(...ratios) : 0;
+                        t = Math.min(0.98, maxT + 0.08);
+                      }
+                      entries.push({
+                        id: newId,
+                        label: `Step ${entries.length + 1}`,
+                        ...(manual && t !== undefined ? { t } : {}),
+                      });
+                      return { ...n, timelineEntries: entries };
+                    }),
+                  }));
+                },
+                onTimelineSpaceEndpoints: () => {
+                  setDiagramData((prev) => ({
+                    ...prev,
+                    nodes: prev.nodes.map((n) =>
+                      n.id !== menuNodeId || !isTimelineNodeType(n.type)
+                        ? n
+                        : applyTimelineEntriesSpacedEndpoints(n),
+                    ),
+                  }));
+                },
+                onTimelineRemoveCard: () => {
+                  if (!entryTarget) return;
+                  setDiagramData((prev) => ({
+                    ...prev,
+                    nodes: prev.nodes.map((n) => {
+                      if (n.id !== menuNodeId || !isTimelineNodeType(n.type)) return n;
+                      const list = n.timelineEntries ?? [];
+                      if (list.length <= 1) return n;
+                      return {
+                        ...n,
+                        timelineEntries: list.filter((e) => e.id !== entryTarget),
+                      };
+                    }),
+                  }));
+                  onTimelineEntrySelect?.(null);
+                },
+                timelineCanRemoveCard:
+                  (timelineCtx.timelineEntries?.length ?? 0) > 1 && !!entryTarget,
+                timelineSequentialHues: timelineCtx.timelineCardFillMode === "theme-hues",
+                onTimelineToggleSequentialHues: () => {
+                  setDiagramData((prev) => ({
+                    ...prev,
+                    nodes: prev.nodes.map((n) => {
+                      if (n.id !== menuNodeId || !isTimelineNodeType(n.type)) return n;
+                      const next =
+                        n.timelineCardFillMode === "theme-hues" ? "solid" : "theme-hues";
+                      return { ...n, timelineCardFillMode: next };
+                    }),
+                  }));
+                },
+                timelineAlternateSides: timelineCtx.timelineCardSide === "alternate",
+                onTimelineToggleAlternateSides: () => {
+                  setDiagramData((prev) => ({
+                    ...prev,
+                    nodes: prev.nodes.map((n) => {
+                      if (n.id !== menuNodeId || !isTimelineNodeType(n.type)) return n;
+                      const nextSide =
+                        n.timelineCardSide === "alternate" ? "above" : "alternate";
+                      return { ...n, timelineCardSide: nextSide };
+                    }),
+                  }));
+                },
+              };
+            })()}
             onToggleLock={() => {
               if (contextMenu.itemType === 'node') {
                 const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);

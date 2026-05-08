@@ -368,6 +368,54 @@ export interface DiagramNodeData {
     methods?: { fontFamily?: string; fontSize?: number; textJustify?: string; textColor?: string };
     dividerLineWidth?: number;
   };
+
+  /** `generic.object.timeline`: one rounded card along the spine (see timeline-layout.ts). */
+  timelineEntries?: TimelineEntryData[];
+  /** Even spacing uses `(i+1)/(n+1)` along arc length; manual keeps per-entry `t`. */
+  timelineDistribution?: 'even' | 'manual';
+  timelineCardSide?: 'above' | 'below' | 'alternate';
+  /** Number of sections (≥2 draws internal ticks); 0 or omitted = none. */
+  timelineSections?: number;
+  timelineCardW?: number;
+  timelineCardH?: number;
+  /** Corner radius for cards (px-ish, same spirit as shape rounding scale). */
+  timelineCornerRadius?: number;
+  /** Distance from spine anchor toward card (px). */
+  timelineOffsetPx?: number;
+  timelineCardFillMode?: 'solid' | 'theme-hues';
+  /** Degrees added per entry for `theme-hues` (defaults to diagram theme hue step). */
+  timelineHueStepDeg?: number;
+  timelineConnectorWidth?: number;
+  timelineDotRadius?: number;
+}
+
+/** Timeline card row — optional visual overrides inherit from the parent timeline node when omitted. */
+export interface TimelineEntryData {
+  id: string;
+  /** Arc-length ratio along spine when `timelineDistribution` is `manual`. */
+  t?: number;
+  label?: string;
+  richLabel?: RichTextRun[];
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none';
+  backgroundColor?: string;
+  backgroundColors?: string[];
+  gradientAngle?: number;
+  frostedDiffusion?: number;
+  frostedTransparency?: number;
+  frostedPerlinNoise?: number;
+  borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none';
+  borderColor?: string;
+  borderColors?: string[];
+  borderGradientAngle?: number;
+  shadow?: boolean;
+  textColor?: string;
+  cornerRadius?: number;
+  width?: number;
+  height?: number;
+  /** Extra px along the card-side normal from spine (drag cards nearer/further or across spine); negative pulls toward spine. */
+  cardNormalOffsetPx?: number;
+  /** When set, pins this card above/below (overrides node `timelineCardSide` / alternate for this row). */
+  cardSide?: 'above' | 'below';
 }
 
 export interface ScratchPadItem {

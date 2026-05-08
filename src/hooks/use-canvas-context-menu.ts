@@ -6,6 +6,10 @@ interface ContextMenuState {
   y: number;
   itemType: 'node' | 'zone';
   itemId: string;
+  /** Timeline: card under cursor when opened from entry hit-target */
+  timelineEntryId?: string;
+  /** Timeline: arc-length ratio along spine when menu opened from spine right-click (for insert position). */
+  timelineSpineArcRatio?: number;
 }
 
 interface UseCanvasContextMenuOptions {
@@ -20,10 +24,17 @@ export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: 
     x: 0,
     y: 0,
     itemType: 'node',
-    itemId: ''
+    itemId: '',
+    timelineEntryId: undefined,
+    timelineSpineArcRatio: undefined,
   });
 
-  const handleContextMenu = (event: React.MouseEvent, itemId: string, itemType: 'node' | 'zone') => {
+  const handleContextMenu = (
+    event: React.MouseEvent,
+    itemId: string,
+    itemType: 'node' | 'zone',
+    opts?: { timelineEntryId?: string; timelineSpineArcRatio?: number },
+  ) => {
     if (isReadOnly) return;
     event.preventDefault();
 
@@ -70,12 +81,19 @@ export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: 
       x,
       y,
       itemType,
-      itemId
+      itemId,
+      timelineEntryId: opts?.timelineEntryId,
+      timelineSpineArcRatio: opts?.timelineSpineArcRatio,
     });
   };
 
   const closeContextMenu = useCallback(() => {
-    setContextMenu(prev => ({ ...prev, visible: false }));
+    setContextMenu((prev) => ({
+      ...prev,
+      visible: false,
+      timelineEntryId: undefined,
+      timelineSpineArcRatio: undefined,
+    }));
   }, []);
 
   // Close context menu when clicking outside

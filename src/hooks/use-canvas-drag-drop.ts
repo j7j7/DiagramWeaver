@@ -6,7 +6,7 @@ import type { Transform } from "./use-canvas-transform";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
 import type { DiagramData, DiagramNodeData } from "@/lib/types";
 import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
-import { isConnectorLineNodeType } from "@/lib/utils";
+import { isConnectorLikeSpineNodeType } from "@/lib/utils";
 import { getConnectorLineVertices } from "@/lib/line-curve-path";
 
 /** Diagram-space radius around drag origin: inside = free movement; crossing = lock to dominant axis */
@@ -62,7 +62,7 @@ function getCanvasDragAnchor(
 ): { x: number; y: number } | null {
   const originalItem = nodesById[itemId] || zonesById[itemId];
   if (!originalItem) return null;
-  const isLineNode = isConnectorLineNodeType(originalItem.type);
+  const isLineNode = isConnectorLikeSpineNodeType(originalItem.type);
   if (isLineNode && (originalItem as { startPos?: { x: number; y: number } }).startPos && (originalItem as { endPos?: { x: number; y: number } }).endPos) {
     const verts = getConnectorLineVertices(originalItem as any);
     return { x: Math.min(...verts.map((p) => p.x)), y: Math.min(...verts.map((p) => p.y)) };
