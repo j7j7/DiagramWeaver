@@ -1,6 +1,7 @@
 import type { DiagramNodeData, TimelineEntryData } from "@/lib/types";
 import { extractVisualStylingFromNode } from "@/lib/visual-styling";
 import { extractTextStylingFromNode } from "@/lib/text-styling";
+import { applyTimelineSequentialHuesToMergedVisual } from "@/lib/timeline-hues";
 
 const ENTRY_VISUAL_KEYS = [
   "backgroundStyle",
@@ -51,6 +52,53 @@ export function extractTimelineEntryTextForPanel(
   const baseText = extractTextStylingFromNode(timelineNode as any);
   if (!entry || entry.textColor === undefined) return baseText;
   return { ...baseText, textColor: entry.textColor };
+}
+
+/** Synthetic timeline typography + entry `label` / `richLabel` / `textColor` for card bodies merged into {@link buildSyntheticTimelineEntryCardNode}. */
+export function mergedTimelineEntryTextDisplayNode(
+  timelineNode: DiagramNodeData,
+  entry: TimelineEntryData,
+): DiagramNodeData {
+  const richFromEntry = entry.richLabel && entry.richLabel.length > 0 ? entry.richLabel : undefined;
+  const next: DiagramNodeData = {
+    ...timelineNode,
+    label: entry.label ?? "",
+    ...(entry.textColor !== undefined ? { textColor: entry.textColor } : {}),
+  };
+  if (richFromEntry !== undefined) {
+    next.richLabel = richFromEntry;
+  } else {
+    delete next.richLabel;
+  }
+  return next;
+}
+
+/** Full card node for {@link MindmapNodeShape} — same HTML pipeline as palette composite shapes. */
+export function buildSyntheticTimelineEntryCardNode(
+  timelineNode: DiagramNodeData,
+  entry: TimelineEntryData,
+  hueRank: number,
+  cardW: number,
+  cardH: number,
+): DiagramNodeData {
+  const mergedVisRecord = applyTimelineSequentialHuesToMergedVisual(
+    timelineNode,
+    hueRank,
+    mergedTimelineEntryVisualNode(timelineNode, entry),
+  );
+  const textMerged = mergedTimelineEntryTextDisplayNode(timelineNode, entry);
+  return {
+    ...textMerged,
+    ...(mergedVisRecord as unknown as DiagramNodeData),
+    width: cardW,
+    height: cardH,
+    cornerRadius:
+      entry.cornerRadius ??
+      (typeof timelineNode.timelineCornerRadius === "number" ? timelineNode.timelineCornerRadius : undefined),
+    compositeBodyShape: timelineNode.compositeBodyShape,
+    id: `${timelineNode.id}-tl-card-${entry.id}`,
+    type: timelineNode.type,
+  };
 }
 
 export function applyVisualPatchToTimelineEntry(

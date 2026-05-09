@@ -3,6 +3,21 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-09 – Timeline card context menu: ignore non-primary pointer-down drag session
+**`handleTimelineEntryPointerDown`** attached document **`pointerup`** for every button; on **right‑click**, release in **`pending`** ran the same path as a left **tap** (**`handleTimelineCardTap`** → **`handleNodeClick`** → **`closeContextMenu`**), so the node menu flashed closed. **Guard `e.button !== 0`** before **`preventDefault`** / listeners so secondary button uses **`onContextMenu`** only. Patch bumped.
+
+### 2026-05-09 – Timeline HTML cards: pass-through shape shell (restore drag / resize / properties)
+The **`renderShape()`** wrapper (**`flex items-start justify-start`**) used default **`pointer-events: auto`** with **`w-full h-full`**, so it sat above the **`MindmapNodeShape`** card siblings in hit-testing and ate **`pointerdown` / click / context menu** (no selection → toolbar/properties dead; resize rails never targeted). For **`isTimelineNode`** that wrapper is **`pointer-events-none`**; spine stays interactive via **`TimelineShape`**’s inner **`<svg style={{ pointerEvents: 'auto' }}>`** and stroke hit path (same idea as **`LineShape`**). Card wrappers use **`pointer-events-auto`**. Patch bumped.
+
+### 2026-05-09 – Timeline cards: same **`ShapeWrapper`** stack as palette shapes (no SVG/`foreignObject` hull)
+**`TimelineShape`** draws **spine + section ticks + connector stems/dots** only. Each row’s hull + **`ShapeText`** render as **`MindmapNodeShape`** siblings inside **`diagram-node`** (**`absolute`** bounds via **`timelineEntryOverlayBoundsRelativeToNodeContainer`**), matching rectangles/composites (**SVG fill + frosted + gradients + tags/text tooling**). **`buildSyntheticTimelineEntryCardNode`** (**`timeline-styling.ts`**) merges visual (including **theme-hues**) + **`mergedTimelineEntryTextDisplayNode`**. Card **`pointerdown` / click / context menu** wire like prior **`CompositeCardSilhouette`**. Patch bumped.
+
+### 2026-05-09 – Timeline: spine junction dot above connector stem
+**`TimelineShape`** draws the entry stem **`<line>`** before the anchor **`<circle>`** so the dot sits on top of the stem (SVG paint order); spine path still precedes entry groups. Patch bumped.
+
+### 2026-05-09 – Context menu hook + timeline card text placement
+**`useCanvasContextMenu`** removed the **`document` `click`** listener that called **`closeContextMenu()` on every click** (no target filter)—menus vanished instantly after open (e.g. timeline card right‑click). **`ContextMenu`** already handles outside dismiss (**`mousedown`**, Escape, canvas capture **`click`**). **Timeline** card **`<text>`** now respects **`textJustify`** / **`textVerticalPosition`** from **`extractTextStylingFromNode`** like rectangle styling (**`full`** → centered). Patch bumped.
+
 ### 2026-05-09 – Timeline selected cards: hit-through resize overlay (drag + context menu)
 Per-card **`ResizeHandles`** sat in a **`pointer-events-auto`** full-size wrapper over the card, stealing **`pointerdown`** / **`contextmenu`** from **`CompositeCardSilhouette`**. Wrapper is **`pointer-events-none`** so the SVG receives body hits again (drag along spine + perpendicular offset); rails pass **`className="pointer-events-auto"`** on **`ResizeHandles`** so edges stay draggable for resize. Patch bumped.
 

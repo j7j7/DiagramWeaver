@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 
 interface ContextMenuState {
   visible: boolean;
@@ -95,27 +95,6 @@ export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: 
       timelineSpineArcRatio: undefined,
     }));
   }, []);
-
-  // Close context menu when clicking outside
-  useEffect(() => {
-    const handleGlobalClick = (event: MouseEvent) => {
-      if (contextMenu.visible) {
-        closeContextMenu();
-      }
-    };
-
-    if (contextMenu.visible) {
-      // Use setTimeout to avoid immediate closure on right-click
-      const timeoutId = setTimeout(() => {
-        document.addEventListener('click', handleGlobalClick);
-      }, 100);
-      
-      return () => {
-        clearTimeout(timeoutId);
-        document.removeEventListener('click', handleGlobalClick);
-      };
-    }
-  }, [contextMenu.visible, closeContextMenu]);
 
   return {
     contextMenu,

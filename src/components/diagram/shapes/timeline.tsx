@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import type { DiagramNodeData, TimelineEntryData } from "@/lib/types";
-import { connectionStrokeDashFromLineType, cn } from "@/lib/utils";
+import type { DiagramNodeData } from "@/lib/types";
+import { connectionStrokeDashFromLineType } from "@/lib/utils";
 import {
   connectorLinePathD,
   curveBoundsExpanded,
@@ -13,22 +13,14 @@ import {
   pointAtLengthRatio,
   type LinePathStyle,
 } from "@/lib/line-curve-path";
-import { extractTextStylingFromNode, getSvgTextOutlineProps, getTextEffectsShadowCss } from "@/lib/text-styling";
-import { useTheme } from "@/components/theme-provider";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
-import { getPlainTextFromRuns } from "@/lib/rich-text";
-import { mergedTimelineEntryVisualNode } from "@/lib/timeline-styling";
 import {
   layoutTimelineEntriesAbs,
   projectDiagramPointToTimelineStrokeRatio,
   sideMultiplier,
   unitNormalAtRatio,
 } from "@/lib/timeline-layout";
-import { getShapeSvgFill } from "@/components/diagram/shapes/shape-utils";
-import { applyTimelineSequentialHuesToMergedVisual } from "@/lib/timeline-hues";
 import { renderConnectorLineCapSvg } from "@/components/diagram/shapes/line";
-import { CompositeCardSilhouette } from "@/components/diagram/shapes/composite-card-silhouette";
-import { normalizeCompositeBodyShapeKind } from "@/lib/shape-type-swap";
 
 function diagramCoordsFromTimelineSvgClick(
   e: React.MouseEvent,
@@ -64,37 +56,18 @@ export interface TimelineShapeProps {
   /** Editor: spine right-click with arc ratio for “add card” insert position */
   onTimelineSpineContextMenu?: (e: React.MouseEvent, arcRatio: number) => void;
   onSpinePointerDown?: (e: React.PointerEvent) => void;
-  selectedEntryIds?: ReadonlySet<string>;
-  timelineCardClickSuppressRef?: React.MutableRefObject<boolean>;
-  activeEntryId?: string | null;
-  onEntryPointerDown?: (e: React.PointerEvent, entryId: string) => void;
-  onEntryClick?: (e: React.MouseEvent, entryId: string) => void;
-  onEntryDoubleClick?: (e: React.MouseEvent, entryId: string) => void;
-  onEntryContextMenu?: (e: React.MouseEvent, entryId: string) => void;
   slideColorTransition?: string;
 }
 
-function entryLabelText(entry: TimelineEntryData): string {
-  if (entry.richLabel?.length) return getPlainTextFromRuns(entry.richLabel);
-  return entry.label ?? "";
-}
-
+/** Spine, ticks, connector stems, and anchor dots. Card bodies render in `diagram-node` via `MindmapNodeShape` (same HTML stack as palette shapes). */
 export function TimelineShape({
   node,
   onClick,
   onContextMenu,
   onTimelineSpineContextMenu,
   onSpinePointerDown,
-  selectedEntryIds,
-  timelineCardClickSuppressRef,
-  activeEntryId,
-  onEntryPointerDown,
-  onEntryClick,
-  onEntryDoubleClick,
-  onEntryContextMenu,
   slideColorTransition,
 }: TimelineShapeProps) {
-  const { resolvedTheme } = useTheme();
   const vertices = getConnectorLineVertices(node as DiagramNodeData);
   const startPos = vertices[0];
   const endPos = vertices[vertices.length - 1];
@@ -134,13 +107,7 @@ export function TimelineShape({
   const nodeY = node.y ?? curveBoundsExpanded(vertices, 20, linePathStyle, lineSmoothJoints).minY;
 
   const layouts = layoutTimelineEntriesAbs(node as DiagramNodeData, node as any);
-  const sequentialHueRankByEntryId = new Map<string, number>();
-  [...layouts]
-    .sort((a, b) => (a.ratio !== b.ratio ? a.ratio - b.ratio : a.entryIndex - b.entryIndex))
-    .forEach((L, rank) => sequentialHueRankByEntryId.set(L.entryId, rank));
   const sections = Math.max(0, Math.floor(node.timelineSections ?? 0));
-
-  const cardBodyKind = normalizeCompositeBodyShapeKind((node as DiagramNodeData).compositeBodyShape);
 
   const expanded = curveBoundsExpanded(
     vertices,
@@ -170,11 +137,6 @@ export function TimelineShape({
   const relStartY = startPos.y - nodeY;
   const relEndX = endPos.x - nodeX;
   const relEndY = endPos.y - nodeY;
-
-  const themeLabelShadow =
-    resolvedTheme === "dark"
-      ? "0 0 2px rgba(0,0,0,1), 1px 1px 3px rgba(0,0,0,0.9)"
-      : "0 0 2px rgba(255,255,255,1), 1px 1px 3px rgba(255,255,255,0.9)";
 
   return (
     <div
@@ -271,52 +233,13 @@ export function TimelineShape({
             })}
 
           {layouts.map((L) => {
-            const entry = (node.timelineEntries ?? [])[L.entryIndex];
-            if (!entry) return null;
-            const hueRank =
-              (node as DiagramNodeData).timelineCardFillMode === "theme-hues"
-                ? sequentialHueRankByEntryId.get(entry.id) ?? L.entryIndex
-                : L.entryIndex;
-            const merged = applyTimelineSequentialHuesToMergedVisual(
-              node as DiagramNodeData,
-              hueRank,
-              mergedTimelineEntryVisualNode(node as DiagramNodeData, entry) as Record<string, unknown>,
-            );
-            const bgStyle = (merged.backgroundStyle as string | undefined) || "solid";
-            const bgColor = (merged.backgroundColor as string | undefined) || "#f3f4f6";
-            const bgColors = (merged.backgroundColors as string[] | undefined) || [bgColor, bgColor];
-            const borderStyle = (merged.borderStyle as string | undefined) || "solid";
-            const borderColor = (merged.borderColor as string | undefined) || "#d1d5db";
-            const borderColors = (merged.borderColors as string[] | undefined) || [borderColor, borderColor];
-            const gradId = `tl-bg-${node.id}-${entry.id}`;
-            const borderGradId = `tl-bd-${node.id}-${entry.id}`;
-            const needsGrad = bgStyle === "gradient";
-            const needsBorderGrad = borderStyle === "gradient";
-
-            const cx = L.cardCenter.x;
-            const cy = L.cardCenter.y;
-            const halfW = L.cardW / 2;
-            const halfH = L.cardH / 2;
-
-            const textStyling = extractTextStylingFromNode({
-              ...(node as DiagramNodeData),
-              textColor: entry.textColor ?? (node as DiagramNodeData).textColor,
-            } as DiagramNodeData);
-            const textColor =
-              entry.textColor ?? textStyling.textColor ?? (bgStyle === "none" ? lineColor : "#111827");
-            const outlineSvg = getSvgTextOutlineProps(textStyling);
-            const effectsShadow = getTextEffectsShadowCss(textStyling);
-            const label = entryLabelText(entry);
-            const selected =
-              (selectedEntryIds && selectedEntryIds.size > 0
-                ? selectedEntryIds.has(entry.id)
-                : false) || activeEntryId === entry.id;
-
             const mult = sideMultiplier(L.side);
             const { nx, ny } = unitNormalAtRatio(vertices, L.ratio, linePathStyle, lineSmoothJoints);
             const offsetPxSpine = node.timelineOffsetPx ?? 44;
+            const entries = node.timelineEntries ?? [];
+            const entry = entries[L.entryIndex];
             const extra =
-              typeof entry.cardNormalOffsetPx === "number" && Number.isFinite(entry.cardNormalOffsetPx)
+              entry && typeof entry.cardNormalOffsetPx === "number" && Number.isFinite(entry.cardNormalOffsetPx)
                 ? entry.cardNormalOffsetPx
                 : 0;
             const arm = Math.max(dotR * 0.35, dotR + offsetPxSpine * 0.45 + extra);
@@ -326,24 +249,7 @@ export function TimelineShape({
             };
 
             return (
-              <g key={entry.id}>
-                <defs>
-                  {needsGrad && (
-                    <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1={cx - halfW} y1={cy - halfH} x2={cx + halfW} y2={cy + halfH}>
-                      <stop offset="0%" stopColor={bgColors[0]} />
-                      <stop offset="100%" stopColor={bgColors[1] ?? bgColors[0]} />
-                    </linearGradient>
-                  )}
-                  {needsBorderGrad && (
-                    <linearGradient id={borderGradId} gradientUnits="userSpaceOnUse" x1={cx - halfW} y1={cy - halfH} x2={cx + halfW} y2={cy + halfH}>
-                      <stop offset="0%" stopColor={borderColors[0]} />
-                      <stop offset="100%" stopColor={borderColors[1] ?? borderColors[0]} />
-                    </linearGradient>
-                  )}
-                </defs>
-
-                <circle cx={L.anchor.x} cy={L.anchor.y} r={dotR} fill={lineBodyPaint} className="pointer-events-none" />
-
+              <g key={L.entryId}>
                 <line
                   x1={L.anchor.x}
                   y1={L.anchor.y}
@@ -355,75 +261,7 @@ export function TimelineShape({
                   className="pointer-events-none"
                 />
 
-                <CompositeCardSilhouette
-                  kind={cardBodyKind}
-                  cx={cx}
-                  cy={cy}
-                  w={L.cardW}
-                  h={L.cardH}
-                  cornerRadiusPx={L.cornerR}
-                  fill={getShapeSvgFill(bgStyle, `url(#${gradId})`, bgColor, "#e5e7eb")}
-                  stroke={
-                    selected
-                      ? "hsl(var(--primary))"
-                      : borderStyle === "gradient"
-                        ? `url(#${borderGradId})`
-                        : borderStyle === "none"
-                          ? "none"
-                          : borderColor
-                  }
-                  strokeWidth={selected ? 2.75 : borderStyle === "none" ? 0 : 1.5}
-                  style={{
-                    filter: merged.shadow ? "drop-shadow(0 4px 6px rgba(0,0,0,0.12))" : undefined,
-                    cursor: onEntryPointerDown ? "grab" : undefined,
-                    pointerEvents: "auto",
-                  }}
-                  onPointerDown={(e) => onEntryPointerDown?.(e, entry.id)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (timelineCardClickSuppressRef?.current) {
-                      timelineCardClickSuppressRef.current = false;
-                      return;
-                    }
-                    onEntryClick?.(e as any, entry.id);
-                  }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    onEntryDoubleClick?.(e as any, entry.id);
-                  }}
-                  onContextMenu={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    onEntryContextMenu?.(e as any, entry.id);
-                  }}
-                />
-
-                {label ? (
-                  <text
-                    x={cx}
-                    y={cy}
-                    fill={textColor}
-                    stroke={outlineSvg.stroke}
-                    strokeWidth={outlineSvg.strokeWidth}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    fontSize={textStyling.fontSize || 12}
-                    fontWeight={textStyling.fontWeight || "500"}
-                    fontFamily={textStyling.fontFamily || "Inter, system-ui, sans-serif"}
-                    fontStyle={textStyling.fontStyle || "normal"}
-                    opacity={textStyling.textOpacity ?? 1}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className={cn("pointer-events-none select-none")}
-                    style={{
-                      paintOrder: outlineSvg.paintOrder,
-                      textShadow: effectsShadow ?? (outlineSvg.stroke ? undefined : themeLabelShadow),
-                    }}
-                  >
-                    {label.length > 42 ? `${label.slice(0, 40)}…` : label}
-                  </text>
-                ) : null}
+                <circle cx={L.anchor.x} cy={L.anchor.y} r={dotR} fill={lineBodyPaint} className="pointer-events-none" />
               </g>
             );
           })}

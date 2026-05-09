@@ -21,6 +21,8 @@ interface ShapeTextProps {
   onVerticalAlignChange?: (position: "top" | "middle" | "bottom") => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
+  /** SVG foreignObject overlays (timeline cards): ignore pointer events so hits reach the silhouette below. */
+  passThroughPointerEvents?: boolean;
 }
 
 export function ShapeText({
@@ -32,6 +34,7 @@ export function ShapeText({
   onVerticalAlignChange,
   onLabelKeyDown,
   onLabelDoubleClick,
+  passThroughPointerEvents = false,
 }: ShapeTextProps) {
   const nodeAny = node as any;
   const verticalPosition = nodeAny.textVerticalPosition;
@@ -82,6 +85,7 @@ export function ShapeText({
   const narrowShapeClass = isKite || isHexagon ? " max-w-[70%] mx-auto min-w-0" : "";
 
   const displayRuns = node.richLabel ?? labelToRuns(node.label);
+  const ptShell = passThroughPointerEvents && !isEditingLabel ? " pointer-events-none" : "";
 
   // Render text inside the shape (middle position)
   if (isInside) {
@@ -92,7 +96,7 @@ export function ShapeText({
       };
       return (
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center ${isEditingLabel ? "overflow-visible" : ""}`}
+          className={`absolute inset-0 flex flex-col items-center justify-center ${isEditingLabel ? "overflow-visible" : ""}${ptShell}`}
         >
           {isEditingLabel ? (
             <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-1 overflow-visible px-1">
@@ -109,8 +113,15 @@ export function ShapeText({
             </div>
           ) : (
             <div className="pointer-events-none flex max-h-full w-full flex-col items-center justify-center gap-1 px-1">
-              <div className="pointer-events-auto min-w-0 max-w-full">
-                <TextboxRichDisplay node={node} runs={displayRuns} onDoubleClick={onLabelDoubleClick} />
+              <div
+                className={`min-w-0 max-w-full${passThroughPointerEvents ? " pointer-events-none" : " pointer-events-auto"}`}
+              >
+                <TextboxRichDisplay
+                  node={node}
+                  runs={displayRuns}
+                  onDoubleClick={onLabelDoubleClick}
+                  pointerEventsNone={passThroughPointerEvents}
+                />
               </div>
               <span className="tabular-nums pointer-events-none" style={pctStyle}>
                 {progressPctRounded}%
@@ -124,7 +135,7 @@ export function ShapeText({
     const innerClass = `w-full h-full flex flex-col ${getVerticalJustifyClass(effectivePosition)} px-1`;
     return (
       <div
-        className={`absolute inset-0 flex flex-col ${getVerticalPositionClass(effectivePosition)} ${isEditingLabel ? "overflow-visible" : ""}`}
+        className={`absolute inset-0 flex flex-col ${getVerticalPositionClass(effectivePosition)} ${isEditingLabel ? "overflow-visible" : ""}${ptShell}`}
       >
         {isEditingLabel ? (
           <div className={`${innerClass} min-h-0 flex-1 flex flex-col overflow-visible${narrowShapeClass}`}>
@@ -138,7 +149,12 @@ export function ShapeText({
           </div>
         ) : (
           <div className={innerClass + narrowShapeClass}>
-            <TextboxRichDisplay node={node} runs={displayRuns} onDoubleClick={onLabelDoubleClick} />
+            <TextboxRichDisplay
+              node={node}
+              runs={displayRuns}
+              onDoubleClick={onLabelDoubleClick}
+              pointerEventsNone={passThroughPointerEvents}
+            />
           </div>
         )}
       </div>
@@ -164,7 +180,7 @@ export function ShapeText({
 
   return (
     <div
-      className={`absolute ${getTextJustifyClass(nodeAny.textJustify)} w-full ${isEditingLabel ? "overflow-visible" : ""}`}
+      className={`absolute ${getTextJustifyClass(nodeAny.textJustify)} w-full ${isEditingLabel ? "overflow-visible" : ""}${ptShell}`}
       style={outsideStyle}
     >
       {isEditingLabel ? (
@@ -178,7 +194,12 @@ export function ShapeText({
           />
         </div>
       ) : (
-        <TextboxRichDisplay node={node} runs={displayRuns} onDoubleClick={onLabelDoubleClick} />
+        <TextboxRichDisplay
+          node={node}
+          runs={displayRuns}
+          onDoubleClick={onLabelDoubleClick}
+          pointerEventsNone={passThroughPointerEvents}
+        />
       )}
     </div>
   );

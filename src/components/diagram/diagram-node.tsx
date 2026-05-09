@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { ResourceIcon } from "./resource-icon";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
-import { labelToRuns, normalizeRuns } from "@/lib/rich-text";
+import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
@@ -60,11 +60,13 @@ import { LineVertexHandles } from "./line-endpoint-handles";
 import { getConnectorLineVertices, isConnectorLineGeometryClosed, connectorLinePointBounds, type LinePathStyle } from "@/lib/line-curve-path";
 import {
   computeTimelineOuterBounds,
+  layoutTimelineEntriesAbs,
   timelineDragSolveFromDiagramPoint,
   timelineEntriesMaterializedRatios,
   timelineEntryOverlayBoundsRelativeToNodeContainer,
   resolveEntryCardSide,
 } from "@/lib/timeline-layout";
+import { buildSyntheticTimelineEntryCardNode } from "@/lib/timeline-styling";
 import { normalizeCompositeBodyShapeKind } from "@/lib/shape-type-swap";
 import {
   syncClosedConnectorLineBorderWidth,
@@ -749,6 +751,11 @@ function DiagramNodeInner({
     [animationStyle],
   );
 
+  const timelineShapeSlidePaintTransition =
+    animationStyle?.visualColorMergeTransition !== undefined && !animationStyle?.visualColorCrossfade
+      ? (animationStyle.visualColorMergeTransition as string)
+      : undefined;
+
   /** Gradient slide changes: two full renders with top-layer opacity (see use-slide-transition). */
   const wrapSlideVisualCrossfade = (render: (visualNode: DiagramNodeData) => React.ReactNode) => {
     if (!animationStyle?.visualColorCrossfade) {
@@ -1130,35 +1137,7 @@ function DiagramNodeInner({
               : undefined
           }
           onSpinePointerDown={() => onTimelineEntrySelect?.(null)}
-          selectedEntryIds={timelineSelectedEntryIds}
-          timelineCardClickSuppressRef={timelineCardClickSuppressRef}
-          activeEntryId={timelineActiveEntryId ?? undefined}
-          onEntryPointerDown={(ev, entryId) => timelineEntryPointerDownRef.current(ev, entryId)}
-          onEntryClick={(ev, entryId) => {
-            if (timelineCardClickSuppressRef.current) {
-              timelineCardClickSuppressRef.current = false;
-              return;
-            }
-            if (onTimelineCardTap) {
-              onTimelineCardTap(entryId, ev as unknown as React.MouseEvent);
-            } else {
-              onTimelineEntrySelect?.(entryId, false);
-              onClick?.(ev as any, visualNode);
-            }
-          }}
-          onEntryDoubleClick={handleTimelineEntryDoubleClick}
-          onEntryContextMenu={
-            onTimelineEntryContextMenu && !isReadOnly
-              ? (ev, entryId) => {
-                  onTimelineEntryContextMenu(ev as React.MouseEvent, visualNode, entryId);
-                }
-              : undefined
-          }
-          slideColorTransition={
-            animationStyle?.visualColorMergeTransition !== undefined && !animationStyle?.visualColorCrossfade
-              ? (animationStyle.visualColorMergeTransition as string)
-              : undefined
-          }
+          slideColorTransition={timelineShapeSlidePaintTransition}
         />
       );
     } else if (isConnectorLineNodeType(nodeType)) {
@@ -2054,6 +2033,23 @@ function DiagramNodeInner({
     } as DiagramNodeData;
   }, [timelineNodeForEditLayout, timelineCardResizeLive]);
 
+  const timelineCardHueRankByEntryId = useMemo(() => {
+    if (!isTimelineNode) return null;
+    const layouts = layoutTimelineEntriesAbs(
+      timelineNodeWithLiveCardDims,
+      timelineLayoutSynthForEdit as {
+        __localStartPos?: { x: number; y: number };
+        __localEndPos?: { x: number; y: number };
+        __localControlPoints?: { x: number; y: number }[];
+      },
+    );
+    const map = new Map<string, number>();
+    [...layouts]
+      .sort((a, b) => (a.ratio !== b.ratio ? a.ratio - b.ratio : a.entryIndex - b.entryIndex))
+      .forEach((L, rank) => map.set(L.entryId, rank));
+    return map;
+  }, [isTimelineNode, timelineNodeWithLiveCardDims, timelineLayoutSynthForEdit]);
+
   const handleTimelineEntryResizeStart = useCallback(
     (
       e: React.MouseEvent | React.PointerEvent,
@@ -2327,6 +2323,10 @@ function DiagramNodeInner({
   const handleTimelineEntryPointerDown = useCallback(
     (e: React.PointerEvent, entryId: string) => {
       if (isReadOnly || !isTimelineNode || !onUpdate) return;
+
+      // Primary button only. Secondary opens context menu on this card; treating pointer-up as a "tap"
+      // runs EditorCanvas handleTimelineCardTap → handleNodeClick → closeContextMenu and dismisses the menu.
+      if (e.button !== 0) return;
 
       const entriesList = node.timelineEntries ?? [];
       const idx = entriesList.findIndex((x) => x.id === entryId);
@@ -2888,7 +2888,11 @@ function DiagramNodeInner({
               // Use justify-start/items-start so resize extends right/down from fixed top-left (like textbox)
                 <div className="flex flex-col items-start justify-start h-full w-full relative">
                   <div
-                    className="flex items-start justify-start"
+                    className={cn(
+                      "flex items-start justify-start",
+                      /** Timeline cards are HTML siblings below; this shell must not steal hits (drag/resize/context). */
+                      isTimelineNode && "pointer-events-none",
+                    )}
                     data-dw-highlight-anim={
                       highlightAnimStyle && highlightPulseUsesShapeSilhouette ? 'true' : undefined
                     }
@@ -2900,6 +2904,98 @@ function DiagramNodeInner({
                   >
                     {renderShape()}
                   </div>
+                  {isTimelineNode &&
+                    (node.timelineEntries ?? []).map((entry) => {
+                      const b = timelineEntryOverlayBoundsRelativeToNodeContainer(
+                        timelineNodeWithLiveCardDims,
+                        entry.id,
+                        timelineLayoutSynthForEdit as {
+                          __localStartPos?: { x: number; y: number };
+                          __localEndPos?: { x: number; y: number };
+                          __localControlPoints?: { x: number; y: number }[];
+                        },
+                      );
+                      if (!b) return null;
+                      const hueRank =
+                        timelineCardHueRankByEntryId?.get(entry.id) ??
+                        Math.max(0, (node.timelineEntries ?? []).findIndex((x) => x.id === entry.id));
+                      const syntheticNode = buildSyntheticTimelineEntryCardNode(
+                        timelineNodeWithLiveCardDims,
+                        entry,
+                        hueRank,
+                        b.width,
+                        b.height,
+                      );
+                      const entryPlain = entry.richLabel?.length
+                        ? getPlainTextFromRuns(entry.richLabel)
+                        : entry.label ?? "";
+                      const cardSelected =
+                        (timelineSelectedEntryIds && timelineSelectedEntryIds.size > 0
+                          ? timelineSelectedEntryIds.has(entry.id)
+                          : false) || timelineActiveEntryId === entry.id;
+                      return (
+                        <div
+                          key={entry.id}
+                          className={cn(
+                            "absolute z-[60] pointer-events-auto",
+                            !isReadOnly && "cursor-grab",
+                            cardSelected && "rounded-sm shadow-[0_0_0_2px_hsl(var(--primary))]",
+                          )}
+                          style={{ left: b.left, top: b.top, width: b.width, height: b.height }}
+                          onPointerDown={(e) => {
+                            if (isReadOnly) return;
+                            timelineEntryPointerDownRef.current(e, entry.id);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (timelineCardClickSuppressRef.current) {
+                              timelineCardClickSuppressRef.current = false;
+                              return;
+                            }
+                            if (onTimelineCardTap) {
+                              onTimelineCardTap(entry.id, e);
+                            } else {
+                              onTimelineEntrySelect?.(entry.id, false);
+                              onClick?.(e, node);
+                            }
+                          }}
+                          onContextMenu={
+                            onTimelineEntryContextMenu && !isReadOnly
+                              ? (ev) => {
+                                  ev.stopPropagation();
+                                  ev.preventDefault();
+                                  onTimelineEntryContextMenu(ev, node, entry.id);
+                                }
+                              : undefined
+                          }
+                        >
+                          <MindmapNodeShape
+                            node={syntheticNode}
+                            allMindmapNodes={diagramNodesForMindmap ?? []}
+                            tag=""
+                            tagPosition="top-left"
+                            isEditingTag={false}
+                            editTagText=""
+                            onTagTextChange={() => {}}
+                            onTagSubmit={() => {}}
+                            onTagKeyDown={() => {}}
+                            onTagDoubleClick={() => {}}
+                            label={entryPlain}
+                            isEditingLabel={false}
+                            editRuns={[]}
+                            onRichLabelSubmit={() => {}}
+                            onVerticalAlignChange={
+                              onUpdate
+                                ? (pos) => onUpdate({ ...node, textVerticalPosition: pos })
+                                : undefined
+                            }
+                            onLabelKeyDown={() => {}}
+                            onLabelDoubleClick={(e) => handleTimelineEntryDoubleClick(e, entry.id)}
+                            slideColorTransition={timelineShapeSlidePaintTransition}
+                          />
+                        </div>
+                      );
+                    })}
                   {isTimelineNode &&
                     isEditingTimelineEntryLabel &&
                     timelineEntryEditBounds &&
@@ -2984,7 +3080,7 @@ function DiagramNodeInner({
                 className="absolute z-[125] pointer-events-none"
                 style={{ left: b.left, top: b.top, width: b.width, height: b.height }}
               >
-                {/* Must stay pointer-events-none so hits reach the SVG card for drag + context menu; rails inside ResizeHandles stay interactive */}
+                {/* Hits reach the HTML card (`MindmapNodeShape`); rails inside ResizeHandles stay interactive */}
                 <div className="relative h-full w-full pointer-events-none">
                   <ResizeHandles
                     visible={true}
