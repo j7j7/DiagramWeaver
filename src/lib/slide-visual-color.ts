@@ -72,6 +72,7 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
     x.nodeSize,
     x.noIconBackground,
     x.highlightAnimGlowIntensity,
+    x.compositeBodyShape,
     progressSig,
     mindmapSig,
   ].join('\0');

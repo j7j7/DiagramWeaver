@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { flattenDiagramOnImport } from './flatten-on-import';
 import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from './custom-icon-utils';
 import { ensureDiagramLayersPersisted } from './layers-utils';
+import { DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS, type DiagramCompositeBodyShapeKind } from './types';
 
 // Rich text run schema for textbox nodes
 const RichTextRunSchema = z.object({
@@ -190,6 +191,12 @@ export const TimelineEntryDataSchema = z.object({
   cardSide: z.enum(['above', 'below']).optional(),
 });
 
+const DiagramCompositeBodyShapeTuple = DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS as unknown as [
+  DiagramCompositeBodyShapeKind,
+  ...DiagramCompositeBodyShapeKind[],
+];
+const DiagramCompositeBodyShapeSchema = z.enum(DiagramCompositeBodyShapeTuple);
+
 // Schema for DiagramNodeData based on actual types
 export const DiagramNodeDataSchema = z.object({
   id: z.string(),
@@ -340,6 +347,7 @@ export const DiagramNodeDataSchema = z.object({
     }).optional(),
     dividerLineWidth: z.number().optional(),
   }).optional(),
+  compositeBodyShape: DiagramCompositeBodyShapeSchema.optional(),
   timelineEntries: z.array(TimelineEntryDataSchema).optional(),
   timelineDistribution: z.enum(['even', 'manual']).optional(),
   timelineCardSide: z.enum(['above', 'below', 'alternate']).optional(),

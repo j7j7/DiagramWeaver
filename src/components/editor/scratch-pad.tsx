@@ -500,6 +500,7 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
             headingBackgroundColor={(itemData as { headingBackgroundColor?: string }).headingBackgroundColor}
             headingBackgroundStyle={(itemData as { headingBackgroundStyle?: 'gradient' | 'solid' }).headingBackgroundStyle}
             chart={(itemData as { chart?: import('@/lib/types').NodeChartSpec }).chart}
+            compositeBodyShape={(itemData as { compositeBodyShape?: string }).compositeBodyShape}
           />
         </CardContent>
       </Card>

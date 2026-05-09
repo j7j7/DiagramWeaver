@@ -187,6 +187,28 @@ export interface NodeChartSpecLine {
 /** Chart configuration on a node (`generic.chart.*`). */
 export type NodeChartSpec = NodeChartSpecPie | NodeChartSpecBar | NodeChartSpecLine;
 
+/**
+ * Card silhouette for `generic.object.timeline` / `generic.object.mind-map-node`; `type` stays timeline/mind-map.
+ * Swapped via context-menu “Change shape” (`shape-type-swap.ts`).
+ */
+export const DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS = [
+  "rounded-rectangle",
+  "rectangle",
+  "square",
+  "circle",
+  "triangle",
+  "hexagon",
+  "pentagon",
+  "octagon",
+  "star",
+  "cloud",
+  "parallelogram",
+  "trapezoid",
+  "kite",
+] as const;
+
+export type DiagramCompositeBodyShapeKind = (typeof DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS)[number];
+
 export interface DiagramNodeData {
   id: string;
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
@@ -368,6 +390,9 @@ export interface DiagramNodeData {
     methods?: { fontFamily?: string; fontSize?: number; textJustify?: string; textColor?: string };
     dividerLineWidth?: number;
   };
+
+  /** Hull for timeline/mind-map card bodies — `type` stays timeline or mind-map-node. */
+  compositeBodyShape?: DiagramCompositeBodyShapeKind;
 
   /** `generic.object.timeline`: one rounded card along the spine (see timeline-layout.ts). */
   timelineEntries?: TimelineEntryData[];

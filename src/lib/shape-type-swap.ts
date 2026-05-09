@@ -1,8 +1,23 @@
 import { isChartNodeType } from "@/lib/chart-node";
-import type { DiagramNodeData } from "@/lib/types";
+import type { DiagramCompositeBodyShapeKind, DiagramNodeData } from "@/lib/types";
+import { DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS } from "@/lib/types";
+import { isMindmapNodeType, isTimelineNodeType } from "@/lib/utils";
 
-/**
- * Palette `generic.object.*` shapes that share closed bounding-box connection semantics.
+export type CompositeBodyShapeKind = DiagramCompositeBodyShapeKind;
+
+export { DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS as COMPOSITE_BODY_SHAPE_KINDS };
+
+const COMPOSITE_BODY_SHAPE_KIND_SET = new Set<string>(DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS);
+
+export function isCompositeBodyShapeKind(s: string | undefined): s is CompositeBodyShapeKind {
+  return typeof s === "string" && COMPOSITE_BODY_SHAPE_KIND_SET.has(s);
+}
+
+export function normalizeCompositeBodyShapeKind(v: unknown): CompositeBodyShapeKind {
+  return isCompositeBodyShapeKind(v as string) ? (v as CompositeBodyShapeKind) : "rounded-rectangle";
+}
+
+/** Palette `generic.object.*` shapes that share closed bounding-box connection semantics.
  * Excludes line, timeline, mind-map-node, and charts (`generic.chart.*`).
  */
 export const SWAPPABLE_OBJECT_SHAPE_OPTIONS = [
@@ -33,6 +48,13 @@ const SWAPPABLE_KIND_SET = new Set<string>(
 );
 
 export type SwappableObjectKind = (typeof SWAPPABLE_OBJECT_SHAPE_OPTIONS)[number]["kind"];
+
+/** Labels aligned with {@link SWAPPABLE_OBJECT_SHAPE_OPTIONS} for timeline / mind-map card hull submenu. */
+export const COMPOSITE_BODY_SHAPE_MENU_OPTIONS: { kind: CompositeBodyShapeKind; label: string }[] =
+  SWAPPABLE_OBJECT_SHAPE_OPTIONS.filter((o) => COMPOSITE_BODY_SHAPE_KIND_SET.has(o.kind)).map((o) => ({
+    kind: o.kind as CompositeBodyShapeKind,
+    label: o.label,
+  }));
 
 const OBJECT_TYPE_RE = /^(.+\.object\.)([^.]+)$/;
 
@@ -82,6 +104,7 @@ function stripConnectorAndTimelineFields(n: DiagramNodeData): void {
   delete n.timelineHueStepDeg;
   delete n.timelineConnectorWidth;
   delete n.timelineDotRadius;
+  delete (n as DiagramNodeData & { compositeBodyShape?: unknown }).compositeBodyShape;
 }
 
 function stripMindmapFields(n: DiagramNodeData): void {
@@ -97,6 +120,7 @@ function stripMindmapFields(n: DiagramNodeData): void {
   delete n.mindmapTreeDepth;
   delete n.mindmapSiblingHueIndex;
   delete n.mindmapHueAnchor;
+  delete (n as DiagramNodeData & { compositeBodyShape?: unknown }).compositeBodyShape;
 }
 
 function stripChartAndUml(n: DiagramNodeData): void {
@@ -142,6 +166,11 @@ function clearIconResourceFields(n: DiagramNodeData): void {
 export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: SwappableObjectKind): DiagramNodeData {
   if (!SWAPPABLE_KIND_SET.has(newKind)) return node;
 
+  if (isTimelineNodeType(node.type) || isMindmapNodeType(node.type)) {
+    if (!isCompositeBodyShapeKind(newKind)) return node;
+    return { ...node, compositeBodyShape: newKind };
+  }
+
   const next: DiagramNodeData = { ...node, type: buildNodeTypeForObjectKind(node.type, newKind) };
 
   // Connector `lineType` / spine fields must not remain on closed shapes.
@@ -186,7 +215,17 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
   return next;
 }
 
-export function shapeSwapMenuOptions(currentType: string | undefined): { kind: SwappableObjectKind; label: string }[] {
+export function shapeSwapMenuOptions(
+  currentType: string | undefined,
+  compositeBodyShape?: string | undefined,
+): { kind: SwappableObjectKind; label: string }[] {
+  if (isTimelineNodeType(currentType) || isMindmapNodeType(currentType)) {
+    const current = normalizeCompositeBodyShapeKind(compositeBodyShape);
+    return COMPOSITE_BODY_SHAPE_MENU_OPTIONS.filter((o) => o.kind !== current).map((o) => ({
+      kind: o.kind as SwappableObjectKind,
+      label: o.label,
+    }));
+  }
   const k = objectKindSuffixFromNodeType(currentType);
   if (!k || !SWAPPABLE_KIND_SET.has(k)) return [];
   return SWAPPABLE_OBJECT_SHAPE_OPTIONS.filter((o) => o.kind !== k).map((o) => ({

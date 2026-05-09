@@ -24,6 +24,8 @@ import {
   linePathSmooth,
   resolveLineChartPolylineStrokeWidth,
 } from '@/lib/line-chart-layout';
+import { CompositeCardSilhouette } from '@/components/diagram/shapes/composite-card-silhouette';
+import { normalizeCompositeBodyShapeKind } from '@/lib/shape-type-swap';
 
 function formatBarPreviewValue(n: number): string {
   if (!Number.isFinite(n)) return '';
@@ -111,6 +113,7 @@ interface ShapePreviewProps {
   headingBackgroundColor?: string;
   headingBackgroundStyle?: 'gradient' | 'solid';
   chart?: NodeChartSpec;
+  compositeBodyShape?: string;
 }
 
 // Helper function to convert gradient angle to SVG coordinates
@@ -165,6 +168,7 @@ export function ShapePreview({
   headingBackgroundColor: headingBgColorProp,
   headingBackgroundStyle: headingBgStyleProp,
   chart,
+  compositeBodyShape,
 }: ShapePreviewProps) {
   const [pieSliceTooltip, setPieSliceTooltip] = useState<{
     x: number;
@@ -1715,7 +1719,22 @@ export function ShapePreview({
     if (type === 'generic.object.mind-map-node' || type?.endsWith('.mind-map-node')) {
       const coords = getGradientCoordinates(gradientAngle);
       const cr = Math.max(0, Math.min(1, cornerRadius));
-      const radius = cr * Math.min(displayWidth, displayHeight) * 0.5;
+      const iw = Math.max(0, displayWidth - strokeWidth);
+      const ih = Math.max(0, displayHeight - strokeWidth);
+      const hx = strokeWidth / 2;
+      const hy = strokeWidth / 2;
+      const ccx = hx + iw / 2;
+      const ccy = hy + ih / 2;
+      const cornerPx = cr * Math.min(iw, ih);
+      const kind = normalizeCompositeBodyShapeKind(compositeBodyShape);
+      const fillPaint =
+        effectiveBackgroundStyle === 'gradient'
+          ? `url(#${gradientId})`
+          : effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted'
+            ? 'transparent'
+            : effectiveBackgroundColor;
+      const strokePaint =
+        borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor;
       return (
         <svg {...commonSvgProps}>
           <defs>
@@ -1732,17 +1751,16 @@ export function ShapePreview({
               </linearGradient>
             )}
           </defs>
-          <rect
-            x={strokeWidth / 2}
-            y={strokeWidth / 2}
-            width={Math.max(0, displayWidth - strokeWidth)}
-            height={Math.max(0, displayHeight - strokeWidth)}
-            rx={radius}
-            ry={radius}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
-            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+          <CompositeCardSilhouette
+            kind={kind}
+            cx={ccx}
+            cy={ccy}
+            w={iw}
+            h={ih}
+            cornerRadiusPx={cornerPx}
+            fill={fillPaint}
+            stroke={strokePaint}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
-            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
           />
         </svg>
       );

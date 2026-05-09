@@ -27,6 +27,8 @@ import {
 import { getShapeSvgFill } from "@/components/diagram/shapes/shape-utils";
 import { applyTimelineSequentialHuesToMergedVisual } from "@/lib/timeline-hues";
 import { renderConnectorLineCapSvg } from "@/components/diagram/shapes/line";
+import { CompositeCardSilhouette } from "@/components/diagram/shapes/composite-card-silhouette";
+import { normalizeCompositeBodyShapeKind } from "@/lib/shape-type-swap";
 
 function diagramCoordsFromTimelineSvgClick(
   e: React.MouseEvent,
@@ -133,6 +135,8 @@ export function TimelineShape({
     .sort((a, b) => (a.ratio !== b.ratio ? a.ratio - b.ratio : a.entryIndex - b.entryIndex))
     .forEach((L, rank) => sequentialHueRankByEntryId.set(L.entryId, rank));
   const sections = Math.max(0, Math.floor(node.timelineSections ?? 0));
+
+  const cardBodyKind = normalizeCompositeBodyShapeKind((node as DiagramNodeData).compositeBodyShape);
 
   const expanded = curveBoundsExpanded(
     vertices,
@@ -289,7 +293,6 @@ export function TimelineShape({
             const cy = L.cardCenter.y;
             const halfW = L.cardW / 2;
             const halfH = L.cardH / 2;
-            const rx = Math.min(L.cornerR, halfW * 0.45, halfH * 0.45);
 
             const textStyling = extractTextStylingFromNode({
               ...(node as DiagramNodeData),
@@ -345,13 +348,13 @@ export function TimelineShape({
                   className="pointer-events-none"
                 />
 
-                <rect
-                  x={cx - halfW}
-                  y={cy - halfH}
-                  width={L.cardW}
-                  height={L.cardH}
-                  rx={rx}
-                  ry={rx}
+                <CompositeCardSilhouette
+                  kind={cardBodyKind}
+                  cx={cx}
+                  cy={cy}
+                  w={L.cardW}
+                  h={L.cardH}
+                  cornerRadiusPx={L.cornerR}
                   fill={getShapeSvgFill(bgStyle, `url(#${gradId})`, bgColor, "#e5e7eb")}
                   stroke={
                     selected
@@ -363,7 +366,6 @@ export function TimelineShape({
                           : borderColor
                   }
                   strokeWidth={selected ? 2.75 : borderStyle === "none" ? 0 : 1.5}
-                  vectorEffect="non-scaling-stroke"
                   style={{
                     filter: merged.shadow ? "drop-shadow(0 4px 6px rgba(0,0,0,0.12))" : undefined,
                     cursor: onEntryPointerDown ? "grab" : undefined,

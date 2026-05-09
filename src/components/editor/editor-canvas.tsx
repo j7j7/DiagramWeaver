@@ -3668,6 +3668,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             isLocked={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.locked || false) : false}
             shapeChangeOptions={shapeSwapMenuOptions(
               diagramData.nodes.find((n) => n.id === contextMenu.itemId)?.type,
+              diagramData.nodes.find((n) => n.id === contextMenu.itemId)?.compositeBodyShape,
             )}
             onChangeDiagramObjectShapeKind={(kind) => {
               const id = contextMenu.itemId;

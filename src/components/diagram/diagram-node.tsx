@@ -65,6 +65,7 @@ import {
   timelineEntryOverlayBoundsRelativeToNodeContainer,
   resolveEntryCardSide,
 } from "@/lib/timeline-layout";
+import { normalizeCompositeBodyShapeKind } from "@/lib/shape-type-swap";
 import {
   syncClosedConnectorLineBorderWidth,
   syncClosedConnectorVisualBorderFromLineStyling,
@@ -324,6 +325,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
           (x as any).timelineHueStepDeg,
           (x as any).timelineConnectorWidth,
           (x as any).timelineDotRadius,
+          (x as any).compositeBodyShape,
           (x as any).startCap,
           (x as any).endCap,
         ]);
@@ -342,6 +344,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
           (x as any).mindmapTreeDepth,
           (x as any).mindmapSiblingHueIndex,
           (x as any).mindmapHueAnchor,
+          (x as any).compositeBodyShape,
         ]);
       if (mmSig(p) !== mmSig(n)) return false;
       if (prev.diagramNodesForMindmap !== next.diagramNodesForMindmap) return false;
@@ -1405,7 +1408,10 @@ function DiagramNodeInner({
    const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
    const isMindmapCardNode = isMindmapNodeType(node.type);
-   const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode || isMindmapCardNode;
+   const mindmapBodyRounded =
+     isMindmapCardNode &&
+     normalizeCompositeBodyShapeKind((node as DiagramNodeData).compositeBodyShape) === "rounded-rectangle";
+   const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode || mindmapBodyRounded;
   const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode && !isTimelineNode;
   const isIconNode = !isTextNode && !isTextboxNode && !isShapeNode && !isLineNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
@@ -1866,6 +1872,7 @@ function DiagramNodeInner({
     localStartPos,
     localEndPos,
     localControlPoints,
+    (node as any).compositeBodyShape,
     timelineDragPreview,
   ]);
 
