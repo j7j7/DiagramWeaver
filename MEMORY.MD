@@ -3,6 +3,9 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-09 – Timeline entry edit: rich-text toolbar visible (overflow)
+Per-entry **`TextboxRichEditor`** overlay used **`overflow-hidden`**, which clipped the floating formatting bar (**`absolute bottom-full`** above the contenteditable — textbox/shape editing wrappers use **`overflow-visible`**). Overlay **`overflow-visible`**; **`onVerticalAlignChange`** matches Mindmap/card wiring. Patch bumped.
+
 ### 2026-05-09 – Timeline card context menu: ignore non-primary pointer-down drag session
 **`handleTimelineEntryPointerDown`** attached document **`pointerup`** for every button; on **right‑click**, release in **`pending`** ran the same path as a left **tap** (**`handleTimelineCardTap`** → **`handleNodeClick`** → **`closeContextMenu`**), so the node menu flashed closed. **Guard `e.button !== 0`** before **`preventDefault`** / listeners so secondary button uses **`onContextMenu`** only. Patch bumped.
 

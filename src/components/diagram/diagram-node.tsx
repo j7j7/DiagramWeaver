@@ -3001,7 +3001,7 @@ function DiagramNodeInner({
                     timelineEntryEditBounds &&
                     onUpdate && (
                       <div
-                        className="absolute z-[70] pointer-events-auto rounded-md border border-primary bg-background/95 shadow-md overflow-hidden min-h-[4rem]"
+                        className="absolute z-[70] pointer-events-auto rounded-md border border-primary bg-background/95 shadow-md overflow-visible min-h-[4rem]"
                         style={{
                           left: timelineEntryEditBounds.left,
                           top: timelineEntryEditBounds.top,
@@ -3014,6 +3014,9 @@ function DiagramNodeInner({
                           key={timelineEditEntryId ?? "tl-edit"}
                           node={node}
                           runs={timelineEntryEditRuns}
+                          onVerticalAlignChange={
+                            onUpdate ? (pos) => onUpdate({ ...node, textVerticalPosition: pos }) : undefined
+                          }
                           onSubmit={handleTimelineEntryRichSubmit}
                           onKeyDown={(e) => {
                             if (e.key === "Escape") {
