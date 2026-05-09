@@ -3,6 +3,9 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-09 – Context menu **Change shape** (closed palette objects)
+Right‑click a swappable **`*.object.*`** shape (not chart / line / timeline / mind‑map‑node): **Change shape** submenu lists other closed geometry kinds; **`swapDiagramNodeObjectKind`** (**`shape-type-swap.ts`**) updates **`type`**, clears incompatible payloads (UML/chart/spine/icon fields, progress/heading when swapping away), preserves id/position/styling/group/layer/sub‑diagram link. Prefix before **`.object.`** kept when present. Patch bumped.
+
 ### 2026-05-09 – Timeline palette icon: spine + alternating cards (`PaletteTimelineGlyph`)
 **`ResourceIcon`** uses **`generic.object.timeline`** vector preview (spine + three stems/cards/dots); catalog **`timeline.svg`** under **`generic/object/`**, **`resource-generic.json`** updated; **`DraggableResourceItem`** routes palette tile like **`progress-bar`**. Removed flat **`timeline.png`**. Patch bumped.
 

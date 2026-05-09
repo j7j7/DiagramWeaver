@@ -74,6 +74,7 @@ import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
+import { shapeSwapMenuOptions, swapDiagramNodeObjectKind, type SwappableObjectKind } from "@/lib/shape-type-swap";
 import { applyTimelineEntriesSpacedEndpoints, insertTimelineEntryNearArcRatio } from "@/lib/timeline-layout";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import {
@@ -3665,6 +3666,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             isLocked={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.locked || false) : false}
+            shapeChangeOptions={shapeSwapMenuOptions(
+              diagramData.nodes.find((n) => n.id === contextMenu.itemId)?.type,
+            )}
+            onChangeDiagramObjectShapeKind={(kind) => {
+              const id = contextMenu.itemId;
+              if (!id || contextMenu.itemType !== "node") return;
+              setDiagramData((prev) => ({
+                ...prev,
+                nodes: prev.nodes.map((n) =>
+                  n.id === id ? swapDiagramNodeObjectKind(n, kind as SwappableObjectKind) : n,
+                ),
+              }));
+              closeContextMenu();
+            }}
             currentLayer={layers ? layers.getItemLayerById(contextMenu.itemId) : undefined}
             availableLayers={layers ? layers.getAllLayers() : []}
             onChangeLayer={(layerId: string) => {

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical, Shapes } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -97,6 +97,9 @@ interface ContextMenuProps {
   onMindmapConnectPairTree?: () => void;
   onMindmapConnectPairLink?: () => void;
   mindmapPairConnectVisible?: boolean;
+  /** Closed `*.object.*` palette shapes — swap rendered kind while preserving node id and connections. */
+  shapeChangeOptions?: Array<{ kind: string; label: string }>;
+  onChangeDiagramObjectShapeKind?: (kind: string) => void;
 }
 
 // Connector-only lines hide root label/text tooling; timeline keeps Text actions like shapes.
@@ -188,11 +191,23 @@ export function ContextMenu({
   onMindmapConnectPairTree,
   onMindmapConnectPairLink,
   mindmapPairConnectVisible = false,
+  shapeChangeOptions = [],
+  onChangeDiagramObjectShapeKind,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
   const [renderOrderSubmenuOpen, setRenderOrderSubmenuOpen] = useState(false);
   const [layoutOrderSubmenuOpen, setLayoutOrderSubmenuOpen] = useState(false);
+  const [shapeSubmenuOpen, setShapeSubmenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setLayerSubmenuOpen(false);
+      setRenderOrderSubmenuOpen(false);
+      setLayoutOrderSubmenuOpen(false);
+      setShapeSubmenuOpen(false);
+    }
+  }, [visible]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -367,6 +382,49 @@ export function ContextMenu({
           Visual Styling
         </button>
       )}
+
+      {itemType === 'node' &&
+        shapeChangeOptions.length > 0 &&
+        onChangeDiagramObjectShapeKind && (
+          <div className="relative">
+            <button
+              type="button"
+              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+              onMouseEnter={() => setShapeSubmenuOpen(true)}
+              onMouseLeave={() => setShapeSubmenuOpen(false)}
+            >
+              <Shapes className="w-4 h-4 shrink-0" />
+              Change shape
+              <ChevronRight className="w-4 h-4 ml-auto shrink-0" />
+            </button>
+            {shapeSubmenuOpen && (
+              <div
+                className={cn(
+                  "absolute left-full top-0 bg-popover border border-border rounded-md shadow-lg py-1 z-50 max-h-[min(360px,calc(100vh-96px))] overflow-y-auto",
+                  "animate-in fade-in-0 zoom-in-95 min-w-[180px]",
+                )}
+                style={{ marginLeft: "0px" }}
+                onMouseEnter={() => setShapeSubmenuOpen(true)}
+                onMouseLeave={() => setShapeSubmenuOpen(false)}
+              >
+                {shapeChangeOptions.map((opt) => (
+                  <button
+                    key={opt.kind}
+                    type="button"
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      onChangeDiagramObjectShapeKind(opt.kind);
+                      setShapeSubmenuOpen(false);
+                      onClose();
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
       {onLineStyling && (
         <button
