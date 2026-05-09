@@ -77,7 +77,7 @@ export function LineVertexHandles({
             className={cn(
               "absolute cursor-grab active:cursor-grabbing rounded-sm border-2 border-white shadow-sm",
               focused && "ring-2 ring-primary ring-offset-1 ring-offset-background",
-              zIndexClass
+              zIndexClass,
             )}
             style={{
               left: `${relX - HALF}px`,

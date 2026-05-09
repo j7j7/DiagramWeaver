@@ -23,7 +23,7 @@ import {
   isShapeNodeType,
   isTimelineNodeType,
 } from "@/lib/utils";
-import { TIMELINE_NODE_TYPE } from "@/lib/timeline-layout";
+import { TIMELINE_DEFAULT_SPINE_LENGTH_PX, TIMELINE_NODE_TYPE } from "@/lib/timeline-layout";
 import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
 import {
   nextMindmapAutoNumericLabel,
@@ -194,7 +194,11 @@ export function useCanvasOperations({
              itemType === 'generic.object.progress-bar' ? 80 :
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
-             itemType === 'generic.object.line' || itemType === TIMELINE_NODE_TYPE ? 150 :
+             itemType === 'generic.object.line'
+             ? 150
+             : itemType === TIMELINE_NODE_TYPE
+               ? snapDimensionToGrid(TIMELINE_DEFAULT_SPINE_LENGTH_PX, 150)
+             :
              itemType === 'generic.chart.line' ? 470 :
              itemType === 'generic.chart.bar' ? 380 :
              itemType === 'generic.chart.pie' ? 410 :
@@ -254,7 +258,7 @@ export function useCanvasOperations({
           }),
           ...(itemType === TIMELINE_NODE_TYPE && !isFromScratchPad && {
             startPos: { x: position.x, y: position.y },
-            endPos: { x: position.x + 150, y: position.y },
+            endPos: { x: position.x + TIMELINE_DEFAULT_SPINE_LENGTH_PX, y: position.y },
             x: position.x,
             y: position.y,
             startCap: 'none',

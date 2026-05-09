@@ -10,6 +10,34 @@ import {
 
 export const TIMELINE_NODE_TYPE = "generic.object.timeline" as const;
 
+/** Stable delimiter for timeline card selection keys (`makeTimelineEntryKey` / `parseTimelineEntryKey`). */
+export const TIMELINE_ENTRY_KEY_SEP = "\u001f";
+
+/** Default horizontal spine length when dropping a new timeline from the palette (`endPos.x - startPos.x`). */
+export const TIMELINE_DEFAULT_SPINE_LENGTH_PX = 280;
+
+export function makeTimelineEntryKey(nodeId: string, entryId: string): string {
+  return `${nodeId}${TIMELINE_ENTRY_KEY_SEP}${entryId}`;
+}
+
+export function parseTimelineEntryKey(key: string): { nodeId: string; entryId: string } | null {
+  const i = key.indexOf(TIMELINE_ENTRY_KEY_SEP);
+  if (i <= 0 || i >= key.length - 1) return null;
+  return { nodeId: key.slice(0, i), entryId: key.slice(i + 1) };
+}
+
+/** Last selected entry id for `nodeId` when walking `keysOrdered` from end (matches timeline multi-select primary). */
+export function lastTimelineEntryIdOnNodeFromOrderedKeys(
+  keysOrdered: readonly string[],
+  nodeId: string,
+): string | null {
+  for (let k = keysOrdered.length - 1; k >= 0; k--) {
+    const p = parseTimelineEntryKey(keysOrdered[k]!);
+    if (p?.nodeId === nodeId) return p.entryId;
+  }
+  return null;
+}
+
 export function isTimelineNodeType(type: string | undefined): boolean {
   return type === TIMELINE_NODE_TYPE;
 }

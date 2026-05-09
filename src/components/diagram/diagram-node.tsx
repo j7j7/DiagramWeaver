@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { useDrag } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import {
@@ -1534,7 +1534,7 @@ function DiagramNodeInner({
     },
   }), [node, node.id, node.x, node.y, onDraggingChange, isLocked, isReadOnly, isEditingLabel, isEditingTag, isEditingTimelineEntryLabel, isDuplicateDragPreview]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     preview(getEmptyImage(), { captureDraggingState: true });
   }, [preview]);
 
@@ -1738,6 +1738,8 @@ function DiagramNodeInner({
     cardNormalOffsetPx: number;
     cardSide: "above" | "below";
   } | null>(null);
+  /** While dragging a timeline card: suppresses info popover / avoids misleading floating UI. */
+  const [timelineCardInteractionActive, setTimelineCardInteractionActive] = useState(false);
   /** Last solved drag pose for timeline card (fallback when pointer-up can't map to diagram coords). */
   const timelineEntryDragLiveRef = useRef<{
     t: number;
@@ -2084,10 +2086,16 @@ function DiagramNodeInner({
   const handleTimelineEntryPointerDown = useCallback(
     (e: React.PointerEvent, entryId: string) => {
       if (isReadOnly || !isTimelineNode || !onUpdate) return;
+
+      const entriesList = node.timelineEntries ?? [];
+      const idx = entriesList.findIndex((x) => x.id === entryId);
+      if (idx < 0) return;
+
       e.preventDefault();
       e.stopPropagation();
       onTimelineEntrySelect?.(entryId);
       onDraggingChange?.(true);
+      setTimelineCardInteractionActive(true);
 
       const synth = {
         ...node,
@@ -2098,10 +2106,6 @@ function DiagramNodeInner({
       const verts = getConnectorLineVertices(synth as any);
       const lp = (node as DiagramNodeData).linePathStyle as LinePathStyle | undefined;
       const sj = (node as DiagramNodeData).lineSmoothJoints === true;
-      const entriesList = node.timelineEntries ?? [];
-      const idx = entriesList.findIndex((x) => x.id === entryId);
-      if (idx < 0) return;
-
       const mat0 = timelineEntriesMaterializedRatios(node as DiagramNodeData);
       const te0 = mat0[idx];
       timelineEntryDragLiveRef.current = {
@@ -2142,6 +2146,7 @@ function DiagramNodeInner({
         document.removeEventListener("pointermove", onMove, true);
         document.removeEventListener("pointerup", onUp, true);
         document.removeEventListener("pointercancel", onUp, true);
+        setTimelineCardInteractionActive(false);
         const diag = canvasClientToDiagram(ev.clientX, ev.clientY);
         const preferFallback =
           timelineEntryDragLiveRef.current?.cardSide ??
@@ -2441,7 +2446,8 @@ function DiagramNodeInner({
         }
       }}
       className={cn(
-        "absolute group duration-200 ease-in-out rounded-lg",
+        "absolute group duration-200 ease-in-out",
+        spineLikeNode ? "overflow-visible" : "rounded-lg",
         // Highlight pulse animates box-shadow; transitioning `filter` here can fight keyframes on some browsers (e.g. Chrome/Win).
         node.highlightAnim && !isDuplicateDragPreview && !spineLikeNode && !highlightPulseUsesShapeSilhouette
           ? "transition-transform"
@@ -2573,13 +2579,23 @@ function DiagramNodeInner({
       }}
     >
       <SlideShapeShadowTransitionProvider animationStyle={animationStyle}>
-      <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag && !isEditingTimelineEntryLabel} onOpenChange={setIsOpen}>
+      <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag && !isEditingTimelineEntryLabel && !timelineCardInteractionActive} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div
             className={cn(
               "flex flex-col items-center justify-center h-full w-full cursor-pointer",
               !isRichTextBoxLike && !isShapeNode && "select-none [-webkit-touch-callout:none]",
             )}
+            // Spine/timeline/line: outer shell is pointer-events none; clicks on padding hit this
+            // wrapper and would bubble to the canvas and clear selection. Keep selection + handles/toolbar stable.
+            onClick={
+              spineLikeNode
+                ? (e) => {
+                    e.stopPropagation();
+                    onClick?.(e, node);
+                  }
+                : undefined
+            }
           >
             {isRichTextBoxLike ? (
               wrapSlideVisualCrossfade((vn) => renderRichTextBoxContentForVisualNode(vn, isTextNode))
@@ -2690,7 +2706,7 @@ function DiagramNodeInner({
              nodeY={handleNodeY}
              onVertexPointerDown={handleLineVertexPointerDown}
              disabled={false}
-             zIndexClass="z-50"
+             zIndexClass="z-[120]"
            />
          );
        })()}

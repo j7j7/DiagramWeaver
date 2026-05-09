@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical, Shapes } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical, Shapes, ClipboardPaste } from 'lucide-react';
+import type { PasteSpecialAspect } from '@/lib/paste-special-properties';
 
 
 interface ContextMenuProps {
@@ -12,6 +13,9 @@ interface ContextMenuProps {
   visible: boolean;
   onClose: () => void;
   onCopy: () => void;
+  /** Clipboard style paste: apply only size / colour / text / properties to selected objects (no new objects). */
+  pasteSpecialEnabled?: boolean;
+  onPasteSpecial?: (aspect: PasteSpecialAspect) => void;
   onDelete: () => void;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -119,7 +123,9 @@ export function ContextMenu({
   y, 
   visible, 
   onClose, 
-  onCopy, 
+  onCopy,
+  pasteSpecialEnabled = false,
+  onPasteSpecial,
   onDelete, 
   onConnect, 
   onDisconnect,
@@ -199,6 +205,7 @@ export function ContextMenu({
   const [renderOrderSubmenuOpen, setRenderOrderSubmenuOpen] = useState(false);
   const [layoutOrderSubmenuOpen, setLayoutOrderSubmenuOpen] = useState(false);
   const [shapeSubmenuOpen, setShapeSubmenuOpen] = useState(false);
+  const [pasteSpecialSubmenuOpen, setPasteSpecialSubmenuOpen] = useState(false);
 
   useEffect(() => {
     if (!visible) {
@@ -206,6 +213,7 @@ export function ContextMenu({
       setRenderOrderSubmenuOpen(false);
       setLayoutOrderSubmenuOpen(false);
       setShapeSubmenuOpen(false);
+      setPasteSpecialSubmenuOpen(false);
     }
   }, [visible]);
 
@@ -270,6 +278,54 @@ export function ContextMenu({
         <Copy className="w-4 h-4" />
         Copy
       </button>
+
+      {pasteSpecialEnabled && onPasteSpecial && (
+        <div className="relative">
+          <button
+            type="button"
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onMouseEnter={() => setPasteSpecialSubmenuOpen(true)}
+            onMouseLeave={() => setPasteSpecialSubmenuOpen(false)}
+          >
+            <ClipboardPaste className="w-4 h-4 shrink-0" />
+            Paste special
+            <ChevronRight className="w-4 h-4 ml-auto shrink-0" />
+          </button>
+          {pasteSpecialSubmenuOpen && (
+            <div
+              className={cn(
+                "absolute left-full top-0 bg-popover border border-border rounded-md shadow-lg py-1 z-50",
+                "animate-in fade-in-0 zoom-in-95 min-w-[160px]",
+              )}
+              style={{ marginLeft: "0px" }}
+              onMouseEnter={() => setPasteSpecialSubmenuOpen(true)}
+              onMouseLeave={() => setPasteSpecialSubmenuOpen(false)}
+            >
+              {(
+                [
+                  ["size", "Size"],
+                  ["colour", "Colour"],
+                  ["text", "Text"],
+                  ["description", "Description"],
+                  ["properties", "Properties"],
+                ] as const
+              ).map(([aspect, label]) => (
+                <button
+                  key={aspect}
+                  type="button"
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => {
+                    onPasteSpecial(aspect);
+                    setPasteSpecialSubmenuOpen(false);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {onEditUmlClass && isUmlClassNodeType(nodeType) && (
         <button

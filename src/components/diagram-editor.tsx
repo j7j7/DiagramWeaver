@@ -85,6 +85,10 @@ import {
   syncClosedConnectorVisualBorderFromLineStyling,
 } from '@/lib/line-styling';
 import { isConnectorLikeSpineNodeType, isMindmapNodeType, isTimelineNodeType } from '@/lib/utils';
+import {
+  makeTimelineEntryKey,
+  parseTimelineEntryKey,
+} from '@/lib/timeline-layout';
 
 import type { SelectedItem, PaletteResource, PaletteSelection } from '@/components/editor/diagram-editor-types';
 export type { SelectedItem } from '@/components/editor/diagram-editor-types';
@@ -701,11 +705,62 @@ export default function DiagramEditor() {
     vertexIndex: number;
   } | null>(null);
 
-  const [timelineActiveEntryId, setTimelineActiveEntryId] = React.useState<string | null>(null);
+  /** Ordered unique timeline card keys (`nodeId\u001fentryId`) — last is primary for panels / context. */
+  const [timelineEntrySelectionKeys, setTimelineEntrySelectionKeys] = React.useState<string[]>([]);
+
+  const timelineEntrySelection = React.useMemo(
+    () => new Set(timelineEntrySelectionKeys),
+    [timelineEntrySelectionKeys],
+  );
+
+  const timelineActiveEntryId = React.useMemo(() => {
+    if (timelineEntrySelectionKeys.length === 0) return null;
+    const last = timelineEntrySelectionKeys[timelineEntrySelectionKeys.length - 1];
+    const p = last ? parseTimelineEntryKey(last) : null;
+    return p?.entryId ?? null;
+  }, [timelineEntrySelectionKeys]);
+
+  const handleTimelineEntrySelect = React.useCallback(
+    (nodeId: string, entryId: string | null, additive?: boolean) => {
+      if (entryId === null) {
+        setTimelineEntrySelectionKeys((prev) => prev.filter((k) => parseTimelineEntryKey(k)?.nodeId !== nodeId));
+        return;
+      }
+      const key = makeTimelineEntryKey(nodeId, entryId);
+      setTimelineEntrySelectionKeys((prev) => {
+        if (additive) {
+          const has = prev.includes(key);
+          if (has) return prev.filter((x) => x !== key);
+          return [...prev, key];
+        }
+        return [key];
+      });
+    },
+    [],
+  );
+
+  const handleTimelineCardRemoved = React.useCallback((nodeId: string, removedEntryId: string) => {
+    setTimelineEntrySelectionKeys((prev) =>
+      prev.filter((k) => {
+        const p = parseTimelineEntryKey(k);
+        return !(p?.nodeId === nodeId && p?.entryId === removedEntryId);
+      }),
+    );
+  }, []);
+
+  React.useEffect(() => {
+    setTimelineEntrySelectionKeys((prev) => {
+      const next = prev.filter((k) => {
+        const p = parseTimelineEntryKey(k);
+        return p && selectedItemIds.has(p.nodeId);
+      });
+      return next.length === prev.length && next.every((k, i) => k === prev[i]) ? prev : next;
+    });
+  }, [selectedItemIds]);
 
   React.useEffect(() => {
     setConnectorLineFocusedVertex(null);
-    setTimelineActiveEntryId(null);
+    setTimelineEntrySelectionKeys([]);
   }, [activeTabId]);
 
   // Sub-diagram navigation stack: empty = root; non-empty = viewing sub-diagram
@@ -1106,7 +1161,12 @@ export default function DiagramEditor() {
 
   const handleItemSelect = React.useCallback((item: SelectedItem | null, shiftKey = false) => {
     setConnectorLineFocusedVertex(null);
-    setTimelineActiveEntryId(null);
+
+    if (!item || item.itemType === "edge") {
+      setTimelineEntrySelectionKeys([]);
+    } else if (item.itemType === "node" && !isTimelineNodeType(item.type)) {
+      setTimelineEntrySelectionKeys([]);
+    }
 
     if (isConnectMode && !item) {
       setIsConnectMode(false);
@@ -1191,7 +1251,7 @@ export default function DiagramEditor() {
     (nodeId: string, vertexIndex: number) => {
       const node = currentDiagramData.nodes.find((n) => n.id === nodeId);
       if (!node || !isConnectorLikeSpineNodeType(node.type)) return;
-      setTimelineActiveEntryId(null);
+      setTimelineEntrySelectionKeys([]);
       setSelectedItem({ ...node, itemType: 'node' });
       setSelectedItemIds(new Set([nodeId]));
       setConnectorLineFocusedVertex({ nodeId, vertexIndex });
@@ -1201,7 +1261,7 @@ export default function DiagramEditor() {
 
   const handleBatchSelect = React.useCallback((itemIds: string[]) => {
     setConnectorLineFocusedVertex(null);
-    setTimelineActiveEntryId(null);
+    setTimelineEntrySelectionKeys([]);
     if (itemIds.length === 0) {
       setSelectedItem(null);
       setSelectedItemIds(new Set());
@@ -4735,8 +4795,10 @@ export default function DiagramEditor() {
         connectorLineFocusedVertex={connectorLineFocusedVertex}
         handleConnectorLineVertexFocus={handleConnectorLineVertexFocus}
         tryDeleteConnectorLineVertexBeforeNodeDelete={tryDeleteConnectorLineVertexBeforeNodeDelete}
+        timelineEntrySelection={timelineEntrySelection}
         timelineActiveEntryId={timelineActiveEntryId}
-        onTimelineEntrySelect={setTimelineActiveEntryId}
+        onTimelineEntrySelect={handleTimelineEntrySelect}
+        onTimelineCardRemoved={handleTimelineCardRemoved}
         handleResourceSelect={handleResourceSelect}
         handleResourceActivate={handleResourceActivate}
         handleResourceActivateAtPosition={handleResourceActivateAtPosition}

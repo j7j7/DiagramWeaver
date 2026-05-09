@@ -64,6 +64,8 @@ export interface TimelineShapeProps {
   /** Editor: spine right-click with arc ratio for “add card” insert position */
   onTimelineSpineContextMenu?: (e: React.MouseEvent, arcRatio: number) => void;
   onSpinePointerDown?: (e: React.PointerEvent) => void;
+  selectedEntryIds?: ReadonlySet<string>;
+  timelineCardClickSuppressRef?: React.MutableRefObject<boolean>;
   activeEntryId?: string | null;
   onEntryPointerDown?: (e: React.PointerEvent, entryId: string) => void;
   onEntryClick?: (e: React.MouseEvent, entryId: string) => void;
@@ -83,6 +85,8 @@ export function TimelineShape({
   onContextMenu,
   onTimelineSpineContextMenu,
   onSpinePointerDown,
+  selectedEntryIds,
+  timelineCardClickSuppressRef,
   activeEntryId,
   onEntryPointerDown,
   onEntryClick,
@@ -303,7 +307,10 @@ export function TimelineShape({
             const outlineSvg = getSvgTextOutlineProps(textStyling);
             const effectsShadow = getTextEffectsShadowCss(textStyling);
             const label = entryLabelText(entry);
-            const selected = activeEntryId === entry.id;
+            const selected =
+              (selectedEntryIds && selectedEntryIds.size > 0
+                ? selectedEntryIds.has(entry.id)
+                : false) || activeEntryId === entry.id;
 
             const mult = sideMultiplier(L.side);
             const { nx, ny } = unitNormalAtRatio(vertices, L.ratio, linePathStyle, lineSmoothJoints);
@@ -374,6 +381,10 @@ export function TimelineShape({
                   onPointerDown={(e) => onEntryPointerDown?.(e, entry.id)}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (timelineCardClickSuppressRef?.current) {
+                      timelineCardClickSuppressRef.current = false;
+                      return;
+                    }
                     onEntryClick?.(e as any, entry.id);
                   }}
                   onDoubleClick={(e) => {

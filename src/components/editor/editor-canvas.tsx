@@ -41,6 +41,7 @@ import { useCanvasSelection } from "@/hooks/use-canvas-selection";
 import { useCanvasInteractions } from "@/hooks/use-canvas-interactions";
 import { useCanvasDragDrop } from "@/hooks/use-canvas-drag-drop";
 import { useCanvasClipboard } from "@/hooks/use-canvas-clipboard";
+import { pasteSpecialFamiliesCompatible } from "@/lib/paste-special-properties";
 import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
 import { useCanvasOperations } from "./canvas-operations";
@@ -75,7 +76,11 @@ import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { shapeSwapMenuOptions, swapDiagramNodeObjectKind, type SwappableObjectKind } from "@/lib/shape-type-swap";
-import { applyTimelineEntriesSpacedEndpoints, insertTimelineEntryNearArcRatio } from "@/lib/timeline-layout";
+import {
+  applyTimelineEntriesSpacedEndpoints,
+  insertTimelineEntryNearArcRatio,
+  lastTimelineEntryIdOnNodeFromOrderedKeys,
+} from "@/lib/timeline-layout";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import {
   getConnectorLineVertices,
@@ -407,8 +412,12 @@ interface EditorCanvasProps {
   onRemoveSubDiagramLink?: (nodeId: string) => void;
   /** Pause connection animations while a canvas context menu / overlay is open (same effective flag as top menubar). */
   onPauseConnectionAnimationsForOverlayUi?: () => void;
+  /** Editor: selected timeline card keys (`makeTimelineEntryKey`); last-added is primary for styling panels. */
+  timelineEntrySelection?: ReadonlySet<string>;
   timelineActiveEntryId?: string | null;
-  onTimelineEntrySelect?: (entryId: string | null) => void;
+  onTimelineEntrySelect?: (nodeId: string, entryId: string | null, additive?: boolean) => void;
+  /** After a card row is removed from the diagram, prune selection keys so stale ids disappear. */
+  onTimelineCardRemoved?: (nodeId: string, entryId: string) => void;
   /** Connector line: vertex handle click target for delete-point */
   connectorLineFocusedVertex?: { nodeId: string; vertexIndex: number } | null;
   onConnectorLineVertexFocus?: (nodeId: string, vertexIndex: number) => void;
@@ -450,7 +459,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineActiveEntryId = null, onTimelineEntrySelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -1385,17 +1394,27 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - handlePaste: Pastes clipboard content at mouse position
   // - canPaste: Checks if clipboard has content to paste
   // See: src/hooks/use-canvas-clipboard.ts
-  const { clipboard, handleCopy, handlePaste, canPaste } = useCanvasClipboard({
-    diagramData,
-    selectedItemIds,
-    setDiagramData,
-    setSelectedItemIds,
-    setSelectedItem,
-    onItemSelect,
-    onBatchSelect,
-    onClipboardChange,
-    toast,
-  });
+  const { clipboard, handleCopy, handlePaste, canPaste, clipboardTemplateNode, handlePasteSpecial } =
+    useCanvasClipboard({
+      diagramData,
+      selectedItemIds,
+      setDiagramData,
+      setSelectedItemIds,
+      setSelectedItem,
+      onItemSelect,
+      onBatchSelect,
+      onClipboardChange,
+      toast,
+    });
+
+  const pasteSpecialMenuEnabled = React.useMemo(() => {
+    if (!clipboardTemplateNode) return false;
+    for (const id of selectedItemIds) {
+      const n = diagramData.nodes.find((nn) => nn.id === id);
+      if (n && pasteSpecialFamiliesCompatible(clipboardTemplateNode.type, n.type)) return true;
+    }
+    return false;
+  }, [clipboardTemplateNode, selectedItemIds, diagramData.nodes]);
 
   // ============================================================================
   // HOOK: useCanvasExport
@@ -1687,7 +1706,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       } else if (selectedItemId !== node.id) {
         onItemSelect({ ...node, itemType: "node" }, false);
       }
-      onTimelineEntrySelect?.(entryId);
+      onTimelineEntrySelect?.(node.id, entryId, false);
       onResetConnectionSettingsTrigger?.();
       setLastRightClickItemId(node.id);
       handleContextMenu(e, node.id, "node", { timelineEntryId: entryId, timelineSpineArcRatio: undefined });
@@ -1718,7 +1737,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       } else if (selectedItemId !== node.id) {
         onItemSelect({ ...node, itemType: "node" }, false);
       }
-      onTimelineEntrySelect?.(null);
+      onTimelineEntrySelect?.(node.id, null);
       onResetConnectionSettingsTrigger?.();
       setLastRightClickItemId(node.id);
       handleContextMenu(e, node.id, "node", {
@@ -2762,7 +2781,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   }
                   onConnectorLineVertexFocus={onConnectorLineVertexFocus}
                   timelineActiveEntryId={timelineActiveEntryId}
-                  onTimelineEntrySelect={onTimelineEntrySelect}
+                  onTimelineEntrySelect={
+                    onTimelineEntrySelect
+                      ? (entryId) => onTimelineEntrySelect(node.id, entryId)
+                      : undefined
+                  }
                   onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                   onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
                   diagramNodesForMindmap={diagramData.nodes}
@@ -2872,7 +2895,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     }
                     onConnectorLineVertexFocus={onConnectorLineVertexFocus}
                     timelineActiveEntryId={timelineActiveEntryId}
-                    onTimelineEntrySelect={onTimelineEntrySelect}
+                    onTimelineEntrySelect={
+                      onTimelineEntrySelect
+                        ? (entryId) => onTimelineEntrySelect(node.id, entryId)
+                        : undefined
+                    }
                     onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                     onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
                     diagramNodesForMindmap={diagramData.nodes}
@@ -3182,6 +3209,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               handleCopy(contextMenu.itemId);
               closeContextMenu();
             }}
+            pasteSpecialEnabled={pasteSpecialMenuEnabled}
+            onPasteSpecial={(aspect) => {
+              handlePasteSpecial(aspect);
+              closeContextMenu();
+            }}
             onSimulation={() => {
               if (!contextMenu.itemId || (contextMenu.itemType !== "node" && contextMenu.itemType !== "zone")) {
                 closeContextMenu();
@@ -3397,7 +3429,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 };
               }
               const entryTarget =
-                contextMenu.timelineEntryId ?? timelineActiveEntryId ?? null;
+                contextMenu.timelineEntryId ??
+                lastTimelineEntryIdOnNodeFromOrderedKeys([...timelineEntrySelection], menuNodeId) ??
+                null;
               return {
                 onTimelineAddCard: () => {
                   const spineR = contextMenu.timelineSpineArcRatio;
@@ -3450,7 +3484,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       };
                     }),
                   }));
-                  onTimelineEntrySelect?.(null);
+                  onTimelineCardRemoved?.(menuNodeId, entryTarget);
                 },
                 timelineCanRemoveCard:
                   (timelineCtx.timelineEntries?.length ?? 0) > 1 && !!entryTarget,

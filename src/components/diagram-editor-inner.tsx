@@ -114,8 +114,10 @@ export function DiagramEditorInner({
   connectorLineFocusedVertex,
   handleConnectorLineVertexFocus,
   tryDeleteConnectorLineVertexBeforeNodeDelete,
+  timelineEntrySelection,
   timelineActiveEntryId,
   onTimelineEntrySelect,
+  onTimelineCardRemoved,
   handleResourceSelect,
   handleResourceActivate,
   handleResourceActivateAtPosition,
@@ -670,8 +672,10 @@ export function DiagramEditorInner({
                     connectorLineFocusedVertex={connectorLineFocusedVertex}
                     onConnectorLineVertexFocus={handleConnectorLineVertexFocus}
                     tryDeleteConnectorLineVertexBeforeNodeDelete={tryDeleteConnectorLineVertexBeforeNodeDelete}
+                    timelineEntrySelection={timelineEntrySelection}
                     timelineActiveEntryId={timelineActiveEntryId}
                     onTimelineEntrySelect={onTimelineEntrySelect}
+                    onTimelineCardRemoved={onTimelineCardRemoved}
                     isConnectMode={isConnectMode}
                     onNodeClickInConnectMode={handleConnect}
                     onConnect={startConnecting}

@@ -1,7 +1,13 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, DiagramGroupData, DiagramGroupingData } from "@/lib/types";
 import { generateSequentialId, generateGroupId, collectOccupiedDiagramIds } from "@/lib/id-generator";
 import { generateConnectionId } from "@/lib/connection-order-utils";
+import {
+  applyPasteSpecialAspect,
+  getClipboardTemplateNode,
+  pasteSpecialFamiliesCompatible,
+  type PasteSpecialAspect,
+} from "@/lib/paste-special-properties";
 
 const SIMULATION_AVAILABILITY_GROUPS_KEY = "simulation:availability:groups";
 
@@ -904,11 +910,79 @@ export function useCanvasClipboard({
     return !!clipboard;
   }, [clipboard]);
 
+  const clipboardTemplateNode = useMemo(() => getClipboardTemplateNode(clipboard), [clipboard]);
+
+  const handlePasteSpecial = useCallback(
+    (aspect: PasteSpecialAspect) => {
+      const source = clipboardTemplateNode;
+      if (!source) {
+        toast({
+          variant: "destructive",
+          title: "Paste special unavailable",
+          description: "Copy a diagram object first (not a group-only selection).",
+        });
+        return;
+      }
+
+      const selectedNodeIds = [...selectedItemIds].filter((id) => diagramData.nodes.some((n) => n.id === id));
+      if (selectedNodeIds.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Paste special",
+          description: "Select at least one object to update (groups are not supported for paste special).",
+        });
+        return;
+      }
+
+      const compatibleIds = selectedNodeIds.filter((id) => {
+        const node = diagramData.nodes.find((n) => n.id === id);
+        return node && pasteSpecialFamiliesCompatible(source.type, node.type);
+      });
+
+      if (compatibleIds.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Incompatible selection",
+          description:
+            "Clipboard object type does not match the selected objects (e.g. shapes vs charts, or different chart kinds).",
+        });
+        return;
+      }
+
+      setDiagramData((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (!compatibleIds.includes(n.id)) return n;
+          return applyPasteSpecialAspect(source, n, aspect);
+        }),
+      }));
+
+      const skipped = selectedNodeIds.length - compatibleIds.length;
+      const aspectTitle: Record<PasteSpecialAspect, string> = {
+        size: "Size",
+        colour: "Colour",
+        text: "Text",
+        description: "Description",
+        properties: "Properties",
+      };
+      toast({
+        title: `Pasted ${aspectTitle[aspect]}`,
+        description:
+          skipped > 0
+            ? `Updated ${compatibleIds.length} object(s). Skipped ${skipped} incompatible.`
+            : `Updated ${compatibleIds.length} object(s).`,
+      });
+    },
+    [clipboardTemplateNode, diagramData, selectedItemIds, setDiagramData, toast],
+  );
+
   return {
     clipboard,
     handleCopy,
     handlePaste,
     canPaste,
+    clipboardTemplateNode,
+    handlePasteSpecial,
   };
 }
 

@@ -3,6 +3,30 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-09 – Timeline: selection key helpers + canvas callback wiring
+**`timeline-layout.ts`** exports **`TIMELINE_ENTRY_KEY_SEP`**, **`makeTimelineEntryKey`**, **`parseTimelineEntryKey`**, and **`lastTimelineEntryIdOnNodeFromOrderedKeys`** (multi-select / context **Remove card** uses the last key for that node). **`editor-canvas`**: **`DiagramNode`** gets **`onTimelineEntrySelect={(entryId) => …(node.id, entryId)}`**; removed unused **`timelineEntrySelection`** prop from **`DiagramNode`** (selection set stays on **`EditorCanvas`** for menus). Patch bumped.
+
+### 2026-05-09 – Timeline card drag: no stray “debug” UI / stuck drag flag
+**`handleTimelineEntryPointerDown`** called **`onDraggingChange(true)`** **before** validating **`entryId`**; a failed lookup returned early and left **history** /**drag** tracking stuck. **Info** **`Popover`** could also open during card repositioning. **Fix**: validate **`idx`** **first**; **`timelineCardInteractionActive`** gates **`Popover`** while dragging a card; **`setTimelineCardInteractionActive(false)`** on pointer up/cancel. **`useLayoutEffect`** for **`preview(getEmptyImage())`** so the browser is less likely to show a native drag ghost with SVG **entry** label text. Patch bumped.
+
+### 2026-05-09 – Timeline / spine selection: click-through no longer clears selection
+Spine-like nodes (**connector lines**, **timeline**) use **`pointer-events: none`** on the outer shell with hits on inner SVG/cards. Clicks on **padding** inside the Popover trigger still bubbled to **`editor-canvas`** and ran **empty-canvas** selection clear → flicker/jump, no stable selection, **LineVertexHandles** and context **toolbar** never stayed active. **`diagram-node`**: **`onClick`** on the Popover trigger wrapper for **`spineLikeNode`** stops propagation and forwards **`onClick(node)`**; **`overflow-visible`** on the spine shell; **`LineVertexHandles`** use **`z-[120]`** so endpoints sit above overlapping nodes. Patch bumped.
+
+### 2026-05-09 – Timeline: longer default spine from palette
+New **`generic.object.timeline`** drops use **`TIMELINE_DEFAULT_SPINE_LENGTH_PX`** (**280**) for **`endPos.x - startPos.x`** (was 150), matching a roomier default layout; initial **`width`** uses the same value. **`timeline-layout.ts`** exports the constant; **`canvas-operations`** **`addNode`**. Patch bumped.
+
+### 2026-05-09 – Rounded rectangle palette icon: clearer slight corner radius
+**`public/resources/generic/object/rounded-rectangle.svg`** and new **`rounded-rectangle.png`** (64×64, from SVG) use **`rx`/`ry` 3** and the same **`4,6` 16×12** frame as the rectangle sidebar glyph; **`ResourceIcon`** **`rounded-rectangle`** case matches. Patch bumped.
+
+### 2026-05-09 – Paste special: **Description** (`info`)
+Submenu adds **Description** — copies **`info`** only (popover/bulk description text). **`info` removed** from **Properties** so description is explicit; **Properties** still copies **`metaData`**, **`linkUrl`**, and other non-geometry fields. Patch bumped.
+
+### 2026-05-09 – Paste special **Properties**: metadata + URL
+**`applyPropertiesAspect`** (**`paste-special-properties`**) now copies **`metaData`** (deep clone when present on source), **`linkUrl`**, and **`info`** with other property-only fields. Patch bumped.
+
+### 2026-05-09 – Context menu **Paste special** (properties from clipboard)
+After a normal **Copy**, **Paste special** (submenu under **Copy**) applies **only** **Size**, **Colour**, **Text**, or **Properties** from the clipboard’s template node onto the **current selection** — **no new objects**, **positions unchanged**. Clipboard template is the **first** copied node when multiple are copied. **Compatibility** is by coarse family (**`paste-special-properties`**: chart kind pie/bar/line, connector line, timeline, mind map, UML class, closed **`generic.object.*`**, palette **Lucide/emoji** icon, vs **resource** icon/label); mismatches are skipped with a toast. Implementation: **`getClipboardTemplateNode`**, **`applyPasteSpecialAspect`**, **`useCanvasClipboard` → `handlePasteSpecial`**, **`ContextMenu`** submenu. Patch bumped.
+
 ### 2026-05-09 – Change shape: resize only on point ↔ non-point swap
 **`swapDiagramNodeObjectKind`** (**`shape-type-swap`**) sets **`width`** / **`height`** / **`sizeMode: 'custom'`** when swapping **into** or **out of** **`point`**, using the same grid-snapped defaults as palette **`addNode`** (e.g. point **20×20**, square-like **60×60**, rectangle **80×50**). Other swaps (e.g. square ↔ circle) keep the node’s current size. Patch bumped.
 

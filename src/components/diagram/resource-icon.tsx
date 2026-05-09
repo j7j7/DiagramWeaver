@@ -528,7 +528,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       case 'rounded-rectangle':
         return (
           <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
-            <rect x="4" y="6" width="16" height="12" rx="2" ry="2" />
+            <rect x="4" y="6" width="16" height="12" rx="3" ry="3" />
           </svg>
         );
       case 'mind-map-node':
