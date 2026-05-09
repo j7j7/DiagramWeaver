@@ -64,6 +64,11 @@ interface ViewerCanvasProps {
     visualColorCrossfadeTopOpacity?: number;
     visualColorCrossfadeTopTransition?: string;
     chartSlideStagger?: import("@/lib/chart-presentation-stagger").ChartSlideStagger;
+    timelineSlideStagger?: import("@/lib/chart-presentation-stagger").ChartSlideStagger;
+    timelineRemoveStagger?: import("@/lib/chart-presentation-stagger").ChartSlideStagger;
+    timelineRemovedCards?: ReadonlyArray<import("@/lib/timeline-layout").TimelineSlideRemovedCardPayload>;
+    timelineRemovedGhostBase?: import("@/lib/types").DiagramNodeData;
+    timelineEnterStaggerOrder?: readonly string[];
     chartLerpU?: number;
     chartLerpFromJson?: string;
   }>;

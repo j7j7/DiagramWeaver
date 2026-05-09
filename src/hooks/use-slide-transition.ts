@@ -11,6 +11,12 @@ import {
   type ChartSlideStagger,
 } from '@/lib/chart-presentation-stagger';
 import { chartSlideLerpCompatible } from '@/lib/chart-slide-lerp';
+import {
+  isTimelineNodeType,
+  timelinePresentationSignature,
+  timelineSlideRemovedCardPayloads,
+  type TimelineSlideRemovedCardPayload,
+} from '@/lib/timeline-layout';
 
 export interface SlideTransitionStyle {
   opacity: number;
@@ -31,6 +37,15 @@ export interface SlideTransitionStyle {
   visualColorCrossfadeTopTransition?: string;
   /** Pie/bar/line: stagger segment pop during slide change (outer node scale suppressed). */
   chartSlideStagger?: ChartSlideStagger;
+  /** Timeline cards: same stagger contract as `chartSlideStagger` (play / slide transitions). */
+  timelineSlideStagger?: ChartSlideStagger;
+  /** Removed cards ghosted from the previous slide (shrink + fade; staggered). */
+  timelineRemoveStagger?: ChartSlideStagger;
+  timelineRemovedCards?: ReadonlyArray<TimelineSlideRemovedCardPayload>;
+  /** Previous-slide timeline node — merged with each {@link timelineRemovedCards} entry for `MindmapNodeShape`. */
+  timelineRemovedGhostBase?: DiagramNodeData;
+  /** New entry ids in curr order that play enter stagger; omit when every card should animate (whole timeline appear). */
+  timelineEnterStaggerOrder?: readonly string[];
   /** 0–1 eased progress for value-only chart interpolation (same segment layout). */
   chartLerpU?: number;
   /** `JSON.stringify(prev.chart)` when lerping. */
@@ -64,6 +79,10 @@ interface SlideNodeAnimStyle {
   chartLerpFromJson?: string;
   isAppearingChart?: boolean;
   isDisappearingChart?: boolean;
+  isAppearingTimeline?: boolean;
+  isDisappearingTimeline?: boolean;
+  timelinePresentationChanged?: boolean;
+  suppressTimelineOuterMotion?: boolean;
 }
 
 interface SlideAnimation {
@@ -116,6 +135,72 @@ function slideMotionTransition(easing: string): string {
 
 function connKey(conn: DiagramConnectionData): string {
   return (conn as any).id || `${conn.from}\u2192${conn.to}`;
+}
+
+function timelineCardSlideStaggerBase(delayMs: number, exit: boolean): ChartSlideStagger {
+  return {
+    baseDelayMs: delayMs,
+    staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
+    durationMs: TRANSITION_DURATION_MS,
+    easingCss: EASE_IN_OUT,
+    exit,
+  };
+}
+
+/** Per-card slide fields for timelines (whole appear/exit vs add/remove diff). */
+function computeTimelineCardTransitionStylePatch(
+  nodeId: string,
+  style: SlideNodeAnimStyle,
+  prevNodesMap: Map<string, DiagramNodeData>,
+  currNodesMap: Map<string, DiagramNodeData>,
+  baseDelayMs: number,
+): Pick<
+  SlideTransitionStyle,
+  | 'timelineSlideStagger'
+  | 'timelineRemoveStagger'
+  | 'timelineRemovedCards'
+  | 'timelineRemovedGhostBase'
+  | 'timelineEnterStaggerOrder'
+> {
+  const prevNode = prevNodesMap.get(nodeId);
+  const currNode = currNodesMap.get(nodeId);
+
+  if (style.isAppearingTimeline && currNode && isTimelineNodeType(currNode.type)) {
+    return { timelineSlideStagger: timelineCardSlideStaggerBase(baseDelayMs, false) };
+  }
+  if (style.isDisappearingTimeline && prevNode && isTimelineNodeType(prevNode.type)) {
+    return { timelineSlideStagger: timelineCardSlideStaggerBase(baseDelayMs, true) };
+  }
+  if (
+    style.timelinePresentationChanged &&
+    prevNode &&
+    currNode &&
+    isTimelineNodeType(prevNode.type) &&
+    isTimelineNodeType(currNode.type)
+  ) {
+    const removed = timelineSlideRemovedCardPayloads(prevNode, currNode, undefined);
+    const currE = currNode.timelineEntries ?? [];
+    const prevE = prevNode.timelineEntries ?? [];
+    const prevIds = new Set(prevE.map((e) => e.id));
+    const addedOrder = currE.filter((e) => !prevIds.has(e.id)).map((e) => e.id);
+
+    return {
+      ...(addedOrder.length > 0
+        ? {
+            timelineSlideStagger: timelineCardSlideStaggerBase(baseDelayMs, false),
+            timelineEnterStaggerOrder: addedOrder,
+          }
+        : {}),
+      ...(removed.length > 0
+        ? {
+            timelineRemoveStagger: timelineCardSlideStaggerBase(baseDelayMs, true),
+            timelineRemovedCards: removed,
+            timelineRemovedGhostBase: prevNode,
+          }
+        : {}),
+    };
+  }
+  return {};
 }
 
 /** Line nodes use startPos/endPos; compare when both slides have a line node. */
@@ -267,13 +352,40 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           ? JSON.stringify(prevNode.chart)
           : undefined;
 
+      const prevTlSig = prevNode ? timelinePresentationSignature(prevNode) : null;
+      const currTlSig = currNode ? timelinePresentationSignature(currNode) : null;
+      const timelinePresentationChanged = Boolean(
+        prevTlSig != null && currTlSig != null && prevTlSig !== currTlSig
+      );
+
+      const isTimelineNode =
+        isTimelineNodeType(prevNode?.type) || isTimelineNodeType(currNode?.type);
+      const isDisappearingTimeline = Boolean(
+        isDisappearing && prevNode && isTimelineNodeType(prevNode.type),
+      );
+      /** Cards animate individually; outer wrapper skips scale / pop like charts. */
+      const suppressTimelineOuterMotion = Boolean(
+        isTimelineNode && (!isDisappearing || isDisappearingTimeline),
+      );
+
+      const isAppearingTimeline = Boolean(isAppearing && currNode && isTimelineNodeType(currNode.type));
+      if (isAppearingTimeline) {
+        opacityStart = 1;
+        translateYStart = 0;
+      }
+      if (isDisappearingTimeline) {
+        opacityEnd = 1;
+        translateYEnd = 0;
+      }
+
       const needsNodeTransition =
         isAppearing ||
         isDisappearing ||
         isMoving ||
         isResizeOnly ||
         hasVisualColorChange ||
-        chartPresentationChanged;
+        chartPresentationChanged ||
+        timelinePresentationChanged;
 
       if (!needsNodeTransition) continue;
 
@@ -304,6 +416,10 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         chartLerpFromJson,
         isAppearingChart,
         isDisappearingChart,
+        timelinePresentationChanged,
+        suppressTimelineOuterMotion,
+        isAppearingTimeline,
+        isDisappearingTimeline,
       });
 
       if (isDisappearing) {
@@ -486,6 +602,42 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       );
     }
 
+    for (const [nodeId, st] of nodeIdStyles) {
+      const pn = prevNodesMap.get(nodeId);
+      const cn = currNodesMap.get(nodeId);
+
+      let nEnter = 0;
+      let nExit = 0;
+
+      if (st.isAppearingTimeline && cn && isTimelineNodeType(cn.type)) {
+        nEnter = cn.timelineEntries?.length ?? 0;
+      } else if (st.isDisappearingTimeline && pn && isTimelineNodeType(pn.type)) {
+        nExit = pn.timelineEntries?.length ?? 0;
+      } else if (
+        st.timelinePresentationChanged &&
+        pn &&
+        cn &&
+        isTimelineNodeType(pn.type) &&
+        isTimelineNodeType(cn.type)
+      ) {
+        const pE = pn.timelineEntries ?? [];
+        const cE = cn.timelineEntries ?? [];
+        const cIds = new Set(cE.map((e) => e.id));
+        const pIds = new Set(pE.map((e) => e.id));
+        nExit = pE.filter((e) => !cIds.has(e.id)).length;
+        nEnter = cE.filter((e) => !pIds.has(e.id)).length;
+      }
+
+      if (nEnter === 0 && nExit === 0) continue;
+
+      const base = nodeDelayMs.get(nodeId) ?? 0;
+      const stg = CHART_SLIDE_SEGMENT_STAGGER_MS;
+      const dur = TRANSITION_DURATION_MS;
+      const tailEnter = nEnter > 0 ? base + (nEnter - 1) * stg + dur : 0;
+      const tailExit = nExit > 0 ? base + (nExit - 1) * stg + dur : 0;
+      chartTailMs = Math.max(chartTailMs, tailEnter, tailExit);
+    }
+
     const nodeDelayFor = (id: string) => nodeDelayMs.get(id) ?? 0;
     const connDelayFor = (key: string) => connectionDelayMs.get(key) ?? 0;
     const totalDurationMs = Math.max(maxStaggerMs + TRANSITION_DURATION_MS + 50, chartTailMs + 50);
@@ -524,7 +676,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         if (style.isDisappearing) {
           scaleX = 1;
           scaleY = 1;
-        } else if (style.suppressChartOuterScale) {
+        } else if (style.suppressChartOuterScale || style.suppressTimelineOuterMotion) {
           scaleX = 1;
           scaleY = 1;
         } else {
@@ -569,6 +721,14 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             }
           : undefined;
 
+        const tlCardPatch = computeTimelineCardTransitionStylePatch(
+          nodeId,
+          style,
+          prevNodesMap,
+          currNodesMap,
+          dMs0,
+        );
+
         const chartLerpFields =
           style.chartLerpEligible && style.chartLerpFromJson
             ? { chartLerpU: 0, chartLerpFromJson: style.chartLerpFromJson }
@@ -587,6 +747,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             visualColorCrossfadeTopOpacity: 0,
             visualColorCrossfadeTopTransition: 'none',
             ...(chartSlideStagger ? { chartSlideStagger } : {}),
+            ...tlCardPatch,
             ...chartLerpFields,
           });
         } else {
@@ -600,6 +761,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               visualColorMergeTransition: 'none',
             } : {}),
             ...(chartSlideStagger ? { chartSlideStagger } : {}),
+            ...tlCardPatch,
             ...chartLerpFields,
           });
         }
@@ -657,14 +819,17 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           for (const [nodeId, style] of nodeIdStyles) {
             const transition = slideMotionTransition(style.easing);
             const transformX = 0;
-            const transformY = style.isDisappearingChart
+            const transformY =
+              style.isDisappearingChart || style.isDisappearingTimeline
               ? 0
               : style.isResizeOnly
                 ? 0
                 : style.translateYEnd;
 
-            const scaleX = style.isDisappearing && !style.isDisappearingChart ? 0 : 1;
-            const scaleY = style.isDisappearing && !style.isDisappearingChart ? 0 : 1;
+            const scaleX =
+              style.isDisappearing && !style.isDisappearingChart && !style.isDisappearingTimeline ? 0 : 1;
+            const scaleY =
+              style.isDisappearing && !style.isDisappearingChart && !style.isDisappearingTimeline ? 0 : 1;
 
             const needsTransform = transformX !== 0 || transformY !== 0 || scaleX !== 1 || scaleY !== 1;
 
@@ -700,6 +865,14 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 }
               : undefined;
 
+            const tlCardPatch = computeTimelineCardTransitionStylePatch(
+              nodeId,
+              style,
+              prevNodesMap,
+              currNodesMap,
+              dMs,
+            );
+
             const chartLerpFields =
               style.chartLerpEligible && style.chartLerpFromJson
                 ? { chartLerpU: 0, chartLerpFromJson: style.chartLerpFromJson }
@@ -719,6 +892,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 visualColorCrossfadeTopOpacity: 0,
                 visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs),
                 ...(chartSlideStagger ? { chartSlideStagger } : {}),
+                ...tlCardPatch,
                 ...chartLerpFields,
               });
             } else if (style.hasVisualColorChange) {
@@ -732,6 +906,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 visualColorMerge: style.visualColorMergeStart,
                 visualColorMergeTransition: slideMergeTransitionWithDelay(dMs),
                 ...(chartSlideStagger ? { chartSlideStagger } : {}),
+                ...tlCardPatch,
                 ...chartLerpFields,
               });
             } else {
@@ -742,6 +917,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 transform,
                 transformOrigin,
                 ...(chartSlideStagger ? { chartSlideStagger } : {}),
+                ...tlCardPatch,
                 ...chartLerpFields,
               });
             }
@@ -1012,6 +1188,11 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               visualColorCrossfadeTopOpacity: undefined,
               visualColorCrossfadeTopTransition: undefined,
               chartSlideStagger: undefined,
+              timelineSlideStagger: undefined,
+              timelineRemoveStagger: undefined,
+              timelineRemovedCards: undefined,
+              timelineRemovedGhostBase: undefined,
+              timelineEnterStaggerOrder: undefined,
               chartLerpU: undefined,
               chartLerpFromJson: undefined,
             });

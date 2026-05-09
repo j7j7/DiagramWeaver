@@ -70,3 +70,34 @@ export function chartSegmentPopAnimationStyle(
     willChange: "opacity",
   };
 }
+
+/** Scale at start of slide-in / end of slide-out (1 = final card size). */
+const TIMELINE_SLIDE_POP_SCALE_FROM = 0.82;
+
+/** Grow + fade in / shrink + fade out — sequential stagger matches `chartSegmentPopAnimationStyle` timing. */
+export function timelineEntryPopKeyframesCss(
+  animationNameIn: string,
+  animationNameOut: string
+): string {
+  const s = TIMELINE_SLIDE_POP_SCALE_FROM;
+  return (
+    `@keyframes ${animationNameIn}{0%{opacity:0;transform:scale(${s})}100%{opacity:1;transform:scale(1)}}` +
+    `@keyframes ${animationNameOut}{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(${s})}}`
+  );
+}
+
+export function timelineEntryPopAnimationStyle(
+  entryIndex: number,
+  animationNameIn: string,
+  animationNameOut: string,
+  cfg: ChartSlideStagger | undefined
+): CSSProperties | undefined {
+  if (!cfg) return undefined;
+  const name = cfg.exit ? animationNameOut : animationNameIn;
+  const delay = cfg.baseDelayMs + entryIndex * cfg.staggerMs;
+  return {
+    animation: `${name} ${cfg.durationMs}ms ${cfg.easingCss} ${delay}ms both`,
+    transformOrigin: "center center",
+    willChange: "opacity, transform",
+  };
+}

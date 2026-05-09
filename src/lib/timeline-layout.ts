@@ -42,6 +42,29 @@ export function isTimelineNodeType(type: string | undefined): boolean {
   return type === TIMELINE_NODE_TYPE;
 }
 
+/** Stable fingerprint when timeline cards / layout-driving props change between slides. */
+export function timelinePresentationSignature(node: DiagramNodeData): string | null {
+  if (!isTimelineNodeType(node.type)) return null;
+  const x = node as DiagramNodeData & Record<string, unknown>;
+  return JSON.stringify([
+    x.timelineEntries,
+    x.timelineDistribution,
+    x.timelineCardSide,
+    x.timelineSections,
+    x.timelineCardW,
+    x.timelineCardH,
+    x.timelineCornerRadius,
+    x.timelineOffsetPx,
+    x.timelineCardFillMode,
+    x.timelineHueStepDeg,
+    x.timelineConnectorWidth,
+    x.timelineDotRadius,
+    x.compositeBodyShape,
+    x.startCap,
+    x.endCap,
+  ]);
+}
+
 /** Spine geometry helpers accept same locals as connector lines. */
 export type TimelineNodeSynth = DiagramNodeData & {
   __localStartPos?: { x: number; y: number };
@@ -384,4 +407,46 @@ export function timelineEntryOverlayBoundsRelativeToNodeContainer(
     width: L.cardW,
     height: L.cardH,
   };
+}
+
+/** Slide transition: a card removed on the next slide — layout in **current** node container space. */
+export interface TimelineSlideRemovedCardPayload {
+  entry: TimelineEntryData;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  hueRank: number;
+}
+
+/**
+ * Removed-entry ghosts for slide transitions: positions match {@link timelineEntryOverlayBoundsRelativeToNodeContainer}
+ * for `prevNode`, then shifted by node position delta so they sit correctly inside the **current** slide’s container.
+ */
+export function timelineSlideRemovedCardPayloads(
+  prevNode: DiagramNodeData,
+  currNode: DiagramNodeData,
+  synthPrev?: Partial<TimelineNodeSynth>,
+): TimelineSlideRemovedCardPayload[] {
+  if (!isTimelineNodeType(prevNode.type) || !isTimelineNodeType(currNode.type)) return [];
+  const prevE = prevNode.timelineEntries ?? [];
+  const currIds = new Set((currNode.timelineEntries ?? []).map((e) => e.id));
+  const dx = (currNode.x ?? 0) - (prevNode.x ?? 0);
+  const dy = (currNode.y ?? 0) - (prevNode.y ?? 0);
+  const out: TimelineSlideRemovedCardPayload[] = [];
+  for (let i = 0; i < prevE.length; i++) {
+    const entry = prevE[i]!;
+    if (currIds.has(entry.id)) continue;
+    const b = timelineEntryOverlayBoundsRelativeToNodeContainer(prevNode, entry.id, synthPrev);
+    if (!b) continue;
+    out.push({
+      entry,
+      left: b.left - dx,
+      top: b.top - dy,
+      width: b.width,
+      height: b.height,
+      hueRank: i,
+    });
+  }
+  return out;
 }

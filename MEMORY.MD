@@ -3,6 +3,12 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-09 – Timeline slide diff: exit ghosts + enter only new cards
+When **`timelinePresentationSignature`** changes between slides but the timeline **node id** stays, **`computeTimelineCardTransitionStylePatch`** diffs **`timelineEntries`**: **removed** ids render as **`timelineRemovedCards`** (layout from prev slide, shifted by node **x/y** delta) with **`timelineRemoveStagger`**; **new** ids get **`timelineSlideStagger`** + **`timelineEnterStaggerOrder`**; **stable** cards skip enter pop. Tail = **max(enter, exit)** stagger. **`timelineSlideRemovedCardPayloads`** (**`timeline-layout.ts`**). Whole-timeline appear/disappear unchanged. Patch bumped.
+
+### 2026-05-09 – Timeline play transition: cards grow/shrink + fade (staggered)
+**`timelineEntryPopKeyframesCss` / `timelineEntryPopAnimationStyle`** (**`chart-presentation-stagger.ts`**) replace opacity-only chart pop on timeline HTML cards: sequential **`scale(0.82)↔1`** with **fade in/out**, **`transformOrigin: center`**. **`diagram-node`** wires the new keyframes. Patch bumped.
+
 ### 2026-05-09 – Timeline entry edit: rich-text toolbar visible (overflow)
 Per-entry **`TextboxRichEditor`** overlay used **`overflow-hidden`**, which clipped the floating formatting bar (**`absolute bottom-full`** above the contenteditable — textbox/shape editing wrappers use **`overflow-visible`**). Overlay **`overflow-visible`**; **`onVerticalAlignChange`** matches Mindmap/card wiring. Patch bumped.
 

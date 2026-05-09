@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, useId } from "react";
 import { useDrag } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import {
@@ -21,7 +21,11 @@ import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { diagramNodeVisualStylingSignature } from "@/lib/slide-visual-color";
 import { transitionShorthandWithDelay } from "@/lib/css-transition-with-delay";
 import { getHighlightAnimStyleForNode } from "@/lib/highlight-anim";
-import type { ChartSlideStagger } from "@/lib/chart-presentation-stagger";
+import {
+  timelineEntryPopAnimationStyle,
+  timelineEntryPopKeyframesCss,
+  type ChartSlideStagger,
+} from "@/lib/chart-presentation-stagger";
 import {
   SquareShape,
   RectangleShape,
@@ -65,6 +69,7 @@ import {
   timelineEntriesMaterializedRatios,
   timelineEntryOverlayBoundsRelativeToNodeContainer,
   resolveEntryCardSide,
+  type TimelineSlideRemovedCardPayload,
 } from "@/lib/timeline-layout";
 import { buildSyntheticTimelineEntryCardNode } from "@/lib/timeline-styling";
 import { normalizeCompositeBodyShapeKind } from "@/lib/shape-type-swap";
@@ -292,6 +297,14 @@ interface DiagramNodeProps {
     visualColorCrossfadeTopOpacity?: number;
     visualColorCrossfadeTopTransition?: string;
     chartSlideStagger?: ChartSlideStagger;
+    /** Play / slide transitions: stagger grow+fade on new timeline cards (see `timelineEnterStaggerOrder`). */
+    timelineSlideStagger?: ChartSlideStagger;
+    /** Removed cards from previous slide — exit animation (shrink + fade). */
+    timelineRemoveStagger?: ChartSlideStagger;
+    timelineRemovedCards?: ReadonlyArray<TimelineSlideRemovedCardPayload>;
+    timelineRemovedGhostBase?: DiagramNodeData;
+    /** When set, only these entry ids play enter stagger (`curr` order). */
+    timelineEnterStaggerOrder?: readonly string[];
     chartLerpU?: number;
     chartLerpFromJson?: string;
   };
@@ -517,6 +530,10 @@ function DiagramNodeInner({
   onTimelineSpineContextMenu,
   diagramNodesForMindmap,
 }: DiagramNodeProps) {
+  const timelineSlidePopBase = `dwTlCard${useId().replace(/:/g, "")}`;
+  const timelineSegPopInId = `${timelineSlidePopBase}In`;
+  const timelineSegPopOutId = `${timelineSlidePopBase}Out`;
+
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -2905,7 +2922,74 @@ function DiagramNodeInner({
                     {renderShape()}
                   </div>
                   {isTimelineNode &&
-                    (node.timelineEntries ?? []).map((entry) => {
+                  (animationStyle?.timelineSlideStagger || animationStyle?.timelineRemoveStagger) ? (
+                    <style
+                      dangerouslySetInnerHTML={{
+                        __html: timelineEntryPopKeyframesCss(timelineSegPopInId, timelineSegPopOutId),
+                      }}
+                    />
+                  ) : null}
+                  {isTimelineNode &&
+                    animationStyle?.timelineRemovedCards &&
+                    animationStyle.timelineRemovedGhostBase &&
+                    animationStyle.timelineRemovedCards.map((ghost, gi) => {
+                      const ghostBase = animationStyle.timelineRemovedGhostBase!;
+                      const syntheticNode = buildSyntheticTimelineEntryCardNode(
+                        ghostBase,
+                        ghost.entry,
+                        ghost.hueRank,
+                        ghost.width,
+                        ghost.height,
+                      );
+                      const entryPlain = ghost.entry.richLabel?.length
+                        ? getPlainTextFromRuns(ghost.entry.richLabel)
+                        : ghost.entry.label ?? "";
+                      return (
+                        <div
+                          key={`tl-exit-${ghost.entry.id}`}
+                          className="absolute z-[58] pointer-events-none"
+                          style={{
+                            left: ghost.left,
+                            top: ghost.top,
+                            width: ghost.width,
+                            height: ghost.height,
+                            ...timelineEntryPopAnimationStyle(
+                              gi,
+                              timelineSegPopInId,
+                              timelineSegPopOutId,
+                              animationStyle.timelineRemoveStagger,
+                            ),
+                          }}
+                        >
+                          <MindmapNodeShape
+                            node={syntheticNode}
+                            allMindmapNodes={diagramNodesForMindmap ?? []}
+                            tag=""
+                            tagPosition="top-left"
+                            isEditingTag={false}
+                            editTagText=""
+                            onTagTextChange={() => {}}
+                            onTagSubmit={() => {}}
+                            onTagKeyDown={() => {}}
+                            onTagDoubleClick={() => {}}
+                            label={entryPlain}
+                            isEditingLabel={false}
+                            editRuns={[]}
+                            onRichLabelSubmit={() => {}}
+                            onVerticalAlignChange={
+                              onUpdate
+                                ? (pos) => onUpdate({ ...node, textVerticalPosition: pos })
+                                : undefined
+                            }
+                            onLabelKeyDown={() => {}}
+                            onLabelDoubleClick={() => {}}
+                            slideColorTransition={timelineShapeSlidePaintTransition}
+                          />
+                        </div>
+                      );
+                    })}
+                  {isTimelineNode &&
+                    (node.timelineEntries ?? []).map((entry, entryIndex) => {
                       const b = timelineEntryOverlayBoundsRelativeToNodeContainer(
                         timelineNodeWithLiveCardDims,
                         entry.id,
@@ -2933,6 +3017,12 @@ function DiagramNodeInner({
                         (timelineSelectedEntryIds && timelineSelectedEntryIds.size > 0
                           ? timelineSelectedEntryIds.has(entry.id)
                           : false) || timelineActiveEntryId === entry.id;
+                      const enterOrder = animationStyle?.timelineEnterStaggerOrder;
+                      const enterStaggerIdx =
+                        enterOrder != null ? enterOrder.indexOf(entry.id) : entryIndex;
+                      const playEnterPop =
+                        !!animationStyle?.timelineSlideStagger &&
+                        (enterOrder == null || enterStaggerIdx >= 0);
                       return (
                         <div
                           key={entry.id}
@@ -2941,7 +3031,20 @@ function DiagramNodeInner({
                             !isReadOnly && "cursor-grab",
                             cardSelected && "rounded-sm shadow-[0_0_0_2px_hsl(var(--primary))]",
                           )}
-                          style={{ left: b.left, top: b.top, width: b.width, height: b.height }}
+                          style={{
+                            left: b.left,
+                            top: b.top,
+                            width: b.width,
+                            height: b.height,
+                            ...(playEnterPop && animationStyle?.timelineSlideStagger
+                              ? timelineEntryPopAnimationStyle(
+                                  enterOrder != null ? enterStaggerIdx : entryIndex,
+                                  timelineSegPopInId,
+                                  timelineSegPopOutId,
+                                  animationStyle.timelineSlideStagger,
+                                ) ?? {}
+                              : {}),
+                          }}
                           onPointerDown={(e) => {
                             if (isReadOnly) return;
                             timelineEntryPointerDownRef.current(e, entry.id);
