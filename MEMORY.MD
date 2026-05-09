@@ -3,6 +3,18 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-09 – Timeline selected cards: hit-through resize overlay (drag + context menu)
+Per-card **`ResizeHandles`** sat in a **`pointer-events-auto`** full-size wrapper over the card, stealing **`pointerdown`** / **`contextmenu`** from **`CompositeCardSilhouette`**. Wrapper is **`pointer-events-none`** so the SVG receives body hits again (drag along spine + perpendicular offset); rails pass **`className="pointer-events-auto"`** on **`ResizeHandles`** so edges stay draggable for resize. Patch bumped.
+
+### 2026-05-09 – Timeline card drag vs react-dnd whole-node move
+**`mousedown`** on a timeline card bubbles to the **`useDrag`** wrapper while **`suppressTimelineCanvasDragRef`** was unset (`pointerdown` ran first but **HTML5** backend starts on **mouse**). **`canDrag`** now requires **`!suppressTimelineCanvasDragRef.current`**; the ref is set for card **`pointerdown`** / cleared in **`onUp` `finally`**, and set when starting **per-card resize** / cleared in resize **`finish` `finally`** + effect cleanup. **`preventDefault`** on card **`pointerdown`** added. Patch bumped.
+
+### 2026-05-09 – Timeline: line-like outer box + per-card resize rails
+Removed **outer** **`ResizeHandles`** on **`generic.object.timeline`** (restore **no green hull** on the bbox like connector lines). **Selected timeline cards** (`timelineSelectedEntryIds`) get **`ResizeHandles`** positioned with **`timelineEntryOverlayBoundsRelativeToNodeContainer`** on **`timelineNodeWithLiveCardDims`** (live preview during drag); **`pointerup`** writes **`timelineEntries[].width` / `height`** via **`onUpdate`**. Document **`computeTimelineCardResizeDims`** mirrors edge/corner + Shift-proportional rules; **`timelineEntryResizeNodeRef`** supplies fresh node data on commit. **`Popover`** also gated by **`!isResizingTimelineEntry`**. Patch bumped.
+
+### 2026-05-09 – Timeline cards: canvas selection, multi-card Shift, resize handles
+Card **`pointerdown`** no longer **`preventDefault`s immediately** (that suppressed **`click`**, so the timeline **node** never became **`selectedItem`**). **Pending vs drag** uses **`TIMELINE_CARD_DRAG_THRESHOLD_PX`** (~5px): tiny movement → **`handleTimelineCardTap`** on pointer-up (select node + entry keys; **Shift/Ctrl/Meta** toggles multi-card keys and adds the timeline to **`selectedItemIds`** only when it was not already selected—avoids shift-toggle removing the sole selected timeline). Drag beyond threshold commits **`manual`** spine geometry as before; **`timelineCardClickSuppressRef`** drops duplicate **`click`** after tap/drag. **`EditorCanvas`** builds **`timelineSelectedEntryIdsByNodeId`** from **`parseTimelineEntryKey`** for **`TimelineShape.selectedEntryIds`**. **`onTimelineEntrySelect`** wrapper passes **`additive`**. Patch bumped.
+
 ### 2026-05-09 – Timeline: selection key helpers + canvas callback wiring
 **`timeline-layout.ts`** exports **`TIMELINE_ENTRY_KEY_SEP`**, **`makeTimelineEntryKey`**, **`parseTimelineEntryKey`**, and **`lastTimelineEntryIdOnNodeFromOrderedKeys`** (multi-select / context **Remove card** uses the last key for that node). **`editor-canvas`**: **`DiagramNode`** gets **`onTimelineEntrySelect={(entryId) => …(node.id, entryId)}`**; removed unused **`timelineEntrySelection`** prop from **`DiagramNode`** (selection set stays on **`EditorCanvas`** for menus). Patch bumped.
 

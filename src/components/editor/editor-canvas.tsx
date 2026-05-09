@@ -80,6 +80,7 @@ import {
   applyTimelineEntriesSpacedEndpoints,
   insertTimelineEntryNearArcRatio,
   lastTimelineEntryIdOnNodeFromOrderedKeys,
+  parseTimelineEntryKey,
 } from "@/lib/timeline-layout";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import {
@@ -98,6 +99,9 @@ const SIMULATION_AVAILABILITY_STATUS_COLORS_KEY = "simulation:availability:statu
 const SIMULATION_AVAILABILITY_SELF_STATE_COLORS_KEY = "simulation:availability:self-state-colors";
 const SIMULATION_AVAILABILITY_STATUS_TEXTS_KEY = "simulation:availability:status-texts";
 const SIMULATION_AVAILABILITY_STATUS_SHADOW_COLORS_KEY = "simulation:availability:status-shadow-colors";
+
+/** Stable empty set for timeline card multi-select highlights (`timelineSelectedEntryIdsByNodeId`). */
+const EMPTY_TIMELINE_CARD_SELECTION_IDS: ReadonlySet<string> = new Set();
 const SIMULATION_AVAILABILITY_STATE_OPACITY_KEY = "simulation:availability:state-opacity";
 const SIMULATION_AVAILABILITY_DEPENDENCY_OPACITY_KEY = "simulation:availability:dependency-opacity";
 const DEFAULT_SIMULATION_STATUS_COLORS: Record<AvailabilityStatus, string> = {
@@ -494,6 +498,21 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       return acc;
     }, {} as Record<string, PositionedGroup>);
   }, [processedZones]);
+
+  const timelineSelectedEntryIdsByNodeId = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const key of timelineEntrySelection) {
+      const p = parseTimelineEntryKey(key);
+      if (!p) continue;
+      let set = m.get(p.nodeId);
+      if (!set) {
+        set = new Set<string>();
+        m.set(p.nodeId, set);
+      }
+      set.add(p.entryId);
+    }
+    return m;
+  }, [timelineEntrySelection]);
 
   // Connection order: which connections render in which slot (between items) for proper z-order
   const connectionSlots = useMemo(
@@ -1671,6 +1690,38 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
   }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, handleSimulationElementPrimaryClick, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData, selectedItemIds]);
 
+  /** Tap on a timeline card (pointer-up without drag): selects the node + updates card selection; Shift toggles multi-card keys without dropping the parent node from an existing multi-select. */
+  const handleTimelineCardTap = useCallback(
+    (node: DiagramNodeData, entryId: string, e: React.MouseEvent | React.PointerEvent) => {
+      const additiveCards = e.shiftKey || e.ctrlKey || e.metaKey;
+
+      if (isConnectMode || simulationModeEnabled) {
+        handleNodeClick(e as unknown as React.MouseEvent, node);
+        return;
+      }
+
+      if (!additiveCards) {
+        handleNodeClick(e as unknown as React.MouseEvent, node);
+        onTimelineEntrySelect?.(node.id, entryId, false);
+        return;
+      }
+
+      onTimelineEntrySelect?.(node.id, entryId, true);
+      if (!selectedItemIds.has(node.id)) {
+        handleNodeClick(
+          {
+            ...(e as object),
+            shiftKey: true,
+            ctrlKey: false,
+            metaKey: false,
+          } as React.MouseEvent,
+          node,
+        );
+      }
+    },
+    [handleNodeClick, isConnectMode, simulationModeEnabled, onTimelineEntrySelect, selectedItemIds],
+  );
+
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     e.preventDefault();
@@ -2781,10 +2832,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   }
                   onConnectorLineVertexFocus={onConnectorLineVertexFocus}
                   timelineActiveEntryId={timelineActiveEntryId}
+                  timelineSelectedEntryIds={
+                    timelineSelectedEntryIdsByNodeId.get(node.id) ?? EMPTY_TIMELINE_CARD_SELECTION_IDS
+                  }
                   onTimelineEntrySelect={
                     onTimelineEntrySelect
-                      ? (entryId) => onTimelineEntrySelect(node.id, entryId)
+                      ? (entryId, additive) => onTimelineEntrySelect(node.id, entryId, additive)
                       : undefined
+                  }
+                  onTimelineCardTap={
+                    !isReadOnly ? (entryId, ev) => handleTimelineCardTap(node, entryId, ev) : undefined
                   }
                   onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                   onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
@@ -2895,10 +2952,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     }
                     onConnectorLineVertexFocus={onConnectorLineVertexFocus}
                     timelineActiveEntryId={timelineActiveEntryId}
+                    timelineSelectedEntryIds={
+                      timelineSelectedEntryIdsByNodeId.get(node.id) ?? EMPTY_TIMELINE_CARD_SELECTION_IDS
+                    }
                     onTimelineEntrySelect={
                       onTimelineEntrySelect
-                        ? (entryId) => onTimelineEntrySelect(node.id, entryId)
+                        ? (entryId, additive) => onTimelineEntrySelect(node.id, entryId, additive)
                         : undefined
+                    }
+                    onTimelineCardTap={
+                      !isReadOnly ? (entryId, ev) => handleTimelineCardTap(node, entryId, ev) : undefined
                     }
                     onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                     onTimelineSpineContextMenu={handleTimelineSpineContextMenu}

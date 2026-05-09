@@ -55,7 +55,7 @@ import {
   SlideShapeShadowTransitionProvider,
   getSlideShapeShadowMode,
 } from "@/components/diagram/slide-shape-shadow-transition-context";
-import { ResizeHandles } from "./resize-handles";
+import { ResizeHandles, type ResizeHandleType } from "./resize-handles";
 import { LineVertexHandles } from "./line-endpoint-handles";
 import { getConnectorLineVertices, isConnectorLineGeometryClosed, connectorLinePointBounds, type LinePathStyle } from "@/lib/line-curve-path";
 import {
@@ -78,10 +78,80 @@ import { computeUmlClassDimensions } from "@/lib/uml-utils";
 import { openExternalUrlInNewTab } from "@/lib/url-utils";
 import { roundChartDataValue } from "@/lib/chart-node";
 
+/** Timeline card HTML resize rails — matches `ResizeHandles` edge semantics (diagram px). */
+type TimelineCardResizeHandleKind = "top" | "left" | "right" | "bottom" | "bottom-right";
+
+function computeTimelineCardResizeDims(
+  session: {
+    handle: TimelineCardResizeHandleKind;
+    clientX: number;
+    clientY: number;
+    startW: number;
+    startH: number;
+  },
+  clientX: number,
+  clientY: number,
+  transform: { k: number } | null | undefined,
+  shiftKey: boolean,
+): { width: number; height: number } {
+  let deltaX = clientX - session.clientX;
+  let deltaY = clientY - session.clientY;
+  if (transform) {
+    deltaX = deltaX / transform.k;
+    deltaY = deltaY / transform.k;
+  }
+  const minW = 40;
+  const minH = 28;
+  let newWidth = session.startW;
+  let newHeight = session.startH;
+
+  switch (session.handle) {
+    case "right":
+      newWidth = session.startW + deltaX;
+      break;
+    case "bottom":
+      newHeight = session.startH + deltaY;
+      break;
+    case "bottom-right": {
+      if (shiftKey) {
+        const rawW = session.startW + deltaX;
+        const rawH = session.startH + deltaY;
+        const scaleX = rawW / session.startW;
+        const scaleY = rawH / session.startH;
+        const scale = Math.max(
+          scaleX,
+          scaleY,
+          minW / session.startW,
+          minH / session.startH,
+        );
+        newWidth = session.startW * scale;
+        newHeight = session.startH * scale;
+      } else {
+        newWidth = session.startW + deltaX;
+        newHeight = session.startH + deltaY;
+      }
+      break;
+    }
+    case "top":
+      newHeight = Math.max(minH, session.startH - deltaY);
+      break;
+    case "left":
+      newWidth = Math.max(minW, session.startW - deltaX);
+      break;
+    default:
+      break;
+  }
+
+  newWidth = snapDimensionToGrid(Math.max(minW, newWidth), minW);
+  newHeight = snapDimensionToGrid(Math.max(minH, newHeight), minH);
+  return { width: newWidth, height: newHeight };
+}
+
 const NODE_WIDTH = 80;
 const BASE_NODE_HEIGHT = 80;
 const TEXT_NODE_HEIGHT = 40; // Height for text-only nodes
 const EXTRA_LINE_HEIGHT = 20; // Additional height per extra line of text
+const TIMELINE_CARD_DRAG_THRESHOLD_PX = 5;
 
 // Helper function to get gradient CSS with angle
 const getGradientWithAngle = (colors: string[], angle: number = 135) => {
@@ -243,7 +313,11 @@ interface DiagramNodeProps {
   connectorLineFocusedVertexIndex?: number | null;
   /** Timeline: focused entry for styling panels */
   timelineActiveEntryId?: string | null;
-  onTimelineEntrySelect?: (entryId: string | null) => void;
+  /** Timeline: entry ids selected on this node (multi-card); combines with `timelineActiveEntryId` for stroke */
+  timelineSelectedEntryIds?: ReadonlySet<string>;
+  onTimelineEntrySelect?: (entryId: string | null, additive?: boolean) => void;
+  /** Timeline: tap on card without drag — selects node + cards (editor wires canvas handler) */
+  onTimelineCardTap?: (entryId: string, e: React.MouseEvent | React.PointerEvent) => void;
   /** Right-click context menu from a timeline card hit-target */
   onTimelineEntryContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, entryId: string) => void;
   /** Right-click on spine — arc ratio (0–1) used when adding a card */
@@ -387,7 +461,9 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onConnectorLineVertexFocus === next.onConnectorLineVertexFocus &&
     prev.connectorLineFocusedVertexIndex === next.connectorLineFocusedVertexIndex &&
     prev.timelineActiveEntryId === next.timelineActiveEntryId &&
+    prev.timelineSelectedEntryIds === next.timelineSelectedEntryIds &&
     prev.onTimelineEntrySelect === next.onTimelineEntrySelect &&
+    prev.onTimelineCardTap === next.onTimelineCardTap &&
     prev.onTimelineEntryContextMenu === next.onTimelineEntryContextMenu &&
     prev.onTimelineSpineContextMenu === next.onTimelineSpineContextMenu;
 }
@@ -432,7 +508,9 @@ function DiagramNodeInner({
   onConnectorLineVertexFocus,
   connectorLineFocusedVertexIndex = null,
   timelineActiveEntryId = null,
+  timelineSelectedEntryIds,
   onTimelineEntrySelect,
+  onTimelineCardTap,
   onTimelineEntryContextMenu,
   onTimelineSpineContextMenu,
   diagramNodesForMindmap,
@@ -488,6 +566,9 @@ function DiagramNodeInner({
   } | null>(null);
 
   const timelineEntryPointerDownRef = useRef<(e: React.PointerEvent, entryId: string) => void>(() => {});
+  const timelineCardClickSuppressRef = useRef(false);
+  /** Card drag / card resize: blocks react-dnd on timeline wrapper (`mousedown` bubbles after `pointerdown`). */
+  const suppressTimelineCanvasDragRef = useRef(false);
 
   const removeLineVertexDocListeners = useCallback(() => {
     const L = lineVertexDocListenersRef.current;
@@ -1049,11 +1130,21 @@ function DiagramNodeInner({
               : undefined
           }
           onSpinePointerDown={() => onTimelineEntrySelect?.(null)}
+          selectedEntryIds={timelineSelectedEntryIds}
+          timelineCardClickSuppressRef={timelineCardClickSuppressRef}
           activeEntryId={timelineActiveEntryId ?? undefined}
           onEntryPointerDown={(ev, entryId) => timelineEntryPointerDownRef.current(ev, entryId)}
           onEntryClick={(ev, entryId) => {
-            onTimelineEntrySelect?.(entryId);
-            onClick?.(ev as any, visualNode);
+            if (timelineCardClickSuppressRef.current) {
+              timelineCardClickSuppressRef.current = false;
+              return;
+            }
+            if (onTimelineCardTap) {
+              onTimelineCardTap(entryId, ev as unknown as React.MouseEvent);
+            } else {
+              onTimelineEntrySelect?.(entryId, false);
+              onClick?.(ev as any, visualNode);
+            }
           }}
           onEntryDoubleClick={handleTimelineEntryDoubleClick}
           onEntryContextMenu={
@@ -1430,13 +1521,17 @@ function DiagramNodeInner({
       e.preventDefault();
       setIsEditingLabel(false);
       setIsOpen(false);
-      onTimelineEntrySelect?.(entryId);
+      if (onTimelineCardTap) {
+        onTimelineCardTap(entryId, e);
+      } else {
+        onTimelineEntrySelect?.(entryId, false);
+      }
       const entry = (node.timelineEntries ?? []).find((x) => x.id === entryId);
       if (!entry) return;
       setTimelineEditEntryId(entryId);
       setIsEditingTimelineEntryLabel(true);
     },
-    [isReadOnly, onUpdate, isTimelineNode, node.timelineEntries, onTimelineEntrySelect],
+    [isReadOnly, onUpdate, isTimelineNode, node.timelineEntries, onTimelineEntrySelect, onTimelineCardTap],
   );
 
   const handleTimelineEntryRichSubmit = useCallback(
@@ -1522,7 +1617,8 @@ function DiagramNodeInner({
       !isEditingLabel &&
       !isEditingTag &&
       !isEditingTimelineEntryLabel &&
-      !chartValueDragInteractionRef.current,
+      !chartValueDragInteractionRef.current &&
+      !suppressTimelineCanvasDragRef.current,
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -1596,8 +1692,15 @@ function DiagramNodeInner({
     setResizeHandle(handle);
     const startX = node.x ?? 0;
     const startY = node.y ?? 0;
-    const startWidth = isIconNode ? (iconNodeDims?.width ?? (node as any).labelWidth ?? 80) : (node.width || (isRichTextBoxLike ? 40 : 80));
-    const startHeight = isIconNode ? (iconNodeDims?.height ?? nodeHeight) : (node.height || nodeHeight);
+    let startWidth: number;
+    let startHeight: number;
+    if (isIconNode) {
+      startWidth = iconNodeDims?.width ?? (node as any).labelWidth ?? 80;
+      startHeight = iconNodeDims?.height ?? nodeHeight;
+    } else {
+      startWidth = node.width || (isRichTextBoxLike ? 40 : 80);
+      startHeight = node.height || nodeHeight;
+    }
     
     // Store original dimensions for multi-resize
     (node as any).originalWidth = startWidth;
@@ -1746,6 +1849,25 @@ function DiagramNodeInner({
     cardNormalOffsetPx: number;
     cardSide: "above" | "below";
   } | null>(null);
+  /** Live width/height for the timeline entry currently being resized (diagram px). */
+  const [timelineCardResizeLive, setTimelineCardResizeLive] = useState<{
+    entryId: string;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [isResizingTimelineEntry, setIsResizingTimelineEntry] = useState(false);
+  const [timelineEntryResizeActiveHandle, setTimelineEntryResizeActiveHandle] =
+    useState<ResizeHandleType>(null);
+  const timelineEntryResizeSessionRef = useRef<{
+    entryId: string;
+    handle: TimelineCardResizeHandleKind;
+    clientX: number;
+    clientY: number;
+    startW: number;
+    startH: number;
+  } | null>(null);
+  const timelineEntryResizeNodeRef = useRef(node);
+  timelineEntryResizeNodeRef.current = node;
   const latestPositionsRef = useRef<{ startPos: { x: number; y: number } | null; endPos: { x: number; y: number } | null }>({ startPos: null, endPos: null });
   
   // Initialize and sync local state with node positions (but not during drag)
@@ -1920,6 +2042,125 @@ function DiagramNodeInner({
     timelineLayoutSynthForEdit,
   ]);
 
+  const timelineNodeWithLiveCardDims = useMemo((): DiagramNodeData => {
+    if (!timelineCardResizeLive) return timelineNodeForEditLayout;
+    return {
+      ...timelineNodeForEditLayout,
+      timelineEntries: (timelineNodeForEditLayout.timelineEntries ?? []).map((e) =>
+        e.id === timelineCardResizeLive.entryId
+          ? { ...e, width: timelineCardResizeLive.width, height: timelineCardResizeLive.height }
+          : e,
+      ),
+    } as DiagramNodeData;
+  }, [timelineNodeForEditLayout, timelineCardResizeLive]);
+
+  const handleTimelineEntryResizeStart = useCallback(
+    (
+      e: React.MouseEvent | React.PointerEvent,
+      handle: TimelineCardResizeHandleKind,
+      entryId: string,
+    ) => {
+      if (isReadOnly || !onUpdate || !isTimelineNode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const b = timelineEntryOverlayBoundsRelativeToNodeContainer(
+        timelineNodeForEditLayout,
+        entryId,
+        timelineLayoutSynthForEdit as {
+          __localStartPos?: { x: number; y: number };
+          __localEndPos?: { x: number; y: number };
+          __localControlPoints?: { x: number; y: number }[];
+        },
+      );
+      if (!b) return;
+      suppressTimelineCanvasDragRef.current = true;
+      timelineEntryResizeSessionRef.current = {
+        entryId,
+        handle,
+        clientX: e.clientX,
+        clientY: e.clientY,
+        startW: b.width,
+        startH: b.height,
+      };
+      setTimelineCardResizeLive({ entryId, width: b.width, height: b.height });
+      setTimelineEntryResizeActiveHandle(handle);
+      setIsResizingTimelineEntry(true);
+      onDraggingChange?.(true);
+    },
+    [
+      isReadOnly,
+      onUpdate,
+      isTimelineNode,
+      timelineNodeForEditLayout,
+      timelineLayoutSynthForEdit,
+      onDraggingChange,
+    ],
+  );
+
+  useEffect(() => {
+    if (!isResizingTimelineEntry) return;
+
+    const onMove = (ev: PointerEvent) => {
+      const session = timelineEntryResizeSessionRef.current;
+      if (!session) return;
+      ev.preventDefault();
+      const next = computeTimelineCardResizeDims(
+        session,
+        ev.clientX,
+        ev.clientY,
+        transform,
+        ev.shiftKey,
+      );
+      setTimelineCardResizeLive({ entryId: session.entryId, width: next.width, height: next.height });
+    };
+
+    const finish = (ev: PointerEvent) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      document.removeEventListener("pointermove", onMove, true);
+      document.removeEventListener("pointerup", finish, true);
+      document.removeEventListener("pointercancel", finish, true);
+
+      const session = timelineEntryResizeSessionRef.current;
+      timelineEntryResizeSessionRef.current = null;
+      setIsResizingTimelineEntry(false);
+      setTimelineEntryResizeActiveHandle(null);
+      setTimelineCardResizeLive(null);
+      onDraggingChange?.(false);
+
+      try {
+        if (!session || !onUpdate) return;
+
+        const finalDims = computeTimelineCardResizeDims(
+          session,
+          ev.clientX,
+          ev.clientY,
+          transform,
+          ev.shiftKey,
+        );
+        const n = timelineEntryResizeNodeRef.current;
+        const entries = (n.timelineEntries ?? []).map((ent) =>
+          ent.id === session.entryId
+            ? { ...ent, width: finalDims.width, height: finalDims.height }
+            : ent,
+        );
+        onUpdate({ ...n, timelineEntries: entries });
+      } finally {
+        suppressTimelineCanvasDragRef.current = false;
+      }
+    };
+
+    document.addEventListener("pointermove", onMove, true);
+    document.addEventListener("pointerup", finish, true);
+    document.addEventListener("pointercancel", finish, true);
+    return () => {
+      document.removeEventListener("pointermove", onMove, true);
+      document.removeEventListener("pointerup", finish, true);
+      document.removeEventListener("pointercancel", finish, true);
+      suppressTimelineCanvasDragRef.current = false;
+    };
+  }, [isResizingTimelineEntry, transform, onUpdate, onDraggingChange]);
+
   const beginRealLineVertexDrag = useCallback(
     (e: Pick<MouseEvent, "clientX" | "clientY">, vertexIndex: number) => {
       setIsDraggingLineEndpoint(true);
@@ -2093,9 +2334,11 @@ function DiagramNodeInner({
 
       e.preventDefault();
       e.stopPropagation();
-      onTimelineEntrySelect?.(entryId);
-      onDraggingChange?.(true);
-      setTimelineCardInteractionActive(true);
+      suppressTimelineCanvasDragRef.current = true;
+
+      let phase: "pending" | "drag" = "pending";
+      const startX = e.clientX;
+      const startY = e.clientY;
 
       const synth = {
         ...node,
@@ -2103,21 +2346,38 @@ function DiagramNodeInner({
         ...(localEndPos && { __localEndPos: localEndPos }),
         ...(localControlPoints && { __localControlPoints: localControlPoints }),
       } as DiagramNodeData;
-      const verts = getConnectorLineVertices(synth as any);
       const lp = (node as DiagramNodeData).linePathStyle as LinePathStyle | undefined;
       const sj = (node as DiagramNodeData).lineSmoothJoints === true;
       const mat0 = timelineEntriesMaterializedRatios(node as DiagramNodeData);
       const te0 = mat0[idx];
-      timelineEntryDragLiveRef.current = {
-        t: typeof te0.t === "number" && Number.isFinite(te0.t) ? te0.t : 0.5,
-        cardNormalOffsetPx:
-          typeof te0.cardNormalOffsetPx === "number" && Number.isFinite(te0.cardNormalOffsetPx)
-            ? te0.cardNormalOffsetPx
-            : 0,
-        cardSide: resolveEntryCardSide(node as DiagramNodeData, te0, idx),
+
+      let verts = getConnectorLineVertices(synth as any);
+
+      const beginDrag = (initialEv: PointerEvent) => {
+        phase = "drag";
+        initialEv.preventDefault();
+        initialEv.stopPropagation();
+        verts = getConnectorLineVertices(synth as any);
+        onTimelineEntrySelect?.(entryId, false);
+        onDraggingChange?.(true);
+        setTimelineCardInteractionActive(true);
+        timelineEntryDragLiveRef.current = {
+          t: typeof te0.t === "number" && Number.isFinite(te0.t) ? te0.t : 0.5,
+          cardNormalOffsetPx:
+            typeof te0.cardNormalOffsetPx === "number" && Number.isFinite(te0.cardNormalOffsetPx)
+              ? te0.cardNormalOffsetPx
+              : 0,
+          cardSide: resolveEntryCardSide(node as DiagramNodeData, te0, idx),
+        };
       };
 
       const onMove = (ev: PointerEvent) => {
+        if (phase === "pending") {
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > TIMELINE_CARD_DRAG_THRESHOLD_PX) {
+            beginDrag(ev);
+          }
+          return;
+        }
         const diag = canvasClientToDiagram(ev.clientX, ev.clientY);
         if (!diag || !timelineEntryDragLiveRef.current) return;
         const prefer = timelineEntryDragLiveRef.current.cardSide;
@@ -2141,45 +2401,63 @@ function DiagramNodeInner({
       };
 
       const onUp = (ev: PointerEvent) => {
-        ev.preventDefault();
-        ev.stopPropagation();
         document.removeEventListener("pointermove", onMove, true);
         document.removeEventListener("pointerup", onUp, true);
         document.removeEventListener("pointercancel", onUp, true);
-        setTimelineCardInteractionActive(false);
-        const diag = canvasClientToDiagram(ev.clientX, ev.clientY);
-        const preferFallback =
-          timelineEntryDragLiveRef.current?.cardSide ??
-          resolveEntryCardSide(node as DiagramNodeData, entriesList[idx], idx);
-        const solved =
-          diag != null
-            ? timelineDragSolveFromDiagramPoint(
-                diag.x,
-                diag.y,
-                node,
-                idx,
-                verts,
-                lp,
-                sj,
-                preferFallback,
-              )
-            : timelineEntryDragLiveRef.current;
-        timelineEntryDragLiveRef.current = null;
-        setTimelineDragPreview(null);
-        if (!solved) {
+
+        try {
+          if (phase === "pending") {
+            ev.stopPropagation();
+            timelineCardClickSuppressRef.current = true;
+            if (onTimelineCardTap) {
+              onTimelineCardTap(entryId, ev as unknown as React.PointerEvent);
+            } else {
+              onTimelineEntrySelect?.(entryId, false);
+              onClick?.(ev as unknown as React.MouseEvent, node);
+            }
+            return;
+          }
+
+          ev.preventDefault();
+          ev.stopPropagation();
+          setTimelineCardInteractionActive(false);
+          const diag = canvasClientToDiagram(ev.clientX, ev.clientY);
+          const preferFallback =
+            timelineEntryDragLiveRef.current?.cardSide ??
+            resolveEntryCardSide(node as DiagramNodeData, entriesList[idx], idx);
+          const solved =
+            diag != null
+              ? timelineDragSolveFromDiagramPoint(
+                  diag.x,
+                  diag.y,
+                  node,
+                  idx,
+                  verts,
+                  lp,
+                  sj,
+                  preferFallback,
+                )
+              : timelineEntryDragLiveRef.current;
+          timelineEntryDragLiveRef.current = null;
+          setTimelineDragPreview(null);
+          timelineCardClickSuppressRef.current = true;
+          if (!solved) {
+            onDraggingChange?.(false);
+            return;
+          }
+          const snappedOff = snapToGrid(Math.round(solved.cardNormalOffsetPx));
+          const materialized = timelineEntriesMaterializedRatios(node as DiagramNodeData);
+          materialized[idx] = {
+            ...materialized[idx],
+            t: Math.max(0, Math.min(1, solved.t)),
+            cardNormalOffsetPx: snappedOff,
+            cardSide: solved.cardSide,
+          };
+          onUpdate({ ...node, timelineDistribution: "manual", timelineEntries: materialized });
           onDraggingChange?.(false);
-          return;
+        } finally {
+          suppressTimelineCanvasDragRef.current = false;
         }
-        const snappedOff = snapToGrid(Math.round(solved.cardNormalOffsetPx));
-        const materialized = timelineEntriesMaterializedRatios(node as DiagramNodeData);
-        materialized[idx] = {
-          ...materialized[idx],
-          t: Math.max(0, Math.min(1, solved.t)),
-          cardNormalOffsetPx: snappedOff,
-          cardSide: solved.cardSide,
-        };
-        onUpdate({ ...node, timelineDistribution: "manual", timelineEntries: materialized });
-        onDraggingChange?.(false);
       };
 
       document.addEventListener("pointermove", onMove, true);
@@ -2197,6 +2475,8 @@ function DiagramNodeInner({
       canvasClientToDiagram,
       onDraggingChange,
       onTimelineEntrySelect,
+      onTimelineCardTap,
+      onClick,
     ],
   );
 
@@ -2497,7 +2777,9 @@ function DiagramNodeInner({
           ? initialContainerPosRef.current.y
           : (resizePosition?.y ?? node.y) + (touchDragOffsetDiag?.y ?? 0),
          width: spineLikeNode
-           ? (isTimelineNode ? timelineLiveLayoutDims?.width : lineLiveLayoutDims?.width) ?? (node.width as number) ?? 150
+           ? (isTimelineNode
+               ? timelineLiveLayoutDims?.width
+               : lineLiveLayoutDims?.width) ?? (node.width as number) ?? 150
            : (typeof displayWidth === 'number' ? displayWidth :
                 (isShapeNode ? (node.width || 60) :
                 isRichTextBoxLike ?
@@ -2514,7 +2796,9 @@ function DiagramNodeInner({
                     isRichTextBoxLike ? (node.sizeMode === 'custom' ? 'none' : 400) :
                    isRotatableNode ? 200 : (isIconNode ? 400 : NODE_WIDTH)),
          height: spineLikeNode
-           ? (isTimelineNode ? timelineLiveLayoutDims?.height : lineLiveLayoutDims?.height) ?? (node.height as number) ?? 100
+           ? (isTimelineNode
+               ? timelineLiveLayoutDims?.height
+               : lineLiveLayoutDims?.height) ?? (node.height as number) ?? 100
            : (typeof displayHeight === 'number' ? displayHeight :
                  (isShapeNode ? (node.height || 60) :
                  isRichTextBoxLike && node.sizeMode === 'custom' ? (node.height || 40) :
@@ -2579,7 +2863,7 @@ function DiagramNodeInner({
       }}
     >
       <SlideShapeShadowTransitionProvider animationStyle={animationStyle}>
-      <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag && !isEditingTimelineEntryLabel && !timelineCardInteractionActive} onOpenChange={setIsOpen}>
+      <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag && !isEditingTimelineEntryLabel && !timelineCardInteractionActive && !isResizingTimelineEntry} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div
             className={cn(
@@ -2662,7 +2946,7 @@ function DiagramNodeInner({
         )}
        </Popover>
 
-       {/* Resize handles - textbox, text, shapes, or icon nodes (label width) */}
+       {/* Resize handles - textbox, text, shapes, or icon nodes (label width); timeline uses per-card handles only */}
         {!isReadOnly && (isResizing || isSelected || isMultiSelected) &&
          (isRichTextBoxLike || (isShapeNode && !isPointNode && !spineLikeNode) || isIconNode) && (
           <ResizeHandles
@@ -2675,6 +2959,46 @@ function DiagramNodeInner({
             handles={isIconNode ? ['right'] : undefined}
           />
        )}
+
+        {/* Timeline: resize rails on selected card(s) — matches shape semantics; outer bbox stays line-like (no green hull) */}
+        {!isReadOnly &&
+          isTimelineNode &&
+          isSelected &&
+          timelineSelectedEntryIds &&
+          timelineSelectedEntryIds.size > 0 &&
+          Array.from(timelineSelectedEntryIds).map((entryId) => {
+            const b = timelineEntryOverlayBoundsRelativeToNodeContainer(
+              timelineNodeWithLiveCardDims,
+              entryId,
+              timelineLayoutSynthForEdit as {
+                __localStartPos?: { x: number; y: number };
+                __localEndPos?: { x: number; y: number };
+                __localControlPoints?: { x: number; y: number }[];
+              },
+            );
+            if (!b) return null;
+            const activeCardResize = timelineCardResizeLive?.entryId === entryId;
+            return (
+              <div
+                key={entryId}
+                className="absolute z-[125] pointer-events-none"
+                style={{ left: b.left, top: b.top, width: b.width, height: b.height }}
+              >
+                {/* Must stay pointer-events-none so hits reach the SVG card for drag + context menu; rails inside ResizeHandles stay interactive */}
+                <div className="relative h-full w-full pointer-events-none">
+                  <ResizeHandles
+                    visible={true}
+                    activeHandle={activeCardResize ? timelineEntryResizeActiveHandle : null}
+                    hoveredHandle={null}
+                    onStart={(e, h) => handleTimelineEntryResizeStart(e, h, entryId)}
+                    disabled={false}
+                    zIndexClass="z-[125]"
+                    className="pointer-events-auto"
+                  />
+                </div>
+              </div>
+            );
+          })}
        
        {/* Line endpoint handles for line shapes - only show when THIS line is selected (not in multi-select with other items) */}
        {!isReadOnly && spineLikeNode && isSelected && !isMultiSelected && (() => {
