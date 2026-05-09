@@ -49,7 +49,15 @@ import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 import { getItemGroup } from "@/lib/grouping-utils";
-import { computeConnectionSlots, stableDiagramConnectionId } from "@/lib/connection-order-utils";
+import { generateConnectionId, computeConnectionSlots, stableDiagramConnectionId } from "@/lib/connection-order-utils";
+import { generateSequentialId } from "@/lib/id-generator";
+import {
+  MINDMAP_NODE_TYPE,
+  nextMindmapAutoNumericLabel,
+  attachMindmapTreeChild,
+  detachMindmapNode,
+  layoutMindmapChildrenAroundParent,
+} from "@/lib/mindmap-layout";
 import {
   collectObjectIdsInSelectionOrder,
   nextNodeLabelForAutoNumber,
@@ -65,7 +73,7 @@ import { SearchResourcesModal } from "./search-resources-modal";
 import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
-import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
+import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { applyTimelineEntriesSpacedEndpoints, insertTimelineEntryNearArcRatio } from "@/lib/timeline-layout";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import {
@@ -2756,6 +2764,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onTimelineEntrySelect={onTimelineEntrySelect}
                   onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                   onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
+                  diagramNodesForMindmap={diagramData.nodes}
                 />
               ) : zone ? null : null;
                   return nodeEl;
@@ -2781,6 +2790,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     transform={transform}
                     canvasRef={canvasRef}
                     hasLinkedSubDiagram={getHasLinkedSubDiagram?.(previewNode) ?? Boolean(previewNode.subDiagramId)}
+                    diagramNodesForMindmap={diagramData.nodes}
                   />
                 ))}
               </>
@@ -2864,6 +2874,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onTimelineEntrySelect={onTimelineEntrySelect}
                     onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                     onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
+                    diagramNodesForMindmap={diagramData.nodes}
                   />
                 ) : zone ? null : null;
                 return [
@@ -2934,6 +2945,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   transform={transform}
                   canvasRef={canvasRef}
                   hasLinkedSubDiagram={getHasLinkedSubDiagram?.(previewNode) ?? Boolean(previewNode.subDiagramId)}
+                  diagramNodesForMindmap={diagramData.nodes}
                 />
               ))}
               </>
@@ -3465,6 +3477,175 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     }),
                   }));
                 },
+              };
+            })()}
+            {...(() => {
+              const menuNodeId = contextMenu.itemId;
+              const ctx =
+                contextMenu.itemType === "node"
+                  ? diagramData.nodes.find((n) => n.id === menuNodeId)
+                  : undefined;
+              const mmCtx = ctx && isMindmapNodeType(ctx.type) ? (ctx as DiagramNodeData) : null;
+              const pairIds = Array.from(selectedItemIds);
+              const mindmapPairConnectVisible =
+                pairIds.length === 2 &&
+                pairIds.every((id) => {
+                  const n = diagramData.nodes.find((x) => x.id === id);
+                  return n && isMindmapNodeType(n.type);
+                }) &&
+                !!menuNodeId &&
+                selectedItemIds.has(menuNodeId);
+
+              if (!mmCtx && !mindmapPairConnectVisible) {
+                return {
+                  onMindmapAddChild: undefined,
+                  onMindmapDetachFromParent: undefined,
+                  mindmapCanDetach: false,
+                  onMindmapResetRadialLayout: undefined,
+                  mindmapCanResetRadial: false,
+                  mindmapThemeHues: false,
+                  onMindmapToggleThemeHues: undefined,
+                  onMindmapConnectPairTree: undefined,
+                  onMindmapConnectPairLink: undefined,
+                  mindmapPairConnectVisible: false,
+                };
+              }
+
+              return {
+                onMindmapAddChild:
+                  mmCtx && selectedItemIds.size <= 1
+                    ? () => {
+                        if (!menuNodeId) return;
+                        setDiagramData((prev) => {
+                          const parent = prev.nodes.find((n) => n.id === menuNodeId);
+                          if (!parent || !isMindmapNodeType(parent.type)) return prev;
+                          const newId = generateSequentialId(MINDMAP_NODE_TYPE, prev);
+                          const pw = parent.width ?? 80;
+                          const ph = parent.height ?? 50;
+                          const child: DiagramNodeData = {
+                            id: newId,
+                            type: MINDMAP_NODE_TYPE,
+                            label: nextMindmapAutoNumericLabel(prev.nodes),
+                            x: snapToGrid((parent.x ?? 0) + 40),
+                            y: snapToGrid((parent.y ?? 0) + 40),
+                            sizeMode: "custom",
+                            width: pw,
+                            height: ph,
+                            cornerRadius: parent.cornerRadius,
+                            backgroundColor: parent.backgroundColor,
+                            backgroundStyle: parent.backgroundStyle,
+                            backgroundColors: parent.backgroundColors,
+                            gradientAngle: parent.gradientAngle,
+                            borderColor: parent.borderColor,
+                            borderStyle: parent.borderStyle,
+                            borderWidth: parent.borderWidth,
+                            borderColors: parent.borderColors,
+                            textColor: parent.textColor,
+                            fontSize: parent.fontSize,
+                            fontFamily: parent.fontFamily,
+                            mindmapParentId: menuNodeId,
+                            mindmapFillMode: parent.mindmapFillMode ?? "theme-hues",
+                            mindmapHueStepDeg: parent.mindmapHueStepDeg ?? 14,
+                          };
+                          const ids = [...(parent.mindmapChildIds ?? []), newId];
+                          let nodes = prev.nodes.map((n) =>
+                            n.id === menuNodeId ? { ...n, mindmapChildIds: ids } : n,
+                          );
+                          nodes = [...nodes, child];
+                          nodes = layoutMindmapChildrenAroundParent(nodes, menuNodeId);
+                          const conns: DiagramConnectionData[] = [
+                            ...prev.connections,
+                            {
+                              id: generateConnectionId(),
+                              from: menuNodeId,
+                              to: newId,
+                              mindmapRole: "tree",
+                              mindmapPrimary: true,
+                            },
+                          ];
+                          return { ...prev, nodes, connections: conns };
+                        });
+                      }
+                    : undefined,
+                onMindmapDetachFromParent:
+                  mmCtx && mmCtx.mindmapParentId
+                    ? () => {
+                        if (!menuNodeId) return;
+                        setDiagramData((prev) => {
+                          const { nodes, connections } = detachMindmapNode(
+                            prev.nodes,
+                            prev.connections,
+                            menuNodeId,
+                          );
+                          return { ...prev, nodes, connections };
+                        });
+                      }
+                    : undefined,
+                mindmapCanDetach: !!(mmCtx && mmCtx.mindmapParentId),
+                onMindmapResetRadialLayout:
+                  mmCtx && (mmCtx.mindmapChildIds?.length ?? 0) > 0
+                    ? () => {
+                        if (!menuNodeId) return;
+                        setDiagramData((prev) => ({
+                          ...prev,
+                          nodes: layoutMindmapChildrenAroundParent(prev.nodes, menuNodeId),
+                        }));
+                      }
+                    : undefined,
+                mindmapCanResetRadial: !!(mmCtx && (mmCtx.mindmapChildIds?.length ?? 0) > 0),
+                mindmapThemeHues: mmCtx ? mmCtx.mindmapFillMode === "theme-hues" : false,
+                onMindmapToggleThemeHues: mmCtx
+                  ? () => {
+                      if (!menuNodeId) return;
+                      setDiagramData((prev) => ({
+                        ...prev,
+                        nodes: prev.nodes.map((n) => {
+                          if (n.id !== menuNodeId || !isMindmapNodeType(n.type)) return n;
+                          const next = n.mindmapFillMode === "theme-hues" ? "solid" : "theme-hues";
+                          return { ...n, mindmapFillMode: next };
+                        }),
+                      }));
+                    }
+                  : undefined,
+                onMindmapConnectPairTree: mindmapPairConnectVisible
+                  ? () => {
+                      const anchor = menuNodeId!;
+                      const other = pairIds.find((id) => id !== anchor);
+                      if (!other) return;
+                      setDiagramData((prev) => {
+                        const r = attachMindmapTreeChild(prev.nodes, prev.connections, anchor, other);
+                        if (r.error === "cycle") {
+                          toast({
+                            variant: "destructive",
+                            title: "Cannot connect",
+                            description: "That would create a cycle in the mind map tree.",
+                          });
+                          return prev;
+                        }
+                        return { ...prev, nodes: r.nodes, connections: r.connections };
+                      });
+                    }
+                  : undefined,
+                onMindmapConnectPairLink: mindmapPairConnectVisible
+                  ? () => {
+                      const anchor = menuNodeId!;
+                      const other = pairIds.find((id) => id !== anchor);
+                      if (!other) return;
+                      setDiagramData((prev) => ({
+                        ...prev,
+                        connections: [
+                          ...prev.connections,
+                          {
+                            id: generateConnectionId(),
+                            from: anchor,
+                            to: other,
+                            mindmapRole: "link",
+                          },
+                        ],
+                      }));
+                    }
+                  : undefined,
+                mindmapPairConnectVisible,
               };
             })()}
             onToggleLock={() => {

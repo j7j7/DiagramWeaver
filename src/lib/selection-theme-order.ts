@@ -14,6 +14,7 @@ function estimateNodeDimensions(node: DiagramNodeData): { width: number; height:
     type === 'generic.object.rectangle' ||
     type === 'generic.object.uml-class' ||
     type === 'generic.object.rounded-rectangle' ||
+    type === 'generic.object.mind-map-node' ||
     type === 'generic.object.progress-bar' ||
     type === 'generic.object.text-box-heading' ||
     type === 'generic.object.triangle' ||

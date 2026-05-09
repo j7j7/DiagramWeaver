@@ -150,6 +150,7 @@ function determineObjectType(item: any, _resourceMapping: ResourceMapping | null
       item.type?.includes('triangle') ||
       item.type?.includes('rectangle') ||
       item.type?.includes('rounded-rectangle') ||
+      item.type?.includes('mind-map-node') ||
       item.type?.includes('progress-bar') ||
       item.type?.includes('text-box-heading') ||
       item.type?.includes('star') ||

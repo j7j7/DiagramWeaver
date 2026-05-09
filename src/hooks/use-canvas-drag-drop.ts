@@ -6,7 +6,8 @@ import type { Transform } from "./use-canvas-transform";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
 import type { DiagramData, DiagramNodeData } from "@/lib/types";
 import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
-import { isConnectorLikeSpineNodeType } from "@/lib/utils";
+import { isConnectorLikeSpineNodeType, isMindmapNodeType } from "@/lib/utils";
+import { collectMindmapDragCoMembers } from "@/lib/mindmap-layout";
 import { getConnectorLineVertices } from "@/lib/line-curve-path";
 
 /** Diagram-space radius around drag origin: inside = free movement; crossing = lock to dominant axis */
@@ -273,13 +274,21 @@ export function useCanvasDragDrop({
             itemsToMove.add(id)
           );
         } else {
-          // Check if item is in a group (only if not part of multi-select)
-          const group = getItemGroup(item.id, diagramData);
-          if (group) {
-            const members = getGroupMembers(group.id, diagramData);
-            members.forEach(id => itemsToMove.add(id));
+          const draggedNode = item.id ? nodesById[item.id] : undefined;
+          if (
+            draggedNode &&
+            isMindmapNodeType(draggedNode.type) &&
+            !(selectedItemIds.size > 1 && selectedItemIds.has(item.id))
+          ) {
+            collectMindmapDragCoMembers(item.id!, diagramData.nodes).forEach((id) => itemsToMove.add(id));
           } else {
-            itemsToMove.add(item.id);
+            const group = getItemGroup(item.id, diagramData);
+            if (group) {
+              const members = getGroupMembers(group.id, diagramData);
+              members.forEach((id) => itemsToMove.add(id));
+            } else {
+              itemsToMove.add(item.id);
+            }
           }
         }
       }
@@ -508,8 +517,14 @@ export function useCanvasDragDrop({
             itemsToMoveSet.add(id)
           );
         } else {
-          // Check if item is in a group (only if not part of multi-select)
-          if (group) {
+          const draggedNodeDrop = item.id ? nodesById[item.id] : undefined;
+          if (
+            draggedNodeDrop &&
+            isMindmapNodeType(draggedNodeDrop.type) &&
+            !(selectedItemIds.size > 1 && selectedItemIds.has(item.id))
+          ) {
+            collectMindmapDragCoMembers(item.id!, diagramData.nodes).forEach((id) => itemsToMoveSet.add(id));
+          } else if (group) {
             const members = getGroupMembers(group.id, diagramData);
             members.forEach(id => itemsToMoveSet.add(id));
           } else {
@@ -731,10 +746,19 @@ export function useCanvasDragDrop({
         canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById).forEach((mid) =>
           itemsToMoveSet.add(mid),
         );
-      } else if (group) {
-        getGroupMembers(group.id, diagramData).forEach((mid) => itemsToMoveSet.add(mid));
       } else {
-        itemsToMoveSet.add(id);
+        const draggedNodeMobile = nodesById[id];
+        if (
+          draggedNodeMobile &&
+          isMindmapNodeType(draggedNodeMobile.type) &&
+          !(selectedItemIds.size > 1 && selectedItemIds.has(id))
+        ) {
+          collectMindmapDragCoMembers(id, diagramData.nodes).forEach((mid) => itemsToMoveSet.add(mid));
+        } else if (group) {
+          getGroupMembers(group.id, diagramData).forEach((mid) => itemsToMoveSet.add(mid));
+        } else {
+          itemsToMoveSet.add(id);
+        }
       }
 
       if (itemsToMoveSet.size > 1) {

@@ -1,3 +1,4 @@
+import { snapToGrid } from "@/components/editor/canvas-constants";
 import type { DiagramNodeData, TimelineEntryData } from "@/lib/types";
 import {
   curveBoundsExpanded,
@@ -65,6 +66,7 @@ const CARD_TAIL_GAP = 2;
 
 /**
  * Map pointer position → spine ratio `t`, perpendicular offset, and which side of the spine (above vs below).
+ * Diagram coordinates are snapped to the canvas grid (10px via `snapToGrid` in `canvas-constants`) before projection.
  * `preferSide` stabilizes side choice when the pointer lies near the spine (deadband).
  */
 export function timelineDragSolveFromDiagramPoint(
@@ -77,7 +79,9 @@ export function timelineDragSolveFromDiagramPoint(
   lineSmoothJoints?: boolean,
   preferSide?: TimelineCardSideResolved,
 ): { t: number; cardNormalOffsetPx: number; cardSide: TimelineCardSideResolved } {
-  const tRaw = projectDiagramPointToTimelineStrokeRatio(px, py, verts, linePathStyle, lineSmoothJoints);
+  const gx = snapToGrid(px);
+  const gy = snapToGrid(py);
+  const tRaw = projectDiagramPointToTimelineStrokeRatio(gx, gy, verts, linePathStyle, lineSmoothJoints);
   const t = Math.max(0, Math.min(1, tRaw));
   const entries = node.timelineEntries ?? [];
   const entry = entries[entryIndex];
@@ -92,8 +96,8 @@ export function timelineDragSolveFromDiagramPoint(
   const anchor = pointAtLengthRatio(verts, t, linePathStyle, lineSmoothJoints);
   const { nx, ny } = unitNormalAtRatio(verts, t, linePathStyle, lineSmoothJoints);
 
-  const Wx = px - anchor.x;
-  const Wy = py - anchor.y;
+  const Wx = gx - anchor.x;
+  const Wy = gy - anchor.y;
   /** Positive scalar ⇒ pointer on the "+N" side, which we map to **below** (matches `sideMultiplier('below') === 1`). */
   const sGeom = Wx * nx + Wy * ny;
 

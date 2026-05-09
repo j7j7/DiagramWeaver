@@ -19,10 +19,18 @@ import {
   isConnectorLikeSpineNodeType,
   isConnectorLineNodeType,
   isIconOrEmojiType,
+  isMindmapNodeType,
   isShapeNodeType,
   isTimelineNodeType,
 } from "@/lib/utils";
 import { TIMELINE_NODE_TYPE } from "@/lib/timeline-layout";
+import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
+import {
+  nextMindmapAutoNumericLabel,
+  reorderMindmapSiblingsByAngle,
+  recomputeMindmapMetadata,
+  syncMindmapChildPolarAfterMove,
+} from "@/lib/mindmap-layout";
 import { defaultChartSpecForNodeType } from "@/lib/chart-node";
 // Zones removed - no zone layout
 
@@ -110,6 +118,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.arrowhead' ||
                                 itemType === 'generic.object.chevron' ||
                                 itemType === TIMELINE_NODE_TYPE ||
+                                itemType === MINDMAP_NODE_TYPE ||
                                 itemType === 'generic.object.uml-class' ||
                                 itemType === 'generic.chart.pie' ||
                                 itemType?.startsWith('generic.chart.') ||
@@ -133,6 +142,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.jigsaw') ||
                                 itemType?.endsWith('.arrowhead') ||
                                 itemType?.endsWith('.timeline') ||
+                                itemType?.endsWith('.mind-map-node') ||
                                 itemType?.endsWith('.uml-class'));
       
       // Check if this is a textbox resource
@@ -156,12 +166,17 @@ export function useCanvasOperations({
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
         // Special handling for shape resources - make them resizable
         const newNodeId = generateSequentialId(itemType, prevData);
+        let initialLabel =
+          isShapeResource ? "" : useResourceLabelForNewNode ? itemLabel : "";
+        if (itemType === MINDMAP_NODE_TYPE && !isFromScratchPad) {
+          initialLabel = nextMindmapAutoNumericLabel(prevData.nodes ?? []);
+        }
         let newNode: DiagramNodeData = {
           id: newNodeId,
           type: itemType,
           // Set label based on type - shapes get no default text (never use resource name like "Rectangle", "Circle")
           // Icons/objects: omit resource name + info when defaultTextLabelsEnabled is off (text/textbox still use catalog label)
-          label: isShapeResource ? '' : useResourceLabelForNewNode ? itemLabel : '',
+          label: initialLabel,
           // Don't set info/description for text and textbox resource types, or shapes
           ...(itemType !== 'generic.text.text' &&
             itemType !== 'generic.text.textbox' &&
@@ -175,6 +190,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 80 :
              itemType === 'generic.object.uml-class' ? 120 :
              itemType === 'generic.object.rounded-rectangle' ? 80 :
+             itemType === MINDMAP_NODE_TYPE ? 80 :
              itemType === 'generic.object.progress-bar' ? 80 :
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
@@ -189,6 +205,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 50 :
              itemType === 'generic.object.uml-class' ? 80 :
              itemType === 'generic.object.rounded-rectangle' ? 50 :
+             itemType === MINDMAP_NODE_TYPE ? 50 :
              itemType === 'generic.object.progress-bar' ? 50 :
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
@@ -251,6 +268,13 @@ export function useCanvasOperations({
               { id: `${newNodeId}-te1`, label: 'Step 2' },
               { id: `${newNodeId}-te2`, label: 'Step 3' },
             ],
+          }),
+          ...(itemType === MINDMAP_NODE_TYPE && !isFromScratchPad && {
+            mindmapFillMode: 'theme-hues' as const,
+            mindmapHueStepDeg: 14,
+            mindmapRootId: newNodeId,
+            mindmapTreeDepth: 0,
+            mindmapHueAnchor: true,
           }),
           // Default placeholder text for UML class (only if not from scratchpad)
           ...((itemType === 'generic.object.uml-class' || itemType?.endsWith('.uml-class')) && !isFromScratchPad && {
@@ -315,7 +339,11 @@ export function useCanvasOperations({
         (addedItemForPos as any).y = snapToGrid(position.y);
       }
 
-      return { ...prevData, nodes: newNodes };
+      let outNodes = newNodes;
+      if (addedItemForPos && isMindmapNodeType(addedItemForPos.type)) {
+        outNodes = recomputeMindmapMetadata(newNodes);
+      }
+      return { ...prevData, nodes: outNodes };
     });
   }, [setDiagramData, defaultTextLabelsEnabled, iconBackgroundEnabled]);
 
@@ -534,6 +562,20 @@ export function useCanvasOperations({
             }
           }
         }
+        if (isMindmapNodeType(original.type)) {
+          const mapPid = original.mindmapParentId ? idMap.get(original.mindmapParentId) : undefined;
+          const nextChildren = (original.mindmapChildIds ?? [])
+            .map((cid) => idMap.get(cid))
+            .filter((x): x is string => typeof x === "string");
+          const nextRoot = original.mindmapRootId ? idMap.get(original.mindmapRootId) ?? newId : newId;
+          next = {
+            ...next,
+            mindmapParentId: mapPid,
+            mindmapChildIds: nextChildren.length ? nextChildren : undefined,
+            mindmapRootId: nextRoot,
+            mindmapHueAnchor: false,
+          };
+        }
         additions.push(next);
         idMap.set(item.id, next.id);
         accNodes = [...accNodes, next];
@@ -560,9 +602,14 @@ export function useCanvasOperations({
           });
         }
 
+        const merged = [...(prev.nodes || []), ...additions];
+        const nodes = additions.some((n) => isMindmapNodeType(n.type))
+          ? recomputeMindmapMetadata(merged)
+          : merged;
+
         return {
           ...prev,
-          nodes: [...(prev.nodes || []), ...additions],
+          nodes,
           connections: [...(prev.connections || []), ...extraConnections],
         };
       });
@@ -896,6 +943,18 @@ export function useCanvasOperations({
                }
                return n;
              });
+             const movedMm = currentNodes.find((nn) => nn.id === item.id);
+             if (
+               movedMm &&
+               isMindmapNodeType(movedMm.type) &&
+               movedMm.mindmapParentId
+             ) {
+               currentNodes = currentNodes.map((n) =>
+                 n.id === item.id ? syncMindmapChildPolarAfterMove(n, currentNodes) : n,
+               );
+               currentNodes = reorderMindmapSiblingsByAngle(movedMm.mindmapParentId, currentNodes);
+               currentNodes = recomputeMindmapMetadata(currentNodes);
+             }
            }
          }
        }

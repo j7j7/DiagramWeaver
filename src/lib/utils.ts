@@ -52,6 +52,11 @@ export function isConnectorLikeSpineNodeType(type: string | undefined): boolean 
   return isConnectorLineNodeType(type) || isTimelineNodeType(type)
 }
 
+/** Radial mind-map card node (`generic.object.mind-map-node`). */
+export function isMindmapNodeType(type: string | undefined): boolean {
+  return type === "generic.object.mind-map-node" || !!type?.endsWith(".mind-map-node")
+}
+
 /**
  * Highlight pulse uses animated `filter: drop-shadow` on the shape subtree so the glow follows
  * painted geometry (SVG alpha). `false` for rectangular box-like objects and connector lines.
@@ -62,6 +67,7 @@ export function isHighlightPulseShapeSilhouetteType(type: string | undefined): b
   if (isTimelineNodeType(type)) return false
   if (type === 'generic.object.square' || type.endsWith('.square')) return false
   if (type === 'generic.object.rounded-rectangle' || type.endsWith('.rounded-rectangle')) return false
+  if (type === 'generic.object.mind-map-node' || type.endsWith('.mind-map-node')) return false
   if (type === 'generic.object.text-box-heading' || type.endsWith('.text-box-heading')) return false
   if (type === 'generic.object.uml-class' || type.endsWith('.uml-class')) return false
   if (type === 'generic.object.rectangle' || type.endsWith('.rectangle')) return false
@@ -79,6 +85,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType === 'generic.object.uml-class' ||
          nodeType?.endsWith('.uml-class') ||
          nodeType === 'generic.object.rounded-rectangle' ||
+         nodeType === 'generic.object.mind-map-node' ||
          nodeType === 'generic.object.progress-bar' ||
          nodeType === 'generic.object.text-box-heading' ||
          nodeType === 'generic.object.triangle' ||
@@ -98,6 +105,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType?.endsWith('.point') ||
          nodeType?.endsWith('.rectangle') ||
          nodeType?.endsWith('.rounded-rectangle') ||
+         nodeType?.endsWith('.mind-map-node') ||
          nodeType?.endsWith('.progress-bar') ||
          nodeType?.endsWith('.text-box-heading') ||
          nodeType?.endsWith('.triangle') ||

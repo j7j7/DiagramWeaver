@@ -352,6 +352,18 @@ export const DiagramNodeDataSchema = z.object({
   timelineHueStepDeg: z.number().optional(),
   timelineConnectorWidth: z.number().optional(),
   timelineDotRadius: z.number().optional(),
+  mindmapRootId: z.string().optional(),
+  mindmapParentId: z.string().optional(),
+  mindmapChildIds: z.array(z.string()).optional(),
+  mindmapAngleDeg: z.number().optional(),
+  mindmapRadiusPx: z.number().optional(),
+  mindmapStartAngleDeg: z.number().optional(),
+  mindmapFillMode: z.enum(["solid", "theme-hues"]).optional(),
+  mindmapHueStepDeg: z.number().optional(),
+  mindmapHueLocked: z.boolean().optional(),
+  mindmapTreeDepth: z.number().int().min(0).optional(),
+  mindmapSiblingHueIndex: z.number().int().min(0).optional(),
+  mindmapHueAnchor: z.boolean().optional(),
 });
 
 // Schema for DiagramConnectionData 
@@ -398,6 +410,9 @@ export const DiagramConnectionDataSchema = z.object({
     shapeCount: z.number().min(0).max(2000).optional(),
     spacing: z.number().min(0).max(10).optional(),
   }).optional(),
+
+  mindmapRole: z.enum(["tree", "link"]).optional(),
+  mindmapPrimary: z.boolean().optional(),
 
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
 });

@@ -152,6 +152,9 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   const isLineChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'line-chart';
   const isCloudPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'cloud';
   const isProgressBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'progress-bar';
+  const isTimelinePalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'timeline';
+  const isMindmapPalette =
+    provider === 'generic' && category === 'object' && derivedPaletteSlug === 'mind-map-node';
 
   const dragWrapper = (
     <div
@@ -186,6 +189,10 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.object.cloud" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isProgressBarPalette ? (
                     <ResourceIcon type="generic.object.progress-bar" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
+                  ) : isTimelinePalette ? (
+                    <ResourceIcon type="generic.object.timeline" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
+                  ) : isMindmapPalette ? (
+                    <ResourceIcon type="generic.object.mind-map-node" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : !imageError && iconPath ? (
                     <img
                       src={iconPath}
@@ -225,6 +232,10 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.object.cloud" width={24} height={24} className="shrink-0" />
                   ) : isProgressBarPalette ? (
                     <ResourceIcon type="generic.object.progress-bar" width={24} height={24} className="shrink-0" />
+                  ) : isTimelinePalette ? (
+                    <ResourceIcon type="generic.object.timeline" width={24} height={24} className="shrink-0" />
+                  ) : isMindmapPalette ? (
+                    <ResourceIcon type="generic.object.mind-map-node" width={24} height={24} className="shrink-0" />
                   ) : !imageError && iconPath ? (
                     <img
                       src={iconPath}

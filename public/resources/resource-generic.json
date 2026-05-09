@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 36,
+  "totalResources": 37,
   "categories": {
     "text": {
       "name": "Text",
@@ -50,7 +50,12 @@
         },
         {
           "name": "Timeline",
-          "file": "timeline.png",
+          "file": "timeline.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Mind map node",
+          "file": "mind-map-node.svg",
           "type": "shape"
         },
         {

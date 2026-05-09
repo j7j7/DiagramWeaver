@@ -47,6 +47,7 @@ import { Slider } from '@/components/ui/slider';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { Label } from '@/components/ui/label';
 import { resolveBezierConnectionPaint, type ConnectionEndpointOutline } from '@/lib/connection-line-style';
+import { applyMindmapHueAnchorsAfterVisualChanges } from '@/lib/mindmap-layout';
 
 import { TextStylingPanel } from './text-styling-panel';
 import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
@@ -486,6 +487,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type === 'generic.object.arrowhead' ||
     (selectedItem as any)?.type === 'generic.object.chevron' ||
     (selectedItem as any)?.type === 'generic.object.timeline' ||
+    (selectedItem as any)?.type === 'generic.object.mind-map-node' ||
     isConnectorLineNodeType((selectedItem as any)?.type) ||
     (selectedItem as any)?.type?.startsWith('generic.chart.') ||
     (selectedItem as any)?.type?.endsWith('.square') ||
@@ -506,7 +508,9 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.octagon') ||
     (selectedItem as any)?.type?.endsWith('.jigsaw') ||
     (selectedItem as any)?.type?.endsWith('.arrowhead') ||
-    (selectedItem as any)?.type?.endsWith('.chevron')
+    (selectedItem as any)?.type?.endsWith('.chevron') ||
+    (selectedItem as any)?.type?.endsWith('.timeline') ||
+    (selectedItem as any)?.type?.endsWith('.mind-map-node')
   );
   const isLineNode = isNode && isConnectorLineNodeType((selectedItem as any)?.type);
   const isTimelineNode = isNode && isTimelineNodeType((selectedItem as any)?.type);
@@ -1188,6 +1192,12 @@ export function ContextToolbar({
         });
       }
       
+      updatedDiagramData.nodes = applyMindmapHueAnchorsAfterVisualChanges(
+        diagramData.nodes,
+        updatedDiagramData.nodes,
+        selectedItemIds,
+      );
+
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
@@ -1248,6 +1258,12 @@ export function ContextToolbar({
         });
       }
       
+      updatedDiagramData.nodes = applyMindmapHueAnchorsAfterVisualChanges(
+        diagramData.nodes,
+        updatedDiagramData.nodes,
+        selectedItemIds,
+      );
+
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
@@ -2227,7 +2243,9 @@ export function ContextToolbar({
                   })()}
                   isRoundedRectangle={
                     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
-                    (selectedItem as any)?.type?.endsWith?.('.rounded-rectangle')
+                    (selectedItem as any)?.type === 'generic.object.mind-map-node' ||
+                    (selectedItem as any)?.type?.endsWith?.('.rounded-rectangle') ||
+                    (selectedItem as any)?.type?.endsWith?.('.mind-map-node')
                   }
                   isTextBoxHeading={
                     (selectedItem as any)?.type === 'generic.object.text-box-heading' ||

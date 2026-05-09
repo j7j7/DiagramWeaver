@@ -468,6 +468,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   highlightAnimStaggerCount={highlightAnimStagger.count}
                   transform={transform}
                   canvasRef={canvasRef}
+                  diagramNodesForMindmap={diagramData.nodes}
                 />
               ) : null;
               return nodeEl;
@@ -509,6 +510,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   highlightAnimStaggerCount={highlightAnimStagger.count}
                   transform={transform}
                   canvasRef={canvasRef}
+                  diagramNodesForMindmap={diagramData.nodes}
                 />
                 ) : null;
                 return [

@@ -24,6 +24,20 @@ function isProgressBarPaletteVectorType(type: string | undefined): boolean {
   return t === "generic.object.progress-bar" || t.endsWith(".progress-bar");
 }
 
+/** Catalog raster was a plain line; UI uses spine + stems + alternating card rects. */
+function isTimelinePaletteVectorType(type: string | undefined): boolean {
+  if (!type || typeof type !== "string") return false;
+  const t = type.trim().toLowerCase().replace(/\u2011/g, "-");
+  return t === "generic.object.timeline" || t.endsWith(".timeline");
+}
+
+/** Raster catalog is incidental; centered topic + radial rounded cards matches on-canvas mind-map nodes. */
+function isMindmapPaletteVectorType(type: string | undefined): boolean {
+  if (!type || typeof type !== "string") return false;
+  const t = type.trim().toLowerCase().replace(/\u2011/g, "-");
+  return t === "generic.object.mind-map-node" || t.endsWith(".mind-map-node");
+}
+
 /** Vector thumbnails for chart nodes (palette, sidebar); wedges / bars read as charts at small sizes. */
 function ChartPalettePieGlyph(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -120,6 +134,50 @@ function PaletteProgressBarGlyph(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Spine with milestones and alternating above/below cards — reads as timeline vs connector line. */
+function PaletteTimelineGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        d="M2.5 13.5h19"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+      />
+      <line x1="6" y1="13.5" x2="6" y2="11" stroke="currentColor" strokeWidth={1.05} opacity={0.5} strokeLinecap="round" />
+      <rect x="4.1" y="5.85" width="3.85" height="5" rx={1} fill="currentColor" opacity={0.92} />
+      <circle cx="6" cy="13.5" r={1.2} fill="currentColor" />
+      <line x1="12" y1="13.5" x2="12" y2="16" stroke="currentColor" strokeWidth={1.05} opacity={0.5} strokeLinecap="round" />
+      <rect x="10.075" y="17.15" width="3.85" height="5" rx={1} fill="currentColor" opacity={0.7} />
+      <circle cx="12" cy="13.5" r={1.2} fill="currentColor" />
+      <line x1="18" y1="13.5" x2="18" y2="11" stroke="currentColor" strokeWidth={1.05} opacity={0.5} strokeLinecap="round" />
+      <rect x="16.1" y="5.85" width="3.85" height="5" rx={1} fill="currentColor" opacity={0.46} />
+      <circle cx="18" cy="13.5" r={1.2} fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Central rounded topic + connectors + satellite cards (rounded-rect parity with canvas mind-map nodes). */
+function PaletteMindmapGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <g stroke="currentColor" strokeWidth={1.08} strokeLinecap="round" opacity={0.4}>
+        <line x1="12" y1="12" x2="12" y2="4.35" />
+        <line x1="12" y1="12" x2="17.45" y2="7.7" />
+        <line x1="12" y1="12" x2="17.35" y2="16.15" />
+        <line x1="12" y1="12" x2="6.65" y2="16.15" />
+        <line x1="12" y1="12" x2="6.65" y2="7.7" />
+      </g>
+      <rect x="9.3" y="2.65" width="5.35" height="3.65" rx={1} fill="currentColor" opacity={0.52} />
+      <rect x="15.08" y="5.92" width="4.74" height="3.52" rx={0.9} fill="currentColor" opacity={0.62} />
+      <rect x="15.08" y="14.56" width="4.74" height="3.52" rx={0.9} fill="currentColor" opacity={0.44} />
+      <rect x="4.12" y="14.56" width="4.74" height="3.52" rx={0.9} fill="currentColor" opacity={0.72} />
+      <rect x="4.12" y="5.92" width="4.74" height="3.52" rx={0.9} fill="currentColor" opacity={0.56} />
+      <rect x="8.35" y="8.92" width="7.35" height="6.28" rx={1.35} fill="currentColor" opacity={0.94} />
+    </svg>
+  );
+}
+
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
   imagePath?: string; // If provided, use this exact icon path (legacy support)
@@ -182,6 +240,16 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       return () => ac.abort();
     }
 
+    if (isTimelinePaletteVectorType(type)) {
+      setResourceFile(null);
+      return () => ac.abort();
+    }
+
+    if (isMindmapPaletteVectorType(type)) {
+      setResourceFile(null);
+      return () => ac.abort();
+    }
+
     // Inline SVG glyphs below; generic resource JSON has no `chart` category
     if (isChartNodeType(type)) {
       setResourceFile(null);
@@ -227,7 +295,12 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
           if (categoryData?.resources) {
             if (resource?.file) {
               // Always use vector preview; catalog PNGs are placeholders vs on-canvas / palette glyphs
-              if (resourceName === "text-box-heading" || resourceName === "progress-bar") {
+              if (
+                resourceName === "text-box-heading" ||
+                resourceName === "progress-bar" ||
+                resourceName === "timeline" ||
+                resourceName === "mind-map-node"
+              ) {
                 setResourceFile(null);
               } else {
                 setResourceFile(resource.file);
@@ -260,6 +333,12 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       return null;
     }
     if (isProgressBarPaletteVectorType(type)) {
+      return null;
+    }
+    if (isTimelinePaletteVectorType(type)) {
+      return null;
+    }
+    if (isMindmapPaletteVectorType(type)) {
       return null;
     }
     if (isPaletteVectorCloudType(type)) {
@@ -397,8 +476,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   // Handle shape types (exclude icon/emoji - those use Lucide/emoji above)
   if (!type.startsWith('generic.icon.') && !type.startsWith('generic.emoji.') &&
       (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') ||
-      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.progress-bar') || type?.endsWith('.text-box-heading') || type?.endsWith('.triangle') ||
-      type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.parallelogram') ||
+      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.mind-map-node') || type?.endsWith('.progress-bar') || type?.endsWith('.text-box-heading') ||       type?.endsWith('.triangle') ||
+      type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.timeline') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
       type?.endsWith('.arrowhead') || type?.endsWith('.chevron') || type?.endsWith('.uml-class') || isConnectorLineNodeType(type))) {
@@ -413,6 +492,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
             <line x1="2" y1="12" x2="22" y2="12" />
           </svg>
         );
+      case 'timeline':
+        return <PaletteTimelineGlyph {...props} />;
       case 'circle':
       case 'point':
         return (
@@ -450,6 +531,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
             <rect x="4" y="6" width="16" height="12" rx="2" ry="2" />
           </svg>
         );
+      case 'mind-map-node':
+        return <PaletteMindmapGlyph {...props} />;
       case 'progress-bar':
         return <PaletteProgressBarGlyph {...props} />;
       case 'text-box-heading':

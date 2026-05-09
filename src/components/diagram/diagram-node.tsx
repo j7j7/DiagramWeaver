@@ -13,7 +13,7 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
-import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
+import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
@@ -45,6 +45,7 @@ import {
   TimelineShape,
   LoopShape,
   UmlClassShape,
+  MindmapNodeShape,
   PieChartShape,
   BarChartShape,
   LineChartShape,
@@ -246,6 +247,8 @@ interface DiagramNodeProps {
   onTimelineEntryContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, entryId: string) => void;
   /** Right-click on spine — arc ratio (0–1) used when adding a card */
   onTimelineSpineContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, arcRatio: number) => void;
+  /** Mind-map theme-hues: pass all diagram nodes so anchor cascade can resolve fill/border base. */
+  diagramNodesForMindmap?: DiagramNodeData[];
 }
 
 function isProgressBarType(t: string | undefined): boolean {
@@ -325,6 +328,23 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
           (x as any).endCap,
         ]);
       if (tlSig(p) !== tlSig(n)) return false;
+    }
+    if (isMindmapNodeType(p.type) || isMindmapNodeType(n.type)) {
+      const mmSig = (x: DiagramNodeData) =>
+        JSON.stringify([
+          (x as any).mindmapParentId,
+          (x as any).mindmapChildIds,
+          (x as any).mindmapAngleDeg,
+          (x as any).mindmapRadiusPx,
+          (x as any).mindmapFillMode,
+          (x as any).mindmapHueStepDeg,
+          (x as any).mindmapHueLocked,
+          (x as any).mindmapTreeDepth,
+          (x as any).mindmapSiblingHueIndex,
+          (x as any).mindmapHueAnchor,
+        ]);
+      if (mmSig(p) !== mmSig(n)) return false;
+      if (prev.diagramNodesForMindmap !== next.diagramNodesForMindmap) return false;
     }
   }
   return prev.isSelected === next.isSelected &&
@@ -412,6 +432,7 @@ function DiagramNodeInner({
   onTimelineEntrySelect,
   onTimelineEntryContextMenu,
   onTimelineSpineContextMenu,
+  diagramNodesForMindmap,
 }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
@@ -745,6 +766,11 @@ function DiagramNodeInner({
         ? { ...visualNode, cornerRadius: localCornerRadius }
         : visualNode;
       return <RoundedRectangleShape {...shapeProps} node={roundedNode} />;
+    } else if (nodeType === 'generic.object.mind-map-node' || nodeType?.endsWith('.mind-map-node')) {
+      const mmNode = isDraggingCornerRadius && localCornerRadius !== null
+        ? { ...visualNode, cornerRadius: localCornerRadius }
+        : visualNode;
+      return <MindmapNodeShape {...shapeProps} node={mmNode} allMindmapNodes={diagramNodesForMindmap} />;
     } else if (nodeType === 'generic.object.progress-bar' || nodeType?.endsWith('.progress-bar')) {
       return (
         <ProgressBarShape
@@ -1378,7 +1404,8 @@ function DiagramNodeInner({
     !isLineNode && !isTimelineNode && isHighlightPulseShapeSilhouetteType(node.type);
    const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
-   const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode;
+   const isMindmapCardNode = isMindmapNodeType(node.type);
+   const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode || isMindmapCardNode;
   const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode && !isTimelineNode;
   const isIconNode = !isTextNode && !isTextboxNode && !isShapeNode && !isLineNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);

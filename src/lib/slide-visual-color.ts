@@ -58,6 +58,11 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
           x.progressFillGradientAngle,
         ].join('|')
       : '';
+  const mindmapSig =
+    typeof node.type === 'string' &&
+    (node.type === 'generic.object.mind-map-node' || node.type.endsWith('.mind-map-node'))
+      ? [x.mindmapFillMode, x.mindmapTreeDepth, x.mindmapSiblingHueIndex, x.mindmapHueAnchor, x.mindmapHueLocked, x.mindmapHueStepDeg].join('|')
+      : '';
   return [
     visualColorSignature(node),
     x.borderWidth,
@@ -68,6 +73,7 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
     x.noIconBackground,
     x.highlightAnimGlowIntensity,
     progressSig,
+    mindmapSig,
   ].join('\0');
 }
 

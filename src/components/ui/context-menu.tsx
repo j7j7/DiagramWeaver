@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isShapeNodeType, isTimelineNodeType } from '@/lib/utils';
+import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
 import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical } from 'lucide-react';
 
@@ -84,6 +84,19 @@ interface ContextMenuProps {
   onTimelineToggleAlternateSides?: () => void;
   /** Timeline: anchor cards from spine start through end with even spacing (`manual` + `t`). */
   onTimelineSpaceEndpoints?: () => void;
+  /** Mind map: add a child node and run radial layout. */
+  onMindmapAddChild?: () => void;
+  /** Mind map: remove tree link to parent (keeps subtree). */
+  onMindmapDetachFromParent?: () => void;
+  mindmapCanDetach?: boolean;
+  onMindmapResetRadialLayout?: () => void;
+  mindmapCanResetRadial?: boolean;
+  mindmapThemeHues?: boolean;
+  onMindmapToggleThemeHues?: () => void;
+  /** Two mind-map nodes selected; menu node is tree parent of the other. */
+  onMindmapConnectPairTree?: () => void;
+  onMindmapConnectPairLink?: () => void;
+  mindmapPairConnectVisible?: boolean;
 }
 
 // Connector-only lines hide root label/text tooling; timeline keeps Text actions like shapes.
@@ -165,6 +178,16 @@ export function ContextMenu({
   timelineAlternateSides = false,
   onTimelineToggleAlternateSides,
   onTimelineSpaceEndpoints,
+  onMindmapAddChild,
+  onMindmapDetachFromParent,
+  mindmapCanDetach = false,
+  onMindmapResetRadialLayout,
+  mindmapCanResetRadial = false,
+  mindmapThemeHues = false,
+  onMindmapToggleThemeHues,
+  onMindmapConnectPairTree,
+  onMindmapConnectPairLink,
+  mindmapPairConnectVisible = false,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -478,6 +501,90 @@ export function ContextMenu({
           />
           <FlipVertical className="w-4 h-4 shrink-0" />
           Alternate cards above/below
+        </label>
+      )}
+
+      {mindmapPairConnectVisible && onMindmapConnectPairTree && onMindmapConnectPairLink && (
+        <>
+          <button
+            type="button"
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onClick={() => {
+              onMindmapConnectPairTree();
+              onClose();
+            }}
+          >
+            <Network className="w-4 h-4" />
+            Mind map: tree (this → other)
+          </button>
+          <button
+            type="button"
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onClick={() => {
+              onMindmapConnectPairLink();
+              onClose();
+            }}
+          >
+            <Link className="w-4 h-4" />
+            Mind map: link only
+          </button>
+        </>
+      )}
+
+      {isMindmapNodeType(nodeType) && onMindmapAddChild && (
+        <button
+          type="button"
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onMindmapAddChild();
+            onClose();
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          Add mind map node
+        </button>
+      )}
+
+      {isMindmapNodeType(nodeType) && mindmapCanResetRadial && onMindmapResetRadialLayout && (
+        <button
+          type="button"
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onMindmapResetRadialLayout();
+            onClose();
+          }}
+        >
+          <RotateCw className="w-4 h-4" />
+          Reset radial layout
+        </button>
+      )}
+
+      {isMindmapNodeType(nodeType) && mindmapCanDetach && onMindmapDetachFromParent && (
+        <button
+          type="button"
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onMindmapDetachFromParent();
+            onClose();
+          }}
+        >
+          <Link2Off className="w-4 h-4" />
+          Detach from parent
+        </button>
+      )}
+
+      {isMindmapNodeType(nodeType) && onMindmapToggleThemeHues && (
+        <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground">
+          <input
+            type="checkbox"
+            className="rounded border-border"
+            checked={mindmapThemeHues}
+            onChange={() => {
+              onMindmapToggleThemeHues();
+            }}
+          />
+          <Activity className="w-4 h-4 shrink-0" />
+          Branch theme hues
         </label>
       )}
 

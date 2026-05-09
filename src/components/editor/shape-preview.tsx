@@ -1676,11 +1676,46 @@ export function ShapePreview({
       );
     }
 
-    // Rounded Rectangle
     if (type === 'generic.object.rounded-rectangle' || type?.endsWith('.rounded-rectangle')) {
       const coords = getGradientCoordinates(gradientAngle);
       const cr = Math.max(0, Math.min(1, cornerRadius));
       const radius = cr * Math.min(displayWidth, displayHeight) * 0.5; // 0=straight, 1=full pill
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                  <stop offset="0%" stopColor={bgColors[0]} />
+                  <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
+                  <stop offset="0%" stopColor={borderColorArray[0]} />
+                  <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <rect
+            x={strokeWidth / 2}
+            y={strokeWidth / 2}
+            width={Math.max(0, displayWidth - strokeWidth)}
+            height={Math.max(0, displayHeight - strokeWidth)}
+            rx={radius}
+            ry={radius}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+          />
+        </svg>
+      );
+    }
+
+    if (type === 'generic.object.mind-map-node' || type?.endsWith('.mind-map-node')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      const cr = Math.max(0, Math.min(1, cornerRadius));
+      const radius = cr * Math.min(displayWidth, displayHeight) * 0.5;
       return (
         <svg {...commonSvgProps}>
           <defs>

@@ -160,6 +160,7 @@ Common optional fields (see Zod **`DiagramNodeDataSchema`** for the full list):
 - **Line node** (`generic.object.line` style usage): `startPos`, `endPos`, `startCap`, `endCap`, `lineThickness`, `lineType`, `linePathStyle` (`straight` \| `curved`), `lineControlPoints`, `lineSmoothJoints`, `lineTextVerticalPosition`, `lineColorStyle`, `lineColors`, `lineGradientAngle`
 - **Charts:** `chart` — discriminated by **`kind`**: `pie` \| `bar` \| `line` (see schema for `series`, axes, labels, etc.)
 - **UML:** `umlClass`, `umlClassStyle`
+- **Mind map** (`generic.object.mind-map-node`): `mindmapParentId`, `mindmapChildIds`, `mindmapAngleDeg`, `mindmapRadiusPx`, `mindmapStartAngleDeg`, `mindmapFillMode` (`solid` \| `theme-hues`), `mindmapHueStepDeg`, `mindmapHueLocked`, `mindmapHueAnchor`, `mindmapRootId`, `mindmapTreeDepth`, `mindmapSiblingHueIndex`
 - **Navigation:** `subDiagramId` (key into **`subDiagrams`**)
 - **Other:** `metaData` (string map), `noIconBackground`, `nodeSize` (`normal` \| `half` \| `quarter`), `labelWidth`, `width`, `height`, `sizeMode` (`auto` \| `custom`), `rotation`, `metaData`
 
@@ -199,7 +200,7 @@ Markers & labels: `fromArrow`, `toArrow`, `arrow` (legacy), `text`, `textPositio
 
 - `enabled`, `shape` (`dot` \| `square` \| `arrow` \| `triangle` \| `hexagon`), `speed`, `size`, `color`, `autoCount`, `shapeCount`, `spacing`
 
-**Other:** `metaData`
+**Other:** `metaData`; **mind map:** `mindmapRole` (`tree` \| `link`), `mindmapPrimary`
 
 ---
 

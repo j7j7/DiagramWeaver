@@ -19,6 +19,7 @@ import { DiagramDataSchema } from '@/lib/schemas';
 import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from '@/lib/custom-icon-utils';
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
+import { applyMindmapHueAnchorsAfterVisualChanges } from "@/lib/mindmap-layout";
 import { themeManager, DIAGRAM_THEME_HUE_STEP_DEG, DEFAULT_THEMES } from '@/lib/theme-manager';
 import { orderSelectedIdsForThemeHue } from '@/lib/selection-theme-order';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
@@ -83,7 +84,7 @@ import {
   syncClosedConnectorLineBorderWidth,
   syncClosedConnectorVisualBorderFromLineStyling,
 } from '@/lib/line-styling';
-import { isConnectorLikeSpineNodeType, isTimelineNodeType } from '@/lib/utils';
+import { isConnectorLikeSpineNodeType, isMindmapNodeType, isTimelineNodeType } from '@/lib/utils';
 
 import type { SelectedItem, PaletteResource, PaletteSelection } from '@/components/editor/diagram-editor-types';
 export type { SelectedItem } from '@/components/editor/diagram-editor-types';
@@ -1271,9 +1272,17 @@ export default function DiagramEditor() {
                       }
                   }
               });
+              let nodes = prevData.nodes.map(n => n.id === updatedItem.id ? mergedNode : n);
+              if (isMindmapNodeType(mergedNode.type) && mergedNode.mindmapFillMode === 'theme-hues') {
+                nodes = applyMindmapHueAnchorsAfterVisualChanges(
+                  prevData.nodes,
+                  nodes,
+                  new Set([updatedItem.id]),
+                );
+              }
               return {
                   ...prevData,
-                  nodes: prevData.nodes.map(n => n.id === updatedItem.id ? mergedNode : n)
+                  nodes,
               };
             }
 
@@ -3227,7 +3236,12 @@ export default function DiagramEditor() {
           }
           return connection;
         });
-        return { ...prevData, nodes: updatedNodes, connections: updatedConnections };
+        const nextNodes = applyMindmapHueAnchorsAfterVisualChanges(
+          prevData.nodes,
+          updatedNodes,
+          selectedItemIds,
+        );
+        return { ...prevData, nodes: nextNodes, connections: updatedConnections };
       });
       const count = selectedItemIds.size;
       toast({

@@ -3,6 +3,33 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-09 – Timeline palette icon: spine + alternating cards (`PaletteTimelineGlyph`)
+**`ResourceIcon`** uses **`generic.object.timeline`** vector preview (spine + three stems/cards/dots); catalog **`timeline.svg`** under **`generic/object/`**, **`resource-generic.json`** updated; **`DraggableResourceItem`** routes palette tile like **`progress-bar`**. Removed flat **`timeline.png`**. Patch bumped.
+
+### 2026-05-09 – Mind map palette icon: radial hub + satellite cards (`PaletteMindmapGlyph`)
+**`generic.object.mind-map-node`** uses **`PaletteMindmapGlyph`** (center rounded topic, spokes, five perimeter rounded rects). **`isMindmapPaletteVectorType`** skips catalog raster thumbnail; **`resource-generic.json`** → **`mind-map-node.svg`**; **`DraggableResourceItem`** uses **`ResourceIcon`** for **`mind-map-node`**. **`mind-map-node.png`** removed. Patch bumped.
+
+### 2026-05-09 – Timeline card drag: snap to canvas grid
+**`timelineDragSolveFromDiagramPoint`** snaps pointer diagram **`x`/`y`** with **`snapToGrid`** before **`projectDiagramPointToTimelineStrokeRatio`** and perpendicular offset math, matching drops / waypoints / align behavior. Patch bumped.
+
+### 2026-05-09 – Mind map theme-hues: root vs branch color cascade
+**`mindmapHueAnchor`** marks where the user last set fill/border for **`theme-hues`**. **`resolveMindmapDisplayColors(node, allNodes)`** uses the nearest anchor up the tree (else tree root) as the chromatic base, then applies depth/sibling hue steps only for descendants. Coloring the **root** clears other anchors in the tree; a **branch** sets a local anchor and clears anchors under it. **`MindmapNodeShape`** / **`DiagramNode`** take **`diagramNodesForMindmap`**; palette roots default **`mindmapHueAnchor: true`**, duplicates **`false`**. Item update / multi visual styling / multi theme apply run **`applyMindmapHueAnchorsAfterVisualChanges`**. Patch bumped.
+
+### 2026-05-09 – Mind map theme-hues: per-sibling auto hue
+**`recomputeMindmapMetadata`** sets **`mindmapSiblingHueIndex`** (order in parent’s valid tree children). **`resolveMindmapDisplayColors`** shifts hue by **`(mindmapTreeDepth + mindmapSiblingHueIndex) × step`** so new children differ visually (not identical depth-1 shifts). Types/schema/slide memo/diagram memo updated; **palette add**, **duplicate**, **post-reorder move** run recompute where needed. Patch bumped.
+
+### 2026-05-09 – Mind map drag: move root with leaf children only
+Dragging a mind-map node uses **`collectMindmapDragCoMembers`**: self + direct tree children that have **no** mind-map children (leaves). Branch subtrees stay put (e.g. drag **1** → **2,3,4,6** move; **5** and **7,8** stay). Dragging **5** still moves **7,8** with it. Hover/drop/touch use same set. **`mindmapValidDirectChildIds`** shared with radial layout. Patch bumped.
+
+### 2026-05-09 – Mind map default labels: sequential `1`, `2`, …
+New mind-map nodes from the palette or **Add child** get **`nextMindmapAutoNumericLabel`** (`mindmap-layout.ts`); counting uses existing mind-map nodes whose label is all digits. Alt+duplicate keeps copied text. Patch bumped.
+
+### 2026-05-09 – Mind map subtree drop: persist multi-node move
+**`use-canvas-drag-drop`** hover expanded mind-map drags to **`collectMindmapSubtree`**, but **drop** only used group membership or a single id → **`moveItem`** ran for the grabbed node only; children reverted when overlay cleared. Drop and **mobile** move now mirror hover (mind-map branch before group). Patch bumped.
+
+### 2026-05-09 – Mind map node (`generic.object.mind-map-node`) shipped
+Radial child layout (`mindmap-layout.ts`), subtree canvas drag (`use-canvas-drag-drop`), context menu (add child, detach, reset layout, pair tree/link, branch hues), `DiagramConnectionData.mindmapRole` (`tree`|`link`). Shape reuses rounded-rect + `MindmapNodeShape` hue resolver. Palette: **`resource-generic.json`** + **`mind-map-node.svg`** (**`PaletteMindmapGlyph`** in **`resource-icon`**). See **`mind-map-implementation.md`**.
+
 ### 2026-05-08 – Fit to view / content bounds: timeline uses outer spine+card bounds
 **`handleFitToView`** (**`use-canvas-transform`**) and **`computeContentBounds`** (**`presentation-viewport-fit`**) previously boxed each node as **`(x,y) + measureNodeDims`**. **`TimelineShape`** paints inside an inner wrapper offset by **`svgMinX`/`svgMinY`**, so cards and spine often sit outside that rectangle — fit was under-zoomed and off-center. Shared **`nodeBoundingBoxForFit`** in **`canvas-constants`** delegates timelines to **`computeTimelineOuterBounds`**; other nodes unchanged. Patch bumped.
 

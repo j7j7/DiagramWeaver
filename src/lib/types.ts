@@ -387,6 +387,30 @@ export interface DiagramNodeData {
   timelineHueStepDeg?: number;
   timelineConnectorWidth?: number;
   timelineDotRadius?: number;
+
+  /** `generic.object.mind-map-node`: radial mind-map tree (see `mindmap-layout.ts`). */
+  mindmapRootId?: string;
+  /** Tree parent node id — sync with a primary `mindmapRole: 'tree'` connection from parent → this node. */
+  mindmapParentId?: string;
+  /** Ordered child ids for radial layout / sibling order. */
+  mindmapChildIds?: string[];
+  /** Polar angle in degrees from parent center to this node (0° = +X, 90° = downward on canvas). */
+  mindmapAngleDeg?: number;
+  /** Orbit radius in px from parent center to this node’s center. */
+  mindmapRadiusPx?: number;
+  /** Parent-only: first child angle in degrees (default 90). */
+  mindmapStartAngleDeg?: number;
+  /** `theme-hues`: shift fill/border hue by (`mindmapTreeDepth` + `mindmapSiblingHueIndex`) × step. */
+  mindmapFillMode?: 'solid' | 'theme-hues';
+  mindmapHueStepDeg?: number;
+  /** When true, skip automatic hue shift for this node. */
+  mindmapHueLocked?: boolean;
+  /** Depth in tree from root — computed when structure changes. */
+  mindmapTreeDepth?: number;
+  /** 0-based index among direct siblings (parent `mindmapChildIds` order) for theme-hues variance. */
+  mindmapSiblingHueIndex?: number;
+  /** When true, this node's stored fill/border colors are the base for theme-hues for itself and descendants until another anchor. */
+  mindmapHueAnchor?: boolean;
 }
 
 /** Timeline card row — optional visual overrides inherit from the parent timeline node when omitted. */
@@ -499,6 +523,11 @@ export interface DiagramConnectionData {
 
   /** Optional metadata as key/value pairs */
   metaData?: Record<string, string>;
+
+  /** Mind-map: `tree` = hierarchy + layout; `link` = visual only (no parent assignment). */
+  mindmapRole?: 'tree' | 'link';
+  /** When multiple edges target a node, marks which `tree` edge sets `mindmapParentId`. */
+  mindmapPrimary?: boolean;
 
   /** Per-connection animation settings */
   animation?: {

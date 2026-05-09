@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path
+    d="M2.5 13.5h19"
+    stroke="currentColor"
+    stroke-width="1.5"
+    stroke-linecap="round"
+  />
+  <line x1="6" y1="13.5" x2="6" y2="11" stroke="currentColor" stroke-width="1.05" opacity="0.5" stroke-linecap="round" />
+  <rect x="4.1" y="5.85" width="3.85" height="5" rx="1" fill="currentColor" opacity="0.92" />
+  <circle cx="6" cy="13.5" r="1.2" fill="currentColor" />
+  <line x1="12" y1="13.5" x2="12" y2="16" stroke="currentColor" stroke-width="1.05" opacity="0.5" stroke-linecap="round" />
+  <rect x="10.075" y="17.15" width="3.85" height="5" rx="1" fill="currentColor" opacity="0.7" />
+  <circle cx="12" cy="13.5" r="1.2" fill="currentColor" />
+  <line x1="18" y1="13.5" x2="18" y2="11" stroke="currentColor" stroke-width="1.05" opacity="0.5" stroke-linecap="round" />
+  <rect x="16.1" y="5.85" width="3.85" height="5" rx="1" fill="currentColor" opacity="0.46" />
+  <circle cx="18" cy="13.5" r="1.2" fill="currentColor" />
+</svg>
