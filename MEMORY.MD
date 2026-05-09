@@ -3,6 +3,9 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-09 – Change shape: resize only on point ↔ non-point swap
+**`swapDiagramNodeObjectKind`** (**`shape-type-swap`**) sets **`width`** / **`height`** / **`sizeMode: 'custom'`** when swapping **into** or **out of** **`point`**, using the same grid-snapped defaults as palette **`addNode`** (e.g. point **20×20**, square-like **60×60**, rectangle **80×50**). Other swaps (e.g. square ↔ circle) keep the node’s current size. Patch bumped.
+
 ### 2026-05-09 – Timeline & mind-map card hull (`compositeBodyShape`)
 **`DiagramNodeData.compositeBodyShape`** (**`DiagramCompositeBodyShapeKind`**, mirrored in **`DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS`**) sets the painted card body while **`type`** stays **`generic.object.timeline`** or **`generic.object.mind-map-node`**. Context menu **Change shape** routes through **`swapDiagramNodeObjectKind`** early return (**`shape-type-swap`**); **`shapeSwapMenuOptions(type, compositeBodyShape)`**. Timeline cards render via **`CompositeCardSilhouette`**; mind-map uses existing **`MindmapNodeShape`** switch to **`CircleShape`** / **`TriangleShape`** / etc. Full palette→closed-object swap still clears composite/timeline/mind-map fields when leaving those types.
 

@@ -1,3 +1,4 @@
+import { snapDimensionToGrid } from "@/components/editor/canvas-constants";
 import { isChartNodeType } from "@/lib/chart-node";
 import type { DiagramCompositeBodyShapeKind, DiagramNodeData } from "@/lib/types";
 import { DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS } from "@/lib/types";
@@ -75,6 +76,47 @@ export function buildNodeTypeForObjectKind(currentType: string, newKind: string)
   const m = currentType.match(OBJECT_TYPE_RE);
   if (m) return `${m[1]}${newKind}`;
   return `generic.object.${newKind}`;
+}
+
+/** Mirrors palette `addNode` width/height for closed shapes in `canvas-operations`. */
+function defaultDimensionsForSwappableKind(kind: SwappableObjectKind): { width: number; height: number } {
+  let wRaw: number;
+  let hRaw: number;
+  switch (kind) {
+    case "point":
+      wRaw = 20;
+      hRaw = 20;
+      break;
+    case "rectangle":
+    case "rounded-rectangle":
+      wRaw = 80;
+      hRaw = 50;
+      break;
+    case "uml-class":
+      wRaw = 120;
+      hRaw = 80;
+      break;
+    case "progress-bar":
+      wRaw = 80;
+      hRaw = 50;
+      break;
+    case "text-box-heading":
+      wRaw = 180;
+      hRaw = 90;
+      break;
+    case "cloud":
+      wRaw = 80;
+      hRaw = 50;
+      break;
+    default:
+      wRaw = 60;
+      hRaw = 60;
+      break;
+  }
+  return {
+    width: snapDimensionToGrid(wRaw),
+    height: snapDimensionToGrid(hRaw),
+  };
 }
 
 function stripConnectorAndTimelineFields(n: DiagramNodeData): void {
@@ -210,6 +252,20 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
       ? { ...node.umlClass, name: node.umlClass.name?.trim() || name }
       : { name, attributes: [], methods: [] };
     if (node.umlClassStyle) next.umlClassStyle = { ...node.umlClassStyle };
+  }
+
+  const oldKindSuffix = objectKindSuffixFromNodeType(node.type);
+  const oldIsPoint = oldKindSuffix === "point";
+  const newIsPoint = newKind === "point";
+  if (
+    oldKindSuffix &&
+    SWAPPABLE_KIND_SET.has(oldKindSuffix) &&
+    oldIsPoint !== newIsPoint
+  ) {
+    const dims = defaultDimensionsForSwappableKind(newKind);
+    next.width = dims.width;
+    next.height = dims.height;
+    next.sizeMode = "custom";
   }
 
   return next;
