@@ -1,7 +1,8 @@
 "use client";
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useLayoutEffect, useRef } from 'react';
 import { X, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TUTORIAL_TAB_NAME } from '@/hooks/use-diagram-tabs';
 
 export interface TabData {
   id: string;
@@ -17,11 +18,26 @@ interface TabBarProps {
   onTabSelect: (tabId: string) => void;
   onTabClose: (tabId: string) => void;
   onTabReorder?: (orderedTabIds: string[]) => void;
+  /** Double-click tab label to rename; saved diagram uses this tab name as the suggested filename stem. */
+  onTabRename?: (tabId: string, name: string) => void;
 }
 
-export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose, onTabReorder }: TabBarProps) {
+export function TabBar({
+  tabs,
+  activeTabId,
+  onTabSelect,
+  onTabClose,
+  onTabReorder,
+  onTabRename,
+}: TabBarProps) {
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const skipRenameBlurCommitRef = useRef(false);
+  /** Enter commits then blurs — ignore the duplicate blur commit. */
+  const ignoreNextRenameBlurRef = useRef(false);
 
   const handleClose = (e: React.MouseEvent, tabId: string) => {
     e.stopPropagation();
@@ -75,14 +91,38 @@ export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose, onTabReorde
   }, []);
 
   const canReorder = Boolean(onTabReorder && tabs.length > 1);
+  const commitRename = useCallback(
+    (tabId: string, originalName: string, draft: string) => {
+      if (!onTabRename) return;
+      const trimmed = draft.trim();
+      const next = trimmed || originalName;
+      if (next !== originalName) onTabRename(tabId, next);
+      setEditingTabId(null);
+      setEditDraft('');
+    },
+    [onTabRename],
+  );
+
+  const cancelRename = useCallback(() => {
+    setEditingTabId(null);
+    setEditDraft('');
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!editingTabId) return;
+    const el = renameInputRef.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+  }, [editingTabId]);
 
   return (
     <div className="flex items-center gap-1 border-b bg-card px-2 overflow-x-auto">
       {tabs.map((tab) => (
         <div
           key={tab.id}
-          draggable={canReorder}
-          onDragStart={(e) => canReorder && handleDragStart(e, tab.id)}
+          draggable={canReorder && editingTabId === null}
+          onDragStart={(e) => canReorder && editingTabId === null && handleDragStart(e, tab.id)}
           onDragOver={(e) => canReorder && handleDragOver(e, tab.id)}
           onDrop={(e) => canReorder && handleDrop(e, tab.id)}
           onDragEnd={handleDragEnd}
@@ -100,10 +140,60 @@ export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose, onTabReorde
           {canReorder && (
             <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 cursor-grab active:cursor-grabbing" />
           )}
-          <span className={cn("text-sm whitespace-nowrap", tab.isModified && "font-semibold")}>
-            {tab.isModified && <span className="mr-1 text-xs">●</span>}
-            {tab.name}
-          </span>
+          {editingTabId === tab.id && onTabRename ? (
+            <input
+              ref={renameInputRef}
+              type="text"
+              value={editDraft}
+              onChange={(e) => setEditDraft(e.target.value)}
+              className={cn(
+                'text-sm min-w-[6rem] max-w-[14rem] rounded border border-primary bg-background px-1 py-0',
+                tab.isModified && 'font-semibold',
+              )}
+              aria-label={`Rename ${tab.name}`}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={() => {
+                if (skipRenameBlurCommitRef.current) {
+                  skipRenameBlurCommitRef.current = false;
+                  return;
+                }
+                if (ignoreNextRenameBlurRef.current) {
+                  ignoreNextRenameBlurRef.current = false;
+                  return;
+                }
+                commitRename(tab.id, tab.name, renameInputRef.current?.value ?? editDraft);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  ignoreNextRenameBlurRef.current = true;
+                  commitRename(tab.id, tab.name, renameInputRef.current?.value ?? editDraft);
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  skipRenameBlurCommitRef.current = true;
+                  cancelRename();
+                }
+              }}
+            />
+          ) : (
+            <span
+              className={cn(
+                'text-sm whitespace-nowrap',
+                tab.isModified && 'font-semibold',
+                onTabRename && !tab.isTutorialTab && tab.name !== TUTORIAL_TAB_NAME && 'cursor-text',
+              )}
+              onDoubleClick={(e) => {
+                if (!onTabRename || tab.isTutorialTab || tab.name === TUTORIAL_TAB_NAME) return;
+                e.preventDefault();
+                e.stopPropagation();
+                setEditingTabId(tab.id);
+                setEditDraft(tab.name);
+              }}
+            >
+              {tab.isModified && <span className="mr-1 text-xs">●</span>}
+              {tab.name}
+            </span>
+          )}
           <button
             onClick={(e) => handleClose(e, tab.id)}
             className={cn(

@@ -3,6 +3,9 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-11 – Tab rename: double-click label
+**`TabBar`**: double-click a tab title (non-tutorial) to edit inline; **Enter**/blur commits via **`updateTab(..., { name })`**. **`createDiagramSaveHandler`** already derives **`suggestedName`** from **`targetTab.name`**, so Save uses that stem. Wired through **`DiagramEditorInner`** (**`onTabRename`**). Patch bumped.
+
 ### 2026-05-09 – Timeline slide diff: exit ghosts + enter only new cards
 When **`timelinePresentationSignature`** changes between slides but the timeline **node id** stays, **`computeTimelineCardTransitionStylePatch`** diffs **`timelineEntries`**: **removed** ids render as **`timelineRemovedCards`** (layout from prev slide, shifted by node **x/y** delta) with **`timelineRemoveStagger`**; **new** ids get **`timelineSlideStagger`** + **`timelineEnterStaggerOrder`**; **stable** cards skip enter pop. Tail = **max(enter, exit)** stagger. **`timelineSlideRemovedCardPayloads`** (**`timeline-layout.ts`**). Whole-timeline appear/disappear unchanged. Patch bumped.
 

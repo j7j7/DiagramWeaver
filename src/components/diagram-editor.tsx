@@ -2213,6 +2213,18 @@ export default function DiagramEditor() {
     toast({ title: 'Connection Disconnected', description: 'Connection has been removed.' });
   }, [diagramData, selectedItem, setDiagramData, setSelectedItem]);
 
+  const handleTabRename = React.useCallback(
+    (tabId: string, name: string) => {
+      const trimmed = name.trim();
+      const tab = getTab(tabId);
+      if (!tab) return;
+      const next = trimmed || tab.name;
+      if (next === tab.name) return;
+      updateTab(tabId, { name: next });
+    },
+    [getTab, updateTab],
+  );
+
   const handleSave = createDiagramSaveHandler({
     activeTabId,
     activeTab,
@@ -4925,6 +4937,7 @@ export default function DiagramEditor() {
         isLoaded={isLoaded}
         switchTab={switchTab}
         handleTabClose={handleTabClose}
+        onTabRename={handleTabRename}
         reorderTabs={reorderTabs}
         fileInputRef={fileInputRef}
         handleFileChange={handleFileChange}

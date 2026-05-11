@@ -256,6 +256,7 @@ export function DiagramEditorInner({
   isLoaded,
   switchTab,
   handleTabClose,
+  onTabRename,
   reorderTabs,
   fileInputRef,
   handleFileChange,
@@ -605,6 +606,7 @@ export function DiagramEditorInner({
                       activeTabId={activeTabId}
                       onTabSelect={switchTab}
                       onTabClose={handleTabClose}
+                      onTabRename={onTabRename}
                       onTabReorder={reorderTabs}
                     />
                   )
