@@ -16,6 +16,7 @@ function estimateNodeDimensions(node: DiagramNodeData): { width: number; height:
     type === 'generic.object.rounded-rectangle' ||
     type === 'generic.object.mind-map-node' ||
     type === 'generic.object.progress-bar' ||
+    type === 'generic.object.timeline-bar' ||
     type === 'generic.object.text-box-heading' ||
     type === 'generic.object.triangle' ||
     type === 'generic.object.star' ||

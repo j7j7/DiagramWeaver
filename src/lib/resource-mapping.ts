@@ -152,6 +152,7 @@ function determineObjectType(item: any, _resourceMapping: ResourceMapping | null
       item.type?.includes('rounded-rectangle') ||
       item.type?.includes('mind-map-node') ||
       item.type?.includes('progress-bar') ||
+      item.type?.includes('timeline-bar') ||
       item.type?.includes('text-box-heading') ||
       item.type?.includes('star') ||
       item.type?.includes('cloud') ||

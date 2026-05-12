@@ -473,6 +473,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type === 'generic.object.uml-class' ||
     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
     (selectedItem as any)?.type === 'generic.object.progress-bar' ||
+    (selectedItem as any)?.type === 'generic.object.timeline-bar' ||
     (selectedItem as any)?.type === 'generic.object.text-box-heading' ||
     (selectedItem as any)?.type === 'generic.object.triangle' ||
     (selectedItem as any)?.type === 'generic.object.star' ||
@@ -496,6 +497,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.rectangle') ||
     (selectedItem as any)?.type?.endsWith('.rounded-rectangle') ||
     (selectedItem as any)?.type?.endsWith('.progress-bar') ||
+    (selectedItem as any)?.type?.endsWith('.timeline-bar') ||
     (selectedItem as any)?.type?.endsWith('.text-box-heading') ||
     (selectedItem as any)?.type?.endsWith('.triangle') ||
     (selectedItem as any)?.type?.endsWith('.star') ||
@@ -1177,7 +1179,12 @@ export function ContextToolbar({
       // Update nodes
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
         if (selectedItemIds.has(node.id)) {
-          return syncClosedConnectorLineBorderWidth({ ...node, ...styling } as DiagramNodeData);
+          const merged = { ...node } as Record<string, unknown>;
+          for (const [k, v] of Object.entries(styling)) {
+            if (v === null) delete merged[k];
+            else if (v !== undefined) merged[k] = v;
+          }
+          return syncClosedConnectorLineBorderWidth(merged as unknown as DiagramNodeData);
         }
         return node;
       });
@@ -1185,10 +1192,13 @@ export function ContextToolbar({
       // Update zones
       if (updatedDiagramData.zones) {
         updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
-          if (selectedItemIds.has(zone.id)) {
-            return { ...zone, ...styling };
+          if (!selectedItemIds.has(zone.id)) return zone;
+          const merged = { ...zone } as Record<string, unknown>;
+          for (const [k, v] of Object.entries(styling)) {
+            if (v === null) delete merged[k];
+            else if (v !== undefined) merged[k] = v;
           }
-          return zone;
+          return merged as unknown as typeof zone;
         });
       }
       
@@ -1201,12 +1211,12 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
-      onItemUpdate?.(
-        syncClosedConnectorLineBorderWidth({
-          ...selectedItem,
-          ...styling,
-        } as DiagramNodeData) as SelectedItem
-      );
+      const merged = { ...selectedItem } as Record<string, unknown>;
+      for (const [k, v] of Object.entries(styling)) {
+        if (v === null) delete merged[k];
+        else if (v !== undefined) merged[k] = v;
+      }
+      onItemUpdate?.(syncClosedConnectorLineBorderWidth(merged as unknown as DiagramNodeData) as SelectedItem);
     }
   };
 
@@ -2254,6 +2264,10 @@ export function ContextToolbar({
                   isProgressBar={
                     (selectedItem as any)?.type === 'generic.object.progress-bar' ||
                     (selectedItem as any)?.type?.endsWith?.('.progress-bar')
+                  }
+                  isTimelineBar={
+                    (selectedItem as any)?.type === 'generic.object.timeline-bar' ||
+                    (selectedItem as any)?.type?.endsWith?.('.timeline-bar')
                   }
                   noIconBackground={(() => {
                     if (!selectedItem || !diagramData) return false;

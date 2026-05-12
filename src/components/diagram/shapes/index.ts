@@ -3,6 +3,7 @@ export { RectangleShape } from './rectangle';
 export { RoundedRectangleShape } from './rounded-rectangle';
 export { MindmapNodeShape } from './mindmap-node';
 export { ProgressBarShape } from './progress-bar';
+export { TimelineBarShape } from './timeline-bar';
 export { TextBoxHeadingShape } from './text-box-heading';
 export { CircleShape } from './circle';
 export { PointShape } from './point';

@@ -267,6 +267,26 @@ export interface DiagramNodeData {
   borderWidth?: number; // Border thickness for shapes
   /** Rounded rectangle & progress bar: 0=straight, 1=full pill */
   cornerRadius?: number;
+  /** Segmented bar (`generic.object.timeline-bar`): sections left-to-right */
+  timelineBarSections?: TimelineBarSectionData[];
+  /** `equal` = same width per section; `weighted` = width ∝ `weight` */
+  timelineBarSizing?: "equal" | "weighted";
+  /** Show optional date/tick row below the bar */
+  timelineBarShowTicks?: boolean;
+  /** Small vertical ticks at section boundaries on the tick row */
+  timelineBarTickMarkers?: boolean;
+  /** Outline between segments (interior vertical lines) */
+  timelineBarSectionBorder?: boolean;
+  timelineBarSectionBorderWidth?: number;
+  timelineBarSectionBorderColor?: string;
+  /** Degrees between consecutive **theme hue** section fills (defaults to diagram theme step, see `DIAGRAM_THEME_HUE_STEP_DEG`). */
+  timelineBarHueStepDeg?: number;
+  /**
+   * Optional timeline axis under the bar (e.g. Q1–Q4): labels at fractional positions **independent** of segment count.
+   * When non-empty, the tick row uses these instead of each section’s `tickLabel`.
+   */
+  timelineBarAxisLabels?: TimelineBarAxisLabelData[];
+
   /** Progress bar (`generic.object.progress-bar`): completed amount 0–100 */
   progressPercent?: number;
   /** Progress bar: show numeric percent on the bar (default true) */
@@ -436,6 +456,41 @@ export interface DiagramNodeData {
   mindmapSiblingHueIndex?: number;
   /** When true, this node's stored fill/border colors are the base for theme-hues for itself and descendants until another anchor. */
   mindmapHueAnchor?: boolean;
+}
+
+/** Label on the optional timeline axis row (`timelineBarAxisLabels`) — positions are 0–1 along the bar. */
+export interface TimelineBarAxisLabelData {
+  id: string;
+  label: string;
+  /** 0 = left edge, 1 = right edge of the inner bar; label is centered here. */
+  t: number;
+}
+
+/** One segment of `generic.object.timeline-bar` (stacked horizontal bar). */
+export interface TimelineBarSectionData {
+  id: string;
+  /** Text drawn inside the segment (optional). */
+  label?: string;
+  /** Solid fill when `fillStyle` is solid or omitted (legacy). */
+  fill?: string;
+  /** Segment fill: solid (default), linear gradient, transparent track, or **theme hue** (shifts from bar `background*` like timeline cards). */
+  fillStyle?: "solid" | "gradient" | "none" | "theme-hue";
+  /** When `fillStyle` is gradient: two colours [start, end]. */
+  fillGradientColors?: string[];
+  /** When `fillStyle` is gradient: angle in degrees (default 90). */
+  fillGradientAngle?: number;
+  /** Layout weight when `timelineBarSizing` is `weighted` (default 1). */
+  weight?: number;
+  /**
+   * When **all** sections define `spanStart` / `spanEnd` (0–1 along the bar), widths use these instead of equal/weighted layout.
+   * Lets segments span multiple “timeline” units while the axis row shows a different grid (e.g. quarters).
+   */
+  spanStart?: number;
+  spanEnd?: number;
+  /** Optional label below the bar when no `timelineBarAxisLabels` (or extra hint). Ignored for the tick row when axis labels are set. */
+  tickLabel?: string;
+  /** Override for segment label color; falls back to node `textColor`. */
+  labelColor?: string;
 }
 
 /** Timeline card row — optional visual overrides inherit from the parent timeline node when omitted. */

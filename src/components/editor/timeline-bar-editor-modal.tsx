@@ -1,0 +1,693 @@
+"use client";
+
+import React, { useRef, useEffect, useState } from "react";
+import Draggable from "react-draggable";
+import { Plus, Trash2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ColorPicker } from "@/components/ui/color-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { DiagramNodeData, TimelineBarAxisLabelData, TimelineBarSectionData } from "@/lib/types";
+import {
+  clampTimelineBarT,
+  defaultTimelineBarSections,
+  isTimelineBarNodeType,
+  newTimelineBarAxisLabelId,
+  newTimelineBarSectionId,
+  normalizeTimelineBarAxisLabels,
+  normalizeTimelineBarSections,
+  timelineBarEvenAxisPositions,
+  timelineBarSectionThemeHueFill,
+  timelineBarUsesSpanLayout,
+} from "@/lib/timeline-bar";
+import { GradientAnglePicker } from "./gradient-angle-picker";
+
+function equalSegmentSpans(n: number): { spanStart: number; spanEnd: number }[] {
+  if (n <= 0) return [];
+  return Array.from({ length: n }, (_, i) => ({
+    spanStart: i / n,
+    spanEnd: (i + 1) / n,
+  }));
+}
+
+type AxisRow = TimelineBarAxisLabelData;
+type Row = TimelineBarSectionData;
+
+export interface TimelineBarEditorSavePayload {
+  sections: TimelineBarSectionData[];
+  sizing: "equal" | "weighted";
+  axisLabels: TimelineBarAxisLabelData[];
+}
+
+interface TimelineBarEditorModalProps {
+  x: number;
+  y: number;
+  visible: boolean;
+  onClose: () => void;
+  node: DiagramNodeData | null;
+  onSave: (nodeId: string, payload: TimelineBarEditorSavePayload) => void;
+  isReadOnly?: boolean;
+}
+
+export function TimelineBarEditorModal({
+  x,
+  y,
+  visible,
+  onClose,
+  node,
+  onSave,
+  isReadOnly = false,
+}: TimelineBarEditorModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [rows, setRows] = useState<Row[]>([]);
+  const [sizing, setSizing] = useState<"equal" | "weighted">("equal");
+  const [axisRows, setAxisRows] = useState<AxisRow[]>([]);
+  const [spanLayoutEnabled, setSpanLayoutEnabled] = useState(false);
+
+  useEffect(() => {
+    if (visible && node && isTimelineBarNodeType(node.type)) {
+      const sec = normalizeTimelineBarSections(node).map((s) => ({ ...s }));
+      setRows(sec);
+      setSizing(((node as DiagramNodeData & { timelineBarSizing?: string }).timelineBarSizing as "equal" | "weighted") || "equal");
+      setAxisRows(normalizeTimelineBarAxisLabels(node).map((a) => ({ ...a })));
+      setSpanLayoutEnabled(timelineBarUsesSpanLayout(sec));
+    } else if (visible && node) {
+      setRows(defaultTimelineBarSections());
+      setSizing("equal");
+      setAxisRows([]);
+      setSpanLayoutEnabled(false);
+    }
+  }, [visible, node]);
+
+  useEffect(() => {
+    if (visible) {
+      const modalWidth = 400;
+      const modalHeight = 560;
+      const padding = 8;
+      let posX = x;
+      let posY = y;
+      if (x + modalWidth > window.innerWidth - padding)
+        posX = Math.max(padding, window.innerWidth - modalWidth - padding);
+      if (y + modalHeight > window.innerHeight - padding)
+        posY = Math.max(padding, window.innerHeight - modalHeight - padding);
+      if (posX < padding) posX = padding;
+      if (posY < padding) posY = padding;
+      setPosition({ x: posX, y: posY });
+    }
+  }, [visible, x, y]);
+
+  useEffect(() => {
+    if (visible) {
+      previousActiveElementRef.current = document.activeElement as HTMLElement;
+      const focusable = panelRef.current?.querySelector(
+        "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
+      ) as HTMLElement;
+      focusable?.focus();
+      const handleTab = (e: KeyboardEvent) => {
+        if (e.key !== "Tab") return;
+        const list = panelRef.current?.querySelectorAll(
+          "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
+        );
+        if (!list?.length) return;
+        const first = list[0] as HTMLElement;
+        const last = list[list.length - 1] as HTMLElement;
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            last.focus();
+            e.preventDefault();
+          }
+        } else if (document.activeElement === last) {
+          first.focus();
+          e.preventDefault();
+        }
+      };
+      document.addEventListener("keydown", handleTab);
+      return () => {
+        document.removeEventListener("keydown", handleTab);
+        previousActiveElementRef.current?.focus();
+      };
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [visible, onClose]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (panelRef.current?.contains(target)) return;
+      if (target.closest("[data-radix-select-content]")) return;
+      if (target.closest("[data-radix-select-viewport]")) return;
+      if (target.closest("[data-radix-select-item]")) return;
+      if (target.closest("[data-radix-popover-content]")) return;
+      onClose();
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [visible, onClose]);
+
+  const handleSave = () => {
+    if (!node || isReadOnly) return;
+    const useSpan = spanLayoutEnabled && rows.length > 0;
+    const cleaned: TimelineBarSectionData[] = rows.map((r, i) => {
+      const fs = r.fillStyle ?? "solid";
+      const base: TimelineBarSectionData = {
+        id: r.id || `tb-${i}`,
+        label: r.label?.trim() || undefined,
+        fill: r.fill || "#6b7280",
+        weight: typeof r.weight === "number" && r.weight > 0 ? r.weight : 1,
+        tickLabel: r.tickLabel?.trim() || undefined,
+        labelColor: r.labelColor?.trim() || undefined,
+        fillStyle: fs,
+      };
+      if (fs === "gradient") {
+        const g0 = r.fillGradientColors?.[0] ?? r.fill ?? "#6b7280";
+        const g1 = r.fillGradientColors?.[1] ?? g0;
+        base.fillGradientColors = [String(g0), String(g1)];
+        base.fillGradientAngle =
+          typeof r.fillGradientAngle === "number" && Number.isFinite(r.fillGradientAngle) ? r.fillGradientAngle : 90;
+      }
+      if (useSpan) {
+        let ss = clampTimelineBarT(typeof r.spanStart === "number" ? r.spanStart : 0);
+        let se = clampTimelineBarT(typeof r.spanEnd === "number" ? r.spanEnd : 1);
+        if (se <= ss) se = Math.min(1, ss + 1e-3);
+        base.spanStart = ss;
+        base.spanEnd = se;
+      }
+      return base;
+    });
+
+    const axisLabels: TimelineBarAxisLabelData[] = axisRows
+      .map((a, i) => ({
+        id: typeof a.id === "string" && a.id ? a.id : newTimelineBarAxisLabelId(node.id),
+        label: (a.label ?? "").trim(),
+        t: clampTimelineBarT(typeof a.t === "number" && Number.isFinite(a.t) ? a.t : (i + 0.5) / Math.max(1, axisRows.length)),
+      }))
+      .filter((a) => a.label.length > 0);
+
+    if (cleaned.length === 0) {
+      onSave(node.id, { sections: defaultTimelineBarSections(), sizing, axisLabels: [] });
+    } else {
+      onSave(node.id, { sections: cleaned, sizing, axisLabels });
+    }
+    onClose();
+  };
+
+  const addRow = () => {
+    if (!node || isReadOnly) return;
+    setRows((prev) => {
+      const next = [
+        ...prev,
+        {
+          id: newTimelineBarSectionId(node.id),
+          label: `S${prev.length + 1}`,
+          fill: "#94a3b8",
+          fillStyle: "solid" as const,
+          weight: 1,
+          tickLabel: "",
+        },
+      ];
+      if (spanLayoutEnabled) {
+        const sp = equalSegmentSpans(next.length);
+        return next.map((r, i) => ({ ...r, spanStart: sp[i]?.spanStart, spanEnd: sp[i]?.spanEnd }));
+      }
+      return next;
+    });
+  };
+
+  const removeRow = (i: number) => {
+    setRows((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((_, idx) => idx !== i);
+      if (spanLayoutEnabled) {
+        const sp = equalSegmentSpans(next.length);
+        return next.map((r, j) => ({ ...r, spanStart: sp[j]?.spanStart, spanEnd: sp[j]?.spanEnd }));
+      }
+      return next;
+    });
+  };
+
+  const patchAxisRow = (i: number, patch: Partial<AxisRow>) => {
+    setAxisRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  };
+
+  const addAxisRow = () => {
+    if (!node || isReadOnly) return;
+    setAxisRows((prev) => [
+      ...prev,
+      {
+        id: newTimelineBarAxisLabelId(node.id),
+        label: "",
+        t:
+          prev.length === 0
+            ? 0.125
+            : clampTimelineBarT(Math.min(0.95, (prev[prev.length - 1]?.t ?? 0) + 0.25)),
+      },
+    ]);
+  };
+
+  const removeAxisRow = (i: number) => {
+    setAxisRows((prev) => prev.filter((_, idx) => idx !== i));
+  };
+
+  const applyEvenAxisSpacing = () => {
+    setAxisRows((prev) => {
+      if (prev.length === 0) return prev;
+      const ts = timelineBarEvenAxisPositions(prev.length);
+      return prev.map((row, i) => ({ ...row, t: ts[i] ?? row.t }));
+    });
+  };
+
+  const hideSectionTickFields = axisRows.some((a) => (a.label ?? "").trim().length > 0);
+
+  const patchRow = (i: number, patch: Partial<Row>) => {
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed left-0 top-0 z-[60] h-screen w-screen" style={{ pointerEvents: "auto" }}>
+      <Draggable
+        nodeRef={panelRef}
+        position={position}
+        onStop={(_e, data) => setPosition({ x: data.x, y: data.y })}
+        handle=".tb-modal-drag-handle"
+      >
+        <div
+          ref={panelRef}
+          className="fixed z-[70] w-[440px] max-w-[calc(100vw-16px)] rounded-md border border-border bg-popover p-0 shadow-lg"
+        >
+          <div className="tb-modal-drag-handle flex cursor-move items-center justify-between border-b p-3">
+            <h3 className="text-sm font-semibold">Timeline bar sections</h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 shrink-0 p-0" onClick={onClose}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Close</TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="max-h-[min(70vh,560px)] space-y-3 overflow-y-auto p-4">
+            <div className="space-y-2 rounded-md border border-teal-200/60 bg-teal-50/35 p-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label className="text-xs font-medium text-teal-900">Timeline axis (below bar)</Label>
+                {!isReadOnly ? (
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 text-[11px]"
+                          onClick={applyEvenAxisSpacing}
+                          disabled={axisRows.length === 0}
+                        >
+                          Even spacing
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs text-xs">
+                        Sets Pos % so each tick sits at the centre of an equal slice of the bar (e.g. four labels:
+                        12.5 / 37.5 / 62.5 / 87.5). Fixes uneven gaps when the last tick was near 100%.
+                      </TooltipContent>
+                    </Tooltip>
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={addAxisRow}>
+                      <Plus className="mr-0.5 h-3 w-3" />
+                      Add label
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Independent of coloured segments: e.g. four quarters evenly spaced while segments stay equal/weighted or use
+                custom spans. Use{" "}
+                <span className="font-medium text-foreground">Even spacing</span> to recalculate positions.
+              </p>
+              {axisRows.length === 0 ? (
+                <p className="text-[11px] italic text-muted-foreground">Empty — section “Date / tick” fields draw the tick row.</p>
+              ) : (
+                <div className="space-y-2">
+                  {axisRows.map((ax, i) => (
+                    <div key={ax.id || `ax-${i}`} className="flex flex-wrap items-end gap-2">
+                      <Input
+                        value={ax.label}
+                        onChange={(e) => patchAxisRow(i, { label: e.target.value })}
+                        placeholder="e.g. Q1"
+                        className="h-8 min-w-[100px] flex-1 text-xs"
+                        disabled={isReadOnly}
+                      />
+                      <div className="flex items-center gap-1">
+                        <span className="whitespace-nowrap text-[11px] text-muted-foreground">Pos %</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={Math.round(clampTimelineBarT(ax.t) * 100)}
+                          onChange={(e) => {
+                            const n = parseFloat(e.target.value);
+                            if (!Number.isFinite(n)) return;
+                            patchAxisRow(i, { t: clampTimelineBarT(n / 100) });
+                          }}
+                          className="h-8 w-14 text-xs"
+                          disabled={isReadOnly}
+                          title="Horizontal position (0 = left, 100 = right)"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeAxisRow(i)}
+                        disabled={isReadOnly}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-2 py-1.5">
+              <div>
+                <Label className="text-xs text-muted-foreground">Custom segment span (0–100%)</Label>
+                <p className="text-[10px] text-muted-foreground">Place each coloured block on the bar; ignores equal/weighted.</p>
+              </div>
+              <Switch
+                checked={spanLayoutEnabled}
+                disabled={isReadOnly}
+                onCheckedChange={(c) => {
+                  setSpanLayoutEnabled(c);
+                  if (c) {
+                    setRows((prev) => {
+                      const sp = equalSegmentSpans(prev.length);
+                      return prev.map((r, i) => ({ ...r, spanStart: sp[i]?.spanStart, spanEnd: sp[i]?.spanEnd }));
+                    });
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs text-muted-foreground">Section widths</Label>
+              <Select
+                value={sizing}
+                onValueChange={(v) => setSizing(v as "equal" | "weighted")}
+                disabled={isReadOnly || spanLayoutEnabled}
+              >
+                <SelectTrigger className="h-8 w-[140px] text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[80]">
+                  <SelectItem value="equal" className="text-sm">
+                    Equal (auto)
+                  </SelectItem>
+                  <SelectItem value="weighted" className="text-sm">
+                    Weighted (auto)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {spanLayoutEnabled ? (
+              <p className="text-xs text-muted-foreground">Width comes from each row’s start/end %.</p>
+            ) : sizing === "weighted" ? (
+              <p className="text-xs text-muted-foreground">
+                Width is proportional to each row&apos;s weight (default 1).
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Every section gets the same width.</p>
+            )}
+            <div className="space-y-2">
+              {rows.map((row, i) => (
+                <div key={row.id || i} className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      value={row.label ?? ""}
+                      onChange={(e) => patchRow(i, { label: e.target.value })}
+                      placeholder="Bar text"
+                      className="h-8 flex-1 text-xs"
+                      disabled={isReadOnly}
+                    />
+                    {!hideSectionTickFields ? (
+                      <Input
+                        value={row.tickLabel ?? ""}
+                        onChange={(e) => patchRow(i, { tickLabel: e.target.value })}
+                        placeholder="Date / tick (optional)"
+                        className="h-8 flex-1 text-xs"
+                        disabled={isReadOnly}
+                      />
+                    ) : (
+                      <div className="flex flex-1 items-center rounded border border-dashed border-border/60 bg-muted/20 px-2 text-[11px] text-muted-foreground">
+                        Timeline axis row active
+                      </div>
+                    )}
+                  </div>
+                  {spanLayoutEnabled ? (
+                    <div className="flex flex-wrap gap-2">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground">Start %</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={Math.round(clampTimelineBarT(row.spanStart ?? 0) * 100)}
+                          onChange={(e) => {
+                            const n = parseFloat(e.target.value);
+                            if (!Number.isFinite(n)) return;
+                            patchRow(i, { spanStart: clampTimelineBarT(n / 100) });
+                          }}
+                          className="h-8 w-16 text-xs"
+                          disabled={isReadOnly}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground">End %</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={Math.round(clampTimelineBarT(row.spanEnd ?? 1) * 100)}
+                          onChange={(e) => {
+                            const n = parseFloat(e.target.value);
+                            if (!Number.isFinite(n)) return;
+                            patchRow(i, { spanEnd: clampTimelineBarT(n / 100) });
+                          }}
+                          className="h-8 w-16 text-xs"
+                          disabled={isReadOnly}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Label className="shrink-0 text-xs text-muted-foreground">Fill</Label>
+                      <Select
+                        value={row.fillStyle ?? "solid"}
+                        onValueChange={(v) => {
+                          const style = v as "solid" | "gradient" | "none" | "theme-hue";
+                          if (style === "gradient") {
+                            const base = row.fill || "#94a3b8";
+                            const c1 =
+                              Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 2
+                                ? String(row.fillGradientColors[1])
+                                : "#64748b";
+                            patchRow(i, {
+                              fillStyle: "gradient",
+                              fillGradientColors: [
+                                Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 1
+                                  ? String(row.fillGradientColors[0])
+                                  : base,
+                                c1,
+                              ],
+                              fillGradientAngle:
+                                typeof row.fillGradientAngle === "number" && Number.isFinite(row.fillGradientAngle)
+                                  ? row.fillGradientAngle
+                                  : 90,
+                            });
+                          } else if (style === "none") {
+                            patchRow(i, { fillStyle: "none" });
+                          } else if (style === "theme-hue") {
+                            patchRow(i, { fillStyle: "theme-hue" });
+                          } else {
+                            patchRow(i, { fillStyle: "solid" });
+                          }
+                        }}
+                        disabled={isReadOnly}
+                      >
+                        <SelectTrigger className="h-8 min-w-[148px] max-w-[200px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[80]">
+                          <SelectItem value="solid" className="text-sm">
+                            Solid
+                          </SelectItem>
+                          <SelectItem value="gradient" className="text-sm">
+                            Gradient
+                          </SelectItem>
+                          <SelectItem value="theme-hue" className="text-sm">
+                            Theme hue
+                          </SelectItem>
+                          <SelectItem value="none" className="text-sm">
+                            None
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {(row.fillStyle ?? "solid") === "solid" ? (
+                      <div className="min-w-[120px] max-w-[200px]">
+                        <ColorPicker
+                          value={row.fill || "#6b7280"}
+                          onChange={(value) => patchRow(i, { fill: value })}
+                        />
+                      </div>
+                    ) : null}
+                    {(row.fillStyle ?? "solid") === "gradient" ? (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                        <div className="flex flex-1 flex-col gap-1">
+                          <Label className="text-xs text-muted-foreground">Start</Label>
+                          <ColorPicker
+                            value={
+                              Array.isArray(row.fillGradientColors) && row.fillGradientColors[0]
+                                ? String(row.fillGradientColors[0])
+                                : row.fill || "#6b7280"
+                            }
+                            onChange={(value) => {
+                              const g1 =
+                                Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 2
+                                  ? String(row.fillGradientColors[1])
+                                  : value;
+                              patchRow(i, { fillGradientColors: [value, g1], fill: value });
+                            }}
+                          />
+                        </div>
+                        <div className="flex flex-1 flex-col gap-1">
+                          <Label className="text-xs text-muted-foreground">End</Label>
+                          <ColorPicker
+                            value={
+                              Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 2
+                                ? String(row.fillGradientColors[1])
+                                : "#64748b"
+                            }
+                            onChange={(value) => {
+                              const g0 =
+                                Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 1
+                                  ? String(row.fillGradientColors[0])
+                                  : row.fill || "#6b7280";
+                              patchRow(i, { fillGradientColors: [g0, value] });
+                            }}
+                          />
+                        </div>
+                        <div className="shrink-0">
+                          <GradientAnglePicker
+                            value={
+                              typeof row.fillGradientAngle === "number" && Number.isFinite(row.fillGradientAngle)
+                                ? row.fillGradientAngle
+                                : 90
+                            }
+                            onChange={(angle) => patchRow(i, { fillGradientAngle: angle })}
+                            label="Angle"
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                    {(row.fillStyle ?? "solid") === "none" ? (
+                      <p className="text-xs text-muted-foreground">Segment is transparent; the bar track shows through.</p>
+                    ) : null}
+                    {(row.fillStyle ?? "solid") === "theme-hue" ? (
+                      <p className="text-xs text-muted-foreground">
+                        Uses the bar background colour for the first theme-hue segment; each further theme-hue segment
+                        shifts hue (same idea as timeline cards). Set the step under Visual styling → Timeline bar.
+                        {node && rows.length > 0 ? (
+                          <span className="mt-1 flex items-center gap-2">
+                            <span
+                              className="inline-block h-4 w-4 shrink-0 rounded border border-border"
+                              style={{
+                                backgroundColor: timelineBarSectionThemeHueFill(
+                                  { ...node, timelineBarSections: rows } as DiagramNodeData,
+                                  normalizeTimelineBarSections({ ...node, timelineBarSections: rows } as DiagramNodeData),
+                                  i,
+                                ),
+                              }}
+                              title="Preview from current bar background"
+                            />
+                            <span>Preview from current background</span>
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {sizing === "weighted" ? (
+                      <Input
+                        type="number"
+                        min={0.1}
+                        step={0.1}
+                        value={row.weight ?? 1}
+                        onChange={(e) => {
+                          const n = parseFloat(e.target.value);
+                          if (!Number.isFinite(n)) return;
+                          patchRow(i, { weight: Math.max(0.01, n) });
+                        }}
+                        className="h-8 w-20 text-xs"
+                        disabled={isReadOnly}
+                        title="Weight"
+                      />
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeRow(i)}
+                      disabled={isReadOnly || rows.length <= 1}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {!isReadOnly && (
+              <Button type="button" variant="outline" size="sm" className="h-8 w-full text-xs" onClick={addRow}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add section
+              </Button>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 border-t p-3">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="button" size="sm" onClick={handleSave} disabled={isReadOnly}>
+              Apply
+            </Button>
+          </div>
+        </div>
+      </Draggable>
+    </div>
+  );
+}

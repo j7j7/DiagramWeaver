@@ -36,6 +36,14 @@ export interface VisualStyling {
   progressFillStyle?: 'solid' | 'gradient';
   progressFillColors?: string[];
   progressFillGradientAngle?: number;
+  /** Timeline bar (`generic.object.timeline-bar`) */
+  timelineBarSizing?: "equal" | "weighted";
+  timelineBarShowTicks?: boolean;
+  timelineBarTickMarkers?: boolean;
+  timelineBarSectionBorder?: boolean;
+  timelineBarSectionBorderWidth?: number;
+  timelineBarSectionBorderColor?: string;
+  timelineBarHueStepDeg?: number;
   /** Text box with heading: fill color for the heading strip */
   headingBackgroundColor?: string;
   /** Text box with heading: `gradient` = fade to transparent; `solid` = flat fill */
@@ -245,6 +253,13 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     progressFillStyle: (node as any).progressFillStyle,
     progressFillColors: (node as any).progressFillColors,
     progressFillGradientAngle: (node as any).progressFillGradientAngle,
+    timelineBarSizing: (node as any).timelineBarSizing,
+    timelineBarShowTicks: (node as any).timelineBarShowTicks,
+    timelineBarTickMarkers: (node as any).timelineBarTickMarkers,
+    timelineBarSectionBorder: (node as any).timelineBarSectionBorder,
+    timelineBarSectionBorderWidth: (node as any).timelineBarSectionBorderWidth,
+    timelineBarSectionBorderColor: (node as any).timelineBarSectionBorderColor,
+    timelineBarHueStepDeg: (node as any).timelineBarHueStepDeg,
     headingBackgroundColor: (node as any).headingBackgroundColor,
     headingBackgroundStyle: (node as any).headingBackgroundStyle,
     frostedDiffusion: (node as any).frostedDiffusion,
@@ -332,6 +347,25 @@ export function applyVisualStylingToNode(
       styling.progressFillGradientAngle !== undefined
         ? styling.progressFillGradientAngle
         : (node as any).progressFillGradientAngle,
+    timelineBarSizing: styling.timelineBarSizing !== undefined ? styling.timelineBarSizing : (node as any).timelineBarSizing,
+    timelineBarShowTicks:
+      styling.timelineBarShowTicks !== undefined ? styling.timelineBarShowTicks : (node as any).timelineBarShowTicks,
+    timelineBarTickMarkers:
+      styling.timelineBarTickMarkers !== undefined ? styling.timelineBarTickMarkers : (node as any).timelineBarTickMarkers,
+    timelineBarSectionBorder:
+      styling.timelineBarSectionBorder !== undefined
+        ? styling.timelineBarSectionBorder
+        : (node as any).timelineBarSectionBorder,
+    timelineBarSectionBorderWidth:
+      styling.timelineBarSectionBorderWidth !== undefined
+        ? styling.timelineBarSectionBorderWidth
+        : (node as any).timelineBarSectionBorderWidth,
+    timelineBarSectionBorderColor:
+      styling.timelineBarSectionBorderColor !== undefined
+        ? styling.timelineBarSectionBorderColor
+        : (node as any).timelineBarSectionBorderColor,
+    timelineBarHueStepDeg:
+      styling.timelineBarHueStepDeg !== undefined ? styling.timelineBarHueStepDeg : (node as any).timelineBarHueStepDeg,
     headingBackgroundColor:
       styling.headingBackgroundColor !== undefined ? styling.headingBackgroundColor : (node as any).headingBackgroundColor,
     headingBackgroundStyle:

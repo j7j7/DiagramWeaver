@@ -54,6 +54,7 @@ import {
   BarChartShape,
   LineChartShape,
   ProgressBarShape,
+  TimelineBarShape,
 } from "./shapes";
 import {
   SlideShapeShadowTransitionProvider,
@@ -73,6 +74,7 @@ import {
 } from "@/lib/timeline-layout";
 import { buildSyntheticTimelineEntryCardNode } from "@/lib/timeline-styling";
 import { normalizeCompositeBodyShapeKind } from "@/lib/shape-type-swap";
+import { isTimelineBarNodeType, timelineBarMemoPayload } from "@/lib/timeline-bar";
 import {
   syncClosedConnectorLineBorderWidth,
   syncClosedConnectorVisualBorderFromLineStyling,
@@ -386,6 +388,9 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     const pProg = isProgressBarType(p.type) ? progressBarMemoPayload(p as any) : '';
     const nProg = isProgressBarType(n.type) ? progressBarMemoPayload(n as any) : '';
     if (pProg !== nProg) return false;
+    const pTb = isTimelineBarNodeType(p.type) ? timelineBarMemoPayload(p) : '';
+    const nTb = isTimelineBarNodeType(n.type) ? timelineBarMemoPayload(n) : '';
+    if (pTb !== nTb) return false;
     const pLine = p as any;
     const nLine = n as any;
     if (pLine.startPos && nLine.startPos) {
@@ -887,6 +892,26 @@ function DiagramNodeInner({
           onPatch={onUpdate ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
           onProgressDragSessionChange={
             !isReadOnly
+              ? (active) => {
+                  chartValueDragInteractionRef.current = active;
+                  onChartValueDragSessionChange?.(active);
+                }
+              : undefined
+          }
+        />
+      );
+    } else if (nodeType === 'generic.object.timeline-bar' || nodeType?.endsWith('.timeline-bar')) {
+      const timelineSnapX = resizePosition?.x ?? node.x;
+      return (
+        <TimelineBarShape
+          {...shapeProps}
+          isReadOnly={isReadOnly}
+          diagramSnapX={timelineSnapX}
+          onPatch={onUpdate && !isReadOnly ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
+          sectionBoundaryInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
+          sectionLabelInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
+          onSectionBoundaryDragSessionChange={
+            onUpdate && !isReadOnly
               ? (active) => {
                   chartValueDragInteractionRef.current = active;
                   onChartValueDragSessionChange?.(active);

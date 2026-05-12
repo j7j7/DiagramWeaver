@@ -2,6 +2,7 @@ import { snapDimensionToGrid } from "@/components/editor/canvas-constants";
 import { isChartNodeType } from "@/lib/chart-node";
 import type { DiagramCompositeBodyShapeKind, DiagramNodeData } from "@/lib/types";
 import { DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS } from "@/lib/types";
+import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { isMindmapNodeType, isTimelineNodeType } from "@/lib/utils";
 
 export type CompositeBodyShapeKind = DiagramCompositeBodyShapeKind;
@@ -40,6 +41,7 @@ export const SWAPPABLE_OBJECT_SHAPE_OPTIONS = [
   { kind: "arrowhead", label: "Arrowhead" },
   { kind: "chevron", label: "Chevron" },
   { kind: "progress-bar", label: "Progress bar" },
+  { kind: "timeline-bar", label: "Timeline bar" },
   { kind: "text-box-heading", label: "Text box heading" },
   { kind: "uml-class", label: "UML class" },
 ] as const;
@@ -99,6 +101,10 @@ function defaultDimensionsForSwappableKind(kind: SwappableObjectKind): { width: 
     case "progress-bar":
       wRaw = 80;
       hRaw = 50;
+      break;
+    case "timeline-bar":
+      wRaw = 790;
+      hRaw = 150;
       break;
     case "text-box-heading":
       wRaw = 180;
@@ -171,6 +177,18 @@ function stripChartAndUml(n: DiagramNodeData): void {
   delete n.umlClassStyle;
 }
 
+function stripTimelineBarFields(n: DiagramNodeData): void {
+  delete (n as DiagramNodeData & { timelineBarSections?: unknown }).timelineBarSections;
+  delete (n as DiagramNodeData & { timelineBarSizing?: unknown }).timelineBarSizing;
+  delete (n as DiagramNodeData & { timelineBarShowTicks?: unknown }).timelineBarShowTicks;
+  delete (n as DiagramNodeData & { timelineBarTickMarkers?: unknown }).timelineBarTickMarkers;
+  delete (n as DiagramNodeData & { timelineBarSectionBorder?: unknown }).timelineBarSectionBorder;
+  delete (n as DiagramNodeData & { timelineBarSectionBorderWidth?: unknown }).timelineBarSectionBorderWidth;
+  delete (n as DiagramNodeData & { timelineBarSectionBorderColor?: unknown }).timelineBarSectionBorderColor;
+  delete (n as DiagramNodeData & { timelineBarAxisLabels?: unknown }).timelineBarAxisLabels;
+  delete (n as DiagramNodeData & { timelineBarHueStepDeg?: unknown }).timelineBarHueStepDeg;
+}
+
 function stripProgressHeading(n: DiagramNodeData): void {
   delete n.progressPercent;
   delete n.progressShowPercent;
@@ -222,7 +240,13 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
   stripMindmapFields(next);
   stripChartAndUml(next);
   stripProgressHeading(next);
+  stripTimelineBarFields(next);
   clearIconResourceFields(next);
+
+  if (newKind === "timeline-bar") {
+    const payload = defaultPaletteTimelineBarNodeProps(next.id);
+    Object.assign(next, payload);
+  }
 
   if (newKind !== "uml-class") {
     const umlName = node.umlClass?.name?.trim();

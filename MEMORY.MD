@@ -3,6 +3,30 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-12 – Palette default: timeline bar (790×150, 8 theme-hue sections, Q1–Q4 axis)
+New **`defaultPaletteTimelineBarNodeProps`** (**`timeline-bar.ts`**) — warm gradient shell, section borders, ticks + markers, **10°** hue step, **8×** **S1…S8** **theme-hue** sections, axis **Q1–Q4** at even **t** (12.5 / 37.5 / 62.5 / 87.5). **`canvas-operations`** uses **790×150** (grid-snapped) + that payload; **`shape-type-swap`** into timeline bar matches. Patch bumped.
+
+### 2026-05-12 – Timeline bar axis: revert to linear **t** on full inner width
+Axis ticks now use **`half + t * w`** again (same inner `[half, half+w]` as segment layout). The prior **`timelineBarAxisLabelCenterX`** (**flat** span `w − 2·rx`) shifted high-**t** ticks left, so 20/40/60/80% no longer matched equal reference divisions and **Q4→right** looked huge. Rounded corners stay a cosmetic outline; **Pos %** stays linear on the bar’s inner width. Patch bumped.
+
+### 2026-05-12 – Timeline bar modal: “Even spacing” for axis (Q1–Q4)
+**Timeline axis** Pos % can leave the last tick near **100%**, so the gap from the last label to the bar end looks tighter than earlier gaps. **`timelineBarEvenAxisPositions`** (**`timeline-bar.ts`**) returns centres of **n** equal slices: e.g. four labels → **12.5 / 37.5 / 62.5 / 87.5**. The editor modal adds an **Even spacing** button (tooltip explains). Patch bumped.
+
+### 2026-05-12 – Timeline bar: section labels wrap + double-click edit
+Segment labels render in a **`foreignObject`** (CSS **`word-break`** / **`overflow-wrap`**) so long copy stays inside each segment. **Double-click** a label when the node is **singly selected** in the editor to edit inline (**textarea**; blur or **⌃/⌘+Enter** saves, **Escape** cancels). Section boundary drag strips hidden while a label is being edited. Patch bumped.
+
+### 2026-05-12 – Timeline bar: drag section boundaries (grid snap)
+Selected timeline bar (**single selection**, editor): **invisible hit strips** on interior segment boundaries (**col-resize**), pointer capture + **`onPatch({ timelineBarSections })`**. Equal/weighted layout **converts to `spanStart`/`spanEnd`** on first drag. Boundary position snaps to **`snapToGrid`** on **diagram X** (uses **`diagramSnapX`** + rendered bar width). **`onSectionBoundaryDragSessionChange`** ties into **`chartValueDragInteractionRef`** so whole-node drag stays suppressed while resizing. **`timeline-bar.ts`** exports **`timelineBarEnsureSpanSections`**, **`snapTimelineBarBoundaryT`**, **`timelineBarMoveJointAtVisualBoundary`**, etc. Patch bumped.
+
+### 2026-05-12 – Visual styling: theme hue step typing
+**`visual-styling-panel`** timeline bar **Theme hue step** uses a text field with commit on blur (not **`type="number"`** with **min**), so the value can be cleared and retyped; empty on blur clears the override (**`null`** → default **36°**). Patch bumped.
+
+### 2026-05-12 – Visual styling: corner radius slider
+**`visual-styling-panel`**: **Corner radius** for progress bar, timeline bar, and rounded-rectangle shapes uses a **Slider** (0–100% readout, 0.01 steps) instead of a number input. Patch bumped.
+
+### 2026-05-12 – Timeline bar shape (`generic.object.timeline-bar`)
+Segmented horizontal bar (rounded outer clip; square interior edges between sections). Data: **`timelineBarSections`**, optional **`timelineBarAxisLabels`** (independent tick row: **`label`**, **`t`** 0–1), optional **`spanStart`**/**`spanEnd`** per section (0–1; when **all** sections define a valid window, widths use spans instead of **`timelineBarSizing`**), plus **`fill`** / **`fillStyle`**, **`timelineBarHueStepDeg`**, tick row toggles, section dividers. **Theme hue** follows visual order (**`spanStart`** when spans). **Modal** (including axis + span controls); **Visual styling**; Radix outside-click fix. **`shape-type-swap`** strips **`timelineBarAxisLabels`** and **`timelineBarHueStepDeg`** when leaving the shape. Implementation: **`timeline-bar.ts`**, **`timeline-bar.tsx`**, **`timeline-bar-editor-modal.tsx`**. Patch bumped.
+
 ### 2026-05-11 – Tab rename: double-click label
 **`TabBar`**: double-click a tab title (non-tutorial) to edit inline; **Enter**/blur commits via **`updateTab(..., { name })`**. **`createDiagramSaveHandler`** already derives **`suggestedName`** from **`targetTab.name`**, so Save uses that stem. Wired through **`DiagramEditorInner`** (**`onTabRename`**). Patch bumped.
 

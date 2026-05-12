@@ -1,4 +1,5 @@
 import type { DiagramNodeData } from '@/lib/types';
+import { isTimelineBarNodeType, timelineBarMemoPayload } from '@/lib/timeline-bar';
 
 const VISUAL_COLOR_KEYS = [
   'backgroundColor',
@@ -58,6 +59,8 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
           x.progressFillGradientAngle,
         ].join('|')
       : '';
+  const tbSig =
+    typeof node.type === 'string' && isTimelineBarNodeType(node.type) ? timelineBarMemoPayload(node) : '';
   const mindmapSig =
     typeof node.type === 'string' &&
     (node.type === 'generic.object.mind-map-node' || node.type.endsWith('.mind-map-node'))
@@ -74,6 +77,7 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
     x.highlightAnimGlowIntensity,
     x.compositeBodyShape,
     progressSig,
+    tbSig,
     mindmapSig,
   ].join('\0');
 }

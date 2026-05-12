@@ -311,6 +311,12 @@ export default function DiagramEditor() {
     y: number;
     itemId: string;
   }>({ visible: false, x: 0, y: 0, itemId: '' });
+  const [timelineBarEditorModal, setTimelineBarEditorModal] = React.useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    itemId: string;
+  }>({ visible: false, x: 0, y: 0, itemId: '' });
   const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
   const [selectedResource, setSelectedResource] = React.useState<PaletteSelection | null>(null);
   const [paletteClipboardItem, setPaletteClipboardItem] = React.useState<any | null>(null);
@@ -1327,7 +1333,9 @@ export default function DiagramEditor() {
               Object.keys(updatedItem).forEach(key => {
                   if (key !== 'itemType' && key !== 'id') {
                       const value = (updatedItem as any)[key];
-                      if (value !== undefined) {
+                      if (value === null) {
+                          delete (mergedNode as any)[key];
+                      } else if (value !== undefined) {
                           (mergedNode as any)[key] = value;
                       }
                   }
@@ -1354,7 +1362,9 @@ export default function DiagramEditor() {
               Object.keys(updatedItem).forEach(key => {
                 if (key !== 'itemType' && key !== 'id') {
                   const value = (updatedItem as any)[key];
-                  if (value !== undefined) {
+                  if (value === null) {
+                    delete (mergedZone as any)[key];
+                  } else if (value !== undefined) {
                     (mergedZone as any)[key] = value;
                   }
                 }
@@ -3379,6 +3389,7 @@ export default function DiagramEditor() {
                            node.type === 'generic.object.uml-class' ||
                            node.type === 'generic.object.rounded-rectangle' ||
                            node.type === 'generic.object.progress-bar' ||
+                           node.type === 'generic.object.timeline-bar' ||
                            node.type === 'generic.object.text-box-heading' ||
                            node.type === 'generic.object.triangle' ||
                            node.type === 'generic.object.star' ||
@@ -4832,6 +4843,8 @@ export default function DiagramEditor() {
         setUmlClassEditorModal={setUmlClassEditorModal}
         chartDataEditorModal={chartDataEditorModal}
         setChartDataEditorModal={setChartDataEditorModal}
+        timelineBarEditorModal={timelineBarEditorModal}
+        setTimelineBarEditorModal={setTimelineBarEditorModal}
         setDiagramData={setDiagramData}
         updateTutorialDiagramData={updateTutorialDiagramData}
         layers={layers}

@@ -24,6 +24,12 @@ function isProgressBarPaletteVectorType(type: string | undefined): boolean {
   return t === "generic.object.progress-bar" || t.endsWith(".progress-bar");
 }
 
+function isTimelineBarPaletteVectorType(type: string | undefined): boolean {
+  if (!type || typeof type !== "string") return false;
+  const t = type.trim().toLowerCase().replace(/\u2011/g, "-");
+  return t === "generic.object.timeline-bar" || t.endsWith(".timeline-bar");
+}
+
 /** Catalog raster was a plain line; UI uses spine + stems + alternating card rects. */
 function isTimelinePaletteVectorType(type: string | undefined): boolean {
   if (!type || typeof type !== "string") return false;
@@ -134,6 +140,41 @@ function PaletteProgressBarGlyph(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Segmented horizontal bar + optional tick captions — distinct from spine timeline & progress bar. */
+function PaletteTimelineBarGlyph(props: React.SVGProps<SVGSVGElement>) {
+  const clipId = React.useId().replace(/:/g, "");
+  const clipUrl = `url(#dw-tb-clip-${clipId})`;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <defs>
+        <clipPath id={`dw-tb-clip-${clipId}`}>
+          <rect x="2" y="7" width="20" height="7" rx="2.5" ry="2.5" />
+        </clipPath>
+      </defs>
+      <g clipPath={clipUrl}>
+        <rect x="2" y="7" width="20" height="7" fill="currentColor" opacity={0.12} />
+        <rect x="2" y="7" width="5" height="7" fill="currentColor" opacity={0.95} />
+        <rect x="7" y="7" width="5.5" height="7" fill="currentColor" opacity={0.62} />
+        <rect x="12.5" y="7" width="4.5" height="7" fill="currentColor" opacity={0.42} />
+        <rect x="17" y="7" width="5" height="7" fill="currentColor" opacity={0.28} />
+      </g>
+      <rect x="2" y="7" width="20" height="7" rx="2.5" ry="2.5" fill="none" stroke="currentColor" strokeWidth={1.1} opacity={0.75} />
+      <text x="4.5" y="18.2" fontSize="3.6" fill="currentColor" opacity={0.55}>
+        J
+      </text>
+      <text x="9.2" y="18.2" fontSize="3.6" fill="currentColor" opacity={0.55}>
+        F
+      </text>
+      <text x="13.6" y="18.2" fontSize="3.6" fill="currentColor" opacity={0.55}>
+        M
+      </text>
+      <text x="18.2" y="18.2" fontSize="3.6" fill="currentColor" opacity={0.55}>
+        A
+      </text>
+    </svg>
+  );
+}
+
 /** Spine with milestones and alternating above/below cards — reads as timeline vs connector line. */
 function PaletteTimelineGlyph(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -240,6 +281,11 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       return () => ac.abort();
     }
 
+    if (isTimelineBarPaletteVectorType(type)) {
+      setResourceFile(null);
+      return () => ac.abort();
+    }
+
     if (isTimelinePaletteVectorType(type)) {
       setResourceFile(null);
       return () => ac.abort();
@@ -298,6 +344,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
               if (
                 resourceName === "text-box-heading" ||
                 resourceName === "progress-bar" ||
+                resourceName === "timeline-bar" ||
                 resourceName === "timeline" ||
                 resourceName === "mind-map-node"
               ) {
@@ -333,6 +380,9 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       return null;
     }
     if (isProgressBarPaletteVectorType(type)) {
+      return null;
+    }
+    if (isTimelineBarPaletteVectorType(type)) {
       return null;
     }
     if (isTimelinePaletteVectorType(type)) {
@@ -476,7 +526,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   // Handle shape types (exclude icon/emoji - those use Lucide/emoji above)
   if (!type.startsWith('generic.icon.') && !type.startsWith('generic.emoji.') &&
       (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') ||
-      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.mind-map-node') || type?.endsWith('.progress-bar') || type?.endsWith('.text-box-heading') ||       type?.endsWith('.triangle') ||
+      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.mind-map-node') || type?.endsWith('.progress-bar') || type?.endsWith('.timeline-bar') || type?.endsWith('.text-box-heading') ||       type?.endsWith('.triangle') ||
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.timeline') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
@@ -535,6 +585,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         return <PaletteMindmapGlyph {...props} />;
       case 'progress-bar':
         return <PaletteProgressBarGlyph {...props} />;
+      case 'timeline-bar':
+        return <PaletteTimelineBarGlyph {...props} />;
       case 'text-box-heading':
         return (
           <svg

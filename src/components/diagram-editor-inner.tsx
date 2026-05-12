@@ -11,6 +11,7 @@ import { EditorCanvas } from "./editor/editor-canvas";
 import { ConnectionContextModal } from "./editor/connection-context-modal";
 import { UmlClassEditorModal } from "./editor/uml-class-editor-modal";
 import { ChartDataEditorModal } from "./editor/chart-data-editor-modal";
+import { TimelineBarEditorModal } from "./editor/timeline-bar-editor-modal";
 import { ZOrderListModal } from "./editor/z-order-list-modal";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
 import { PresentationPlayer } from "./editor/presentation-player";
@@ -139,6 +140,8 @@ export function DiagramEditorInner({
   setUmlClassEditorModal,
   chartDataEditorModal,
   setChartDataEditorModal,
+  timelineBarEditorModal,
+  setTimelineBarEditorModal,
   setDiagramData,
   updateTutorialDiagramData,
   setCurrentDiagramData,
@@ -744,6 +747,7 @@ export function DiagramEditorInner({
                     metadataPopupsEnabled={metadataPopupsEnabled}
                     setUmlClassEditorModal={setUmlClassEditorModal}
                     setChartDataEditorModal={setChartDataEditorModal}
+                    setTimelineBarEditorModal={setTimelineBarEditorModal}
                     onSubDiagramDoubleClick={handleSubDiagramDoubleClick}
                     getHasLinkedSubDiagram={getHasLinkedSubDiagram}
                     onCreateSubDiagram={handleCreateSubDiagram}
@@ -880,6 +884,34 @@ export function DiagramEditorInner({
             isReadOnly={isReadOnly}
           />,
           document.body
+        )}
+        {timelineBarEditorModal.visible && timelineBarEditorModal.itemId && typeof window !== "undefined" && createPortal(
+          <TimelineBarEditorModal
+            x={timelineBarEditorModal.x}
+            y={timelineBarEditorModal.y}
+            visible={timelineBarEditorModal.visible}
+            onClose={() => setTimelineBarEditorModal({ visible: false, x: 0, y: 0, itemId: "" })}
+            node={diagramData.nodes?.find((n: DiagramNodeData) => n.id === timelineBarEditorModal.itemId) ?? null}
+            onSave={(nodeId, payload) => {
+              setDiagramData((prev: DiagramData) => ({
+                ...prev,
+                nodes:
+                  prev.nodes?.map((n: DiagramNodeData) =>
+                    n.id === nodeId
+                      ? {
+                          ...n,
+                          timelineBarSections: payload.sections,
+                          timelineBarSizing: payload.sizing,
+                          timelineBarAxisLabels: payload.axisLabels.length > 0 ? payload.axisLabels : undefined,
+                        }
+                      : n,
+                  ) ?? [],
+              }));
+              setTimelineBarEditorModal({ visible: false, x: 0, y: 0, itemId: "" });
+            }}
+            isReadOnly={isReadOnly}
+          />,
+          document.body,
         )}
         {zOrderListModal.open && typeof window !== 'undefined' && createPortal(
           <ZOrderListModal

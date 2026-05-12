@@ -21,6 +21,7 @@ import { Slider } from "@/components/ui/slider";
 import Draggable from "react-draggable";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 
 /** Spatial halo radius (blur size), distinct from RGBA opacity on the glow colour picker. */
 function HighlightGlowStrengthSlider({
@@ -49,6 +50,65 @@ function HighlightGlowStrengthSlider({
         <span className="w-14 tabular-nums text-xs text-muted-foreground text-right">~{approxPx}px</span>
       </div>
     </div>
+  );
+}
+
+/** Free-typing ° step: avoids `<input type="number" min={1}>` blocking backspace/clear while editing. */
+function TimelineBarHueStepInput({
+  committedDeg,
+  onCommit,
+  className,
+}: {
+  committedDeg: number | undefined;
+  onCommit: (value: number | null) => void;
+  className?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState("");
+  const committedStr =
+    typeof committedDeg === "number" && Number.isFinite(committedDeg) ? String(committedDeg) : "";
+
+  useEffect(() => {
+    if (!focused) setDraft(committedStr);
+  }, [committedStr, focused]);
+
+  const shown = focused ? draft : committedStr;
+
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
+      placeholder={String(DIAGRAM_THEME_HUE_STEP_DEG)}
+      value={shown}
+      onFocus={() => {
+        setFocused(true);
+        setDraft(committedStr);
+      }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={(e) => {
+        setFocused(false);
+        const t = e.currentTarget.value.trim();
+        if (t === "") {
+          onCommit(null);
+          setDraft("");
+          return;
+        }
+        const n = parseFloat(t.replace(",", "."));
+        if (!Number.isFinite(n)) {
+          onCommit(null);
+          setDraft("");
+          return;
+        }
+        const clamped = Math.min(180, Math.max(1, n));
+        onCommit(clamped);
+        setDraft(String(clamped));
+      }}
+      onKeyDown={(ev) => {
+        if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
+      }}
+      className={className}
+    />
   );
 }
 
@@ -274,11 +334,13 @@ interface VisualStylingPanelProps {
   isRoundedRectangle?: boolean;
   /** When true, shows progress fill/track controls */
   isProgressBar?: boolean;
+  /** When true, shows segmented timeline bar layout controls */
+  isTimelineBar?: boolean;
   /** When true, shows heading strip color (text-box-heading only) */
   isTextBoxHeading?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isProgressBar = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isProgressBar = false, isTimelineBar = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -374,9 +436,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   // Find the closest predefined style for the current styling
   const currentPredefinedStyle = findClosestPredefinedStyle(styling as VisualStyling);
 
-  /** Progress bar: start with every section folded so the tall panel fits; remount grid when selection or PB-ness changes so defaults apply. */
-  const accordionDefaultOpen = !isProgressBar;
-  const accordionRemountKey = `${[...(selectedItemIds ?? new Set<string>())].sort().join("|")}-${isProgressBar ? "pb" : "std"}`;
+  /** Progress bar + timeline bar: start with sections folded */
+  const accordionDefaultOpen = !isProgressBar && !isTimelineBar;
+  const accordionRemountKey = `${[...(selectedItemIds ?? new Set<string>())].sort().join("|")}-${isProgressBar ? "pb" : isTimelineBar ? "tb" : "std"}`;
 
   return (
     <Draggable
@@ -731,19 +793,20 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   dotClassName="bg-sky-500"
                   outerClassName="border-sky-200/50 bg-sky-50/50"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <Label className="text-sm text-muted-foreground">Corner radius</Label>
-                    <Input
-                      type="number"
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm text-muted-foreground">Corner radius</Label>
+                      <span className="w-12 text-right tabular-nums text-xs text-muted-foreground">
+                        {Math.round((styling.cornerRadius ?? 0.35) * 100)}%
+                      </span>
+                    </div>
+                    <Slider
                       min={0}
                       max={1}
-                      step={0.1}
-                      value={styling.cornerRadius ?? 0.35}
-                      onChange={(e) => {
-                        const n = parseFloat(e.target.value);
-                        if (!isNaN(n)) handlePropertyChange('cornerRadius', Math.min(1, Math.max(0, n)));
-                      }}
-                      className="h-9 w-16 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      step={0.01}
+                      value={[styling.cornerRadius ?? 0.35]}
+                      onValueChange={([v]) => handlePropertyChange("cornerRadius", v, true)}
+                      className="w-full"
                     />
                   </div>
                   <div className="space-y-1">
@@ -838,6 +901,116 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   </div>
                 </StylingAccordionSection>
               ) : null}
+
+              {isTimelineBar ? (
+                <StylingAccordionSection
+                  defaultOpen={accordionDefaultOpen}
+                  title="Timeline bar"
+                  dotClassName="bg-teal-500"
+                  outerClassName="border-teal-200/50 bg-teal-50/50"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm text-muted-foreground">Corner radius</Label>
+                      <span className="w-12 text-right tabular-nums text-xs text-muted-foreground">
+                        {Math.round((styling.cornerRadius ?? 0.35) * 100)}%
+                      </span>
+                    </div>
+                    <Slider
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={[styling.cornerRadius ?? 0.35]}
+                      onValueChange={([v]) => handlePropertyChange("cornerRadius", v, true)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Auto-size sections</Label>
+                    <Select
+                      value={styling.timelineBarSizing === "weighted" ? "weighted" : "equal"}
+                      onValueChange={(v) =>
+                        handlePropertyChange("timelineBarSizing", v === "weighted" ? "weighted" : "equal", true)
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-[160px] text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="equal" className="text-sm">
+                          Equal widths
+                        </SelectItem>
+                        <SelectItem value="weighted" className="text-sm">
+                          By weight
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Date / tick row</Label>
+                    <Switch
+                      checked={styling.timelineBarShowTicks !== false}
+                      onCheckedChange={(checked) => handlePropertyChange("timelineBarShowTicks", checked, true)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Tick markers</Label>
+                    <Switch
+                      checked={styling.timelineBarTickMarkers === true}
+                      onCheckedChange={(checked) => handlePropertyChange("timelineBarTickMarkers", checked, true)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Borders between sections</Label>
+                    <Switch
+                      checked={styling.timelineBarSectionBorder === true}
+                      onCheckedChange={(checked) => handlePropertyChange("timelineBarSectionBorder", checked, true)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm text-muted-foreground">Theme hue step (°)</Label>
+                      <TimelineBarHueStepInput
+                        committedDeg={styling.timelineBarHueStepDeg}
+                        onCommit={(v) => handlePropertyChange("timelineBarHueStepDeg", v, true)}
+                        className="h-9 w-[4.5rem] text-sm"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Hue difference between consecutive segments when Fill is Theme hue (empty = {DIAGRAM_THEME_HUE_STEP_DEG}°,
+                      same default as timeline cards).
+                    </p>
+                  </div>
+                  {styling.timelineBarSectionBorder === true ? (
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs text-muted-foreground">Divider width</Label>
+                        <Input
+                          type="number"
+                          min={0.5}
+                          max={4}
+                          step={0.5}
+                          value={styling.timelineBarSectionBorderWidth ?? 1}
+                          onChange={(e) => {
+                            const n = parseFloat(e.target.value);
+                            if (!isNaN(n)) handlePropertyChange("timelineBarSectionBorderWidth", n, true);
+                          }}
+                          className="h-8 w-14 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Divider color</Label>
+                        <ColorPicker
+                          value={styling.timelineBarSectionBorderColor || "#ffffff"}
+                          onChange={(value) => handlePropertyChange("timelineBarSectionBorderColor", value, true)}
+                          showAlpha={true}
+                          allowTransparent={true}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </StylingAccordionSection>
+              ) : null}
             </div>
 
             <div className="space-y-4 min-w-0 border-l border-border pl-8">
@@ -861,20 +1034,21 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     handlePropertyChange={handlePropertyChange}
                     onStylingChange={onStylingChange}
                   />
-                  {isRoundedRectangle && !isProgressBar && (
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-sm text-muted-foreground">Corner radius</Label>
-                      <Input
-                        type="number"
+                  {isRoundedRectangle && !isProgressBar && !isTimelineBar && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-sm text-muted-foreground">Corner radius</Label>
+                        <span className="w-12 text-right tabular-nums text-xs text-muted-foreground">
+                          {Math.round((styling.cornerRadius ?? 0.2) * 100)}%
+                        </span>
+                      </div>
+                      <Slider
                         min={0}
                         max={1}
-                        step={0.1}
-                        value={styling.cornerRadius ?? 0.2}
-                        onChange={(e) => {
-                          const n = parseFloat(e.target.value);
-                          if (!isNaN(n)) handlePropertyChange('cornerRadius', Math.min(1, Math.max(0, n)));
-                        }}
-                        className="h-9 w-16 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        step={0.01}
+                        value={[styling.cornerRadius ?? 0.2]}
+                        onValueChange={([v]) => handlePropertyChange("cornerRadius", v, true)}
+                        className="w-full"
                       />
                     </div>
                   )}

@@ -191,6 +191,26 @@ export const TimelineEntryDataSchema = z.object({
   cardSide: z.enum(['above', 'below']).optional(),
 });
 
+export const TimelineBarAxisLabelDataSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  t: z.number().min(0).max(1),
+});
+
+export const TimelineBarSectionDataSchema = z.object({
+  id: z.string(),
+  label: z.string().optional(),
+  fill: z.string().optional(),
+  fillStyle: z.enum(['solid', 'gradient', 'none', 'theme-hue']).optional(),
+  fillGradientColors: z.array(z.string()).optional(),
+  fillGradientAngle: z.number().optional(),
+  weight: z.number().positive().optional(),
+  spanStart: z.number().min(0).max(1).optional(),
+  spanEnd: z.number().min(0).max(1).optional(),
+  tickLabel: z.string().optional(),
+  labelColor: z.string().optional(),
+});
+
 const DiagramCompositeBodyShapeTuple = DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS as unknown as [
   DiagramCompositeBodyShapeKind,
   ...DiagramCompositeBodyShapeKind[],
@@ -248,6 +268,15 @@ export const DiagramNodeDataSchema = z.object({
   progressFillStyle: z.enum(['solid', 'gradient']).optional(),
   progressFillColors: z.array(z.string()).optional(),
   progressFillGradientAngle: z.number().optional(),
+  timelineBarSections: z.array(TimelineBarSectionDataSchema).optional(),
+  timelineBarSizing: z.enum(['equal', 'weighted']).optional(),
+  timelineBarShowTicks: z.boolean().optional(),
+  timelineBarTickMarkers: z.boolean().optional(),
+  timelineBarSectionBorder: z.boolean().optional(),
+  timelineBarSectionBorderWidth: z.number().optional(),
+  timelineBarSectionBorderColor: z.string().optional(),
+  timelineBarHueStepDeg: z.number().optional(),
+  timelineBarAxisLabels: z.array(TimelineBarAxisLabelDataSchema).optional(),
   headingEdge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
   headingLabel: z.string().optional(),
   richHeadingLabel: z.array(RichTextRunSchema).optional(),
@@ -650,6 +679,15 @@ export const DiagramNodeItemSchema = z.object({
   progressFillStyle: z.enum(['solid', 'gradient']).optional(),
   progressFillColors: z.array(z.string()).optional(),
   progressFillGradientAngle: z.number().optional(),
+  timelineBarSections: z.array(TimelineBarSectionDataSchema).optional(),
+  timelineBarSizing: z.enum(['equal', 'weighted']).optional(),
+  timelineBarShowTicks: z.boolean().optional(),
+  timelineBarTickMarkers: z.boolean().optional(),
+  timelineBarSectionBorder: z.boolean().optional(),
+  timelineBarSectionBorderWidth: z.number().optional(),
+  timelineBarSectionBorderColor: z.string().optional(),
+  timelineBarHueStepDeg: z.number().optional(),
+  timelineBarAxisLabels: z.array(TimelineBarAxisLabelDataSchema).optional(),
   headingEdge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
   headingLabel: z.string().optional(),
   richHeadingLabel: z.array(RichTextRunSchema).optional(),

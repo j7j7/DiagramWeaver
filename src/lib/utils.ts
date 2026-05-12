@@ -67,6 +67,7 @@ export function isHighlightPulseShapeSilhouetteType(type: string | undefined): b
   if (isTimelineNodeType(type)) return false
   if (type === 'generic.object.square' || type.endsWith('.square')) return false
   if (type === 'generic.object.rounded-rectangle' || type.endsWith('.rounded-rectangle')) return false
+  if (type === 'generic.object.timeline-bar' || type.endsWith('.timeline-bar')) return false
   if (type === 'generic.object.mind-map-node' || type.endsWith('.mind-map-node')) return false
   if (type === 'generic.object.text-box-heading' || type.endsWith('.text-box-heading')) return false
   if (type === 'generic.object.uml-class' || type.endsWith('.uml-class')) return false
@@ -87,6 +88,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType === 'generic.object.rounded-rectangle' ||
          nodeType === 'generic.object.mind-map-node' ||
          nodeType === 'generic.object.progress-bar' ||
+         nodeType === 'generic.object.timeline-bar' ||
          nodeType === 'generic.object.text-box-heading' ||
          nodeType === 'generic.object.triangle' ||
          nodeType === 'generic.object.star' ||
@@ -107,6 +109,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType?.endsWith('.rounded-rectangle') ||
          nodeType?.endsWith('.mind-map-node') ||
          nodeType?.endsWith('.progress-bar') ||
+         nodeType?.endsWith('.timeline-bar') ||
          nodeType?.endsWith('.text-box-heading') ||
          nodeType?.endsWith('.triangle') ||
          nodeType?.endsWith('.star') ||

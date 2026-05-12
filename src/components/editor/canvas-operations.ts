@@ -24,6 +24,7 @@ import {
   isTimelineNodeType,
 } from "@/lib/utils";
 import { TIMELINE_DEFAULT_SPINE_LENGTH_PX, TIMELINE_NODE_TYPE } from "@/lib/timeline-layout";
+import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
 import {
   nextMindmapAutoNumericLabel,
@@ -104,6 +105,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.rectangle' ||
                                 itemType === 'generic.object.rounded-rectangle' ||
                                 itemType === 'generic.object.progress-bar' ||
+                                itemType === 'generic.object.timeline-bar' ||
                                 itemType === 'generic.object.text-box-heading' ||
                                 itemType === 'generic.object.triangle' ||
                                 itemType === 'generic.object.star' ||
@@ -129,6 +131,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.rectangle') ||
                                 itemType?.endsWith('.rounded-rectangle') ||
                                 itemType?.endsWith('.progress-bar') ||
+                                itemType?.endsWith('.timeline-bar') ||
                                 itemType?.endsWith('.text-box-heading') ||
                                 itemType?.endsWith('.triangle') ||
                                 itemType?.endsWith('.star') ||
@@ -192,6 +195,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rounded-rectangle' ? 80 :
              itemType === MINDMAP_NODE_TYPE ? 80 :
              itemType === 'generic.object.progress-bar' ? 80 :
+             itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(790, 40) :
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line'
@@ -211,6 +215,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rounded-rectangle' ? 50 :
              itemType === MINDMAP_NODE_TYPE ? 50 :
              itemType === 'generic.object.progress-bar' ? 50 :
+             itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(150, 28) :
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' || itemType === TIMELINE_NODE_TYPE ? 100 :
@@ -300,6 +305,9 @@ export function useCanvasOperations({
             progressFillColors: ['#22c55e', '#15803d'],
             progressFillGradientAngle: 90,
             textPosition: 'above' as const,
+          }),
+          ...((itemType === 'generic.object.timeline-bar' || itemType?.endsWith('.timeline-bar')) && !isFromScratchPad && {
+            ...defaultPaletteTimelineBarNodeProps(newNodeId),
           }),
           ...((itemType === 'generic.chart.pie' ||
             itemType === 'generic.chart.bar' ||
