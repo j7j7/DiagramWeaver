@@ -60,6 +60,7 @@ export function isMindmapNodeType(type: string | undefined): boolean {
 /**
  * Highlight pulse uses animated `filter: drop-shadow` on the shape subtree so the glow follows
  * painted geometry (SVG alpha). `false` for rectangular box-like objects and connector lines.
+ * Timeline bar uses SVG pill geometry (same idea as progress bar) — included so glow is not a plain rectangle.
  */
 export function isHighlightPulseShapeSilhouetteType(type: string | undefined): boolean {
   if (!type || !type.startsWith('generic.object.')) return false
@@ -67,7 +68,6 @@ export function isHighlightPulseShapeSilhouetteType(type: string | undefined): b
   if (isTimelineNodeType(type)) return false
   if (type === 'generic.object.square' || type.endsWith('.square')) return false
   if (type === 'generic.object.rounded-rectangle' || type.endsWith('.rounded-rectangle')) return false
-  if (type === 'generic.object.timeline-bar' || type.endsWith('.timeline-bar')) return false
   if (type === 'generic.object.mind-map-node' || type.endsWith('.mind-map-node')) return false
   if (type === 'generic.object.text-box-heading' || type.endsWith('.text-box-heading')) return false
   if (type === 'generic.object.uml-class' || type.endsWith('.uml-class')) return false

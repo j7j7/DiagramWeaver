@@ -44,6 +44,8 @@ export interface VisualStyling {
   timelineBarSectionBorderWidth?: number;
   timelineBarSectionBorderColor?: string;
   timelineBarHueStepDeg?: number;
+  timelineBarAxisLabelFontSize?: number;
+  timelineBarAxisLabelFontFamily?: string;
   /** Text box with heading: fill color for the heading strip */
   headingBackgroundColor?: string;
   /** Text box with heading: `gradient` = fade to transparent; `solid` = flat fill */
@@ -260,6 +262,8 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     timelineBarSectionBorderWidth: (node as any).timelineBarSectionBorderWidth,
     timelineBarSectionBorderColor: (node as any).timelineBarSectionBorderColor,
     timelineBarHueStepDeg: (node as any).timelineBarHueStepDeg,
+    timelineBarAxisLabelFontSize: (node as any).timelineBarAxisLabelFontSize,
+    timelineBarAxisLabelFontFamily: (node as any).timelineBarAxisLabelFontFamily,
     headingBackgroundColor: (node as any).headingBackgroundColor,
     headingBackgroundStyle: (node as any).headingBackgroundStyle,
     frostedDiffusion: (node as any).frostedDiffusion,
@@ -366,6 +370,12 @@ export function applyVisualStylingToNode(
         : (node as any).timelineBarSectionBorderColor,
     timelineBarHueStepDeg:
       styling.timelineBarHueStepDeg !== undefined ? styling.timelineBarHueStepDeg : (node as any).timelineBarHueStepDeg,
+    timelineBarAxisLabelFontSize: 'timelineBarAxisLabelFontSize' in styling
+      ? styling.timelineBarAxisLabelFontSize
+      : (node as any).timelineBarAxisLabelFontSize,
+    timelineBarAxisLabelFontFamily: 'timelineBarAxisLabelFontFamily' in styling
+      ? styling.timelineBarAxisLabelFontFamily
+      : (node as any).timelineBarAxisLabelFontFamily,
     headingBackgroundColor:
       styling.headingBackgroundColor !== undefined ? styling.headingBackgroundColor : (node as any).headingBackgroundColor,
     headingBackgroundStyle:

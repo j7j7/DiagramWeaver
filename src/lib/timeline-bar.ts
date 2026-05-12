@@ -382,6 +382,8 @@ export function timelineBarMemoPayload(n: DiagramNodeData): string {
     backgroundColors?: string[];
     timelineBarHueStepDeg?: number;
     timelineBarAxisLabels?: TimelineBarAxisLabelData[];
+    fontSize?: number;
+    fontFamily?: string;
   };
   return JSON.stringify([
     x.timelineBarSections,
@@ -397,6 +399,10 @@ export function timelineBarMemoPayload(n: DiagramNodeData): string {
     x.backgroundColors,
     x.timelineBarHueStepDeg,
     x.timelineBarAxisLabels,
+    x.timelineBarAxisLabelFontSize,
+    x.timelineBarAxisLabelFontFamily,
+    x.fontSize,
+    x.fontFamily,
   ]);
 }
 

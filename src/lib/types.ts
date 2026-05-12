@@ -286,6 +286,10 @@ export interface DiagramNodeData {
    * When non-empty, the tick row uses these instead of each section’s `tickLabel`.
    */
   timelineBarAxisLabels?: TimelineBarAxisLabelData[];
+  /** Optional axis-row font size (shape units, same as `fontSize`); omit for automatic sizing (~2× former default). */
+  timelineBarAxisLabelFontSize?: number;
+  /** Optional axis/tick row font; omit to use the shape’s `fontFamily`. */
+  timelineBarAxisLabelFontFamily?: string;
 
   /** Progress bar (`generic.object.progress-bar`): completed amount 0–100 */
   progressPercent?: number;

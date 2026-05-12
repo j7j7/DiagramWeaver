@@ -3,6 +3,16 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-12 – Timeline bar: axis row font size + family (Visual styling)
+**`timelineBarAxisLabelFontSize`** / **`timelineBarAxisLabelFontFamily`** on the node; **Visual styling → Timeline bar → Axis row text** (font + optional px size; blank size = auto). Default auto sizing ~**2×** the former axis cap (**`timeline-bar.tsx`**: `autoAxisFs`). Tick band grows with chosen size so labels fit. **`timelineBarMemoPayload`** includes font fields + shape **`fontSize`**/**`fontFamily`** for memo. Patch bumped.
+
+### 2026-05-12 – Timeline bar: axis row distance locked when stretching height
+**`gapTick`** / **`tickBand`** no longer grow with **`h`** once the node is tall enough (reference strip from **`VIEWBOX_H`** + min bar height). Extra vertical resize goes into **`barH`** only, so Q1–Q4 (and tick markers) stay the same distance below the coloured bar instead of drifting down. Short nodes still use the old proportional strip so layout doesn’t overflow. **`timeline-bar.tsx`**. Patch bumped.
+
+
+### 2026-05-12 – Visual styling glow: timeline bar uses shape silhouette pulse
+Highlight pulse for **`generic.object.timeline-bar`** no longer forces **`box-shadow` on the node frame** (which looked like a soft blue rectangle behind the node). **`isHighlightPulseShapeSilhouetteType`** in **`utils.ts`** treats timeline bar like progress bar — **`drop-shadow` on the painted SVG** so the glow follows the rounded pill. Patch bumped.
+
 ### 2026-05-12 – Palette default: timeline bar (790×150, 8 theme-hue sections, Q1–Q4 axis)
 New **`defaultPaletteTimelineBarNodeProps`** (**`timeline-bar.ts`**) — warm gradient shell, section borders, ticks + markers, **10°** hue step, **8×** **S1…S8** **theme-hue** sections, axis **Q1–Q4** at even **t** (12.5 / 37.5 / 62.5 / 87.5). **`canvas-operations`** uses **790×150** (grid-snapped) + that payload; **`shape-type-swap`** into timeline bar matches. Patch bumped.
 

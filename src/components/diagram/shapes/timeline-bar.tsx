@@ -123,9 +123,32 @@ export function TimelineBarShape({
         )
       : 0;
   const secBorderColor = String(nodeAny.timelineBarSectionBorderColor || "#ffffff");
-  const gapTick = showTicks ? Math.max(3, h * 0.06) : 0;
-  const tickBand = showTicks ? Math.max(12, h * 0.26) : 0;
-  const barH = Math.max(8, h - tickBand - gapTick);
+  /** Gap + tick band scale with **short** nodes; once tall enough, lock to the default (`VIEWBOX_H`) footprint so axis labels stay a fixed distance below the bar when height grows. Axis font can widen the tick band. */
+  const minBarH = 8;
+  let gapTick = 0;
+  let baseTickBand = 0;
+  if (showTicks) {
+    const refH = VIEWBOX_H;
+    const gapRef = Math.max(3, refH * 0.06);
+    const bandRef = Math.max(12, refH * 0.26);
+    if (h >= gapRef + bandRef + minBarH) {
+      gapTick = gapRef;
+      baseTickBand = bandRef;
+    } else {
+      gapTick = Math.max(3, h * 0.06);
+      baseTickBand = Math.max(12, h * 0.26);
+    }
+  }
+  const baseBodyFont = Number(nodeAny.fontSize) || 12;
+  const rawUserAxisFs = nodeAny.timelineBarAxisLabelFontSize as number | undefined;
+  const userAxisFs =
+    typeof rawUserAxisFs === "number" && Number.isFinite(rawUserAxisFs) && rawUserAxisFs > 0 ? rawUserAxisFs : undefined;
+  /** ~2× legacy caps (`0.55·band`, `0.85·fontSize`, max 14). */
+  const autoAxisFs = Math.min(baseTickBand * 1.1, baseBodyFont * 1.7, 28);
+  const desiredAxisFs = showTicks ? (userAxisFs ?? autoAxisFs) : 0;
+  const tickBand = showTicks ? Math.max(baseTickBand, desiredAxisFs * 1.22) : 0;
+  const barH = Math.max(minBarH, h - tickBand - gapTick);
+  const tickFont = showTicks ? Math.min(desiredAxisFs, tickBand * 0.9) : 0;
   const { starts, widths } = timelineBarSegmentLayout(sections, w, sizing);
   const dividerInnerXs = timelineBarInteriorDividerXs(sections, starts, w);
 
@@ -232,8 +255,12 @@ export function TimelineBarShape({
   const trackPaint = getShapeSvgFill(backgroundStyle, bgFillRef, nodeAny.backgroundColor as string, "#f3f4f6");
 
   const textCol = String(nodeAny.textColor || "#111827");
+  const rawAxisFf = (nodeAny.timelineBarAxisLabelFontFamily as string | undefined)?.trim();
+  const axisTickFontFamily =
+    rawAxisFf && rawAxisFf.length > 0
+      ? rawAxisFf
+      : String((nodeAny.fontFamily as string) || "").trim() || "inherit";
   const barLabelFont = Math.min(barH * 0.42, Number(nodeAny.fontSize) || 12, 22);
-  const tickFont = Math.min(tickBand * 0.55, (Number(nodeAny.fontSize) || 12) * 0.85, 14);
 
   const canEditSectionLabel = Boolean(
     onPatch && sectionLabelInteractionEnabled && !isReadOnly && !isEditingLabel,
@@ -501,7 +528,7 @@ export function TimelineBarShape({
                       dominantBaseline="middle"
                       fill={textCol}
                       fontSize={tickFont}
-                      fontFamily={(nodeAny.fontFamily as string) || "inherit"}
+                      fontFamily={axisTickFontFamily}
                       opacity={0.9}
                     >
                       {tk}
@@ -537,7 +564,7 @@ export function TimelineBarShape({
                     dominantBaseline="middle"
                     fill={textCol}
                     fontSize={tickFont}
-                    fontFamily={(nodeAny.fontFamily as string) || "inherit"}
+                    fontFamily={axisTickFontFamily}
                     opacity={0.9}
                   >
                     {tk}

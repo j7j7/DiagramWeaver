@@ -22,6 +22,7 @@ import Draggable from "react-draggable";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
+import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
 
 /** Spatial halo radius (blur size), distinct from RGBA opacity on the glow colour picker. */
 function HighlightGlowStrengthSlider({
@@ -959,6 +960,64 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       checked={styling.timelineBarTickMarkers === true}
                       onCheckedChange={(checked) => handlePropertyChange("timelineBarTickMarkers", checked, true)}
                     />
+                  </div>
+                  <div className="space-y-2 pt-1">
+                    <Label className="text-sm text-muted-foreground">Axis row text</Label>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Font</Label>
+                        <Select
+                          value={styling.timelineBarAxisLabelFontFamily ? styling.timelineBarAxisLabelFontFamily : "__inherit__"}
+                          onValueChange={(v) =>
+                            handlePropertyChange("timelineBarAxisLabelFontFamily", v === "__inherit__" ? null : v, true)
+                          }
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder="Font" />
+                          </SelectTrigger>
+                          <SelectContent className="z-[70]">
+                            <SelectItem value="__inherit__" className="text-sm">
+                              Same as shape text
+                            </SelectItem>
+                            {COMMON_FONT_FAMILIES.map((font) => (
+                              <SelectItem key={font} value={font} className="text-sm">
+                                <span style={{ fontFamily: font }}>{font.split(",")[0]}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Size (px, blank = auto)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={200}
+                          step={0.5}
+                          className="h-9 text-sm"
+                          value={
+                            styling.timelineBarAxisLabelFontSize !== undefined &&
+                            styling.timelineBarAxisLabelFontSize !== null
+                              ? styling.timelineBarAxisLabelFontSize
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === "") {
+                              handlePropertyChange("timelineBarAxisLabelFontSize", null, true);
+                              return;
+                            }
+                            const n = parseFloat(raw);
+                            if (!Number.isNaN(n) && n > 0) {
+                              handlePropertyChange("timelineBarAxisLabelFontSize", n, true);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Axis labels (e.g. Q1–Q4) and per-section tick labels. Leave size blank for automatic scaling (~twice the old default).
+                    </p>
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-sm text-muted-foreground">Borders between sections</Label>
