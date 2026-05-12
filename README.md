@@ -1,5 +1,7 @@
 # Diagram Weaver
 
+**Hosted version:** You can try Diagram Weaver in the browser at [https://diagramweaver.com](https://diagramweaver.com).
+
 **Work in progress.** This project is under active development; some functionality may change between releases.
 
 Diagram Weaver: An easy-to-use studio for diagrams and presentations. Pull from a broad library of ready-made icons and shapes—including cloud and tech symbols—to sketch flows and architectures quickly, then step into slides with transitions and animations so decks stay lively without extra tooling. Diagrams stay **interactive**: zoom and pan to explore the canvas; add optional **metadata (“properties”) popups** to show **attributes** and information for whatever you select. When you **present**, combine **Effects** glow highlights with **slide transitions** and **connection animations** so playback can emphasize structure and flows step by step. Whether you’re mapping systems or presenting to an audience, you get polished visuals fast instead of rebuilding layouts by hand.
