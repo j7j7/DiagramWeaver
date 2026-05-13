@@ -351,7 +351,7 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                 <Card 
                   key={theme.id} 
                   className={`cursor-pointer transition-all ${
-                    selectedTheme?.id === theme.id ? 'ring-2 ring-blue-500' : 'hover:shadow-md'
+                    selectedTheme?.id === theme.id ? 'ring-2 ring-primary' : 'hover:shadow-md'
                   }`}
                   onClick={() => handleThemeSelect(theme)}
                 >

@@ -375,6 +375,9 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
     );
   }
 
+  const customCanvasBg = diagramData.canvasBackgroundColor?.trim();
+  const useCustomCanvasBg = Boolean(customCanvasBg);
+
   return (
     <>
       {metadataPopupRect &&
@@ -392,9 +395,10 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
     <div
       ref={canvasRef}
       id="canvas-container"
-      className="relative w-full h-full overflow-hidden bg-background"
+      className={cn("relative w-full h-full overflow-hidden", !useCustomCanvasBg && "bg-background")}
       style={{
         cursor: isDragging ? 'grabbing' : 'grab',
+        ...(useCustomCanvasBg ? { backgroundColor: customCanvasBg } : {}),
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}

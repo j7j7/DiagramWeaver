@@ -991,6 +991,8 @@ export interface DiagramData {
   subDiagrams?: Record<string, DiagramData>;
   /** Saved pan/zoom for this diagram level - restored when navigating to it */
   viewState?: DiagramViewState;
+  /** Optional viewport background (hex/rgba); omitted = theme `bg-background` */
+  canvasBackgroundColor?: string;
 }
 
 /** @deprecated Zones removed - kept only for flatten-on-import of legacy JSON */
@@ -1001,6 +1003,7 @@ export interface HierarchicalDiagramData {
   metadata?: unknown;
   layers?: LayersConfig;
   recentColors?: string[];
+  canvasBackgroundColor?: string;
 }
 
 /** @deprecated Zones removed - use DiagramData without zones */

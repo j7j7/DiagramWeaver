@@ -2,13 +2,14 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Draggable from "react-draggable";
-import { Plus, Trash2, X } from "lucide-react";
+import { AlignHorizontalSpaceAround, ChevronDown, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,30 @@ import {
   timelineBarUsesSpanLayout,
 } from "@/lib/timeline-bar";
 import { GradientAnglePicker } from "./gradient-angle-picker";
+import { cn } from "@/lib/utils";
+
+function timelineBarSectionRowId(row: TimelineBarSectionData, index: number): string {
+  return String(row.id ?? `tb-row-${index}`);
+}
+
+function timelineBarSegmentSummaryLabel(
+  row: TimelineBarSectionData,
+  index: number,
+  spanLayoutEnabled: boolean,
+  sizing: "equal" | "weighted",
+): string {
+  const title = (row.label ?? "").trim() || `Section ${index + 1}`;
+  const fs = row.fillStyle ?? "solid";
+  const parts: string[] = [title, fs];
+  if (spanLayoutEnabled) {
+    const a = Math.round(clampTimelineBarT(row.spanStart ?? 0) * 100);
+    const b = Math.round(clampTimelineBarT(row.spanEnd ?? 1) * 100);
+    parts.push(`${a}–${b}%`);
+  } else if (sizing === "weighted") {
+    parts.push(`wt ${typeof row.weight === "number" ? row.weight : 1}`);
+  }
+  return parts.join(" · ");
+}
 
 function equalSegmentSpans(n: number): { spanStart: number; spanEnd: number }[] {
   if (n <= 0) return [];
@@ -74,19 +99,31 @@ export function TimelineBarEditorModal({
   const [sizing, setSizing] = useState<"equal" | "weighted">("equal");
   const [axisRows, setAxisRows] = useState<AxisRow[]>([]);
   const [spanLayoutEnabled, setSpanLayoutEnabled] = useState(false);
+  const [axisSectionOpen, setAxisSectionOpen] = useState(true);
+  const [collapsedSegIds, setCollapsedSegIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     if (visible && node && isTimelineBarNodeType(node.type)) {
       const sec = normalizeTimelineBarSections(node).map((s) => ({ ...s }));
       setRows(sec);
       setSizing(((node as DiagramNodeData & { timelineBarSizing?: string }).timelineBarSizing as "equal" | "weighted") || "equal");
-      setAxisRows(normalizeTimelineBarAxisLabels(node).map((a) => ({ ...a })));
+      const ax = normalizeTimelineBarAxisLabels(node).map((a) => ({ ...a }));
+      setAxisRows(ax);
       setSpanLayoutEnabled(timelineBarUsesSpanLayout(sec));
+      setAxisSectionOpen(ax.length <= 2);
+      setCollapsedSegIds(
+        sec.length > 2 ? new Set(sec.map((r, j) => timelineBarSectionRowId(r, j))) : new Set(),
+      );
     } else if (visible && node) {
-      setRows(defaultTimelineBarSections());
+      const def = defaultTimelineBarSections();
+      setRows(def);
       setSizing("equal");
       setAxisRows([]);
       setSpanLayoutEnabled(false);
+      setAxisSectionOpen(true);
+      setCollapsedSegIds(
+        def.length > 2 ? new Set(def.map((r, j) => timelineBarSectionRowId(r, j))) : new Set(),
+      );
     }
   }, [visible, node]);
 
@@ -213,11 +250,12 @@ export function TimelineBarEditorModal({
 
   const addRow = () => {
     if (!node || isReadOnly) return;
+    const newId = newTimelineBarSectionId(node.id);
     setRows((prev) => {
       const next = [
         ...prev,
         {
-          id: newTimelineBarSectionId(node.id),
+          id: newId,
           label: `S${prev.length + 1}`,
           fill: "#94a3b8",
           fillStyle: "solid" as const,
@@ -231,16 +269,29 @@ export function TimelineBarEditorModal({
       }
       return next;
     });
+    setCollapsedSegIds((s) => {
+      const next = new Set(s);
+      next.delete(newId);
+      return next;
+    });
   };
 
   const removeRow = (i: number) => {
+    let removedId: string | undefined;
     setRows((prev) => {
       if (prev.length <= 1) return prev;
+      removedId = timelineBarSectionRowId(prev[i], i);
       const next = prev.filter((_, idx) => idx !== i);
       if (spanLayoutEnabled) {
         const sp = equalSegmentSpans(next.length);
         return next.map((r, j) => ({ ...r, spanStart: sp[j]?.spanStart, spanEnd: sp[j]?.spanEnd }));
       }
+      return next;
+    });
+    setCollapsedSegIds((s) => {
+      if (!removedId) return s;
+      const next = new Set(s);
+      next.delete(removedId);
       return next;
     });
   };
@@ -294,103 +345,141 @@ export function TimelineBarEditorModal({
       >
         <div
           ref={panelRef}
-          className="fixed z-[70] w-[440px] max-w-[calc(100vw-16px)] rounded-md border border-border bg-popover p-0 shadow-lg"
+          className="fixed z-[70] w-[440px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover p-0 shadow-lg"
         >
-          <div className="tb-modal-drag-handle flex cursor-move items-center justify-between border-b p-3">
-            <h3 className="text-sm font-semibold">Timeline bar sections</h3>
+          <div className="tb-modal-drag-handle flex cursor-move items-center justify-between border-b px-4 py-2.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <AlignHorizontalSpaceAround className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+              <h3 className="truncate text-sm font-semibold text-foreground">Timeline bar sections</h3>
+            </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 shrink-0 p-0" onClick={onClose}>
+                <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0" onClick={onClose}>
                   <X className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Close</TooltipContent>
             </Tooltip>
           </div>
-          <div className="max-h-[min(70vh,560px)] space-y-3 overflow-y-auto p-4">
-            <div className="space-y-2 rounded-md border border-teal-200/60 bg-teal-50/35 p-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Label className="text-xs font-medium text-teal-900">Timeline axis (below bar)</Label>
-                {!isReadOnly ? (
-                  <div className="flex flex-wrap items-center justify-end gap-1.5">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="h-7 text-[11px]"
-                          onClick={applyEvenAxisSpacing}
-                          disabled={axisRows.length === 0}
-                        >
-                          Even spacing
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs text-xs">
-                        Sets Pos % so each tick sits at the centre of an equal slice of the bar (e.g. four labels:
-                        12.5 / 37.5 / 62.5 / 87.5). Fixes uneven gaps when the last tick was near 100%.
-                      </TooltipContent>
-                    </Tooltip>
-                    <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={addAxisRow}>
-                      <Plus className="mr-0.5 h-3 w-3" />
-                      Add label
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-              <p className="text-[11px] leading-snug text-muted-foreground">
-                Independent of coloured segments: e.g. four quarters evenly spaced while segments stay equal/weighted or use
-                custom spans. Use{" "}
-                <span className="font-medium text-foreground">Even spacing</span> to recalculate positions.
-              </p>
-              {axisRows.length === 0 ? (
-                <p className="text-[11px] italic text-muted-foreground">Empty — section “Date / tick” fields draw the tick row.</p>
-              ) : (
-                <div className="space-y-2">
-                  {axisRows.map((ax, i) => (
-                    <div key={ax.id || `ax-${i}`} className="flex flex-wrap items-end gap-2">
-                      <Input
-                        value={ax.label}
-                        onChange={(e) => patchAxisRow(i, { label: e.target.value })}
-                        placeholder="e.g. Q1"
-                        className="h-8 min-w-[100px] flex-1 text-xs"
-                        disabled={isReadOnly}
-                      />
-                      <div className="flex items-center gap-1">
-                        <span className="whitespace-nowrap text-[11px] text-muted-foreground">Pos %</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={Math.round(clampTimelineBarT(ax.t) * 100)}
-                          onChange={(e) => {
-                            const n = parseFloat(e.target.value);
-                            if (!Number.isFinite(n)) return;
-                            patchAxisRow(i, { t: clampTimelineBarT(n / 100) });
-                          }}
-                          className="h-8 w-14 text-xs"
-                          disabled={isReadOnly}
-                          title="Horizontal position (0 = left, 100 = right)"
-                        />
-                      </div>
+          <div className="max-h-[min(70vh,560px)] space-y-4 overflow-y-auto p-5">
+            <Collapsible open={axisSectionOpen} onOpenChange={setAxisSectionOpen}>
+              <div className="space-y-2 rounded-md border border-teal-200/60 bg-teal-50/35 p-3 dark:border-border dark:bg-background">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <CollapsibleTrigger asChild>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeAxisRow(i)}
-                        disabled={isReadOnly}
+                        className="h-8 w-8 shrink-0 p-0"
+                        aria-expanded={axisSectionOpen}
+                        aria-label={axisSectionOpen ? "Collapse timeline axis" : "Expand timeline axis"}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform",
+                            !axisSectionOpen && "-rotate-90",
+                          )}
+                        />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <div className="h-2 w-2 shrink-0 rounded-full bg-teal-500" aria-hidden />
+                    <Label className="text-xs font-semibold text-foreground">Timeline axis (below bar)</Label>
+                  </div>
+                  {!isReadOnly ? (
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 text-[11px]"
+                            onClick={applyEvenAxisSpacing}
+                            disabled={axisRows.length === 0}
+                          >
+                            Even spacing
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs text-xs">
+                          Sets Pos % so each tick sits at the centre of an equal slice of the bar (e.g. four labels:
+                          12.5 / 37.5 / 62.5 / 87.5). Fixes uneven gaps when the last tick was near 100%.
+                        </TooltipContent>
+                      </Tooltip>
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={addAxisRow}>
+                        <Plus className="mr-0.5 h-3 w-3" />
+                        Add label
                       </Button>
                     </div>
-                  ))}
+                  ) : null}
                 </div>
-              )}
-            </div>
+                <CollapsibleContent className="space-y-2 overflow-hidden">
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    Independent of coloured segments: e.g. four quarters evenly spaced while segments stay equal/weighted or
+                    use custom spans. Use{" "}
+                    <span className="font-medium text-foreground">Even spacing</span> to recalculate positions.
+                  </p>
+                  {axisRows.length === 0 ? (
+                    <p className="text-[11px] italic text-muted-foreground">
+                      Empty — section “Date / tick” fields draw the tick row.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {axisRows.map((ax, i) => (
+                        <div
+                          key={ax.id || `ax-${i}`}
+                          className="grid w-full items-end gap-x-2 gap-y-1 [grid-template-columns:minmax(0,1fr)_minmax(5.75rem,auto)_2rem]"
+                        >
+                          <Input
+                            value={ax.label}
+                            onChange={(e) => patchAxisRow(i, { label: e.target.value })}
+                            placeholder="e.g. Q1"
+                            className="h-8 min-w-0 w-full text-xs"
+                            disabled={isReadOnly}
+                          />
+                          <div className="flex min-w-[5.75rem] shrink-0 flex-col gap-0.5 justify-end">
+                            <Label
+                              htmlFor={`tb-axis-t-${ax.id ?? i}`}
+                              className="text-[10px] leading-none text-muted-foreground"
+                            >
+                              Pos %
+                            </Label>
+                            <Input
+                              id={`tb-axis-t-${ax.id ?? i}`}
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={Math.round(clampTimelineBarT(ax.t) * 100)}
+                              onChange={(e) => {
+                                const n = parseFloat(e.target.value);
+                                if (!Number.isFinite(n)) return;
+                                patchAxisRow(i, { t: clampTimelineBarT(n / 100) });
+                              }}
+                              className="h-8 w-full px-2 text-center text-xs tabular-nums [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                              disabled={isReadOnly}
+                              title="Horizontal position (0 = left, 100 = right)"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 shrink-0 justify-self-end p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeAxisRow(i)}
+                            disabled={isReadOnly}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
 
-            <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-2 py-1.5">
+            <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2 dark:border-border dark:bg-background">
               <div>
                 <Label className="text-xs text-muted-foreground">Custom segment span (0–100%)</Label>
                 <p className="text-[10px] text-muted-foreground">Place each coloured block on the bar; ignores equal/weighted.</p>
@@ -440,236 +529,276 @@ export function TimelineBarEditorModal({
               <p className="text-xs text-muted-foreground">Every section gets the same width.</p>
             )}
             <div className="space-y-2">
-              {rows.map((row, i) => (
-                <div key={row.id || i} className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-2">
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input
-                      value={row.label ?? ""}
-                      onChange={(e) => patchRow(i, { label: e.target.value })}
-                      placeholder="Bar text"
-                      className="h-8 flex-1 text-xs"
-                      disabled={isReadOnly}
-                    />
-                    {!hideSectionTickFields ? (
-                      <Input
-                        value={row.tickLabel ?? ""}
-                        onChange={(e) => patchRow(i, { tickLabel: e.target.value })}
-                        placeholder="Date / tick (optional)"
-                        className="h-8 flex-1 text-xs"
-                        disabled={isReadOnly}
-                      />
-                    ) : (
-                      <div className="flex flex-1 items-center rounded border border-dashed border-border/60 bg-muted/20 px-2 text-[11px] text-muted-foreground">
-                        Timeline axis row active
-                      </div>
-                    )}
-                  </div>
-                  {spanLayoutEnabled ? (
-                    <div className="flex flex-wrap gap-2">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[11px] text-muted-foreground">Start %</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={Math.round(clampTimelineBarT(row.spanStart ?? 0) * 100)}
-                          onChange={(e) => {
-                            const n = parseFloat(e.target.value);
-                            if (!Number.isFinite(n)) return;
-                            patchRow(i, { spanStart: clampTimelineBarT(n / 100) });
-                          }}
-                          className="h-8 w-16 text-xs"
-                          disabled={isReadOnly}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[11px] text-muted-foreground">End %</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={Math.round(clampTimelineBarT(row.spanEnd ?? 1) * 100)}
-                          onChange={(e) => {
-                            const n = parseFloat(e.target.value);
-                            if (!Number.isFinite(n)) return;
-                            patchRow(i, { spanEnd: clampTimelineBarT(n / 100) });
-                          }}
-                          className="h-8 w-16 text-xs"
-                          disabled={isReadOnly}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Label className="shrink-0 text-xs text-muted-foreground">Fill</Label>
-                      <Select
-                        value={row.fillStyle ?? "solid"}
-                        onValueChange={(v) => {
-                          const style = v as "solid" | "gradient" | "none" | "theme-hue";
-                          if (style === "gradient") {
-                            const base = row.fill || "#94a3b8";
-                            const c1 =
-                              Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 2
-                                ? String(row.fillGradientColors[1])
-                                : "#64748b";
-                            patchRow(i, {
-                              fillStyle: "gradient",
-                              fillGradientColors: [
-                                Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 1
-                                  ? String(row.fillGradientColors[0])
-                                  : base,
-                                c1,
-                              ],
-                              fillGradientAngle:
-                                typeof row.fillGradientAngle === "number" && Number.isFinite(row.fillGradientAngle)
-                                  ? row.fillGradientAngle
-                                  : 90,
-                            });
-                          } else if (style === "none") {
-                            patchRow(i, { fillStyle: "none" });
-                          } else if (style === "theme-hue") {
-                            patchRow(i, { fillStyle: "theme-hue" });
-                          } else {
-                            patchRow(i, { fillStyle: "solid" });
-                          }
-                        }}
-                        disabled={isReadOnly}
-                      >
-                        <SelectTrigger className="h-8 min-w-[148px] max-w-[200px] text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[80]">
-                          <SelectItem value="solid" className="text-sm">
-                            Solid
-                          </SelectItem>
-                          <SelectItem value="gradient" className="text-sm">
-                            Gradient
-                          </SelectItem>
-                          <SelectItem value="theme-hue" className="text-sm">
-                            Theme hue
-                          </SelectItem>
-                          <SelectItem value="none" className="text-sm">
-                            None
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {(row.fillStyle ?? "solid") === "solid" ? (
-                      <div className="min-w-[120px] max-w-[200px]">
-                        <ColorPicker
-                          value={row.fill || "#6b7280"}
-                          onChange={(value) => patchRow(i, { fill: value })}
-                        />
-                      </div>
-                    ) : null}
-                    {(row.fillStyle ?? "solid") === "gradient" ? (
-                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-                        <div className="flex flex-1 flex-col gap-1">
-                          <Label className="text-xs text-muted-foreground">Start</Label>
-                          <ColorPicker
-                            value={
-                              Array.isArray(row.fillGradientColors) && row.fillGradientColors[0]
-                                ? String(row.fillGradientColors[0])
-                                : row.fill || "#6b7280"
-                            }
-                            onChange={(value) => {
-                              const g1 =
-                                Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 2
-                                  ? String(row.fillGradientColors[1])
-                                  : value;
-                              patchRow(i, { fillGradientColors: [value, g1], fill: value });
-                            }}
-                          />
-                        </div>
-                        <div className="flex flex-1 flex-col gap-1">
-                          <Label className="text-xs text-muted-foreground">End</Label>
-                          <ColorPicker
-                            value={
-                              Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 2
-                                ? String(row.fillGradientColors[1])
-                                : "#64748b"
-                            }
-                            onChange={(value) => {
-                              const g0 =
-                                Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 1
-                                  ? String(row.fillGradientColors[0])
-                                  : row.fill || "#6b7280";
-                              patchRow(i, { fillGradientColors: [g0, value] });
-                            }}
-                          />
-                        </div>
-                        <div className="shrink-0">
-                          <GradientAnglePicker
-                            value={
-                              typeof row.fillGradientAngle === "number" && Number.isFinite(row.fillGradientAngle)
-                                ? row.fillGradientAngle
-                                : 90
-                            }
-                            onChange={(angle) => patchRow(i, { fillGradientAngle: angle })}
-                            label="Angle"
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-                    {(row.fillStyle ?? "solid") === "none" ? (
-                      <p className="text-xs text-muted-foreground">Segment is transparent; the bar track shows through.</p>
-                    ) : null}
-                    {(row.fillStyle ?? "solid") === "theme-hue" ? (
-                      <p className="text-xs text-muted-foreground">
-                        Uses the bar background colour for the first theme-hue segment; each further theme-hue segment
-                        shifts hue (same idea as timeline cards). Set the step under Visual styling → Timeline bar.
-                        {node && rows.length > 0 ? (
-                          <span className="mt-1 flex items-center gap-2">
-                            <span
-                              className="inline-block h-4 w-4 shrink-0 rounded border border-border"
-                              style={{
-                                backgroundColor: timelineBarSectionThemeHueFill(
-                                  { ...node, timelineBarSections: rows } as DiagramNodeData,
-                                  normalizeTimelineBarSections({ ...node, timelineBarSections: rows } as DiagramNodeData),
-                                  i,
-                                ),
-                              }}
-                              title="Preview from current bar background"
+              {rows.map((row, i) => {
+                const rowId = timelineBarSectionRowId(row, i);
+                const segOpen = !collapsedSegIds.has(rowId);
+                return (
+                  <Collapsible
+                    key={rowId}
+                    open={segOpen}
+                    onOpenChange={(next) => {
+                      setCollapsedSegIds((prev) => {
+                        const n = new Set(prev);
+                        if (next) n.delete(rowId);
+                        else n.add(rowId);
+                        return n;
+                      });
+                    }}
+                  >
+                    <div className="overflow-hidden rounded-md border border-border/60 bg-muted/30 dark:border-border dark:bg-background">
+                      <div className="flex items-center gap-1 border-b border-border/50 px-2 py-1.5">
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex min-w-0 flex-1 items-center gap-2 rounded-sm py-0.5 text-left outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                                !segOpen && "-rotate-90",
+                              )}
                             />
-                            <span>Preview from current background</span>
-                          </span>
-                        ) : null}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {sizing === "weighted" ? (
-                      <Input
-                        type="number"
-                        min={0.1}
-                        step={0.1}
-                        value={row.weight ?? 1}
-                        onChange={(e) => {
-                          const n = parseFloat(e.target.value);
-                          if (!Number.isFinite(n)) return;
-                          patchRow(i, { weight: Math.max(0.01, n) });
-                        }}
-                        className="h-8 w-20 text-xs"
-                        disabled={isReadOnly}
-                        title="Weight"
-                      />
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeRow(i)}
-                      disabled={isReadOnly || rows.length <= 1}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                            <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+                              {timelineBarSegmentSummaryLabel(row, i, spanLayoutEnabled, sizing)}
+                            </span>
+                          </button>
+                        </CollapsibleTrigger>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeRow(i)}
+                          disabled={isReadOnly || rows.length <= 1}
+                          aria-label="Remove section"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <CollapsibleContent className="overflow-hidden">
+                        <div className="space-y-2 p-3 pt-2">
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Input
+                              value={row.label ?? ""}
+                              onChange={(e) => patchRow(i, { label: e.target.value })}
+                              placeholder="Bar text"
+                              className="h-8 flex-1 text-xs"
+                              disabled={isReadOnly}
+                            />
+                            {!hideSectionTickFields ? (
+                              <Input
+                                value={row.tickLabel ?? ""}
+                                onChange={(e) => patchRow(i, { tickLabel: e.target.value })}
+                                placeholder="Date / tick (optional)"
+                                className="h-8 flex-1 text-xs"
+                                disabled={isReadOnly}
+                              />
+                            ) : (
+                              <div className="flex flex-1 items-center rounded border border-dashed border-border/60 bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground dark:bg-background">
+                                Timeline axis row active
+                              </div>
+                            )}
+                          </div>
+                          {spanLayoutEnabled ? (
+                            <div className="flex flex-wrap gap-2">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[11px] text-muted-foreground">Start %</span>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  step={1}
+                                  value={Math.round(clampTimelineBarT(row.spanStart ?? 0) * 100)}
+                                  onChange={(e) => {
+                                    const n = parseFloat(e.target.value);
+                                    if (!Number.isFinite(n)) return;
+                                    patchRow(i, { spanStart: clampTimelineBarT(n / 100) });
+                                  }}
+                                  className="h-8 w-16 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[11px] text-muted-foreground">End %</span>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  step={1}
+                                  value={Math.round(clampTimelineBarT(row.spanEnd ?? 1) * 100)}
+                                  onChange={(e) => {
+                                    const n = parseFloat(e.target.value);
+                                    if (!Number.isFinite(n)) return;
+                                    patchRow(i, { spanEnd: clampTimelineBarT(n / 100) });
+                                  }}
+                                  className="h-8 w-16 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Label className="shrink-0 text-xs text-muted-foreground">Fill</Label>
+                              <Select
+                                value={row.fillStyle ?? "solid"}
+                                onValueChange={(v) => {
+                                  const style = v as "solid" | "gradient" | "none" | "theme-hue";
+                                  if (style === "gradient") {
+                                    const base = row.fill || "#94a3b8";
+                                    const c1 =
+                                      Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 2
+                                        ? String(row.fillGradientColors[1])
+                                        : "#64748b";
+                                    patchRow(i, {
+                                      fillStyle: "gradient",
+                                      fillGradientColors: [
+                                        Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 1
+                                          ? String(row.fillGradientColors[0])
+                                          : base,
+                                        c1,
+                                      ],
+                                      fillGradientAngle:
+                                        typeof row.fillGradientAngle === "number" && Number.isFinite(row.fillGradientAngle)
+                                          ? row.fillGradientAngle
+                                          : 90,
+                                    });
+                                  } else if (style === "none") {
+                                    patchRow(i, { fillStyle: "none" });
+                                  } else if (style === "theme-hue") {
+                                    patchRow(i, { fillStyle: "theme-hue" });
+                                  } else {
+                                    patchRow(i, { fillStyle: "solid" });
+                                  }
+                                }}
+                                disabled={isReadOnly}
+                              >
+                                <SelectTrigger className="h-8 min-w-[148px] max-w-[200px] text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="z-[80]">
+                                  <SelectItem value="solid" className="text-sm">
+                                    Solid
+                                  </SelectItem>
+                                  <SelectItem value="gradient" className="text-sm">
+                                    Gradient
+                                  </SelectItem>
+                                  <SelectItem value="theme-hue" className="text-sm">
+                                    Theme hue
+                                  </SelectItem>
+                                  <SelectItem value="none" className="text-sm">
+                                    None
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {(row.fillStyle ?? "solid") === "solid" ? (
+                              <div className="min-w-[120px] max-w-[200px]">
+                                <ColorPicker
+                                  value={row.fill || "#6b7280"}
+                                  onChange={(value) => patchRow(i, { fill: value })}
+                                />
+                              </div>
+                            ) : null}
+                            {(row.fillStyle ?? "solid") === "gradient" ? (
+                              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                                <div className="flex flex-1 flex-col gap-1">
+                                  <Label className="text-xs text-muted-foreground">Start</Label>
+                                  <ColorPicker
+                                    value={
+                                      Array.isArray(row.fillGradientColors) && row.fillGradientColors[0]
+                                        ? String(row.fillGradientColors[0])
+                                        : row.fill || "#6b7280"
+                                    }
+                                    onChange={(value) => {
+                                      const g1 =
+                                        Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 2
+                                          ? String(row.fillGradientColors[1])
+                                          : value;
+                                      patchRow(i, { fillGradientColors: [value, g1], fill: value });
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex flex-1 flex-col gap-1">
+                                  <Label className="text-xs text-muted-foreground">End</Label>
+                                  <ColorPicker
+                                    value={
+                                      Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 2
+                                        ? String(row.fillGradientColors[1])
+                                        : "#64748b"
+                                    }
+                                    onChange={(value) => {
+                                      const g0 =
+                                        Array.isArray(row.fillGradientColors) && row.fillGradientColors.length >= 1
+                                          ? String(row.fillGradientColors[0])
+                                          : row.fill || "#6b7280";
+                                      patchRow(i, { fillGradientColors: [g0, value] });
+                                    }}
+                                  />
+                                </div>
+                                <div className="shrink-0">
+                                  <GradientAnglePicker
+                                    value={
+                                      typeof row.fillGradientAngle === "number" && Number.isFinite(row.fillGradientAngle)
+                                        ? row.fillGradientAngle
+                                        : 90
+                                    }
+                                    onChange={(angle) => patchRow(i, { fillGradientAngle: angle })}
+                                    label="Angle"
+                                  />
+                                </div>
+                              </div>
+                            ) : null}
+                            {(row.fillStyle ?? "solid") === "none" ? (
+                              <p className="text-xs text-muted-foreground">Segment is transparent; the bar track shows through.</p>
+                            ) : null}
+                            {(row.fillStyle ?? "solid") === "theme-hue" ? (
+                              <p className="text-xs text-muted-foreground">
+                                Uses the bar background colour for the first theme-hue segment; each further theme-hue segment
+                                shifts hue (same idea as timeline cards). Set the step under Visual styling → Timeline bar.
+                                {node && rows.length > 0 ? (
+                                  <span className="mt-1 flex items-center gap-2">
+                                    <span
+                                      className="inline-block h-4 w-4 shrink-0 rounded border border-border"
+                                      style={{
+                                        backgroundColor: timelineBarSectionThemeHueFill(
+                                          { ...node, timelineBarSections: rows } as DiagramNodeData,
+                                          normalizeTimelineBarSections({ ...node, timelineBarSections: rows } as DiagramNodeData),
+                                          i,
+                                        ),
+                                      }}
+                                      title="Preview from current bar background"
+                                    />
+                                    <span>Preview from current background</span>
+                                  </span>
+                                ) : null}
+                              </p>
+                            ) : null}
+                          </div>
+                          {sizing === "weighted" ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Input
+                                type="number"
+                                min={0.1}
+                                step={0.1}
+                                value={row.weight ?? 1}
+                                onChange={(e) => {
+                                  const n = parseFloat(e.target.value);
+                                  if (!Number.isFinite(n)) return;
+                                  patchRow(i, { weight: Math.max(0.01, n) });
+                                }}
+                                className="h-8 w-20 text-xs"
+                                disabled={isReadOnly}
+                                title="Weight"
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                );
+              })}
             </div>
             {!isReadOnly && (
               <Button type="button" variant="outline" size="sm" className="h-8 w-full text-xs" onClick={addRow}>
@@ -678,7 +807,7 @@ export function TimelineBarEditorModal({
               </Button>
             )}
           </div>
-          <div className="flex justify-end gap-2 border-t p-3">
+          <div className="flex justify-end gap-2 border-t px-4 py-2.5">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
             </Button>

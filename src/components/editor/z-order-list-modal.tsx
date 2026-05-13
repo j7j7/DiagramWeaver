@@ -157,10 +157,10 @@ export function ZOrderListModal({
           className="fixed w-[min(380px,calc(100vw-2rem))] rounded-xl border border-border bg-card shadow-2xl backdrop-blur-sm z-[70] flex flex-col max-h-[min(520px,86vh)]"
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <div className="z-order-modal-drag-handle flex items-center justify-between gap-2 px-3 py-2.5 border-b cursor-move shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <Layers className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-              <h2 className="text-sm font-semibold truncate">Stacking order</h2>
+          <div className="z-order-modal-drag-handle flex shrink-0 cursor-move items-center justify-between gap-2 border-b px-4 py-2.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <Layers className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+              <h2 className="truncate text-sm font-semibold text-foreground">Stacking order</h2>
             </div>
             <Button
               variant="ghost"

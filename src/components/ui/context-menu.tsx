@@ -267,7 +267,8 @@ export function ContextMenu({
       ref={menuRef}
       className={cn(
         "context-menu fixed bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[150px]",
-        "animate-in fade-in-0 zoom-in-95"
+        "animate-in fade-in-0 zoom-in-95",
+        "[&_svg:not([class*='text-destructive'])]:text-primary [&_svg]:shrink-0"
       )}
       style={{
         left: `${x}px`,

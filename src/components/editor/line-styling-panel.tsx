@@ -113,35 +113,35 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
       }}
     >
       <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[640px] max-w-[calc(100vw-2rem)] cursor-move">
-        <div className="flex items-center justify-between p-3 border-b">
-          <div className="flex items-center gap-2">
-            <Minus className="w-4 h-4 text-blue-600" />
-            <h3 className="font-semibold text-slate-800 text-sm">Line Styling</h3>
+        <div className="flex items-center justify-between border-b px-4 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <Minus className="h-4 w-4 shrink-0 text-primary" />
+            <h3 className="truncate text-sm font-semibold text-foreground">Line Styling</h3>
           </div>
           {onClose && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-7 w-7 p-0"
+              className="h-8 w-8 shrink-0 p-0"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </Button>
           )}
         </div>
-        <div className="p-3 space-y-2 max-h-[80vh] overflow-y-auto">
+        <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
           <div className="grid grid-cols-2 gap-x-8 gap-y-4">
             <div className="space-y-4 min-w-0">
           {/* Line Properties Section */}
-          <div className="bg-muted/50 rounded-md p-2 border border-border">
+          <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border">
             <div className="flex items-center gap-1.5 mb-2">
               <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-              <Label className="text-xs font-semibold text-slate-700">Line</Label>
+              <Label className="text-xs font-semibold text-foreground">Line</Label>
             </div>
             
             {/* Line Thickness */}
             <div className="space-y-1 mb-2">
-              <Label htmlFor="line-thickness" className="text-xs text-slate-600">
+              <Label htmlFor="line-thickness" className="text-xs text-muted-foreground">
                 Thickness: {styling.lineThickness || 2.5}px
               </Label>
               <Slider
@@ -157,7 +157,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
 
             {/* Line Type */}
             <div className="space-y-1 mb-2">
-              <Label htmlFor="line-type" className="text-xs text-slate-600">Line Type</Label>
+              <Label htmlFor="line-type" className="text-xs text-muted-foreground">Line Type</Label>
               <Select
                 value={styling.lineType || 'solid'}
                 onValueChange={(value) => handlePropertyChange('lineType', value as any)}
@@ -186,7 +186,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               <>
                 {/* Start Cap */}
                 <div className="space-y-1 mb-2">
-                  <Label htmlFor="start-cap" className="text-xs text-slate-600">Start Cap</Label>
+                  <Label htmlFor="start-cap" className="text-xs text-muted-foreground">Start Cap</Label>
                   <Select
                     value={styling.startCap || 'none'}
                     onValueChange={(value) => handlePropertyChange('startCap', value as any)}
@@ -217,7 +217,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
 
                 {/* End Cap */}
                 <div className="space-y-1 mb-2">
-                  <Label htmlFor="end-cap" className="text-xs text-slate-600">End Cap</Label>
+                  <Label htmlFor="end-cap" className="text-xs text-muted-foreground">End Cap</Label>
                   <Select
                     value={styling.endCap || 'none'}
                     onValueChange={(value) => handlePropertyChange('endCap', value as any)}
@@ -252,7 +252,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-600">Color style</Label>
+                  <Label className="text-xs text-muted-foreground">Color style</Label>
                   <Select
                     value={styling.lineColorStyle || "solid"}
                     onValueChange={(v) => handleLineColorStyleChange(v as "solid" | "gradient")}
@@ -279,7 +279,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               {styling.lineColorStyle === "gradient" ? (
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-600">Start</Label>
+                    <Label className="text-xs text-muted-foreground">Start</Label>
                     <ColorPicker
                       value={styling.lineColors?.[0] || styling.lineColor || "#6b7280"}
                       onChange={(value) => {
@@ -295,7 +295,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-600">End</Label>
+                    <Label className="text-xs text-muted-foreground">End</Label>
                     <ColorPicker
                       value={styling.lineColors?.[1] || "#3b82f6"}
                       onChange={(value) => {
@@ -313,7 +313,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <Label htmlFor="line-color" className="text-xs text-slate-600">Color</Label>
+                  <Label htmlFor="line-color" className="text-xs text-muted-foreground">Color</Label>
                   <ColorPicker
                     value={styling.lineColor || "#6b7280"}
                     onChange={(value) => handlePropertyChange("lineColor", value)}
@@ -328,15 +328,15 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             </div>
             <div className="space-y-4 min-w-0">
           {/* Text Properties Section */}
-          <div className="bg-emerald-50/50 rounded-md p-2 border border-emerald-200/50">
+          <div className="bg-emerald-50/50 dark:bg-background rounded-md p-3 border border-emerald-200/50 dark:border-border">
             <div className="flex items-center gap-1.5 mb-2">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-              <Label className="text-xs font-semibold text-slate-700">Text</Label>
+              <Label className="text-xs font-semibold text-foreground">Text</Label>
             </div>
             
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div className="space-y-1">
-                <Label htmlFor="font-family" className="text-xs text-slate-600">Family</Label>
+                <Label htmlFor="font-family" className="text-xs text-muted-foreground">Family</Label>
                 <Select
                   value={styling.fontFamily || ''}
                   onValueChange={(value) => handlePropertyChange('fontFamily', value)}
@@ -354,7 +354,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="font-size" className="text-xs text-slate-600">Size: {styling.fontSize || 12}px</Label>
+                <Label htmlFor="font-size" className="text-xs text-muted-foreground">Size: {styling.fontSize || 12}px</Label>
                 <Slider
                   id="font-size"
                   min={8}
@@ -368,7 +368,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             </div>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div className="space-y-1">
-                <Label htmlFor="font-weight" className="text-xs text-slate-600">Weight</Label>
+                <Label htmlFor="font-weight" className="text-xs text-muted-foreground">Weight</Label>
                 <Select
                   value={styling.fontWeight || 'normal'}
                   onValueChange={(value) => handlePropertyChange('fontWeight', value as any)}
@@ -386,7 +386,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="font-style" className="text-xs text-slate-600">Style</Label>
+                <Label htmlFor="font-style" className="text-xs text-muted-foreground">Style</Label>
                 <Select
                   value={styling.fontStyle || 'normal'}
                   onValueChange={(value) => handlePropertyChange('fontStyle', value as any)}
@@ -403,7 +403,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               </div>
             </div>
             <div className="space-y-2 mb-2">
-              <Label htmlFor="text-color" className="text-xs text-slate-600">Color</Label>
+              <Label htmlFor="text-color" className="text-xs text-muted-foreground">Color</Label>
               <ColorPicker
                 value={styling.textColor || '#000000'}
                 onChange={(value) => handlePropertyChange('textColor', value)}
@@ -413,7 +413,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               />
             </div>
             <div className="space-y-1 mb-2">
-              <Label htmlFor="text-outline-width" className="text-xs text-slate-600">
+              <Label htmlFor="text-outline-width" className="text-xs text-muted-foreground">
                 Outline: {(styling.textOutlineWidth ?? 0)}px
               </Label>
               <Slider
@@ -428,7 +428,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             </div>
             {(styling.textOutlineWidth ?? 0) > 0 && (
               <div className="space-y-2 mb-2">
-                <Label className="text-xs text-slate-600">Outline color</Label>
+                <Label className="text-xs text-muted-foreground">Outline color</Label>
                 <ColorPicker
                   value={styling.textOutlineColor ?? "#ffffff"}
                   onChange={(value) => handlePropertyChange("textOutlineColor", value)}
@@ -439,7 +439,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               </div>
             )}
             <div className="space-y-1 mb-2">
-              <Label htmlFor="text-glow-blur" className="text-xs text-slate-600">
+              <Label htmlFor="text-glow-blur" className="text-xs text-muted-foreground">
                 Glow: {(styling.textGlowBlur ?? 0)}px
               </Label>
               <Slider
@@ -454,7 +454,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             </div>
             {(styling.textGlowBlur ?? 0) > 0 && (
               <div className="space-y-2 mb-2">
-                <Label className="text-xs text-slate-600">Glow color</Label>
+                <Label className="text-xs text-muted-foreground">Glow color</Label>
                 <ColorPicker
                   value={styling.textGlowColor ?? "rgba(255,255,255,0.9)"}
                   onChange={(value) => handlePropertyChange("textGlowColor", value)}
@@ -466,7 +466,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             )}
             <div className="space-y-2 mb-2">
               <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="line-text-drop-shadow" className="text-xs text-slate-600">
+                <Label htmlFor="line-text-drop-shadow" className="text-xs text-muted-foreground">
                   Drop shadow
                 </Label>
                 <Switch
@@ -481,7 +481,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-500">X: {styling.textShadowOffsetX ?? 0}</Label>
+                      <Label className="text-xs text-muted-foreground">X: {styling.textShadowOffsetX ?? 0}</Label>
                       <Slider
                         min={-6}
                         max={6}
@@ -492,7 +492,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-500">Y: {styling.textShadowOffsetY ?? 0}</Label>
+                      <Label className="text-xs text-muted-foreground">Y: {styling.textShadowOffsetY ?? 0}</Label>
                       <Slider
                         min={-6}
                         max={10}
@@ -503,7 +503,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                       />
                     </div>
                   </div>
-                  <Label className="text-xs text-slate-500">Blur: {(styling.textShadowBlur ?? 0)}px</Label>
+                  <Label className="text-xs text-muted-foreground">Blur: {(styling.textShadowBlur ?? 0)}px</Label>
                   <Slider
                     min={0}
                     max={16}
@@ -528,7 +528,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             </div>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div className="space-y-1">
-                <Label htmlFor="letter-spacing" className="text-xs text-slate-600">Spacing: {styling.letterSpacing || 0}px</Label>
+                <Label htmlFor="letter-spacing" className="text-xs text-muted-foreground">Spacing: {styling.letterSpacing || 0}px</Label>
                 <Slider
                   id="letter-spacing"
                   min={-2}
@@ -540,7 +540,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="text-opacity" className="text-xs text-slate-600">Opacity: {Math.round((styling.textOpacity || 1) * 100)}%</Label>
+                <Label htmlFor="text-opacity" className="text-xs text-muted-foreground">Opacity: {Math.round((styling.textOpacity || 1) * 100)}%</Label>
                 <Slider
                   id="text-opacity"
                   min={0}
@@ -553,7 +553,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-slate-600">Position</Label>
+              <Label className="text-xs text-muted-foreground">Position</Label>
               <div className="flex gap-1">
                 <Button
                   variant={styling.lineTextVerticalPosition === 'above' ? 'default' : 'outline'}

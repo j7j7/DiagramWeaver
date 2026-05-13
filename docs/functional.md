@@ -6,7 +6,7 @@ This document describes **how Diagram Weaver’s code is structured**: main modu
 
 ## Mental model
 
-1. **`DiagramData`** (see `src/lib/types.ts`) is the serializable diagram: nodes, connections, groupings, optional layers/view state, zones, sub‑diagrams, presentations.
+1. **`DiagramData`** (see `src/lib/types.ts`) is the serializable diagram: nodes, connections, groupings, optional layers/view state, optional **`canvasBackgroundColor`** (viewport background), zones, sub‑diagrams, presentations.
 2. **Validation** converts arbitrary JSON → **`DiagramData`** via **`DiagramDataSchema`** (`src/lib/schemas.ts`) and helpers in **`viewer-utils`** / **`import-sanitize`** / **`flatten-on-import`**.
 3. **Editor shell** (`DiagramEditor` → `DiagramEditorInner` → **`EditorCanvas`**) mutates **`DiagramData`** (tabs, history, undo, presentation authoring).
 4. **Viewer shell** (`/viewer`) loads JSON (inline URL, remote URL, or file), runs the same validation path, renders **`ViewerCanvas`** read‑only.

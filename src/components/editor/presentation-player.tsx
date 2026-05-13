@@ -299,6 +299,8 @@ export function PresentationPlayer({
 
   const slideBarLabel = currentSlide?.title || (totalSlides > 0 ? `Slide ${safeIndex + 1}` : 'Presentation');
 
+  const presentationShellBackgroundColor = renderedDiagram?.canvasBackgroundColor?.trim() || '#000000';
+
   const playbackBarClassName =
     'pointer-events-auto fixed bottom-4 left-1/2 z-[60] flex max-w-[min(920px,calc(100vw-2rem))] -translate-x-1/2 flex-wrap items-center gap-2 rounded-lg border border-border bg-card/95 px-3 py-2 text-foreground shadow-lg backdrop-blur-sm';
 
@@ -322,7 +324,10 @@ export function PresentationPlayer({
         >
           <X className="h-4 w-4 opacity-90" strokeWidth={2.25} />
         </button>
-        <div className="relative flex h-full w-full flex-col bg-black">
+        <div
+          className="relative flex h-full w-full flex-col"
+          style={{ backgroundColor: presentationShellBackgroundColor }}
+        >
           {currentSlide ? (
             renderedDiagram ? (
               <div className="min-h-0 flex-1">

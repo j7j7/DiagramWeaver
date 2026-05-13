@@ -2417,6 +2417,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     pastePaletteItem: pastePaletteItemHandler, // Pastes a new item from the sidebar palette
   }), [handleFitToView, exportPng, exportGif, captureViewportPngDataUrl, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
 
+  const customCanvasBg = diagramData.canvasBackgroundColor?.trim();
+  const useCustomCanvasBg = Boolean(customCanvasBg);
+
   return (
     <div className="relative w-full h-full" data-tutorial-id="canvas">
         {/* ========================================================================
@@ -2445,7 +2448,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           ref={canvasRef}
           id="canvas-container"
           data-testid="editor-canvas"
-          className="relative w-full h-full overflow-hidden"
+          className={cn("relative w-full h-full overflow-hidden", !useCustomCanvasBg && "bg-background")}
+          style={useCustomCanvasBg ? { backgroundColor: customCanvasBg } : undefined}
           onClick={handleCanvasClick}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}

@@ -290,10 +290,14 @@ function StylingAccordionSection(props: {
 }) {
   const { title, dotClassName, outerClassName, defaultOpen = true, triggerExtra, children } = props;
   return (
-    <Collapsible defaultOpen={defaultOpen} className={cn("group min-w-0 rounded-md border", outerClassName)}>
+    <Collapsible defaultOpen={defaultOpen} className={cn(
+      "group min-w-0 rounded-md border",
+      outerClassName,
+      "dark:border-border dark:bg-background",
+    )}>
       <CollapsibleTrigger
         type="button"
-        className="flex w-full items-start gap-2 rounded-md px-3 py-2.5 text-left outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex w-full items-start gap-2 rounded-md px-3 py-2.5 text-left outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:hover:bg-muted/40"
       >
         <ChevronDown
           className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90"
@@ -458,15 +462,15 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           "max-w-[calc(100vw-2rem)]",
         )}
       >
-        <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
           <div className="dw-visual-styling-drag-handle flex min-w-0 flex-1 cursor-move items-center gap-2 select-none">
-            <Palette className="h-5 w-5 shrink-0 text-blue-600" />
-            <h3 className="truncate text-base font-semibold text-foreground">
+            <Palette className="h-4 w-4 shrink-0 text-primary" />
+            <h3 className="truncate text-sm font-semibold text-foreground">
               {isLucideIcon ? "Icon Styling" : "Visual Styling"}
             </h3>
           </div>
           {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-9 w-9 shrink-0 p-0">
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 shrink-0 p-0">
               <X className="h-4 w-4" />
             </Button>
           )}
@@ -476,7 +480,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           {(isLucideIcon || showRemoveBackground) && (
             <div className={`grid gap-4 ${isLucideIcon && showRemoveBackground ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {isLucideIcon && (
-                <div className="bg-muted/50 rounded-md p-3 border border-border min-w-0">
+                <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
                     <Label className="text-sm font-semibold text-foreground">Icon Color</Label>
@@ -491,7 +495,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </div>
               )}
               {showRemoveBackground && (
-                <div className="bg-muted/50 rounded-md p-3 border border-border min-w-0">
+                <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-sm font-semibold text-foreground">Remove background</Label>
                     <Switch
@@ -505,7 +509,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           )}
 
           {!showFullStyling && (
-            <div className="bg-purple-50/50 rounded-md p-3 border border-purple-200/50">
+            <div className="bg-purple-50/50 dark:bg-background rounded-md p-3 border border-purple-200/50 dark:border-border">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-purple-500 rounded-full shrink-0" />
                 <Label className="text-sm font-semibold text-foreground">Effects</Label>
@@ -519,7 +523,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           )}
 
           {!isShape && (
-            <div className="bg-muted/50 rounded-md p-3 border border-border">
+            <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-muted-foreground rounded-full shrink-0" />
                 <Label className="text-sm font-semibold text-foreground">Size</Label>

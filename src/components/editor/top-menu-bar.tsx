@@ -12,12 +12,13 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
 import { ThemeMenuSelector } from './theme-menu-selector';
 import { AboutDialog } from './about-dialog';
+import { CanvasBackgroundDialog } from './canvas-background-dialog';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
 import { ViewerUrlDialog } from './viewer-url-dialog';
 import { useTheme } from '@/components/theme-provider';
@@ -429,6 +430,7 @@ export function TopMenuBar({
   }, [currentDiagramData, selectedItemIds]);
 
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
+  const [canvasBackgroundDialogOpen, setCanvasBackgroundDialogOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = React.useState(false);
   const [viewerUrlDialogOpen, setViewerUrlDialogOpen] = React.useState(false);
@@ -674,9 +676,22 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onCurrentDiagramDataUpdate && (
+              <>
+                {(onCopy || onPaste || onSelectAll || onUndo || onRedo || onFitToView) && <MenubarSeparator />}
+                <MenubarItem
+                  onClick={() => setCanvasBackgroundDialogOpen(true)}
+                  disabled={isReadOnly}
+                  data-tutorial-id="canvas-background-menu"
+                >
+                  <PaintBucket className="mr-2 h-4 w-4" />
+                  Canvas background…
+                </MenubarItem>
+              </>
+            )}
             {onToggleReadOnly !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onCurrentDiagramDataUpdate) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleReadOnly}>
                   {isReadOnly ? (
                     <>
@@ -1361,7 +1376,24 @@ export function TopMenuBar({
 
       
       {/* Theme Editor Dialog */}
-      <ThemeEditor 
+      <CanvasBackgroundDialog
+        open={canvasBackgroundDialogOpen}
+        onOpenChange={setCanvasBackgroundDialogOpen}
+        savedColor={currentDiagramData?.canvasBackgroundColor}
+        isReadOnly={isReadOnly}
+        onSave={(color) => {
+          onCurrentDiagramDataUpdate?.((prev) => {
+            const next = { ...prev };
+            if (color === undefined || !String(color).trim()) {
+              delete next.canvasBackgroundColor;
+            } else {
+              next.canvasBackgroundColor = String(color).trim();
+            }
+            return next;
+          });
+        }}
+      />
+      <ThemeEditor
         open={themeEditorOpen}
         onOpenChange={setThemeEditorOpen}
         onThemeSelect={onThemeApplyToSelected}

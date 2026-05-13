@@ -137,7 +137,9 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
     zones: nestedGroups,
     connections: data.connections,
     groupings: data.groupings, // Preserve groupings
-    layers: data.layers // Preserve layers configuration
+    layers: data.layers, // Preserve layers configuration
+    recentColors: data.recentColors,
+    canvasBackgroundColor: data.canvasBackgroundColor,
   };
 }
 
@@ -429,7 +431,9 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
     connections: nestedData.connections,
     zones: filteredZones,
     groupings: nestedData.groupings, // Preserve groupings
-    layers: nestedData.layers // Preserve layers configuration
+    layers: nestedData.layers, // Preserve layers configuration
+    recentColors: nestedData.recentColors,
+    canvasBackgroundColor: nestedData.canvasBackgroundColor,
   };
 }
 

@@ -604,6 +604,8 @@ export const DiagramDataSchema = z.object({
   groupings: z.array(DiagramGroupingDataSchema).optional(),
   layers: LayersConfigSchema.optional(),
   recentColors: z.array(z.string()).optional(),
+  /** Optional canvas viewport background (CSS colour string) */
+  canvasBackgroundColor: z.string().optional(),
   subDiagrams: z.record(z.string(), z.any()).optional(),
   viewState: DiagramViewStateSchema,
 });
@@ -834,4 +836,5 @@ export const HierarchicalDiagramDataSchema = z.object({
   groupings: z.array(DiagramGroupingDataSchema).optional(), // Optional groupings for coordinated movement
   layers: LayersConfigSchema.optional(), // Optional layers configuration
   recentColors: z.array(z.string()).optional(),
+  canvasBackgroundColor: z.string().optional(),
 });

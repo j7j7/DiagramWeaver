@@ -67,12 +67,12 @@ function ChartModalSection({
   headerRight?: React.ReactNode;
 }) {
   const box: Record<ChartModalSectionTint, string> = {
-    muted: "bg-muted/50 border border-border",
-    amber: "bg-amber-50/50 border border-amber-200/50",
-    emerald: "bg-emerald-50/50 border border-emerald-200/50",
-    purple: "bg-purple-50/50 border border-purple-200/50",
-    sky: "bg-sky-50/50 border border-sky-200/50",
-    teal: "bg-teal-50/50 border border-teal-200/50",
+    muted: "bg-muted/50 dark:bg-background border border-border",
+    amber: "bg-amber-50/50 dark:bg-background border border-amber-200/50 dark:border-border",
+    emerald: "bg-emerald-50/50 dark:bg-background border border-emerald-200/50 dark:border-border",
+    purple: "bg-purple-50/50 dark:bg-background border border-purple-200/50 dark:border-border",
+    sky: "bg-sky-50/50 dark:bg-background border border-sky-200/50 dark:border-border",
+    teal: "bg-teal-50/50 dark:bg-background border border-teal-200/50 dark:border-border",
   };
   const dot: Record<ChartModalSectionTint, string> = {
     muted: "bg-primary",
@@ -1028,23 +1028,23 @@ export function ChartDataEditorModal({
       >
         <div
           ref={panelRef}
-          className="fixed w-[460px] rounded-md border border-border bg-popover shadow-lg p-0 z-[70]"
+          className="fixed z-[70] w-[460px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover p-0 shadow-lg"
         >
-          <div className="chart-data-modal-drag-handle flex items-center justify-between p-3 border-b cursor-move">
-            <div className="flex items-center gap-2 min-w-0">
-              <BarChart2 className="w-4 h-4 shrink-0 text-blue-600" aria-hidden />
-              <h3 className="font-semibold text-sm text-foreground truncate">Chart data</h3>
+          <div className="chart-data-modal-drag-handle flex cursor-move items-center justify-between border-b px-4 py-2.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <BarChart2 className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+              <h3 className="truncate text-sm font-semibold text-foreground">Chart data</h3>
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onClose}>
-                  <X className="w-4 h-4" />
+                <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0" onClick={onClose}>
+                  <X className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Close</TooltipContent>
             </Tooltip>
           </div>
-          <div className="p-4 space-y-3 max-h-[min(580px,72vh)] overflow-y-auto">
+          <div className="max-h-[min(580px,72vh)] space-y-4 overflow-y-auto p-5">
             {isCartesianModal ? (
               <>
                 <ChartModalSection title="Outline & display" tint="muted">
@@ -1523,7 +1523,7 @@ export function ChartDataEditorModal({
                         index={i}
                         isReadOnly={isReadOnly}
                         reorderRows={reorderBarRows}
-                        className="rounded-md border border-border/60 bg-muted/20"
+                        className="rounded-md border border-border/60 bg-muted/20 dark:border-border dark:bg-background"
                       >
                         {(dragHandleRef) => (
                           <>
@@ -1898,7 +1898,7 @@ export function ChartDataEditorModal({
                     index={i}
                     isReadOnly={isReadOnly}
                     reorderRows={reorderRows}
-                    className="rounded-md border border-border/60 bg-muted/20"
+                    className="rounded-md border border-border/60 bg-muted/20 dark:border-border dark:bg-background"
                   >
                     {(dragHandleRef) => (
                       <>

@@ -6,6 +6,46 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 ### 2026-05-13 – Mind map: add child without moving existing nodes
 Context menu on a mind-map node (**single selection**): second action **Add mind map node without moving others** — same new node placement offset as before, but skips **`layoutMindmapChildrenAroundParent`** so sibling **x/y** stay fixed; **`finalizeMindmapTreeAttachPreserveSiblingPositions`** (**`mindmap-layout.ts`**) syncs polar fields for the new child only + **`recomputeMindmapMetadata`**. Original **Add mind map node** still rebalances the radial fan. **`attachMindmapTreeChild`** accepts optional **`{ relayoutSiblings?: boolean }`** (default **`true`**); pair-connect keeps full relayout. **`context-menu`** / **`editor-canvas`**.
 
+
+### 2026-05-13 – Optional diagram canvas background colour
+
+**`DiagramData.canvasBackgroundColor`** (optional CSS colour string) is validated in **`DiagramDataSchema`**, preserved on flatten/hierarchical import (**`flatten-on-import`**, **`nested-hierarchy`**). **Edit → Canvas background…** opens **`canvas-background-dialog`** (Colour picker + “Use theme default” / Apply); updates use **`onCurrentDiagramDataUpdate`** (per root/sub‑diagram). **`EditorCanvas`** and **`ViewerCanvas`** apply it on the viewport container (`bg-background` when unset). **Presentation** fullscreen shell uses the same colour for letterboxing (**`presentation-player`**). Patch bumped.
+
+
+### 2026-05-13 – Editor modals: compact consistent title bar
+
+Shared chrome for draggable editor panels (**`visual-styling-panel`**, **`text-styling-panel`**, **`line-styling-panel`**, **`chart-data-editor-modal`**, **`timeline-bar-editor-modal`** header + footer, **`uml-class-editor-modal`**, **`z-order-list-modal`**): **`border-b`** row **`px-4 py-2.5`**; lead icon **`h-4 w-4 text-primary`**; title **`text-sm font-semibold text-foreground truncate`**; close **`Button` `h-8 w-8`**. Matches existing **`connection-context-modal`** density. Patch bumped.
+
+
+### 2026-05-13 – Timeline bar modal: collapsible axis + sections
+
+**`timeline-bar-editor-modal`**: **Timeline axis** teal block wraps body in **`Collapsible`** (chevron on the title row); **>**2 axis rows → **opened collapsed** (**`axisSectionOpen`**). Each **colour segment** is a **`Collapsible`** with header (**chevron + summary**: label · fill style · span % or weight) and **Trash** on the header; **`collapsedSegIds`** (Set of section **`id`**s); opening the modal with **>**2 sections initializes **all segments collapsed**. New row from **Add section** removes its id from the set (**expanded**). Patch bumped.
+
+
+### 2026-05-13 – Timeline bar modal: axis Pos % layout
+
+**`timeline-bar-editor-modal`**: timeline axis rows use a **fixed 3-column grid** (**`minmax(0,1fr)` / `≥5.75rem` / `2rem`**) so the label field **`min-w-0`** shrinks cleanly; **Pos %** uses a stacked **Label** + **`tabular-nums`** input with **`w-full`** in its column (no cramped inline “Pos % | field”), **spin buttons hidden** to save width. Patch bumped.
+
+### 2026-05-13 – Timeline bar sections modal: Visual-styling parity
+
+**`timeline-bar-editor-modal`**: shell **`rounded-lg`**, **`max-w-[calc(100vw-2rem)]`**; header **`px-5 py-4`**, **`AlignHorizontalSpaceAround`** **`h-5 w-5 text-primary`**, title **`text-base font-semibold text-foreground`**, close **`h-9 w-9`**. Body **`p-5 space-y-4`**. Axis block: **`dark:bg-background dark:border-border`**, teal tint kept in light; section title **`text-foreground`** + teal dot; **`p-3`**. Span switch / section rows / dashed placeholder **`dark:bg-background`**; rows **`dark:border-border`**, **`p-3`**. Footer **`px-5 py-4`**. Patch bumped.
+
+### 2026-05-13 – Chart Data modal: dark wells + header parity with Visual Styling
+
+**`chart-data-editor-modal`**: **`ChartModalSection`** tint boxes use **`dark:bg-background`** / **`dark:border-border`** (same pattern as Visual styling). Sortable pie/bar segment rows **`dark:bg-background`**. Panel **`rounded-lg`**, header **`px-5 py-4`**, title **`text-base font-semibold`**, **`BarChart2`** **`h-5 w-5`**, close **`h-9 w-9`**, body **`p-5 space-y-4`**, **`max-w-[calc(100vw-2rem)]`** on shell. Patch bumped.
+
+### 2026-05-13 – Line Styling modal header + semantic text colours
+
+**`line-styling-panel`**: title uses **`text-foreground`** (**`text-base font-semibold`**) like Text/Visual modals; header **`px-5 py-4`**, **`Min`** icon **`w-5 h-5`**, close **`h-9 w-9`**. Replaced hardcoded **`text-slate-*`** on labels with **`text-foreground`** / **`text-muted-foreground`**. Content **`p-5`**, section wells **`p-3`**. Patch bumped.
+
+**`visual-styling-panel`**, **`text-styling-panel`** (and **`line-styling-panel`** for parity): pastel **`bg-*-50`** wells and **`bg-muted/50`** now use **`dark:bg-background`** with **`dark:border-border`** so dark-mode sections sit **darker** than **`bg-popover`** (muted was lifting lightness). **`StylingAccordionSection`** applies the same **`dark:`** accents after **`outerClassName`**. Accordion trigger hover: **`dark:hover:bg-muted/40`**. Patch bumped.
+
+Semantic **`text-primary` / text-sidebar-primary** on menu **`svg`**s: **`menubar`** / **`dropdown-menu`** (**`[&>svg]`** on normal rows so nested controls like theme **`Star`** keep their colours; checkbox/radio items keep **`[&_svg]`** for indicators); canvas **`context-menu`** + **`simulation-popup-menu`**; **`select`** (**`SelectTrigger`/`SelectItem`/scroll**) + **`SidebarMenuButton`/`SidebarMenuAction`/`SidebarGroupAction`**. Replaced lingering **`text-blue-600`** header icons → **`text-primary`** in **`connection-context-modal`**, **`chart-data-editor-modal`**, text/line/visual styling panels; **`theme-editor`** selection **`ring-primary`**. **`resource-browser`** cloud brand blues unchanged. Patch bumped.
+
+### 2026-05-13 – Brand style guide refresh (warm paper / charcoal / orange primary)
+
+Applied tokens + typography: **`globals.css`** (`:root`/`.dark` HSL, **`dw-field-shell-*`/`.dw-field-grid-*`**, **`h1`–`h6`** → **`font-headline`**); **`tailwind.config.ts`** (**`fontFamily.headline`** → **Nunito**, Inter body); **`layout.tsx`** (Google Fonts Nunito 400–800). Staging **`temp/`** (copy-in reference) removed after merge. Patch bumped.
+
 ### 2026-05-12 – Timeline bar: axis row font size + family (Visual styling)
 **`timelineBarAxisLabelFontSize`** / **`timelineBarAxisLabelFontFamily`** on the node; **Visual styling → Timeline bar → Axis row text** (font + optional px size; blank size = auto). Default auto sizing ~**2×** the former axis cap (**`timeline-bar.tsx`**: `autoAxisFs`). Tick band grows with chosen size so labels fit. **`timelineBarMemoPayload`** includes font fields + shape **`fontSize`**/**`fontFamily`** for memo. Patch bumped.
 

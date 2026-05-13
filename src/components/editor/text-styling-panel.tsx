@@ -128,17 +128,17 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
       }}
     >
       <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[640px] max-w-[calc(100vw-2rem)] cursor-move">
-        <div className="flex items-center justify-between px-5 py-4 border-b">
-          <div className="flex items-center gap-2">
-            <Type className="w-5 h-5 text-blue-600" />
-            <h3 className="text-base font-semibold text-foreground">Text Styling</h3>
+        <div className="flex items-center justify-between border-b px-4 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <Type className="h-4 w-4 shrink-0 text-primary" />
+            <h3 className="truncate text-sm font-semibold text-foreground">Text Styling</h3>
           </div>
           {onClose && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-9 w-9 p-0"
+              className="h-8 w-8 shrink-0 p-0"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -147,7 +147,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 p-5">
           {/* Column 1: typography, alignment, spacing */}
           <div className="space-y-4 min-w-0">
-            <div className="bg-muted/50 rounded-md p-3 border border-border min-w-0">
+            <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
                 <Label className="text-sm font-semibold text-foreground">Typography</Label>
@@ -189,7 +189,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
               </div>
             </div>
 
-            <div className="bg-amber-50/50 rounded-md p-3 border border-amber-200/50 min-w-0">
+            <div className="bg-amber-50/50 dark:bg-background rounded-md p-3 border border-amber-200/50 dark:border-border min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-amber-500 rounded-full shrink-0" />
                 <Label className="text-sm font-semibold text-foreground">Alignment & position</Label>
@@ -332,7 +332,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
               </div>
             </div>
 
-            <div className="bg-emerald-50/50 rounded-md p-3 border border-emerald-200/50 min-w-0">
+            <div className="bg-emerald-50/50 dark:bg-background rounded-md p-3 border border-emerald-200/50 dark:border-border min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full shrink-0" />
                 <Label className="text-sm font-semibold text-foreground">Spacing & case</Label>
@@ -391,7 +391,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
 
           {/* Column 2: color, outline, glow, shadow */}
           <div className="space-y-4 min-w-0 border-l border-border pl-8">
-            <div className="bg-sky-50/50 rounded-md p-3 border border-sky-200/50 min-w-0">
+            <div className="bg-sky-50/50 dark:bg-background rounded-md p-3 border border-sky-200/50 dark:border-border min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-sky-500 rounded-full shrink-0" />
                 <Label className="text-sm font-semibold text-foreground">Color</Label>
@@ -440,7 +440,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
               </div>
             </div>
 
-            <div className="bg-amber-50/50 rounded-md p-3 border border-amber-200/50 min-w-0">
+            <div className="bg-amber-50/50 dark:bg-background rounded-md p-3 border border-amber-200/50 dark:border-border min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-amber-500 rounded-full shrink-0" />
                 <Label className="text-sm font-semibold text-foreground">Outline</Label>
@@ -476,7 +476,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
               </div>
             </div>
 
-            <div className="bg-purple-50/50 rounded-md p-3 border border-purple-200/50 min-w-0">
+            <div className="bg-purple-50/50 dark:bg-background rounded-md p-3 border border-purple-200/50 dark:border-border min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-purple-500 rounded-full shrink-0" />
                 <Label className="text-sm font-semibold text-foreground">Glow</Label>
@@ -511,7 +511,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
               </div>
             </div>
 
-            <div className="bg-teal-50/50 rounded-md p-3 border border-teal-200/50 min-w-0">
+            <div className="bg-teal-50/50 dark:bg-background rounded-md p-3 border border-teal-200/50 dark:border-border min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-teal-500 rounded-full shrink-0" />
                 <Label className="text-sm font-semibold text-foreground">Drop shadow</Label>

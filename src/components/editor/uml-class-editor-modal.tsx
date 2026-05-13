@@ -177,11 +177,11 @@ export function UmlClassEditorModal({
           ref={panelRef}
           className="fixed w-[340px] rounded-md border border-border bg-popover shadow-lg p-0 z-[70]"
         >
-          <div className="uml-modal-drag-handle flex items-center justify-between p-3 border-b cursor-move">
-            <h3 className="font-semibold text-sm">Edit UML Class</h3>
+          <div className="uml-modal-drag-handle flex cursor-move items-center justify-between border-b px-4 py-2.5">
+            <h3 className="truncate text-sm font-semibold text-foreground">Edit UML Class</h3>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onClose}>
+                <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0" onClick={onClose}>
                   <X className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>

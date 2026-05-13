@@ -232,7 +232,7 @@ export function ConnectionContextModal({
         >
       <div className="connection-modal-drag-handle flex items-center justify-between px-4 py-2.5 border-b cursor-move">
         <div className="flex items-center gap-2 min-w-0">
-          <Link2 className="w-4 h-4 shrink-0 text-blue-600" aria-hidden />
+          <Link2 className="w-4 h-4 shrink-0 text-primary" aria-hidden />
           <h3
             className="text-sm font-semibold text-foreground truncate"
             title={`${connection.from} → ${connection.to}`}
