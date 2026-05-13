@@ -57,6 +57,7 @@ import {
   nextMindmapAutoNumericLabel,
   attachMindmapTreeChild,
   detachMindmapNode,
+  finalizeMindmapTreeAttachPreserveSiblingPositions,
   layoutMindmapChildrenAroundParent,
 } from "@/lib/mindmap-layout";
 import {
@@ -3599,6 +3600,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               if (!mmCtx && !mindmapPairConnectVisible) {
                 return {
                   onMindmapAddChild: undefined,
+                  onMindmapAddChildPreserveSiblingPositions: undefined,
                   onMindmapDetachFromParent: undefined,
                   mindmapCanDetach: false,
                   onMindmapResetRadialLayout: undefined,
@@ -3611,13 +3613,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 };
               }
 
-              return {
-                onMindmapAddChild:
-                  mmCtx && selectedItemIds.size <= 1
-                    ? () => {
-                        if (!menuNodeId) return;
+              const mindmapAddChildHandlers =
+                mmCtx && selectedItemIds.size <= 1 && menuNodeId
+                  ? (() => {
+                      const parentId = menuNodeId;
+                      const run = (preserveSiblingPositions: boolean) => {
                         setDiagramData((prev) => {
-                          const parent = prev.nodes.find((n) => n.id === menuNodeId);
+                          const parent = prev.nodes.find((n) => n.id === parentId);
                           if (!parent || !isMindmapNodeType(parent.type)) return prev;
                           const newId = generateSequentialId(MINDMAP_NODE_TYPE, prev);
                           const pw = parent.width ?? 80;
@@ -3643,21 +3645,23 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                             textColor: parent.textColor,
                             fontSize: parent.fontSize,
                             fontFamily: parent.fontFamily,
-                            mindmapParentId: menuNodeId,
+                            mindmapParentId: parentId,
                             mindmapFillMode: parent.mindmapFillMode ?? "theme-hues",
                             mindmapHueStepDeg: parent.mindmapHueStepDeg ?? 14,
                           };
                           const ids = [...(parent.mindmapChildIds ?? []), newId];
                           let nodes = prev.nodes.map((n) =>
-                            n.id === menuNodeId ? { ...n, mindmapChildIds: ids } : n,
+                            n.id === parentId ? { ...n, mindmapChildIds: ids } : n,
                           );
                           nodes = [...nodes, child];
-                          nodes = layoutMindmapChildrenAroundParent(nodes, menuNodeId);
+                          nodes = preserveSiblingPositions
+                            ? finalizeMindmapTreeAttachPreserveSiblingPositions(nodes, parentId, newId)
+                            : layoutMindmapChildrenAroundParent(nodes, parentId);
                           const conns: DiagramConnectionData[] = [
                             ...prev.connections,
                             {
                               id: generateConnectionId(),
-                              from: menuNodeId,
+                              from: parentId,
                               to: newId,
                               mindmapRole: "tree",
                               mindmapPrimary: true,
@@ -3665,8 +3669,19 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                           ];
                           return { ...prev, nodes, connections: conns };
                         });
-                      }
-                    : undefined,
+                      };
+                      return {
+                        onMindmapAddChild: () => run(false),
+                        onMindmapAddChildPreserveSiblingPositions: () => run(true),
+                      };
+                    })()
+                  : {
+                      onMindmapAddChild: undefined,
+                      onMindmapAddChildPreserveSiblingPositions: undefined,
+                    };
+
+              return {
+                ...mindmapAddChildHandlers,
                 onMindmapDetachFromParent:
                   mmCtx && mmCtx.mindmapParentId
                     ? () => {

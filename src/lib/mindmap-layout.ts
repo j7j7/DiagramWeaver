@@ -127,6 +127,25 @@ export function syncMindmapChildPolarAfterMove(child: DiagramNodeData, nodes: Di
   return { ...child, mindmapAngleDeg: angleDeg, mindmapRadiusPx: snapToGrid(radiusPx) };
 }
 
+/**
+ * After a tree child is attached at its current top-left x/y, sync **`mindmapAngleDeg`** /
+ * **`mindmapRadiusPx`** for that child only and refresh tree metadata — existing sibling positions stay fixed.
+ */
+export function finalizeMindmapTreeAttachPreserveSiblingPositions(
+  nodes: DiagramNodeData[],
+  parentId: string,
+  childId: string,
+): DiagramNodeData[] {
+  const parent = nodes.find((n) => n.id === parentId);
+  const child = nodes.find((n) => n.id === childId);
+  if (!parent || !child || !isMindmapNodeType(parent.type) || !isMindmapNodeType(child.type)) {
+    return recomputeMindmapMetadata(nodes);
+  }
+  const synced = syncMindmapChildPolarAfterMove(child, nodes);
+  const next = nodes.map((n) => (n.id === childId ? synced : n));
+  return recomputeMindmapMetadata(next);
+}
+
 export function reorderMindmapSiblingsByAngle(parentId: string | undefined, nodes: DiagramNodeData[]): DiagramNodeData[] {
   if (!parentId) return nodes;
   const parent = nodes.find((n) => n.id === parentId);
@@ -426,6 +445,7 @@ export function attachMindmapTreeChild(
   connections: DiagramConnectionData[],
   parentId: string,
   childId: string,
+  opts?: { relayoutSiblings?: boolean },
 ): { nodes: DiagramNodeData[]; connections: DiagramConnectionData[]; error?: "cycle" } {
   if (mindmapWouldBeCycle(parentId, childId, nodes)) {
     return { nodes, connections, error: "cycle" };
@@ -459,6 +479,9 @@ export function attachMindmapTreeChild(
       mindmapPrimary: true,
     },
   ];
-  next = layoutMindmapChildrenAroundParent(next, parentId);
+  const relayoutSiblings = opts?.relayoutSiblings !== false;
+  next = relayoutSiblings
+    ? layoutMindmapChildrenAroundParent(next, parentId)
+    : finalizeMindmapTreeAttachPreserveSiblingPositions(next, parentId, childId);
   return { nodes: next, connections: conns };
 }

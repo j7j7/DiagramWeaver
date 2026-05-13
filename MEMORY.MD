@@ -3,6 +3,9 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-13 – Mind map: add child without moving existing nodes
+Context menu on a mind-map node (**single selection**): second action **Add mind map node without moving others** — same new node placement offset as before, but skips **`layoutMindmapChildrenAroundParent`** so sibling **x/y** stay fixed; **`finalizeMindmapTreeAttachPreserveSiblingPositions`** (**`mindmap-layout.ts`**) syncs polar fields for the new child only + **`recomputeMindmapMetadata`**. Original **Add mind map node** still rebalances the radial fan. **`attachMindmapTreeChild`** accepts optional **`{ relayoutSiblings?: boolean }`** (default **`true`**); pair-connect keeps full relayout. **`context-menu`** / **`editor-canvas`**.
+
 ### 2026-05-12 – Timeline bar: axis row font size + family (Visual styling)
 **`timelineBarAxisLabelFontSize`** / **`timelineBarAxisLabelFontFamily`** on the node; **Visual styling → Timeline bar → Axis row text** (font + optional px size; blank size = auto). Default auto sizing ~**2×** the former axis cap (**`timeline-bar.tsx`**: `autoAxisFs`). Tick band grows with chosen size so labels fit. **`timelineBarMemoPayload`** includes font fields + shape **`fontSize`**/**`fontFamily`** for memo. Patch bumped.
 

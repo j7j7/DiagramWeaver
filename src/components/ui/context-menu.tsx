@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
 import { isTimelineBarNodeType } from '@/lib/timeline-bar';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical, Shapes, ClipboardPaste, AlignHorizontalSpaceAround } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical, Shapes, ClipboardPaste, AlignHorizontalSpaceAround, Pin } from 'lucide-react';
 import type { PasteSpecialAspect } from '@/lib/paste-special-properties';
 
 
@@ -90,8 +90,10 @@ interface ContextMenuProps {
   onTimelineToggleAlternateSides?: () => void;
   /** Timeline: anchor cards from spine start through end with even spacing (`manual` + `t`). */
   onTimelineSpaceEndpoints?: () => void;
-  /** Mind map: add a child node and run radial layout. */
+  /** Mind map: add a child node and rebalance radial layout around the parent (existing siblings move). */
   onMindmapAddChild?: () => void;
+  /** Mind map: add a child at the default offset without moving existing sibling nodes (polar fields synced for the new node only). */
+  onMindmapAddChildPreserveSiblingPositions?: () => void;
   /** Mind map: remove tree link to parent (keeps subtree). */
   onMindmapDetachFromParent?: () => void;
   mindmapCanDetach?: boolean;
@@ -191,6 +193,7 @@ export function ContextMenu({
   onTimelineToggleAlternateSides,
   onTimelineSpaceEndpoints,
   onMindmapAddChild,
+  onMindmapAddChildPreserveSiblingPositions,
   onMindmapDetachFromParent,
   mindmapCanDetach = false,
   onMindmapResetRadialLayout,
@@ -672,6 +675,20 @@ export function ContextMenu({
         >
           <Plus className="w-4 h-4" />
           Add mind map node
+        </button>
+      )}
+
+      {isMindmapNodeType(nodeType) && onMindmapAddChildPreserveSiblingPositions && (
+        <button
+          type="button"
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onMindmapAddChildPreserveSiblingPositions();
+            onClose();
+          }}
+        >
+          <Pin className="w-4 h-4" />
+          Add mind map node without moving others
         </button>
       )}
 
