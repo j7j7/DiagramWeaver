@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-14 – Presentation play mode: active slide + clean fullscreen entry
+
+**Editor** (**`diagram-editor.tsx`**): entering play/sync uses the **currently selected** deck slide (**`activePresentationSlideId`** → **`presentationPlayerIndex`**) instead of always slide 1. **`presentationPlayerSessionKey`** increments each open; **`DiagramEditorInner`** mounts **`PresentationPlayer`** with **`key=`** that key so stale **`useSlideTransition` / previous-slide diagram** state from the last fullscreen session cannot drive an exit-from-old-slide animation after the user edits the carousel and re-enters play. **`/viewer`**: fullscreen uses the same **session key + `PresentationPlayer` `key`** on **Fullscreen** so embedded slide index stays the source of truth without inheriting transition state from a prior fullscreen. Patch bumped.
+
+
 ### 2026-05-14 – Presentation: master-relative deltas (slides independent add/remove)
 
 **`presentationDeltaMode: 'chain'`** made each snapshot depend on the **previous** resolved slide, so deletes on slide 2 also appeared on slide 3. Canonical editor/load behavior is **`master`**: each non-primary slide keeps **`diagramDelta`** vs **`presentationMasterDiagram`** (tab diagram) independently. **`migratePresentationDeckToMaster`** (**`presentation-slide-chain.ts`**) resolves chain **`Slide[]` once**, then persists **`computeDiagramDelta(masterBase, absolute[i])`** per slide (preserves on-screen diagrams at migrate time only). Hydration (**`diagram-editor.tsx`**) converts IndexedDB **`chain`** decks when **`presentationMasterDiagram`** exists. **`extract-embedded-presentations`** maps loaded decks through the same migration. **New decks** default **`presentationDeltaMode: 'master'`**. **`migratePresentationDeckToChain`** retained for tooling/tests. Patch bumped.

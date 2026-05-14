@@ -252,6 +252,7 @@ export function DiagramEditorInner({
   presentationPlayerSlideDiagrams,
   presentationPlayerOpen,
   setPresentationPlayerOpen,
+  presentationPlayerSessionKey,
   presentationPlayerIndex,
   setPresentationPlayerIndex,
   tabs,
@@ -953,6 +954,7 @@ export function DiagramEditorInner({
           onHistoryUpdate={updateHistory}
         />
         <PresentationPlayer
+          key={presentationPlayerSessionKey}
           open={presentationPlayerOpen}
           slides={presentationPlayerSlides}
           slideDiagrams={presentationPlayerSlideDiagrams}

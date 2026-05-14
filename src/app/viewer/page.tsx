@@ -51,6 +51,7 @@ function ViewerPageContent() {
   const [presentationSlideIndex, setPresentationSlideIndex] = useState(0);
   const [presentationTransform, setPresentationTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
   const [presentationPlayerOpen, setPresentationPlayerOpen] = useState(false);
+  const [presentationPlayerSessionKey, setPresentationPlayerSessionKey] = useState(0);
   const presentationCanvasHostRef = useRef<HTMLDivElement>(null);
   const [presentationUnionHostSize, setPresentationUnionHostSize] = useState({ w: 0, h: 0 });
   const sessionFileChosenRef = useRef(false);
@@ -654,7 +655,10 @@ function ViewerPageContent() {
                   onNext={() =>
                     setPresentationSlideIndex((i) => (i + 1) % viewerSlidesUnified.length)
                   }
-                  onFullscreen={() => setPresentationPlayerOpen(true)}
+                  onFullscreen={() => {
+                    setPresentationPlayerSessionKey((k) => k + 1);
+                    setPresentationPlayerOpen(true);
+                  }}
                 />
               )}
           </div>
@@ -712,6 +716,7 @@ function ViewerPageContent() {
         </div>
         {presentationDecks.length > 0 && viewerSlidesUnified.length > 0 && (
           <PresentationPlayer
+            key={presentationPlayerSessionKey}
             open={presentationPlayerOpen}
             slides={viewerSlidesUnified}
             slideDiagrams={slideDiagramsForViewerPresentation}

@@ -219,6 +219,8 @@ export default function DiagramEditor() {
   const [selectedPresentationSlideIds, setSelectedPresentationSlideIds] = React.useState<Set<string>>(new Set());
   const [presentationPlayerOpen, setPresentationPlayerOpen] = React.useState<boolean>(false);
   const [presentationPlayerIndex, setPresentationPlayerIndex] = React.useState<number>(0);
+  /** Remount `PresentationPlayer` on each open so slide-transition state does not compare to the last fullscreen session. */
+  const [presentationPlayerSessionKey, setPresentationPlayerSessionKey] = React.useState(0);
   const [presentationMasterDiagram, setPresentationMasterDiagram] = React.useState<DiagramData | null>(null);
   const [presentationDraftDiagram, setPresentationDraftDiagram] = React.useState<DiagramData | null>(null);
   /** `${deckId}:${slideId}` → JSON fingerprint of diagram delta vs master — thumbnail matches this until the slide is edited. */
@@ -4700,9 +4702,15 @@ export default function DiagramEditor() {
 
   const handleEnterPresentationPlayMode = React.useCallback(() => {
     if (presentationPlayerSlides.length === 0) return;
-    setPresentationPlayerIndex(0);
+    let idx = 0;
+    if (activePresentationSlideId) {
+      const found = presentationPlayerSlides.findIndex((s) => s.id === activePresentationSlideId);
+      if (found >= 0) idx = found;
+    }
+    setPresentationPlayerIndex(idx);
+    setPresentationPlayerSessionKey((k) => k + 1);
     setPresentationPlayerOpen(true);
-  }, [presentationPlayerSlides.length]);
+  }, [presentationPlayerSlides, activePresentationSlideId]);
 
   const toggleJsonPanel = () => {
     const newState = !jsonPanelOpen;
@@ -4972,6 +4980,7 @@ export default function DiagramEditor() {
         presentationPlayerSlideDiagrams={presentationPlayerSlideDiagrams}
         presentationPlayerOpen={presentationPlayerOpen}
         setPresentationPlayerOpen={setPresentationPlayerOpen}
+        presentationPlayerSessionKey={presentationPlayerSessionKey}
         presentationPlayerIndex={presentationPlayerIndex}
         setPresentationPlayerIndex={setPresentationPlayerIndex}
         tabs={tabs}
