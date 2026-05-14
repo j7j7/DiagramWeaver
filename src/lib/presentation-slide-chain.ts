@@ -113,6 +113,28 @@ export function rebasePresentationSlidesOnMasterEdit(
   return newSlides;
 }
 
+/**
+ * Converts a **`chain`** deck to **`master`**-relative deltas: each slide keeps the same resolved
+ * diagram as before, but `diagramDelta` is recomputed as `computeDiagramDelta(masterBase, absolute[i])`
+ * so removals/additions on one slide no longer bleed into later slides.
+ */
+export function migratePresentationDeckToMaster(deck: PresentationDeck, masterBase: DiagramData): PresentationDeck {
+  if (deck.presentationDeltaMode !== 'chain') return deck;
+
+  const absolutes = resolvePresentationSlideDiagrams(masterBase, deck.slides, 'chain');
+  const newSlides = deck.slides.map((slide, i) => ({
+    ...slide,
+    diagramDelta: computeDiagramDelta(masterBase, absolutes[i]),
+  }));
+
+  return {
+    ...deck,
+    slides: newSlides,
+    presentationDeltaMode: 'master',
+    updatedAt: Date.now(),
+  };
+}
+
 /** Convert legacy master-relative slides to chained deltas; no-op if already `chain`. */
 export function migratePresentationDeckToChain(deck: PresentationDeck, masterBase: DiagramData): PresentationDeck {
   if (deck.presentationDeltaMode === 'chain') return deck;

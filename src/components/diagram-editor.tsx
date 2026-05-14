@@ -68,7 +68,7 @@ import {
 import {
   cumulativeDiagramThroughSlideIndex,
   getPresentationDeltaMode,
-  migratePresentationDeckToChain,
+  migratePresentationDeckToMaster,
   rebasePresentationSlidesOnMasterEdit,
   rechainSlideDeltasFromAbsoluteDiagrams,
   resolvePresentationSlideDiagrams,
@@ -166,6 +166,18 @@ function positionNodeWithSpineTranslate(
 function getFilenameStem(filename: string) {
   return filename.replace(/\.[^.]+$/, '') || filename;
 }
+
+/**
+ * Placement owned by the canvas (drag, guides, spine vertices). Toolbar patches use `{ ...selectedItem, … }`;
+ * selection can lag `diagramData` briefly after a move — never apply these keys from `handleItemUpdate`.
+ */
+const DIAGRAM_GEOMETRY_KEYS_FROM_SELECTED_MERGE = new Set<string>([
+  'x',
+  'y',
+  'startPos',
+  'endPos',
+  'lineControlPoints',
+]);
 
 export default function DiagramEditor() {
   const [isClient, setIsClient] = React.useState<boolean>(false);
@@ -458,9 +470,9 @@ export default function DiagramEditor() {
     setPresentationDecks((prev) => {
       let changed = false;
       const next = prev.map((d) => {
-        if (d.presentationDeltaMode === 'chain') return d;
+        if (d.presentationDeltaMode !== 'chain') return d;
         changed = true;
-        return migratePresentationDeckToChain(d, masterBase);
+        return migratePresentationDeckToMaster(d, masterBase);
       });
       return changed ? next : prev;
     });
@@ -670,7 +682,7 @@ export default function DiagramEditor() {
       id,
       name: '',
       slides: [primary],
-      presentationDeltaMode: 'chain',
+      presentationDeltaMode: 'master',
       createdAt: now,
       updatedAt: now,
     };
@@ -1321,7 +1333,7 @@ export default function DiagramEditor() {
       setSelectedItemIds(new Set(resolvedIds));
     }
   }, [setSelectedItem, setSelectedItemIds, animationToggleOnClickEnabled, setAnimationDisabledSources, displayDiagramData, setConnectorLineFocusedVertex]);
-  
+
   const handleItemUpdate = React.useCallback((updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'edge') return;
     setCurrentDiagramData(prevData => {
@@ -1332,6 +1344,7 @@ export default function DiagramEditor() {
               const mergedNode = { ...existingNode } as DiagramNodeData;
               Object.keys(updatedItem).forEach(key => {
                   if (key !== 'itemType' && key !== 'id') {
+                      if (DIAGRAM_GEOMETRY_KEYS_FROM_SELECTED_MERGE.has(key)) return;
                       const value = (updatedItem as any)[key];
                       if (value === null) {
                           delete (mergedNode as any)[key];
@@ -1361,6 +1374,7 @@ export default function DiagramEditor() {
               const mergedZone = { ...existingZone } as DiagramZoneData;
               Object.keys(updatedItem).forEach(key => {
                 if (key !== 'itemType' && key !== 'id') {
+                  if (DIAGRAM_GEOMETRY_KEYS_FROM_SELECTED_MERGE.has(key)) return;
                   const value = (updatedItem as any)[key];
                   if (value === null) {
                     delete (mergedZone as any)[key];
@@ -4302,7 +4316,7 @@ export default function DiagramEditor() {
         return {
           ...deck,
           slides,
-          presentationDeltaMode: deck.presentationDeltaMode ?? 'chain',
+          presentationDeltaMode: deck.presentationDeltaMode ?? 'master',
           updatedAt: Date.now(),
         };
       }));
@@ -4402,7 +4416,7 @@ export default function DiagramEditor() {
         return {
           ...deck,
           slides,
-          presentationDeltaMode: deck.presentationDeltaMode ?? 'chain',
+          presentationDeltaMode: deck.presentationDeltaMode ?? 'master',
           updatedAt: Date.now(),
         };
       }));

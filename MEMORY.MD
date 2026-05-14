@@ -3,9 +3,19 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
-### 2026-05-14 – Duplicate slide: independent chain snapshots
+### 2026-05-14 – Presentation: master-relative deltas (slides independent add/remove)
 
-Default presentation decks use **`presentationDeltaMode: 'chain'`**. **Duplicate slide** (**`capturePresentationSlidePayload`**) computed **`computeDiagramDelta(prevBase, current)`** when the canvas matched cumulative state, producing an **empty delta**. Consecutive identity steps keep the same cumulative diagram, so editing one duplicate updated what every later “copy” showed. **Fix**: if chain mode and **`diagramDelta.operations`** is empty after capture, persist a **root `replace`** with **`safeClone(topologyCurrent)`** so each duplicate freezes its own topology. Existing decks with stacked empty duplicates may need re-duplicating affected slides. Patch bumped.
+**`presentationDeltaMode: 'chain'`** made each snapshot depend on the **previous** resolved slide, so deletes on slide 2 also appeared on slide 3. Canonical editor/load behavior is **`master`**: each non-primary slide keeps **`diagramDelta`** vs **`presentationMasterDiagram`** (tab diagram) independently. **`migratePresentationDeckToMaster`** (**`presentation-slide-chain.ts`**) resolves chain **`Slide[]` once**, then persists **`computeDiagramDelta(masterBase, absolute[i])`** per slide (preserves on-screen diagrams at migrate time only). Hydration (**`diagram-editor.tsx`**) converts IndexedDB **`chain`** decks when **`presentationMasterDiagram`** exists. **`extract-embedded-presentations`** maps loaded decks through the same migration. **New decks** default **`presentationDeltaMode: 'master'`**. **`migratePresentationDeckToChain`** retained for tooling/tests. Patch bumped.
+
+
+### 2026-05-14 – Editor: no jump after move when selecting / context menu (stale `selectedItem` merges)
+
+Toolbar and panels call **`handleItemUpdate`** with **`{ …selectedItem, patch }`**. After a canvas drag, **`diagramData`** updates first while **`selectedItem`** can still carry the previous **`x`/`y`** until the sync effect runs; a pending debounced label/colour/theme update could write those stale coordinates back and make the object **flick or jump** on the next click or right‑click. **`handleItemUpdate`** now keeps diagram‑owned geometry (**`x`/`y`**, spine **`startPos`/`endPos`/`lineControlPoints`**) from the existing node/zone instead of copying it from **`updatedItem`**. Patch bumped.
+
+
+### 2026-05-14 – Duplicate slide: independent chain snapshots (**superseded** — default is now **`master`**; **`migratePresentationDeckToMaster`** on load)
+
+Historical: default decks used **`chain`**. Duplicate slide could persist an empty delta vs cumulative base so sibling copies mirrored edits. Mitigation included root **`replace`** when operations were empty (**`capturePresentationSlidePayload`**); that path remains harmless (**belt-and-suspenders**).
 
 
 ### 2026-05-14 – Shape label text justification (rich runs)

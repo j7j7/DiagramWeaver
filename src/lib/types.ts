@@ -961,9 +961,9 @@ export interface PresentationDeck {
   name: string;
   slides: Slide[];
   /**
-   * How `diagramDelta` on each slide is interpreted vs the visible master.
-   * - `master` (default when missing): each slide is `applyDiagramDelta(master, slide.diagramDelta)` independently.
-   * - `chain`: slide 0 vs master; slide i&gt;0 vs the resolved diagram after slide i-1.
+   * How `diagramDelta` on each slide is interpreted vs the visible master (`presentationMasterDiagram` / primary tab diagram).
+   * **`master`** (default when omitted; recommended): each slide is **`applyDiagramDelta(master, slide.diagramDelta)`** independently.
+   * **`chain`** (legacy persisted mode): slide 0 vs master; slide *i*&gt;0 vs the diagram after slide *i-1* (**removals on one slide affected later slides** until re-saved under **`master`**).
    */
   presentationDeltaMode?: 'master' | 'chain';
   /** @deprecated Legacy only; migrated to `slides[0].snapshotImage` on load. */

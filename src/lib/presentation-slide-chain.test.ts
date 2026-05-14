@@ -1,6 +1,7 @@
 import type { DiagramData, PresentationDeck, Slide } from '@/lib/types';
 import {
   migratePresentationDeckToChain,
+  migratePresentationDeckToMaster,
   resolvePresentationSlideDiagrams,
 } from '@/lib/presentation-slide-chain';
 import { projectVisibleDiagram } from '@/lib/presentation-delta';
@@ -62,4 +63,10 @@ export function runPresentationChainUtilityTests(): void {
   const absChain = resolvePresentationSlideDiagrams(masterVisible, migrated.slides, 'chain');
   assert(deepEqual(absMaster[0], absChain[0]), 'primary slide absolute should match after migrate');
   assert(deepEqual(absMaster[1], absChain[1]), 'second slide absolute should match after migrate');
+
+  const backToMaster = migratePresentationDeckToMaster(migrated, masterVisible);
+  assert(backToMaster.presentationDeltaMode === 'master', 'chain → master restores master mode flag');
+  const absRestoredMaster = resolvePresentationSlideDiagrams(masterVisible, backToMaster.slides, 'master');
+  assert(deepEqual(absChain[0], absRestoredMaster[0]), 'round-trip preserves slide 0 absolute');
+  assert(deepEqual(absChain[1], absRestoredMaster[1]), 'round-trip preserves slide 1 absolute');
 }

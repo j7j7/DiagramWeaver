@@ -3,7 +3,7 @@ import { ensureConnectionIds } from '@/lib/connection-order-utils';
 import { PresentationDeckListSchema } from '@/lib/schemas';
 import { projectVisibleDiagram } from '@/lib/presentation-delta';
 import { createPresentationPrimarySlide, migratePresentationDecks } from '@/lib/presentation-primary-slide';
-import { migratePresentationDeckToChain } from '@/lib/presentation-slide-chain';
+import { migratePresentationDeckToMaster } from '@/lib/presentation-slide-chain';
 
 /** Placeholder used when compact JSON omits real PNG thumbnails — must be replaced by canvas capture in the editor. */
 export const PRESENTATION_THUMBNAIL_PLACEHOLDER =
@@ -235,7 +235,7 @@ export function extractEmbeddedPresentations(
     const baseVisible = projectVisibleDiagram(baseDiagram);
     const decksAfterUnified = migratePresentationDecks(hydratedDecks);
     return {
-      decks: decksAfterUnified.map((d) => migratePresentationDeckToChain(d, baseVisible)),
+      decks: decksAfterUnified.map((d) => migratePresentationDeckToMaster(d, baseVisible)),
       activeDeckId,
     };
   }
@@ -257,7 +257,7 @@ export function extractEmbeddedPresentations(
   const baseVisible = projectVisibleDiagram(baseDiagram);
   const decksAfterUnified = migratePresentationDecks(hydratedDecks);
   return {
-    decks: decksAfterUnified.map((d) => migratePresentationDeckToChain(d, baseVisible)),
+    decks: decksAfterUnified.map((d) => migratePresentationDeckToMaster(d, baseVisible)),
     activeDeckId,
   };
 }
