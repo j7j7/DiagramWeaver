@@ -1890,7 +1890,37 @@ function DiagramNodeInner({
   const timelineEntryResizeNodeRef = useRef(node);
   timelineEntryResizeNodeRef.current = node;
   const latestPositionsRef = useRef<{ startPos: { x: number; y: number } | null; endPos: { x: number; y: number } | null }>({ startPos: null, endPos: null });
-  
+
+  /** Narrow once for hook deps: `react-hooks/use-memo` requires simple dependency expressions (no casts / inline JSON.stringify). */
+  const nodeLineTimelineSync = node as DiagramNodeData & {
+    startPos?: { x: number; y: number } | null;
+    endPos?: { x: number; y: number } | null;
+    lineControlPoints?: { x: number; y: number }[] | null;
+    linePathStyle?: LinePathStyle;
+    lineSmoothJoints?: unknown;
+    timelineEntries?: unknown;
+    timelineCardSide?: unknown;
+    timelineCardW?: number;
+    timelineCardH?: number;
+    timelineOffsetPx?: number;
+    timelineSections?: unknown;
+    compositeBodyShape?: unknown;
+  };
+  const syncStartPosX = nodeLineTimelineSync.startPos?.x;
+  const syncStartPosY = nodeLineTimelineSync.startPos?.y;
+  const syncEndPosX = nodeLineTimelineSync.endPos?.x;
+  const syncEndPosY = nodeLineTimelineSync.endPos?.y;
+  const syncLineControlPointsKey = JSON.stringify(nodeLineTimelineSync.lineControlPoints ?? []);
+  const syncLinePathStyle = nodeLineTimelineSync.linePathStyle;
+  const syncLineSmoothJoints = nodeLineTimelineSync.lineSmoothJoints;
+  const syncTimelineEntriesKey = JSON.stringify(nodeLineTimelineSync.timelineEntries ?? []);
+  const syncTimelineCardSide = nodeLineTimelineSync.timelineCardSide;
+  const syncTimelineCardW = nodeLineTimelineSync.timelineCardW;
+  const syncTimelineCardH = nodeLineTimelineSync.timelineCardH;
+  const syncTimelineOffsetPx = nodeLineTimelineSync.timelineOffsetPx;
+  const syncTimelineSections = nodeLineTimelineSync.timelineSections;
+  const syncCompositeBodyShape = nodeLineTimelineSync.compositeBodyShape;
+
   // Initialize and sync local state with node positions (but not during drag)
   useEffect(() => {
     if (!isDraggingLineEndpoint && spineLikeNode) {
@@ -1921,13 +1951,13 @@ function DiagramNodeInner({
     }
   }, [
     node.id,
-    (node as any).startPos?.x,
-    (node as any).startPos?.y,
-    (node as any).endPos?.x,
-    (node as any).endPos?.y,
-    JSON.stringify((node as any).lineControlPoints ?? []),
-    (node as any).linePathStyle,
-    (node as any).lineSmoothJoints,
+    syncStartPosX,
+    syncStartPosY,
+    syncEndPosX,
+    syncEndPosY,
+    syncLineControlPointsKey,
+    syncLinePathStyle,
+    syncLineSmoothJoints,
     isDraggingLineEndpoint,
     spineLikeNode,
   ]);
@@ -1954,12 +1984,12 @@ function DiagramNodeInner({
     isLineNode,
     node,
     node.id,
-    (node as any).startPos?.x,
-    (node as any).startPos?.y,
-    (node as any).endPos?.x,
-    (node as any).endPos?.y,
-    JSON.stringify((node as any).lineControlPoints ?? []),
-    (node as any).linePathStyle,
+    syncStartPosX,
+    syncStartPosY,
+    syncEndPosX,
+    syncEndPosY,
+    syncLineControlPointsKey,
+    syncLinePathStyle,
     localStartPos,
     localEndPos,
     localControlPoints,
@@ -2002,22 +2032,22 @@ function DiagramNodeInner({
     isTimelineNode,
     node,
     node.id,
-    JSON.stringify((node as any).timelineEntries ?? []),
-    (node as any).timelineCardSide,
-    (node as any).timelineCardW,
-    (node as any).timelineCardH,
-    (node as any).timelineOffsetPx,
-    (node as any).timelineSections,
-    (node as any).startPos?.x,
-    (node as any).startPos?.y,
-    (node as any).endPos?.x,
-    (node as any).endPos?.y,
-    JSON.stringify((node as any).lineControlPoints ?? []),
-    (node as any).linePathStyle,
+    syncTimelineEntriesKey,
+    syncTimelineCardSide,
+    syncTimelineCardW,
+    syncTimelineCardH,
+    syncTimelineOffsetPx,
+    syncTimelineSections,
+    syncStartPosX,
+    syncStartPosY,
+    syncEndPosX,
+    syncEndPosY,
+    syncLineControlPointsKey,
+    syncLinePathStyle,
     localStartPos,
     localEndPos,
     localControlPoints,
-    (node as any).compositeBodyShape,
+    syncCompositeBodyShape,
     timelineDragPreview,
   ]);
 

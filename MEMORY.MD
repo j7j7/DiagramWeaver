@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-14 – ESLint: `react-hooks/use-memo` in diagram-node line/timeline layout
+
+**`diagram-node.tsx`**: `useMemo` / line-sync `useEffect` dependency arrays no longer use `(node as any).…`, optional chains, or inline **`JSON.stringify`** (forbidden by **`react-hooks/use-memo`** as non-simple expressions). Values are read once into **`nodeLineTimelineSync`** and primitive/string sync fields (**`syncStartPosX`**, **`syncLineControlPointsKey`**, etc.) so **`npm run lint`** has **0 errors** (warnings unchanged). Patch bumped.
+
+
 ### 2026-05-14 – Presentation play mode: active slide + clean fullscreen entry
 
 **Editor** (**`diagram-editor.tsx`**): entering play/sync uses the **currently selected** deck slide (**`activePresentationSlideId`** → **`presentationPlayerIndex`**) instead of always slide 1. **`presentationPlayerSessionKey`** increments each open; **`DiagramEditorInner`** mounts **`PresentationPlayer`** with **`key=`** that key so stale **`useSlideTransition` / previous-slide diagram** state from the last fullscreen session cannot drive an exit-from-old-slide animation after the user edits the carousel and re-enters play. **`/viewer`**: fullscreen uses the same **session key + `PresentationPlayer` `key`** on **Fullscreen** so embedded slide index stays the source of truth without inheriting transition state from a prior fullscreen. Patch bumped.
