@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-14 – Shape label text justification (rich runs)
+
+**`applyTextStylingToNode`** (**`text-styling.ts`**) now strips **`lineJustify`** from **`richLabel`** when **`textJustify`** changes for **any** node with rich text (not only **`generic.text.text` / `generic.text.textbox`**). Shape labels use **`TextboxRichDisplay`**, which prefers **`run.lineJustify`** over **`node.textJustify`**; runs kept **`center`** from the contenteditable HTML, so left/right in the Text styling panel had no effect. Same clear applied to **`richHeadingLabel`** when **`textJustify`** changes. Patch bumped.
+
+
 ### 2026-05-13 – Mind map: add child without moving existing nodes
 Context menu on a mind-map node (**single selection**): second action **Add mind map node without moving others** — same new node placement offset as before, but skips **`layoutMindmapChildrenAroundParent`** so sibling **x/y** stay fixed; **`finalizeMindmapTreeAttachPreserveSiblingPositions`** (**`mindmap-layout.ts`**) syncs polar fields for the new child only + **`recomputeMindmapMetadata`**. Original **Add mind map node** still rebalances the radial fan. **`attachMindmapTreeChild`** accepts optional **`{ relayoutSiblings?: boolean }`** (default **`true`**); pair-connect keeps full relayout. **`context-menu`** / **`editor-canvas`**.
 

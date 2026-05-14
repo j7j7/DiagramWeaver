@@ -218,8 +218,10 @@ export function extractTextStylingFromGroup(group: any): TextStyling {
 /**
  * Applies text styling to a node by merging with existing properties
  * If a property is explicitly set to undefined, it will be removed from the node
- * For textbox/text nodes with richLabel: clears per-run overrides (lineFontSize, lineJustify, etc.)
- * so the new node-level values take effect (runs fall back to node defaults in TextboxRichDisplay)
+ * For nodes with richLabel: clears per-run overrides when matching node-level styling changes
+ * so the new node values take effect (runs fall back to node defaults in TextboxRichDisplay).
+ * Shapes (e.g. rounded rect) use the same rich runs; previously only text/textbox cleared lineJustify,
+ * so panel justify changes were ignored when runs still had lineJustify from the editor.
  */
 export function applyTextStylingToNode(
   node: DiagramNodeData | DiagramNodeItem,
@@ -227,21 +229,35 @@ export function applyTextStylingToNode(
 ): DiagramNodeData | DiagramNodeItem {
   const updated: any = { ...node };
 
-  // For textbox/text with richLabel: clear run-level overrides when we change node-level styling
-  // so TextboxRichDisplay uses the new node values (run.lineX ?? node.x fallback)
   const hasRichLabel = (node as any).richLabel && Array.isArray((node as any).richLabel) && (node as any).richLabel.length > 0;
   const isTextOrTextbox = (node as any).type === 'generic.text.text' || (node as any).type === 'generic.text.textbox';
-  if (hasRichLabel && isTextOrTextbox) {
+  const shouldClearRichRuns = hasRichLabel && (isTextOrTextbox || 'textJustify' in styling);
+  if (shouldClearRichRuns) {
     const runs = (node as any).richLabel as Array<Record<string, unknown>>;
     const clearedRuns = runs.map((run) => {
       const r = { ...run };
-      if ('fontSize' in styling) delete r.lineFontSize;
+      if (isTextOrTextbox) {
+        if ('fontSize' in styling) delete r.lineFontSize;
+        if ('fontFamily' in styling) delete r.lineFontFamily;
+        if ('fontWeight' in styling) delete r.lineFontWeight;
+      }
       if ('textJustify' in styling) delete r.lineJustify;
-      if ('fontFamily' in styling) delete r.lineFontFamily;
-      if ('fontWeight' in styling) delete r.lineFontWeight;
       return r;
     });
     updated.richLabel = clearedRuns;
+  }
+
+  if (
+    'textJustify' in styling &&
+    updated.richHeadingLabel &&
+    Array.isArray(updated.richHeadingLabel) &&
+    updated.richHeadingLabel.length > 0
+  ) {
+    updated.richHeadingLabel = (updated.richHeadingLabel as Array<Record<string, unknown>>).map((run) => {
+      const r = { ...run };
+      delete r.lineJustify;
+      return r;
+    });
   }
 
   // Handle each property - if explicitly set (including undefined), use it; otherwise keep existing
