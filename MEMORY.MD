@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-14 – Duplicate slide: independent chain snapshots
+
+Default presentation decks use **`presentationDeltaMode: 'chain'`**. **Duplicate slide** (**`capturePresentationSlidePayload`**) computed **`computeDiagramDelta(prevBase, current)`** when the canvas matched cumulative state, producing an **empty delta**. Consecutive identity steps keep the same cumulative diagram, so editing one duplicate updated what every later “copy” showed. **Fix**: if chain mode and **`diagramDelta.operations`** is empty after capture, persist a **root `replace`** with **`safeClone(topologyCurrent)`** so each duplicate freezes its own topology. Existing decks with stacked empty duplicates may need re-duplicating affected slides. Patch bumped.
+
+
 ### 2026-05-14 – Shape label text justification (rich runs)
 
 **`applyTextStylingToNode`** (**`text-styling.ts`**) now strips **`lineJustify`** from **`richLabel`** when **`textJustify`** changes for **any** node with rich text (not only **`generic.text.text` / `generic.text.textbox`**). Shape labels use **`TextboxRichDisplay`**, which prefers **`run.lineJustify`** over **`node.textJustify`**; runs kept **`center`** from the contenteditable HTML, so left/right in the Text styling panel had no effect. Same clear applied to **`richHeadingLabel`** when **`textJustify`** changes. Patch bumped.

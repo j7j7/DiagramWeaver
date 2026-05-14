@@ -4232,6 +4232,21 @@ export default function DiagramEditor() {
       };
     }
 
+    // Chain mode: duplicating while the canvas matches cumulative state yields an empty delta ("no change").
+    // Multiple consecutive identity deltas collapse so later slides mirror earlier ones; edits then appear on every sibling.
+    // A root replace freezes this slide's topology so duplicates stay independent snapshots.
+    if (
+      deck &&
+      getPresentationDeltaMode(deck) === 'chain' &&
+      diagramDelta.operations.length === 0
+    ) {
+      diagramDelta = {
+        version: '1.0',
+        compressed: true,
+        operations: [{ op: 'replace' as const, path: '', value: safeClone(topologyCurrent) }],
+      };
+    }
+
     return {
       snapshotImage,
       diagramDelta,
