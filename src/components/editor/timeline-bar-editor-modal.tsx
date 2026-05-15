@@ -411,17 +411,55 @@ export function TimelineBarEditorModal({
     if (!node || isReadOnly) return;
     const newId = newTimelineBarSectionId(node.id);
     setRows((prev) => {
-      const next = [
-        ...prev,
-        {
+      const idx = prev.length + 1;
+      const template = editorIsSegmented && prev.length > 0 ? prev[prev.length - 1] : null;
+      let newRow: Row;
+      if (template) {
+        const fs = template.fillStyle ?? "solid";
+        newRow = {
           id: newId,
-          label: `S${prev.length + 1}`,
+          label: `S${idx}`,
+          fill: template.fill || "#94a3b8",
+          fillStyle: fs,
+          weight: 1,
+          tickLabel: "",
+        };
+        if (fs === "gradient") {
+          const g0 = template.fillGradientColors?.[0] ?? template.fill ?? "#6b7280";
+          const g1 = template.fillGradientColors?.[1] ?? g0;
+          newRow.fillGradientColors = [String(g0), String(g1)];
+          newRow.fillGradientAngle =
+            typeof template.fillGradientAngle === "number" && Number.isFinite(template.fillGradientAngle)
+              ? template.fillGradientAngle
+              : 90;
+        }
+        if (typeof template.segmentOutlineWidth === "number" && Number.isFinite(template.segmentOutlineWidth)) {
+          newRow.segmentOutlineWidth = template.segmentOutlineWidth;
+        }
+        if (template.segmentOutlineColor?.trim()) {
+          newRow.segmentOutlineColor = template.segmentOutlineColor.trim();
+        }
+        if (
+          template.segmentOutlineStyle === "solid" ||
+          template.segmentOutlineStyle === "dotted" ||
+          template.segmentOutlineStyle === "none"
+        ) {
+          newRow.segmentOutlineStyle = template.segmentOutlineStyle;
+        }
+        if (template.labelColor?.trim()) {
+          newRow.labelColor = template.labelColor.trim();
+        }
+      } else {
+        newRow = {
+          id: newId,
+          label: `S${idx}`,
           fill: "#94a3b8",
           fillStyle: "solid" as const,
           weight: 1,
           tickLabel: "",
-        },
-      ];
+        };
+      }
+      const next = [...prev, newRow];
       if (spanLayoutEnabled) {
         const sp = equalSegmentSpans(next.length);
         return next.map((r, i) => ({ ...r, spanStart: sp[i]?.spanStart, spanEnd: sp[i]?.spanEnd }));

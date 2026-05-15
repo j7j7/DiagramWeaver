@@ -18,6 +18,11 @@ import {
   pyramidTierHeights,
   pyramidTiersLayoutVb,
 } from "@/lib/pyramid";
+import type { ChartSlideStagger } from "@/lib/chart-presentation-stagger";
+import {
+  chartSegmentPopAnimationStyle,
+  chartSegmentPopKeyframesCss,
+} from "@/lib/chart-presentation-stagger";
 import {
   normalizeTimelineBarSections,
   timelineBarSectionResolvedFontFamily,
@@ -64,6 +69,8 @@ interface PyramidShapeProps {
   /** Weighted sizing only: drag horizontal strips between tiers to rebalance **`weight`** values. */
   sectionBoundaryInteractionEnabled?: boolean;
   onSectionBoundaryDragSessionChange?: (active: boolean) => void;
+  /** Presentation slide transitions: sequential tier opacity pop (see `useSlideTransition`). */
+  presentationSectionSlideStagger?: ChartSlideStagger;
 }
 
 const VIEWBOX_W = 120;
@@ -90,6 +97,7 @@ export function PyramidShape({
   sectionLabelInteractionEnabled,
   sectionBoundaryInteractionEnabled,
   onSectionBoundaryDragSessionChange,
+  presentationSectionSlideStagger,
   onPatch,
   isReadOnly = false,
   ...rest
@@ -342,10 +350,21 @@ export function PyramidShape({
 
   const labelsFollowFirst = (nodeAny.pyramidLabelsFollowFirstSection as boolean | undefined) === true;
 
+  const sectionSlidePopInId = `${clipId}-pySecSlideIn`;
+  const sectionSlidePopOutId = `${clipId}-pySecSlideOut`;
+
   const content = (
     <>
       {bgDefs}
       <defs>
+        {presentationSectionSlideStagger ? (
+          <style
+            type="text/css"
+            dangerouslySetInnerHTML={{
+              __html: chartSegmentPopKeyframesCss(sectionSlidePopInId, sectionSlidePopOutId),
+            }}
+          />
+        ) : null}
         {sections.map((seg: TimelineBarSectionData, gi: number) => {
           if ((seg.fillStyle ?? "solid") !== "gradient") return null;
           const cols = seg.fillGradientColors;
@@ -413,8 +432,17 @@ export function PyramidShape({
       </defs>
 
       <g pointerEvents="none">
-        {tiers.map((tier, i) => {
-          const seg = sections[i];
+        {sections.map((seg: TimelineBarSectionData, i: number) => {
+          const tier = tiers[i];
+          if (!tier) return null;
+          const tierPopStyle = chartSegmentPopAnimationStyle(
+            i,
+            sectionSlidePopInId,
+            sectionSlidePopOutId,
+            0,
+            0,
+            presentationSectionSlideStagger,
+          );
           const fs = seg.fillStyle ?? "solid";
           const thFillGrad =
             fs === "theme-hue"
@@ -452,16 +480,17 @@ export function PyramidShape({
           }
           const tierDasharray = pyramidSectionBorderOn ? undefined : strokeDasharray;
           return (
-            <polygon
-              key={seg.id || i}
-              points={trapezoidPoints(cx, innerW, tier.yBottom, tier.yTop, tier.wBottomFrac, tier.wTopFrac)}
-              fill={fillPaint}
-              stroke={segStroke}
-              strokeWidth={tierStrokeWidth}
-              strokeDasharray={tierDasharray}
-              vectorEffect="non-scaling-stroke"
-              strokeLinejoin="miter"
-            />
+            <g key={`py-tier-${seg.id ?? i}`} style={tierPopStyle}>
+              <polygon
+                points={trapezoidPoints(cx, innerW, tier.yBottom, tier.yTop, tier.wBottomFrac, tier.wTopFrac)}
+                fill={fillPaint}
+                stroke={segStroke}
+                strokeWidth={tierStrokeWidth}
+                strokeDasharray={tierDasharray}
+                vectorEffect="non-scaling-stroke"
+                strokeLinejoin="miter"
+              />
+            </g>
           );
         })}
       </g>
@@ -524,9 +553,17 @@ export function PyramidShape({
           textVerticalPosition,
         );
         const editRuns = normalizeRuns(seg.richLabel ?? labelToRuns(seg.label ?? ""));
+        const tierLabelPopStyle = chartSegmentPopAnimationStyle(
+          i,
+          sectionSlidePopInId,
+          sectionSlidePopOutId,
+          0,
+          0,
+          presentationSectionSlideStagger,
+        );
 
         return (
-          <g key={`pylab-${seg.id}-${i}`}>
+          <g key={`pylab-${seg.id}-${i}`} style={tierLabelPopStyle}>
             <foreignObject
               x={foLeft}
               y={foTop}

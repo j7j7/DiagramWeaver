@@ -3,6 +3,16 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Segmented rectangle** sections modal: **Add section** inherits last segment’s theme
+
+**`timeline-bar-editor-modal`**: **`addRow`** for **segmented rectangle** copies **`fillStyle`** (e.g. **theme-hue**), **per-segment gradient** stops/angle when relevant, and optional **outline / label colour** from the **previous row** instead of defaulting to **solid** slate (**`#94a3b8`**). Timeline bar **Add section** unchanged. Patch bumped.
+
+
+### 2026-05-15 – **Presentation / slide transitions**: pyramid + segmented rectangle **per-section stagger**
+
+**`useSlideTransition`**: **`sectionSlideStagger`** on the node wrapper (same timing contract as **`chartSlideStagger`**); **`sectionedShapePresentationChanged`** uses **`pyramidMemoPayload`** / **`segmentedRectangleMemoPayload`** via **`sectioned-shape-slide-transition.ts`** so section/layout edits advance transitions; outer scale/fade pop suppressed like charts. **`PyramidShape`** / **`SegmentedRectangleShape`**: tier/strip fills, per-segment outlines, and labels wrapped in **`chartSegmentPopAnimationStyle`** opacity keyframes. **`ViewerCanvas`** / **`DiagramNode`** wire **`sectionSlideStagger`**. Patch bumped.
+
+
 ### 2026-05-15 – **Visual styling**: segmented rectangle **Gap between segments** draft field (backspace-friendly)
 
 **`visual-styling-panel`**: **Gap between segments (px)** uses **`type="text"`** + **focus/blur draft** like divider width; **blur** commits **`segmentedRectangleSegmentGap`** clamped **0–64** (comma decimals accepted). Patch bumped.

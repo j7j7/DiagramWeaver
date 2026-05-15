@@ -2,6 +2,11 @@
 
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { DiagramNodeData, RichTextRun, TimelineBarSectionData } from "@/lib/types";
+import type { ChartSlideStagger } from "@/lib/chart-presentation-stagger";
+import {
+  chartSegmentPopAnimationStyle,
+  chartSegmentPopKeyframesCss,
+} from "@/lib/chart-presentation-stagger";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getGradientCoordinates } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
@@ -65,6 +70,8 @@ interface SegmentedRectangleShapeProps {
   sectionBoundaryInteractionEnabled?: boolean;
   sectionLabelInteractionEnabled?: boolean;
   onSectionBoundaryDragSessionChange?: (active: boolean) => void;
+  /** Presentation slide transitions: sequential segment opacity pop (see `useSlideTransition`). */
+  presentationSectionSlideStagger?: ChartSlideStagger;
 }
 
 const VIEWBOX_W = 120;
@@ -83,11 +90,14 @@ export function SegmentedRectangleShape({
   sectionLabelInteractionEnabled,
   onPatch,
   onSectionBoundaryDragSessionChange,
+  presentationSectionSlideStagger,
   isReadOnly = false,
   ...rest
 }: SegmentedRectangleShapeProps) {
   const nodeAny = node as unknown as Record<string, unknown>;
   const clipId = useId().replace(/:/g, "");
+  const sectionSlidePopInId = `${clipId}-srSecSlideIn`;
+  const sectionSlidePopOutId = `${clipId}-srSecSlideOut`;
   const dragActiveRef = useRef(false);
   const workingSectionsRef = useRef<TimelineBarSectionData[]>([]);
   const boundaryIndexRef = useRef(0);
@@ -361,6 +371,14 @@ export function SegmentedRectangleShape({
     <>
       {bgDefs}
       <defs>
+        {presentationSectionSlideStagger ? (
+          <style
+            type="text/css"
+            dangerouslySetInnerHTML={{
+              __html: chartSegmentPopKeyframesCss(sectionSlidePopInId, sectionSlidePopOutId),
+            }}
+          />
+        ) : null}
         <clipPath id={`${clipId}-sr-clip`}>
           <rect x={half} y={half} width={w} height={barH} rx={rx} ry={rx} />
         </clipPath>
@@ -448,18 +466,27 @@ export function SegmentedRectangleShape({
             fillPaint = String(seg.fill ?? "#6b7280");
           }
           const segRx = outlineMode === "segments" ? Math.min(rx, wi / 2, barH / 2) : 0;
+          const fillPopStyle = chartSegmentPopAnimationStyle(
+            i,
+            sectionSlidePopInId,
+            sectionSlidePopOutId,
+            0,
+            0,
+            presentationSectionSlideStagger,
+          );
           return (
-            <rect
-              key={seg.id || i}
-              x={x0}
-              y={half}
-              width={Math.max(0, wi)}
-              height={barH}
-              rx={segRx}
-              ry={segRx}
-              fill={fillPaint}
-              stroke="none"
-            />
+            <g key={`sr-fill-${seg.id ?? i}`} style={fillPopStyle}>
+              <rect
+                x={x0}
+                y={half}
+                width={Math.max(0, wi)}
+                height={barH}
+                rx={segRx}
+                ry={segRx}
+                fill={fillPaint}
+                stroke="none"
+              />
+            </g>
           );
         })}
       </g>
@@ -522,22 +549,31 @@ export function SegmentedRectangleShape({
               strokeCol = colSolid;
             }
             const dash = effectiveSt === "dotted" ? connectionStrokeDashFromLineType(swSeg, "dotted").strokeDasharray : undefined;
+            const outlinePopStyle = chartSegmentPopAnimationStyle(
+              i,
+              sectionSlidePopInId,
+              sectionSlidePopOutId,
+              0,
+              0,
+              presentationSectionSlideStagger,
+            );
             return (
-              <rect
-                key={`sr-seg-stroke-${seg.id}-${i}`}
-                x={x0}
-                y={half}
-                width={Math.max(0, wi)}
-                height={barH}
-                rx={segRx}
-                ry={segRx}
-                fill="none"
-                stroke={strokeCol}
-                strokeWidth={swSeg}
-                strokeDasharray={dash}
-                vectorEffect="non-scaling-stroke"
-                pointerEvents="none"
-              />
+              <g key={`sr-seg-stroke-${seg.id}-${i}`} style={outlinePopStyle}>
+                <rect
+                  x={x0}
+                  y={half}
+                  width={Math.max(0, wi)}
+                  height={barH}
+                  rx={segRx}
+                  ry={segRx}
+                  fill="none"
+                  stroke={strokeCol}
+                  strokeWidth={swSeg}
+                  strokeDasharray={dash}
+                  vectorEffect="non-scaling-stroke"
+                  pointerEvents="none"
+                />
+              </g>
             );
           })
         : null}
@@ -619,9 +655,17 @@ export function SegmentedRectangleShape({
           textVerticalPosition,
         );
         const editRuns = normalizeRuns(seg.richLabel ?? labelToRuns(seg.label ?? ""));
+        const labelPopStyle = chartSegmentPopAnimationStyle(
+          i,
+          sectionSlidePopInId,
+          sectionSlidePopOutId,
+          0,
+          0,
+          presentationSectionSlideStagger,
+        );
 
         return (
-          <g key={`srlab-${seg.id}-${i}`}>
+          <g key={`srlab-${seg.id}-${i}`} style={labelPopStyle}>
             <foreignObject
               x={x0 + padX}
               y={half + padY}

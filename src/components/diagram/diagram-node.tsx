@@ -304,6 +304,8 @@ interface DiagramNodeProps {
     visualColorCrossfadeTopOpacity?: number;
     visualColorCrossfadeTopTransition?: string;
     chartSlideStagger?: ChartSlideStagger;
+    /** Pyramid / segmented rectangle per-section slide stagger */
+    sectionSlideStagger?: ChartSlideStagger;
     /** Play / slide transitions: stagger grow+fade on new timeline cards (see `timelineEnterStaggerOrder`). */
     timelineSlideStagger?: ChartSlideStagger;
     /** Removed cards from previous slide — exit animation (shrink + fade). */
@@ -938,6 +940,7 @@ function DiagramNodeInner({
           {...shapeProps}
           isReadOnly={isReadOnly}
           diagramSnapX={snapX}
+          presentationSectionSlideStagger={animationStyle?.sectionSlideStagger}
           onPatch={onUpdate && !isReadOnly ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
           sectionBoundaryInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
           sectionLabelInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
@@ -956,6 +959,7 @@ function DiagramNodeInner({
         <PyramidShape
           {...shapeProps}
           isReadOnly={isReadOnly}
+          presentationSectionSlideStagger={animationStyle?.sectionSlideStagger}
           onPatch={onUpdate && !isReadOnly ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
           sectionBoundaryInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
           sectionLabelInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
