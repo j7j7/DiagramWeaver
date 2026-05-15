@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
 import { isTimelineBarNodeType } from '@/lib/timeline-bar';
+import { isPyramidNodeType } from '@/lib/pyramid';
 import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical, Shapes, ClipboardPaste, AlignHorizontalSpaceAround, Pin } from 'lucide-react';
 import type { PasteSpecialAspect } from '@/lib/paste-special-properties';
 
@@ -59,6 +60,7 @@ interface ContextMenuProps {
   onEditUmlClass?: () => void;
   onEditChartData?: () => void;
   onEditTimelineBarSections?: () => void;
+  onEditPyramidSections?: () => void;
   onSimulation?: () => void;
   hasSubDiagramLink?: boolean;
   onCreateSubDiagram?: (nodeId: string) => void;
@@ -171,6 +173,7 @@ export function ContextMenu({
   onEditUmlClass,
   onEditChartData,
   onEditTimelineBarSections,
+  onEditPyramidSections,
   onSimulation,
   hasSubDiagramLink = false,
   onCreateSubDiagram,
@@ -370,6 +373,19 @@ export function ContextMenu({
         >
           <AlignHorizontalSpaceAround className="w-4 h-4" />
           Timeline bar sections
+        </button>
+      )}
+
+      {onEditPyramidSections && isPyramidNodeType(nodeType) && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onEditPyramidSections();
+            onClose();
+          }}
+        >
+          <AlignHorizontalSpaceAround className="w-4 h-4" />
+          Pyramid tiers
         </button>
       )}
 

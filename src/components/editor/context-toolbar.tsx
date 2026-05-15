@@ -474,6 +474,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
     (selectedItem as any)?.type === 'generic.object.progress-bar' ||
     (selectedItem as any)?.type === 'generic.object.timeline-bar' ||
+    (selectedItem as any)?.type === 'generic.object.pyramid' ||
     (selectedItem as any)?.type === 'generic.object.text-box-heading' ||
     (selectedItem as any)?.type === 'generic.object.triangle' ||
     (selectedItem as any)?.type === 'generic.object.star' ||
@@ -498,6 +499,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.rounded-rectangle') ||
     (selectedItem as any)?.type?.endsWith('.progress-bar') ||
     (selectedItem as any)?.type?.endsWith('.timeline-bar') ||
+    (selectedItem as any)?.type?.endsWith('.pyramid') ||
     (selectedItem as any)?.type?.endsWith('.text-box-heading') ||
     (selectedItem as any)?.type?.endsWith('.triangle') ||
     (selectedItem as any)?.type?.endsWith('.star') ||
@@ -2269,6 +2271,10 @@ export function ContextToolbar({
                   isTimelineBar={
                     (selectedItem as any)?.type === 'generic.object.timeline-bar' ||
                     (selectedItem as any)?.type?.endsWith?.('.timeline-bar')
+                  }
+                  isPyramid={
+                    (selectedItem as any)?.type === 'generic.object.pyramid' ||
+                    (selectedItem as any)?.type?.endsWith?.('.pyramid')
                   }
                   noIconBackground={(() => {
                     if (!selectedItem || !diagramData) return false;

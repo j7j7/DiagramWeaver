@@ -281,6 +281,8 @@ export function timelineBarSectionThemeHueFill(
   node: DiagramNodeData,
   sections: TimelineBarSectionData[],
   sectionIndex: number,
+  /** Optional hue step (`°`). When set, overrides `timelineBarHueStepDeg` on the node. */
+  hueStepDegOverride?: number,
 ): string {
   const seg = sections[sectionIndex];
   if ((seg?.fillStyle ?? "solid") !== "theme-hue") {
@@ -288,7 +290,10 @@ export function timelineBarSectionThemeHueFill(
   }
   const rank = timelineBarThemeHueRankAtSection(sections, sectionIndex);
   const base = timelineBarThemeHueBaseColor(node);
-  const stepRaw = (node as DiagramNodeData & { timelineBarHueStepDeg?: number }).timelineBarHueStepDeg;
+  const stepRaw =
+    hueStepDegOverride !== undefined
+      ? hueStepDegOverride
+      : (node as DiagramNodeData & { timelineBarHueStepDeg?: number }).timelineBarHueStepDeg;
   const step = typeof stepRaw === "number" && Number.isFinite(stepRaw) ? stepRaw : DIAGRAM_THEME_HUE_STEP_DEG;
   const delta = rank * step;
   if (!Number.isFinite(delta) || delta === 0) return base;

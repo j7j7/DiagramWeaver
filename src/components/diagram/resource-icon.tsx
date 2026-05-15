@@ -30,6 +30,12 @@ function isTimelineBarPaletteVectorType(type: string | undefined): boolean {
   return t === "generic.object.timeline-bar" || t.endsWith(".timeline-bar");
 }
 
+function isPyramidPaletteVectorType(type: string | undefined): boolean {
+  if (!type || typeof type !== "string") return false;
+  const t = type.trim().toLowerCase().replace(/\u2011/g, "-");
+  return t === "generic.object.pyramid" || t.endsWith(".pyramid");
+}
+
 /** Catalog raster was a plain line; UI uses spine + stems + alternating card rects. */
 function isTimelinePaletteVectorType(type: string | undefined): boolean {
   if (!type || typeof type !== "string") return false;
@@ -203,7 +209,50 @@ function PaletteTimelineBarGlyph(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-/** Spine with milestones and alternating above/below cards — reads as timeline vs connector line. */
+/** Stacked trapezoids (segmented pyramid) — distinct from horizontal timeline bar. */
+function PalettePyramidGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        d="M4.5 20.5 H19.5 L18.5 16.8 H5.5 Z"
+        fill="currentColor"
+        opacity={0.95}
+        stroke="currentColor"
+        strokeWidth={1.05}
+        strokeOpacity={0.35}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.5 16.65 H18.5 L17.5 13.2 H6.5 Z"
+        fill="currentColor"
+        opacity={0.68}
+        stroke="currentColor"
+        strokeWidth={1.05}
+        strokeOpacity={0.35}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.55 13.05 H17.45 L16.25 9.75 H7.75 Z"
+        fill="currentColor"
+        opacity={0.48}
+        stroke="currentColor"
+        strokeWidth={1.05}
+        strokeOpacity={0.35}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.85 9.6 H16.15 L14.6 5.85 H9.4 Z"
+        fill="currentColor"
+        opacity={0.34}
+        stroke="currentColor"
+        strokeWidth={1.05}
+        strokeOpacity={0.35}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function PaletteTimelineGlyph(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
@@ -314,6 +363,11 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       return () => ac.abort();
     }
 
+    if (isPyramidPaletteVectorType(type)) {
+      setResourceFile(null);
+      return () => ac.abort();
+    }
+
     if (isTimelinePaletteVectorType(type)) {
       setResourceFile(null);
       return () => ac.abort();
@@ -373,6 +427,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
                 resourceName === "text-box-heading" ||
                 resourceName === "progress-bar" ||
                 resourceName === "timeline-bar" ||
+                resourceName === "pyramid" ||
                 resourceName === "timeline" ||
                 resourceName === "mind-map-node"
               ) {
@@ -411,6 +466,9 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       return null;
     }
     if (isTimelineBarPaletteVectorType(type)) {
+      return null;
+    }
+    if (isPyramidPaletteVectorType(type)) {
       return null;
     }
     if (isTimelinePaletteVectorType(type)) {
@@ -560,7 +618,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   // Handle shape types (exclude icon/emoji - those use Lucide/emoji above)
   if (!type.startsWith('generic.icon.') && !type.startsWith('generic.emoji.') &&
       (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') ||
-      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.mind-map-node') || type?.endsWith('.progress-bar') || type?.endsWith('.timeline-bar') || type?.endsWith('.text-box-heading') ||       type?.endsWith('.triangle') ||
+      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.mind-map-node') || type?.endsWith('.progress-bar') || type?.endsWith('.timeline-bar') || type?.endsWith('.pyramid') || type?.endsWith('.text-box-heading') ||       type?.endsWith('.triangle') ||
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.timeline') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
@@ -621,6 +679,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         return <PaletteProgressBarGlyph {...props} />;
       case 'timeline-bar':
         return <PaletteTimelineBarGlyph {...props} />;
+      case 'pyramid':
+        return <PalettePyramidGlyph {...props} />;
       case 'text-box-heading':
         return (
           <svg

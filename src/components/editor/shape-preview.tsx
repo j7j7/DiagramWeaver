@@ -4,7 +4,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss } from '@/lib/text-styling';
-import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecLine, NodeChartSpecRing } from '@/lib/types';
+import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection } from '@/lib/types';
 import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultLineChartSpec, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
 import {
   barChartWantsRoundedColumnEnds,
@@ -26,6 +26,8 @@ import {
 } from '@/lib/line-chart-layout';
 import { CompositeCardSilhouette } from '@/components/diagram/shapes/composite-card-silhouette';
 import { normalizeCompositeBodyShapeKind } from '@/lib/shape-type-swap';
+import { shiftHueOfColor } from '@/lib/color-shift';
+import { pyramidStackWideNarrowYs, pyramidWidthFracAtY, type PyramidInterpolatedWidthParams } from '@/lib/pyramid';
 
 function formatBarPreviewValue(n: number): string {
   if (!Number.isFinite(n)) return '';
@@ -2059,6 +2061,107 @@ export function ShapePreview({
               strokeDasharray={borderStyle === "dotted" ? "3,3" : undefined}
             />
           ) : null}
+        </svg>
+      );
+    }
+
+    // Pyramid (segmented; preview uses narrow-at-top + four tiers)
+    if (type === "generic.object.pyramid" || type?.endsWith(".pyramid")) {
+      const cr = Math.max(0, Math.min(1, cornerRadius));
+      const sw = borderStyle === "none" ? 0 : strokeWidth;
+      const iw = Math.max(0, displayWidth - sw);
+      const ih = Math.max(0, displayHeight - sw);
+      const hx = sw / 2;
+      const hy = sw / 2;
+      const radius = cr * Math.min(iw, ih) * 0.5;
+      const cid = gradientId.replace(/:/g, "");
+      const tierCount = 4;
+      const n = tierCount;
+      const gapPx = Math.min(Math.max(ih * 0.035, 0), 14);
+      const tierHRaw = ih - gapPx * Math.max(0, n - 1);
+      const tierH = n > 0 && tierHRaw > 0 ? tierHRaw / n : ih / Math.max(n, 1);
+      const apex = 0.12;
+      const direction: PyramidDirection = "narrow-at-top";
+      const cx = hx + iw / 2;
+      const hueBase = "#94a3b8";
+      const tierBands: { yBottom: number; yTop: number }[] = [];
+      let yCursor = hy + ih;
+      for (let di = 0; di < n; di++) {
+        const bandH = Math.max(1, tierH);
+        const yTopBand = yCursor - bandH;
+        tierBands.push({ yBottom: yCursor, yTop: yTopBand });
+        yCursor = yTopBand - gapPx;
+      }
+      let yLo = Infinity;
+      let yHi = -Infinity;
+      for (const b of tierBands) {
+        yLo = Math.min(yLo, b.yTop, b.yBottom);
+        yHi = Math.max(yHi, b.yTop, b.yBottom);
+      }
+      const { stackYWide, stackYNarrow } = pyramidStackWideNarrowYs(direction, yLo, yHi);
+      const wp: PyramidInterpolatedWidthParams = {
+        stackYWide,
+        stackYNarrow,
+        apexFraction: apex,
+        direction,
+      };
+
+      const tierStroke =
+        sw > 0
+          ? borderStyle === "gradient"
+            ? `url(#${borderGradientId})`
+            : borderStyle === "none"
+              ? "transparent"
+              : effectiveBorderColor
+          : "none";
+
+      const tierPaths = Array.from({ length: tierCount }, (_, i) => {
+        const band = tierBands[i];
+        const wb = iw * pyramidWidthFracAtY(band.yBottom, wp);
+        const wt = iw * pyramidWidthFracAtY(band.yTop, wp);
+        const xl0 = cx - wb / 2;
+        const xr0 = cx + wb / 2;
+        const xl1 = cx - wt / 2;
+        const xr1 = cx + wt / 2;
+        const yB = band.yBottom;
+        const yT = band.yTop;
+        const d = `M ${xl0} ${yB} L ${xr0} ${yB} L ${xr1} ${yT} L ${xl1} ${yT} Z`;
+        const hueStepDeg = 10; // aligns with default timeline bar / pyramid palette `timelineBarHueStepDeg`
+        const fillHue = shiftHueOfColor(hueBase, i * hueStepDeg);
+        return (
+          <path
+            key={`py-prev-${i}`}
+            d={d}
+            fill={fillHue}
+            opacity={0.95}
+            stroke={tierStroke}
+            strokeWidth={sw}
+            strokeDasharray={borderStyle === "dotted" ? "3,3" : undefined}
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="miter"
+          />
+        );
+      });
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === "gradient" && (
+              <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === "gradient" && (
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+            <clipPath id={`${cid}-py-prev`}>
+              <rect x={hx} y={hy} width={iw} height={ih} rx={radius} ry={radius} />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${cid}-py-prev)`}>{tierPaths}</g>
         </svg>
       );
     }

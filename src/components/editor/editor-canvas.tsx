@@ -86,6 +86,7 @@ import {
 import { isTimelineBarNodeType } from "@/lib/timeline-bar";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import {
+  getConnectorLikeSpinePlacementAnchor,
   getConnectorLineVertices,
   insertConnectorLineMidControl,
   insertConnectorLinePointAfterVertexIndex,
@@ -401,6 +402,7 @@ interface EditorCanvasProps {
   setUmlClassEditorModal?: React.Dispatch<React.SetStateAction<{ visible: boolean; x: number; y: number; itemId: string }>>;
   setChartDataEditorModal?: React.Dispatch<React.SetStateAction<{ visible: boolean; x: number; y: number; itemId: string }>>;
   setTimelineBarEditorModal?: React.Dispatch<React.SetStateAction<{ visible: boolean; x: number; y: number; itemId: string }>>;
+  setPyramidEditorModal?: React.Dispatch<React.SetStateAction<{ visible: boolean; x: number; y: number; itemId: string }>>;
   /** Layer show/hide animation styles for nodes (from useLayerAnimation) */
   nodeAnimationStyles?: Map<string, { opacity: number; transition: string; transform?: string }>;
   /** Layer show/hide animation styles for connections (from useLayerAnimation) */
@@ -466,7 +468,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -1239,13 +1241,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             // For line nodes, calculate delta and update startPos and endPos
             const originalNode = nodesById[itemId];
             if (originalNode) {
-              const originalX = originalNode.x ?? 0;
-              const originalY = originalNode.y ?? 0;
-              const deltaX = pos.x - originalX;
-              const deltaY = pos.y - originalY;
+              const anchor = getConnectorLikeSpinePlacementAnchor(originalNode as DiagramNodeData);
+              const deltaX = pos.x - anchor.x;
+              const deltaY = pos.y - anchor.y;
               
-              const currentStartPos = (originalNode as any)?.startPos || { x: originalX, y: originalY };
-              const currentEndPos = (originalNode as any)?.endPos || { x: originalX + 150, y: originalY };
+              const currentStartPos = (originalNode as any)?.startPos || { x: (originalNode?.x || 0), y: (originalNode?.y || 0) };
+              const currentEndPos = (originalNode as any)?.endPos || { x: (originalNode?.x || 0) + 150, y: (originalNode?.y || 0) };
               const ctrls = (originalNode as any)?.lineControlPoints as { x: number; y: number }[] | undefined;
               
               result[itemId] = {
@@ -3932,6 +3933,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             } : undefined}
             onEditTimelineBarSections={setTimelineBarEditorModal ? () => {
               setTimelineBarEditorModal({ visible: true, x: contextMenu.x, y: contextMenu.y, itemId: contextMenu.itemId });
+              closeContextMenu();
+            } : undefined}
+            onEditPyramidSections={setPyramidEditorModal ? () => {
+              setPyramidEditorModal({ visible: true, x: contextMenu.x, y: contextMenu.y, itemId: contextMenu.itemId });
               closeContextMenu();
             } : undefined}
             hasSubDiagramLink={contextMenu.itemType === 'node' ? Boolean(diagramData.nodes.find(n => n.id === contextMenu.itemId)?.subDiagramId) : false}

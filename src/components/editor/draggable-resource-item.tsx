@@ -157,6 +157,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   const isCloudPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'cloud';
   const isProgressBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'progress-bar';
   const isTimelineBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'timeline-bar';
+  const isPyramidPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'pyramid';
   const isTimelinePalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'timeline';
   const isMindmapPalette =
     provider === 'generic' && category === 'object' && derivedPaletteSlug === 'mind-map-node';
@@ -198,6 +199,8 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.object.progress-bar" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isTimelineBarPalette ? (
                     <ResourceIcon type="generic.object.timeline-bar" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
+                  ) : isPyramidPalette ? (
+                    <ResourceIcon type="generic.object.pyramid" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isTimelinePalette ? (
                     <ResourceIcon type="generic.object.timeline" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isMindmapPalette ? (
@@ -245,6 +248,8 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.object.progress-bar" width={24} height={24} className="shrink-0" />
                   ) : isTimelineBarPalette ? (
                     <ResourceIcon type="generic.object.timeline-bar" width={24} height={24} className="shrink-0" />
+                  ) : isPyramidPalette ? (
+                    <ResourceIcon type="generic.object.pyramid" width={24} height={24} className="shrink-0" />
                   ) : isTimelinePalette ? (
                     <ResourceIcon type="generic.object.timeline" width={24} height={24} className="shrink-0" />
                   ) : isMindmapPalette ? (

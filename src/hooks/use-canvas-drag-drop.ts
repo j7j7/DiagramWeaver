@@ -8,7 +8,7 @@ import type { DiagramData, DiagramNodeData } from "@/lib/types";
 import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
 import { isConnectorLikeSpineNodeType, isMindmapNodeType } from "@/lib/utils";
 import { collectMindmapDragCoMembers } from "@/lib/mindmap-layout";
-import { getConnectorLineVertices } from "@/lib/line-curve-path";
+import { getConnectorLikeSpinePlacementAnchor } from "@/lib/line-curve-path";
 
 /** Diagram-space radius around drag origin: inside = free movement; crossing = lock to dominant axis */
 const AXIS_CONSTRAINT_DEAD_ZONE = 15;
@@ -63,10 +63,8 @@ function getCanvasDragAnchor(
 ): { x: number; y: number } | null {
   const originalItem = nodesById[itemId] || zonesById[itemId];
   if (!originalItem) return null;
-  const isLineNode = isConnectorLikeSpineNodeType(originalItem.type);
-  if (isLineNode && (originalItem as { startPos?: { x: number; y: number } }).startPos && (originalItem as { endPos?: { x: number; y: number } }).endPos) {
-    const verts = getConnectorLineVertices(originalItem as any);
-    return { x: Math.min(...verts.map((p) => p.x)), y: Math.min(...verts.map((p) => p.y)) };
+  if ("type" in originalItem && isConnectorLikeSpineNodeType(originalItem.type)) {
+    return getConnectorLikeSpinePlacementAnchor(originalItem as DiagramNodeData);
   }
   return { x: originalItem.x ?? 0, y: originalItem.y ?? 0 };
 }
@@ -302,8 +300,13 @@ export function useCanvasDragDrop({
         itemsToMove.forEach((id) => {
           const node = nodesById[id] || zonesById[id];
           if (node) {
-            const sx = node.x ?? 0;
-            const sy = node.y ?? 0;
+            let sx = node.x ?? 0;
+            let sy = node.y ?? 0;
+            if ("type" in node && isConnectorLikeSpineNodeType((node as PositionedNode).type)) {
+              const a = getConnectorLikeSpinePlacementAnchor(node as DiagramNodeData);
+              sx = a.x;
+              sy = a.y;
+            }
             newMulti![id] = {
               x: snapToGrid(sx + deltaX),
               y: snapToGrid(sy + deltaY),

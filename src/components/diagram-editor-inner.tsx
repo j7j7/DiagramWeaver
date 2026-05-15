@@ -12,6 +12,7 @@ import { ConnectionContextModal } from "./editor/connection-context-modal";
 import { UmlClassEditorModal } from "./editor/uml-class-editor-modal";
 import { ChartDataEditorModal } from "./editor/chart-data-editor-modal";
 import { TimelineBarEditorModal } from "./editor/timeline-bar-editor-modal";
+import { PyramidEditorModal } from "./editor/pyramid-editor-modal";
 import { ZOrderListModal } from "./editor/z-order-list-modal";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
 import { PresentationPlayer } from "./editor/presentation-player";
@@ -142,6 +143,8 @@ export function DiagramEditorInner({
   setChartDataEditorModal,
   timelineBarEditorModal,
   setTimelineBarEditorModal,
+  pyramidEditorModal,
+  setPyramidEditorModal,
   setDiagramData,
   updateTutorialDiagramData,
   setCurrentDiagramData,
@@ -749,6 +752,7 @@ export function DiagramEditorInner({
                     setUmlClassEditorModal={setUmlClassEditorModal}
                     setChartDataEditorModal={setChartDataEditorModal}
                     setTimelineBarEditorModal={setTimelineBarEditorModal}
+                    setPyramidEditorModal={setPyramidEditorModal}
                     onSubDiagramDoubleClick={handleSubDiagramDoubleClick}
                     getHasLinkedSubDiagram={getHasLinkedSubDiagram}
                     onCreateSubDiagram={handleCreateSubDiagram}
@@ -914,6 +918,38 @@ export function DiagramEditorInner({
                   }) ?? [],
               }));
               setTimelineBarEditorModal({ visible: false, x: 0, y: 0, itemId: "" });
+            }}
+            isReadOnly={isReadOnly}
+          />,
+          document.body,
+        )}
+        {pyramidEditorModal.visible && pyramidEditorModal.itemId && typeof window !== "undefined" && createPortal(
+          <PyramidEditorModal
+            x={pyramidEditorModal.x}
+            y={pyramidEditorModal.y}
+            visible={pyramidEditorModal.visible}
+            onClose={() => setPyramidEditorModal({ visible: false, x: 0, y: 0, itemId: "" })}
+            node={diagramData.nodes?.find((n: DiagramNodeData) => n.id === pyramidEditorModal.itemId) ?? null}
+            onSave={(nodeId, payload) => {
+              setDiagramData((prev: DiagramData) => ({
+                ...prev,
+                nodes:
+                  prev.nodes?.map((n: DiagramNodeData) => {
+                    if (n.id !== nodeId) return n;
+                    const next = {
+                      ...n,
+                      pyramidSections: payload.sections,
+                      pyramidSizing: payload.sizing,
+                      pyramidSegmentGap: payload.segmentGapPx,
+                      pyramidDirection: payload.direction,
+                      pyramidApexWidthRatio: payload.apexWidthRatio,
+                    } as DiagramNodeData & { pyramidLabelsFollowFirstSection?: boolean };
+                    if (payload.labelsFollowFirstSection) next.pyramidLabelsFollowFirstSection = true;
+                    else delete next.pyramidLabelsFollowFirstSection;
+                    return next;
+                  }) ?? [],
+              }));
+              setPyramidEditorModal({ visible: false, x: 0, y: 0, itemId: "" });
             }}
             isReadOnly={isReadOnly}
           />,

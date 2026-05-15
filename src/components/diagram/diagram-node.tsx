@@ -56,6 +56,7 @@ import {
   LineChartShape,
   ProgressBarShape,
   TimelineBarShape,
+  PyramidShape,
 } from "./shapes";
 import {
   SlideShapeShadowTransitionProvider,
@@ -76,6 +77,7 @@ import {
 import { buildSyntheticTimelineEntryCardNode } from "@/lib/timeline-styling";
 import { normalizeCompositeBodyShapeKind } from "@/lib/shape-type-swap";
 import { isTimelineBarNodeType, timelineBarMemoPayload } from "@/lib/timeline-bar";
+import { isPyramidNodeType, pyramidMemoPayload } from "@/lib/pyramid";
 import {
   syncClosedConnectorLineBorderWidth,
   syncClosedConnectorVisualBorderFromLineStyling,
@@ -392,6 +394,9 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     const pTb = isTimelineBarNodeType(p.type) ? timelineBarMemoPayload(p) : '';
     const nTb = isTimelineBarNodeType(n.type) ? timelineBarMemoPayload(n) : '';
     if (pTb !== nTb) return false;
+    const pPy = isPyramidNodeType(p.type) ? pyramidMemoPayload(p) : '';
+    const nPy = isPyramidNodeType(n.type) ? pyramidMemoPayload(n) : '';
+    if (pPy !== nPy) return false;
     const pLine = p as any;
     const nLine = n as any;
     if (pLine.startPos && nLine.startPos) {
@@ -919,6 +924,15 @@ function DiagramNodeInner({
                 }
               : undefined
           }
+        />
+      );
+    } else if (nodeType === 'generic.object.pyramid' || nodeType?.endsWith('.pyramid')) {
+      return (
+        <PyramidShape
+          {...shapeProps}
+          isReadOnly={isReadOnly}
+          onPatch={onUpdate && !isReadOnly ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
+          sectionLabelInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
         />
       );
     } else if (nodeType === 'generic.object.text-box-heading' || nodeType?.endsWith('.text-box-heading')) {

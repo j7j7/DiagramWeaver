@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 39,
+  "totalResources": 40,
   "categories": {
     "text": {
       "name": "Text",
@@ -61,6 +61,11 @@
         {
           "name": "Timeline bar",
           "file": "timeline-bar.png",
+          "type": "shape"
+        },
+        {
+          "name": "Pyramid",
+          "file": "pyramid.svg",
           "type": "shape"
         },
         {

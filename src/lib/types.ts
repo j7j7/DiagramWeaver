@@ -254,6 +254,9 @@ export const DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS = [
 
 export type DiagramCompositeBodyShapeKind = (typeof DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS)[number];
 
+export type PyramidSizing = "equal" | "weighted";
+export type PyramidDirection = "narrow-at-top" | "narrow-at-bottom";
+
 export interface DiagramNodeData {
   id: string;
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
@@ -337,6 +340,23 @@ export interface DiagramNodeData {
   timelineBarAxisLabelFontFamily?: string;
   /** When true, segments after the first use the first segment’s bar-label alignment and typography (not per-segment overrides). */
   timelineBarLabelsFollowFirstSection?: boolean;
+
+  /** Segmented pyramid (`generic.object.pyramid`): bottom tier first, stacked upward; reuse timeline segment fill/label payload. */
+  pyramidSections?: TimelineBarSectionData[];
+  /** `equal` = same tier height; `weighted` = height ∝ `weight`. */
+  pyramidSizing?: PyramidSizing;
+  /** Vertical gap between tiers (diagram px, clipped to 0–32). */
+  pyramidSegmentGap?: number;
+  /** Taper orientation: `'narrow-at-top'` = classical wide base. */
+  pyramidDirection?: PyramidDirection;
+  /** Width of the apex / narrow end as a fraction of the base (`0.02`–`1`, default ~0.12). */
+  pyramidApexWidthRatio?: number;
+  pyramidSectionBorder?: boolean;
+  pyramidSectionBorderWidth?: number;
+  pyramidSectionBorderColor?: string;
+  pyramidHueStepDeg?: number;
+  /** When true, segments after the first mirror the first tier’s segment-label typography (timeline-bar parity). */
+  pyramidLabelsFollowFirstSection?: boolean;
 
   /** Progress bar (`generic.object.progress-bar`): completed amount 0–100 */
   progressPercent?: number;

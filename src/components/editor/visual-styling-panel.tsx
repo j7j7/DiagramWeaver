@@ -341,11 +341,13 @@ interface VisualStylingPanelProps {
   isProgressBar?: boolean;
   /** When true, shows segmented timeline bar layout controls */
   isTimelineBar?: boolean;
+  /** When true, shows segmented pyramid layout controls */
+  isPyramid?: boolean;
   /** When true, shows heading strip color (text-box-heading only) */
   isTextBoxHeading?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isProgressBar = false, isTimelineBar = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isProgressBar = false, isTimelineBar = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -441,9 +443,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   // Find the closest predefined style for the current styling
   const currentPredefinedStyle = findClosestPredefinedStyle(styling as VisualStyling);
 
-  /** Progress bar + timeline bar: start with sections folded */
-  const accordionDefaultOpen = !isProgressBar && !isTimelineBar;
-  const accordionRemountKey = `${[...(selectedItemIds ?? new Set<string>())].sort().join("|")}-${isProgressBar ? "pb" : isTimelineBar ? "tb" : "std"}`;
+  /** Progress bar + timeline bar + pyramid: start layout sections folded */
+  const accordionDefaultOpen = !isProgressBar && !isTimelineBar && !isPyramid;
+  const accordionRemountKey = `${[...(selectedItemIds ?? new Set<string>())].sort().join("|")}-${isProgressBar ? "pb" : isTimelineBar ? "tb" : isPyramid ? "py" : "std"}`;
 
   return (
     <Draggable
@@ -1067,8 +1069,8 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Hue difference between consecutive segments when Fill is Theme hue (empty = {DIAGRAM_THEME_HUE_STEP_DEG}°,
-                      same default as timeline cards).
+                      Hue difference between consecutive segments when Fill is Theme hue — timeline bar sections or pyramid
+                      tiers (empty = {DIAGRAM_THEME_HUE_STEP_DEG}°, same default as timeline cards).
                     </p>
                   </div>
                   {styling.timelineBarSectionBorder === true ? (
@@ -1101,6 +1103,121 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   ) : null}
                 </StylingAccordionSection>
               ) : null}
+
+              {isPyramid ? (
+                <StylingAccordionSection
+                  defaultOpen
+                  title="Segment theme hues"
+                  dotClassName="bg-teal-500"
+                  outerClassName="border-teal-200/50 bg-teal-50/50"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm text-muted-foreground">Theme hue step (°)</Label>
+                      <TimelineBarHueStepInput
+                        committedDeg={styling.timelineBarHueStepDeg}
+                        onCommit={(v) => handlePropertyChange("timelineBarHueStepDeg", v, true)}
+                        className="h-9 w-[4.5rem] text-sm"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Same setting as segmented Timeline bar. Hue shift between consecutive Theme hue tiers when Fill style is
+                      Theme hue (empty = {DIAGRAM_THEME_HUE_STEP_DEG}° default, as for timeline cards).
+                    </p>
+                  </div>
+                </StylingAccordionSection>
+              ) : null}
+
+              {isPyramid ? (
+                <StylingAccordionSection
+                  defaultOpen={accordionDefaultOpen}
+                  title="Pyramid tiers"
+                  dotClassName="bg-amber-500"
+                  outerClassName="border-amber-200/50 bg-amber-50/50"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Auto-size tiers</Label>
+                    <Select
+                      value={styling.pyramidSizing === "weighted" ? "weighted" : "equal"}
+                      onValueChange={(v) =>
+                        handlePropertyChange("pyramidSizing", v === "weighted" ? "weighted" : "equal", true)
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-[160px] text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="equal" className="text-sm">
+                          Equal heights
+                        </SelectItem>
+                        <SelectItem value="weighted" className="text-sm">
+                          By weight
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Gap between tiers</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={32}
+                      step={1}
+                      className="h-9 w-[4.25rem] text-sm tabular-nums"
+                      value={styling.pyramidSegmentGap ?? 2}
+                      onChange={(e) => {
+                        const n = parseFloat(e.target.value);
+                        if (!Number.isFinite(n)) return;
+                        handlePropertyChange("pyramidSegmentGap", Math.min(32, Math.max(0, n)), true);
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Narrow end</Label>
+                    <Select
+                      value={styling.pyramidDirection === "narrow-at-bottom" ? "narrow-at-bottom" : "narrow-at-top"}
+                      onValueChange={(v) =>
+                        handlePropertyChange(
+                          "pyramidDirection",
+                          v === "narrow-at-bottom" ? "narrow-at-bottom" : "narrow-at-top",
+                          true,
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-[200px] text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="narrow-at-top">Top · wide base</SelectItem>
+                        <SelectItem value="narrow-at-bottom">Bottom · inverted</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Narrow end (% base, 0 = point)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      className="h-9 w-[4.5rem] text-sm tabular-nums"
+                      value={Math.round((styling.pyramidApexWidthRatio ?? 0.12) * 100)}
+                      onChange={(e) => {
+                        const n = parseFloat(e.target.value);
+                        if (!Number.isFinite(n)) return;
+                        handlePropertyChange("pyramidApexWidthRatio", Math.min(100, Math.max(0, n)) / 100, true);
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Typography follows first tier</Label>
+                    <Switch
+                      checked={styling.pyramidLabelsFollowFirstSection === true}
+                      onCheckedChange={(checked) => handlePropertyChange("pyramidLabelsFollowFirstSection", checked, true)}
+                    />
+                  </div>
+                </StylingAccordionSection>
+              ) : null}
             </div>
 
             <div className="space-y-4 min-w-0 border-l border-border pl-8">
@@ -1124,7 +1241,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     handlePropertyChange={handlePropertyChange}
                     onStylingChange={onStylingChange}
                   />
-                  {isRoundedRectangle && !isProgressBar && !isTimelineBar && (
+                  {isRoundedRectangle && !isProgressBar && !isTimelineBar && !isPyramid && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-2">
                         <Label className="text-sm text-muted-foreground">Corner radius</Label>

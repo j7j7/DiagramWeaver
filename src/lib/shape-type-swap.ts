@@ -1,7 +1,8 @@
 import { snapDimensionToGrid } from "@/components/editor/canvas-constants";
 import { isChartNodeType } from "@/lib/chart-node";
-import type { DiagramCompositeBodyShapeKind, DiagramNodeData } from "@/lib/types";
+import type { DiagramCompositeBodyShapeKind, DiagramNodeData, TimelineBarSectionData } from "@/lib/types";
 import { DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS } from "@/lib/types";
+import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { isMindmapNodeType, isTimelineNodeType } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ export const SWAPPABLE_OBJECT_SHAPE_OPTIONS = [
   { kind: "chevron", label: "Chevron" },
   { kind: "progress-bar", label: "Progress bar" },
   { kind: "timeline-bar", label: "Timeline bar" },
+  { kind: "pyramid", label: "Pyramid" },
   { kind: "text-box-heading", label: "Text box heading" },
   { kind: "uml-class", label: "UML class" },
 ] as const;
@@ -106,6 +108,10 @@ function defaultDimensionsForSwappableKind(kind: SwappableObjectKind): { width: 
       wRaw = 790;
       hRaw = 150;
       break;
+    case "pyramid":
+      wRaw = 120;
+      hRaw = 140;
+      break;
     case "text-box-heading":
       wRaw = 180;
       hRaw = 90;
@@ -123,6 +129,11 @@ function defaultDimensionsForSwappableKind(kind: SwappableObjectKind): { width: 
     width: snapDimensionToGrid(wRaw),
     height: snapDimensionToGrid(hRaw),
   };
+}
+
+/** Pyramid ignores `spanStart`/`spanEnd`/`tickLabel`; omit when copying from a timeline bar. */
+function timelineBarSectionsToPyramidSections(sections: TimelineBarSectionData[]): TimelineBarSectionData[] {
+  return sections.map(({ spanStart: _ss, spanEnd: _se, tickLabel: _tk, ...rest }) => ({ ...rest }));
 }
 
 function stripConnectorAndTimelineFields(n: DiagramNodeData): void {
@@ -190,6 +201,19 @@ function stripTimelineBarFields(n: DiagramNodeData): void {
   delete (n as DiagramNodeData & { timelineBarHueStepDeg?: unknown }).timelineBarHueStepDeg;
 }
 
+function stripPyramidFields(n: DiagramNodeData): void {
+  delete (n as DiagramNodeData & { pyramidSections?: unknown }).pyramidSections;
+  delete (n as DiagramNodeData & { pyramidSizing?: unknown }).pyramidSizing;
+  delete (n as DiagramNodeData & { pyramidSegmentGap?: unknown }).pyramidSegmentGap;
+  delete (n as DiagramNodeData & { pyramidDirection?: unknown }).pyramidDirection;
+  delete (n as DiagramNodeData & { pyramidApexWidthRatio?: unknown }).pyramidApexWidthRatio;
+  delete (n as DiagramNodeData & { pyramidSectionBorder?: unknown }).pyramidSectionBorder;
+  delete (n as DiagramNodeData & { pyramidSectionBorderWidth?: unknown }).pyramidSectionBorderWidth;
+  delete (n as DiagramNodeData & { pyramidSectionBorderColor?: unknown }).pyramidSectionBorderColor;
+  delete (n as DiagramNodeData & { pyramidHueStepDeg?: unknown }).pyramidHueStepDeg;
+  delete (n as DiagramNodeData & { pyramidLabelsFollowFirstSection?: unknown }).pyramidLabelsFollowFirstSection;
+}
+
 function stripProgressHeading(n: DiagramNodeData): void {
   delete n.progressPercent;
   delete n.progressShowPercent;
@@ -233,6 +257,14 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
     return { ...node, compositeBodyShape: newKind };
   }
 
+  const prevKindSuffix = objectKindSuffixFromNodeType(node.type);
+  const capturedTimelineSections = Array.isArray(node.timelineBarSections)
+    ? node.timelineBarSections.map((s) => ({ ...s }))
+    : undefined;
+  const capturedPyramidSections = Array.isArray(node.pyramidSections)
+    ? node.pyramidSections.map((s) => ({ ...s }))
+    : undefined;
+
   const next: DiagramNodeData = { ...node, type: buildNodeTypeForObjectKind(node.type, newKind) };
 
   // Connector `lineType` / spine fields must not remain on closed shapes.
@@ -243,11 +275,46 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
   stripChartAndUml(next);
   stripProgressHeading(next);
   stripTimelineBarFields(next);
+  stripPyramidFields(next);
   clearIconResourceFields(next);
 
   if (newKind === "timeline-bar") {
-    const payload = defaultPaletteTimelineBarNodeProps(next.id);
-    Object.assign(next, payload);
+    Object.assign(next, defaultPaletteTimelineBarNodeProps(next.id));
+    if (prevKindSuffix === "pyramid" && capturedPyramidSections?.length) {
+      next.timelineBarSections = capturedPyramidSections.map((s) => ({ ...s }));
+      if (node.pyramidSizing === "equal" || node.pyramidSizing === "weighted") {
+        next.timelineBarSizing = node.pyramidSizing;
+      }
+      if (typeof node.timelineBarHueStepDeg === "number") next.timelineBarHueStepDeg = node.timelineBarHueStepDeg;
+      else if (typeof node.pyramidHueStepDeg === "number") next.timelineBarHueStepDeg = node.pyramidHueStepDeg;
+      if (typeof node.pyramidLabelsFollowFirstSection === "boolean") {
+        next.timelineBarLabelsFollowFirstSection = node.pyramidLabelsFollowFirstSection;
+      }
+      if (typeof node.pyramidSectionBorder === "boolean") next.timelineBarSectionBorder = node.pyramidSectionBorder;
+      if (typeof node.pyramidSectionBorderWidth === "number") next.timelineBarSectionBorderWidth = node.pyramidSectionBorderWidth;
+      if (node.pyramidSectionBorderColor != null) next.timelineBarSectionBorderColor = node.pyramidSectionBorderColor;
+    }
+  }
+
+  if (newKind === "pyramid") {
+    Object.assign(next, defaultPalettePyramidNodeProps(next.id));
+    if (prevKindSuffix === "timeline-bar" && capturedTimelineSections?.length) {
+      next.pyramidSections = timelineBarSectionsToPyramidSections(capturedTimelineSections);
+      if (node.timelineBarSizing === "equal" || node.timelineBarSizing === "weighted") {
+        next.pyramidSizing = node.timelineBarSizing;
+      }
+      if (typeof node.timelineBarHueStepDeg === "number") next.timelineBarHueStepDeg = node.timelineBarHueStepDeg;
+      if (typeof node.timelineBarLabelsFollowFirstSection === "boolean") {
+        next.pyramidLabelsFollowFirstSection = node.timelineBarLabelsFollowFirstSection;
+      }
+      if (typeof node.timelineBarSectionBorder === "boolean") next.pyramidSectionBorder = node.timelineBarSectionBorder;
+      if (typeof node.timelineBarSectionBorderWidth === "number") {
+        next.pyramidSectionBorderWidth = node.timelineBarSectionBorderWidth;
+      }
+      if (node.timelineBarSectionBorderColor != null) {
+        next.pyramidSectionBorderColor = node.timelineBarSectionBorderColor;
+      }
+    }
   }
 
   if (newKind !== "uml-class") {
@@ -280,12 +347,11 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
     if (node.umlClassStyle) next.umlClassStyle = { ...node.umlClassStyle };
   }
 
-  const oldKindSuffix = objectKindSuffixFromNodeType(node.type);
-  const oldIsPoint = oldKindSuffix === "point";
+  const oldIsPoint = prevKindSuffix === "point";
   const newIsPoint = newKind === "point";
   if (
-    oldKindSuffix &&
-    SWAPPABLE_KIND_SET.has(oldKindSuffix) &&
+    prevKindSuffix &&
+    SWAPPABLE_KIND_SET.has(prevKindSuffix) &&
     oldIsPoint !== newIsPoint
   ) {
     const dims = defaultDimensionsForSwappableKind(newKind);

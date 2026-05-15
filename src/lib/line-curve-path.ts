@@ -43,6 +43,21 @@ export function getConnectorLineVertices(
   return [start, ...stored, end];
 }
 
+/**
+ * Top-left of the axis-aligned bounds of connector-line / timeline spine geometry.
+ * Canvas drag uses this as the grab anchor; move/duplicate must use the same origin so committed deltas match the drag preview.
+ */
+export function getConnectorLikeSpinePlacementAnchor(
+  node: DiagramNodeData & { __localStartPos?: { x: number; y: number }; __localEndPos?: { x: number; y: number }; __localControlPoints?: LineControlPoint[] },
+): { x: number; y: number } {
+  const verts = getConnectorLineVertices(node);
+  if (verts.length === 0) return { x: node.x ?? 0, y: node.y ?? 0 };
+  return {
+    x: Math.min(...verts.map((p) => p.x)),
+    y: Math.min(...verts.map((p) => p.y)),
+  };
+}
+
 /** True when the rendered polyline/spline closes (start ≈ end). Enables area fill on connector lines. */
 export function isConnectorLineGeometryClosed(
   node: DiagramNodeData & { __localStartPos?: { x: number; y: number }; __localEndPos?: { x: number; y: number }; __localControlPoints?: LineControlPoint[] },

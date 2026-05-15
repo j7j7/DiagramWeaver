@@ -1,5 +1,6 @@
 import type { DiagramNodeData } from '@/lib/types';
 import { isTimelineBarNodeType, timelineBarMemoPayload } from '@/lib/timeline-bar';
+import { isPyramidNodeType, pyramidMemoPayload } from '@/lib/pyramid';
 
 const VISUAL_COLOR_KEYS = [
   'backgroundColor',
@@ -62,6 +63,8 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
       : '';
   const tbSig =
     typeof node.type === 'string' && isTimelineBarNodeType(node.type) ? timelineBarMemoPayload(node) : '';
+  const pyramidSig =
+    typeof node.type === 'string' && isPyramidNodeType(node.type) ? pyramidMemoPayload(node) : '';
   const mindmapSig =
     typeof node.type === 'string' &&
     (node.type === 'generic.object.mind-map-node' || node.type.endsWith('.mind-map-node'))
@@ -79,6 +82,7 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
     x.compositeBodyShape,
     progressSig,
     tbSig,
+    pyramidSig,
     mindmapSig,
   ].join('\0');
 }

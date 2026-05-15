@@ -24,6 +24,7 @@ import {
   isTimelineNodeType,
 } from "@/lib/utils";
 import { TIMELINE_DEFAULT_SPINE_LENGTH_PX, TIMELINE_NODE_TYPE } from "@/lib/timeline-layout";
+import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
 import {
@@ -32,6 +33,7 @@ import {
   recomputeMindmapMetadata,
   syncMindmapChildPolarAfterMove,
 } from "@/lib/mindmap-layout";
+import { getConnectorLikeSpinePlacementAnchor } from "@/lib/line-curve-path";
 import { defaultChartSpecForNodeType } from "@/lib/chart-node";
 // Zones removed - no zone layout
 
@@ -106,6 +108,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.rounded-rectangle' ||
                                 itemType === 'generic.object.progress-bar' ||
                                 itemType === 'generic.object.timeline-bar' ||
+                                itemType === 'generic.object.pyramid' ||
                                 itemType === 'generic.object.text-box-heading' ||
                                 itemType === 'generic.object.triangle' ||
                                 itemType === 'generic.object.star' ||
@@ -132,6 +135,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.rounded-rectangle') ||
                                 itemType?.endsWith('.progress-bar') ||
                                 itemType?.endsWith('.timeline-bar') ||
+                                itemType?.endsWith('.pyramid') ||
                                 itemType?.endsWith('.text-box-heading') ||
                                 itemType?.endsWith('.triangle') ||
                                 itemType?.endsWith('.star') ||
@@ -196,6 +200,7 @@ export function useCanvasOperations({
              itemType === MINDMAP_NODE_TYPE ? 80 :
              itemType === 'generic.object.progress-bar' ? 80 :
              itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(790, 40) :
+             itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(120, 40) :
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line'
@@ -216,6 +221,7 @@ export function useCanvasOperations({
              itemType === MINDMAP_NODE_TYPE ? 50 :
              itemType === 'generic.object.progress-bar' ? 50 :
              itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(150, 28) :
+             itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(140, 28) :
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' || itemType === TIMELINE_NODE_TYPE ? 100 :
@@ -308,6 +314,9 @@ export function useCanvasOperations({
           }),
           ...((itemType === 'generic.object.timeline-bar' || itemType?.endsWith('.timeline-bar')) && !isFromScratchPad && {
             ...defaultPaletteTimelineBarNodeProps(newNodeId),
+          }),
+          ...((itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid')) && !isFromScratchPad && {
+            ...defaultPalettePyramidNodeProps(newNodeId),
           }),
           ...((itemType === 'generic.chart.pie' ||
             itemType === 'generic.chart.bar' ||
@@ -543,10 +552,11 @@ export function useCanvasOperations({
           groupId: undefined,
         };
         if (isConnectorLikeSpineNodeType(original.type)) {
+          const anchor = getConnectorLikeSpinePlacementAnchor(original);
+          const ddx = snappedX - anchor.x;
+          const ddy = snappedY - anchor.y;
           const ox = original.x ?? 0;
           const oy = original.y ?? 0;
-          const ddx = snappedX - ox;
-          const ddy = snappedY - oy;
           const sp = (original as { startPos?: { x: number; y: number } }).startPos || { x: ox, y: oy };
           const ep = (original as { endPos?: { x: number; y: number } }).endPos || { x: ox + 150, y: oy };
           const ctrls = (original as { lineControlPoints?: { x: number; y: number }[] }).lineControlPoints;
@@ -681,8 +691,9 @@ export function useCanvasOperations({
                 if (isConnectorLikeSpineNodeType(n.type)) {
                   const currentStartPos = (n as any).startPos || { x: n.x || 0, y: (n.y || 0) + 50 };
                   const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: (n.y || 0) + 50 };
-                  const deltaX = snappedX - (n.x || 0);
-                  const deltaY = snappedY - (n.y || 0);
+                  const anchor = getConnectorLikeSpinePlacementAnchor(n);
+                  const deltaX = snappedX - anchor.x;
+                  const deltaY = snappedY - anchor.y;
                   const ctrls = (n as any).lineControlPoints as { x: number; y: number }[] | undefined;
                   return {
                     ...n,
@@ -911,12 +922,6 @@ export function useCanvasOperations({
             return prevData;
           }
 
-          const draggedItemData = processedNodes.find(n => n.id === item.id) || processedZones.find(zone => zone.id === item.id);
-          const originalX = draggedItemData?.x ?? 0;
-          const originalY = draggedItemData?.y ?? 0;
-          const dx = snappedX - originalX;
-          const dy = snappedY - originalY;
-
           if (movingIsZone) {
             // Update the zone's position
             currentZones = currentZones.map(zone => {
@@ -934,8 +939,9 @@ export function useCanvasOperations({
                  if (isConnectorLikeSpineNodeType(n.type)) {
                    const currentStartPos = (n as any).startPos || { x: n.x || 0, y: n.y || 0 };
                    const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: n.y || 0 };
-                   const deltaX = snappedX - originalX;
-                   const deltaY = snappedY - originalY;
+                   const anchor = getConnectorLikeSpinePlacementAnchor(n);
+                   const deltaX = snappedX - anchor.x;
+                   const deltaY = snappedY - anchor.y;
                    const ctrls = (n as any).lineControlPoints as { x: number; y: number }[] | undefined;
                    return {
                      ...n,

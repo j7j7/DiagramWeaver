@@ -1,4 +1,11 @@
-import type { DiagramNodeData, DiagramNodeItem, DiagramGroupData, DiagramGroupItem } from './types';
+import type {
+  DiagramNodeData,
+  DiagramNodeItem,
+  DiagramGroupData,
+  DiagramGroupItem,
+  PyramidDirection,
+  PyramidSizing,
+} from "./types";
 import type { ThemeProperties } from './theme-types';
 
 // Visual styling interface for consistency
@@ -43,7 +50,15 @@ export interface VisualStyling {
   timelineBarSectionBorder?: boolean;
   timelineBarSectionBorderWidth?: number;
   timelineBarSectionBorderColor?: string;
-  timelineBarHueStepDeg?: number;
+  timelineBarHueStepDeg?: number; // Timeline bar segments + pyramid theme-hue tiers
+  pyramidSizing?: PyramidSizing;
+  pyramidSegmentGap?: number;
+  pyramidDirection?: PyramidDirection;
+  pyramidApexWidthRatio?: number;
+  pyramidSectionBorder?: boolean;
+  pyramidSectionBorderWidth?: number;
+  pyramidSectionBorderColor?: string;
+  pyramidLabelsFollowFirstSection?: boolean;
   timelineBarAxisLabelFontSize?: number;
   timelineBarAxisLabelFontFamily?: string;
   /** Text box with heading: fill color for the heading strip */
@@ -264,6 +279,14 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     timelineBarSectionBorderWidth: (node as any).timelineBarSectionBorderWidth,
     timelineBarSectionBorderColor: (node as any).timelineBarSectionBorderColor,
     timelineBarHueStepDeg: (node as any).timelineBarHueStepDeg,
+    pyramidSizing: (node as any).pyramidSizing,
+    pyramidSegmentGap: (node as any).pyramidSegmentGap,
+    pyramidDirection: (node as any).pyramidDirection,
+    pyramidApexWidthRatio: (node as any).pyramidApexWidthRatio,
+    pyramidSectionBorder: (node as any).pyramidSectionBorder,
+    pyramidSectionBorderWidth: (node as any).pyramidSectionBorderWidth,
+    pyramidSectionBorderColor: (node as any).pyramidSectionBorderColor,
+    pyramidLabelsFollowFirstSection: (node as any).pyramidLabelsFollowFirstSection,
     timelineBarAxisLabelFontSize: (node as any).timelineBarAxisLabelFontSize,
     timelineBarAxisLabelFontFamily: (node as any).timelineBarAxisLabelFontFamily,
     headingBackgroundColor: (node as any).headingBackgroundColor,
@@ -373,6 +396,23 @@ export function applyVisualStylingToNode(
         : (node as any).timelineBarSectionBorderColor,
     timelineBarHueStepDeg:
       styling.timelineBarHueStepDeg !== undefined ? styling.timelineBarHueStepDeg : (node as any).timelineBarHueStepDeg,
+    pyramidSizing: styling.pyramidSizing !== undefined ? styling.pyramidSizing : (node as any).pyramidSizing,
+    pyramidSegmentGap: styling.pyramidSegmentGap !== undefined ? styling.pyramidSegmentGap : (node as any).pyramidSegmentGap,
+    pyramidDirection: styling.pyramidDirection !== undefined ? styling.pyramidDirection : (node as any).pyramidDirection,
+    pyramidApexWidthRatio:
+      styling.pyramidApexWidthRatio !== undefined ? styling.pyramidApexWidthRatio : (node as any).pyramidApexWidthRatio,
+    pyramidSectionBorder:
+      styling.pyramidSectionBorder !== undefined ? styling.pyramidSectionBorder : (node as any).pyramidSectionBorder,
+    pyramidSectionBorderWidth:
+      styling.pyramidSectionBorderWidth !== undefined
+        ? styling.pyramidSectionBorderWidth
+        : (node as any).pyramidSectionBorderWidth,
+    pyramidSectionBorderColor:
+      styling.pyramidSectionBorderColor !== undefined
+        ? styling.pyramidSectionBorderColor
+        : (node as any).pyramidSectionBorderColor,
+    pyramidLabelsFollowFirstSection:
+      "pyramidLabelsFollowFirstSection" in styling ? styling.pyramidLabelsFollowFirstSection : (node as any).pyramidLabelsFollowFirstSection,
     timelineBarAxisLabelFontSize: 'timelineBarAxisLabelFontSize' in styling
       ? styling.timelineBarAxisLabelFontSize
       : (node as any).timelineBarAxisLabelFontSize,

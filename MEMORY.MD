@@ -3,6 +3,41 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – Pyramid modal: **Sizing Select + click-outside**
+
+Document **`mousedown`** outside-panel handler treated Radix **`Select`** dropdown items/viewport as outside the dialog (portal not under **`panelRef`**). Only **`data-radix-select-content`** was ignored; pyramid modal now skips closes for **`select-viewport`** and **`select-item`** like **timeline-bar** / **chart-data** modals. Patch bumped.
+
+
+### 2026-05-15 – Pyramid: **tier line breaks**, **`timelineBarHueStepDeg`** only (no pyramid hue field in styling)
+
+Tier labels keep **newlines** (`pre-wrap` on canvas; **`Textarea`** in pyramid modal). Pyramid **theme-hue** uses **`timelineBarHueStepDeg`** (same as segmented Timeline bar); defaults **`timelineBarHueStepDeg: 10`** on palette pyramid; legacy **`pyramidHueStepDeg`** still read for fills/memo until omitted. Visual styling: teal **Segment theme hues** when pyramid is selected (writes **`timelineBarHueStepDeg`**); hue control removed from amber **Pyramid tiers** block. Timeline bar accordion help mentions pyramid tiers. **`shape-preview`** pyramid preview step **10**. Patch bumped.
+
+
+### 2026-05-15 – Connector line / timeline spine: **canvas drag commit matches geometry anchor**
+
+**`getConnectorLikeSpinePlacementAnchor`** (**`line-curve-path.ts`**) = top-left of **`getConnectorLineVertices`** bounds (same as drag grab). **`use-canvas-drag-drop`**, **`moveItem` / `moveMultipleItems` / `duplicateNodesAtPositions`** (**`canvas-operations.ts`**), and multi-drag preview (**`editor-canvas.tsx`**) use it for translation deltas instead of **`node.x`/`y`**, which can diverge from the spine bbox and caused the line to **jump back** after drop. Patch bumped.
+
+
+### 2026-05-15 – Pyramid modal: fix **nested buttons** (hydration)
+
+Tier row **`CollapsibleTrigger`** no longer wraps **Remove tier**; header matches **timeline-bar** (**`asChild`** trigger + sibling **`Button`**). Removes invalid HTML / React hydration warnings. Patch bumped.
+
+
+### 2026-05-15 – Pyramid: **`defaultPyramidSections`** + theme-hue parity
+
+**`pyramid.ts`**: **`defaultPyramidSections`** no longer depended on removed **`DEFAULT_PY_COLORS`** (fixes **`npm run typecheck`**); builds **four** default tiers with **`fillStyle: "theme-hue"`** and **`#94a3b8`**. Rendering uses **`timelineBarSectionThemeHueFill`** with **`pyramidHueStepDeg`** like the timeline bar. Patch bumped.
+
+
+### 2026-05-15 – Pyramid: **straight-side taper** through gaps + **0% pointed apex**
+
+Tier widths interpolate **linearly vs Y across the full stack height** (tiers + gaps), so gaps show background without stepped vertical sidelines. Hull / frost / glow use **`pyramidWedgeHullPolygonVb`** (4-point wedge). **`pyramidApexWidthRatio`** **`0`** = sharp apex; styling + modal inputs **`min`** **0**. Default **`pyramidSegmentGap`** **6**. Shared helpers **`pyramidWidthFracAtY`**, **`pyramidStackWideNarrowYs`**, **`pyramidWidthParamsFromTiers`**; **`shape-preview`** uses the same taper. Patch bumped.
+
+
+### 2026-05-15 – Palette shape: **segmented Pyramid** wiring & parity
+
+**`generic.object.pyramid`**: **`isShapeNodeType`** / **`selection-theme-order`**; **`shape-type-swap`** adds **`pyramid`** ( **`stripPyramidFields`**, default dims, **`timeline-bar` ⇄ `pyramid`** migration for sections / sizing / hue-step / borders / labels-follow-first); **`canvas-operations`** drop uses **`defaultPalettePyramidNodeProps`**. UI: **`ResourceIcon`** **`PalettePyramidGlyph`**, **`draggable-resource-item`**, **`shape-preview`** tier stack. Assets **`generic/object/pyramid.svg`** + **`.png`**, **`resource-generic.json`** + **`totalResources`**. **`VisualStylingPanelProps`** restores **`isTimelineBar`** (typo omission). Pyramid modal / shape import **`PyramidDirection`/`PyramidSizing`** from **`types`**; pyramid modal **`ColorPicker`** props aligned with **`ColorPickerProps`**. **`shape-type-swap`** **`stripProgressHeading`** repaired. Patch bumped.
+
+
 ### 2026-05-15 – Timeline bar: **per-segment bar label text** (inherit from shape)
 
 **`TimelineBarSectionData`**: optional **`labelTextJustify`**, **`labelVerticalAlign`**, **`labelFontFamily`**, **`labelFontSize`**, **`labelFontWeight`**, **`labelFontStyle`**, **`labelTextDecoration`** — unset fields use the node’s **`textJustify`**, **`textVerticalPosition`**, **`fontFamily`**, **`fontSize`**, etc.; weight falls back to **600** when both omit. Stored sentinel **`TIMELINE_BAR_LABEL_FIRST_SECTION`** (`first-section`) on sections **after the first** makes each property follow **section 0’s effective value** for that property (recursive unwrap); modal label **Section default**; section 0 cannot persist `first-section` (**`normalizeTimelineBarSections`** strips it). Resolvers take **`sectionIndex`** + **`sections[]`**. **`timeline-bar`** shape uses **`timelineBarSectionResolvedFontFamily`**, **`…FontSizePx`**, **`…FontStyle`**, **`…TextDecoration`** plus flex **`justifyContent`** / **`textAlign`** (**`full` → justify**). **`timelineBarLabelsFollowFirstSection`** on **`DiagramNodeData`**: when **true**, segments after the first mirror the first segment’s bar-label alignment and typography on the canvas without writing **`first-section`** on each field; **`timeline-bar-editor-modal`** uses a **Switch** under Section widths (**Section default (bar label)**); **`TimelineBarEditorSavePayload`** includes **`labelsFollowFirstSection`**; per-row bar-label controls hidden for sections 2+ when on. Shape swap strips the flag. **`timelineBarMemoPayload`** includes node text fields; **`svgForeignObjectInlineInputStyle`** supports **`justify`** and **`fontWeight`** string|number. Schemas updated. Patch bumped.

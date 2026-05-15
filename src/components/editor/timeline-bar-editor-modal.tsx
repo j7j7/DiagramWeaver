@@ -1239,7 +1239,8 @@ export function TimelineBarEditorModal({
                             {(row.fillStyle ?? "solid") === "theme-hue" ? (
                               <p className="text-xs text-muted-foreground">
                                 Uses the bar background colour for the first theme-hue segment; each further theme-hue segment
-                                shifts hue (same idea as timeline cards). Set the step under Visual styling → Timeline bar.
+                                shifts hue (same idea as timeline cards). Set the step under Visual styling → Timeline bar (or Segment
+                                theme hues when a segmented pyramid is selected).
                                 {node && rows.length > 0 ? (
                                   <span className="mt-1 flex items-center gap-2">
                                     <span

@@ -331,6 +331,12 @@ export default function DiagramEditor() {
     y: number;
     itemId: string;
   }>({ visible: false, x: 0, y: 0, itemId: '' });
+  const [pyramidEditorModal, setPyramidEditorModal] = React.useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    itemId: string;
+  }>({ visible: false, x: 0, y: 0, itemId: '' });
   const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
   const [selectedResource, setSelectedResource] = React.useState<PaletteSelection | null>(null);
   const [paletteClipboardItem, setPaletteClipboardItem] = React.useState<any | null>(null);
@@ -4882,6 +4888,8 @@ export default function DiagramEditor() {
         setChartDataEditorModal={setChartDataEditorModal}
         timelineBarEditorModal={timelineBarEditorModal}
         setTimelineBarEditorModal={setTimelineBarEditorModal}
+        pyramidEditorModal={pyramidEditorModal}
+        setPyramidEditorModal={setPyramidEditorModal}
         setDiagramData={setDiagramData}
         updateTutorialDiagramData={updateTutorialDiagramData}
         layers={layers}
