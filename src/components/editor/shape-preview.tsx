@@ -2,7 +2,7 @@
 
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
+import { polygonToRoundedPath, boundingBoxFromSvgPolygonPointsString } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss } from '@/lib/text-styling';
 import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
 import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultLineChartSpec, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
@@ -24,11 +24,11 @@ import {
   linePathSmooth,
   resolveLineChartPolylineStrokeWidth,
 } from '@/lib/line-chart-layout';
-import { CompositeCardSilhouette } from '@/components/diagram/shapes/composite-card-silhouette';
+import { CompositeCardSilhouette, compositeCardSilhouetteMeshDescriptor } from '@/components/diagram/shapes/composite-card-silhouette';
 import { normalizeCompositeBodyShapeKind } from '@/lib/shape-type-swap';
 import { multiplyLightnessOfColor, shiftHueOfColor } from '@/lib/color-shift';
 import { useThemeMenuHueStepDeg } from '@/hooks/use-theme-menu-hue-step-deg';
-import { roundedRectangleMeshGradientSvg } from '@/lib/mesh-gradient';
+import { roundedRectangleMeshGradientSvg, clippedMeshGradientSvg } from '@/lib/mesh-gradient';
 import { pyramidStackWideNarrowYs, pyramidWidthFracAtY, type PyramidInterpolatedWidthParams } from '@/lib/pyramid';
 
 function formatBarPreviewValue(n: number): string {
@@ -1320,7 +1320,49 @@ export function ShapePreview({
     if (type === 'generic.object.circle' || type?.endsWith('.circle')) {
       const r = (Math.min(displayWidth, displayHeight) / 2) - (borderStyle === 'none' ? 0 : strokeWidth / 2);
       const coords = getGradientCoordinates(gradientAngle);
-      
+
+      if (effectiveBackgroundStyle === 'mesh_gradient') {
+        const meshUid = `sp-circ-${gradientId.replace(/:/g, '')}`;
+        const cx = displayWidth / 2;
+        const cy = displayHeight / 2;
+        const side = 2 * Math.max(0, r);
+        const ix = cx - r;
+        const iy = cy - r;
+        const { defs: mgDefs, fillClipGroup } = clippedMeshGradientSvg({
+          uidBase: meshUid,
+          innerX: ix,
+          innerY: iy,
+          innerW: side,
+          innerH: side,
+          baseColor: effectiveBackgroundColor,
+          points: meshGradientPoints ?? [],
+          clipPathChildren: <circle cx={cx} cy={cy} r={Math.max(0, r)} />,
+        });
+        return (
+          <svg {...commonSvgProps}>
+            <defs>
+              {borderStyle === 'gradient' && (
+                <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
+                  <stop offset="0%" stopColor={borderColorArray[0]} />
+                  <stop offset="100%" stopColor={borderColorArray[1]} />
+                </linearGradient>
+              )}
+            </defs>
+            {mgDefs}
+            {fillClipGroup}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={Math.max(0, r)}
+              fill="none"
+              stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+              strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+              strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            />
+          </svg>
+        );
+      }
+
       return (
         <svg {...commonSvgProps}>
           <defs>
@@ -1355,7 +1397,62 @@ export function ShapePreview({
       const coords = getGradientCoordinates(gradientAngle);
       const points = `${displayWidth / 2},${strokeWidth} ${displayWidth - strokeWidth},${displayHeight - strokeWidth} ${strokeWidth},${displayHeight - strokeWidth}`;
       const viewBox: [number, number] = [displayWidth, displayHeight];
-      
+
+      if (effectiveBackgroundStyle === 'mesh_gradient') {
+        const meshUid = `sp-tri-${gradientId.replace(/:/g, "")}`;
+        const bbox = boundingBoxFromSvgPolygonPointsString(points);
+        const clip = roundedEdges ? (
+          <path d={polygonToRoundedPath(points, undefined, viewBox)} />
+        ) : (
+          <polygon points={points} />
+        );
+        const { defs: mgDefs, fillClipGroup } = clippedMeshGradientSvg({
+          uidBase: meshUid,
+          innerX: bbox.x,
+          innerY: bbox.y,
+          innerW: bbox.w,
+          innerH: bbox.h,
+          baseColor: effectiveBackgroundColor,
+          points: meshGradientPoints ?? [],
+          clipPathChildren: clip,
+        });
+        const strokePaint =
+          borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor;
+        return (
+          <svg {...commonSvgProps}>
+            <defs>
+              {borderStyle === 'gradient' && (
+                <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
+                  <stop offset="0%" stopColor={borderColorArray[0]} />
+                  <stop offset="100%" stopColor={borderColorArray[1]} />
+                </linearGradient>
+              )}
+            </defs>
+            {mgDefs}
+            {fillClipGroup}
+            {roundedEdges ? (
+              <path
+                d={polygonToRoundedPath(points, undefined, viewBox)}
+                fill="none"
+                stroke={strokePaint}
+                strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+                strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ) : (
+              <polygon
+                points={points}
+                fill="none"
+                stroke={strokePaint}
+                strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+                strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+              />
+            )}
+          </svg>
+        );
+      }
+
       return (
         <svg {...commonSvgProps}>
           <defs>
@@ -1937,21 +2034,18 @@ export function ShapePreview({
       const cornerPx = cr * Math.min(iw, ih);
       const kind = normalizeCompositeBodyShapeKind(compositeBodyShape);
 
-      if (kind === 'rounded-rectangle' && effectiveBackgroundStyle === 'mesh_gradient') {
-        const halfW = iw / 2;
-        const halfH = ih / 2;
-        const rxMesh = Math.min(cornerPx, halfW * 0.45, halfH * 0.45);
+      if (effectiveBackgroundStyle === 'mesh_gradient') {
         const meshUid = `sp-mm-${gradientId.replace(/:/g, '')}`;
-        const { defs: mgDefs, fillClipGroup } = roundedRectangleMeshGradientSvg({
+        const desc = compositeCardSilhouetteMeshDescriptor(kind, ccx, ccy, iw, ih, cornerPx);
+        const { defs: mgDefs, fillClipGroup } = clippedMeshGradientSvg({
           uidBase: meshUid,
-          innerX: hx,
-          innerY: hy,
-          innerW: iw,
-          innerH: ih,
-          rx: rxMesh,
-          ry: rxMesh,
+          innerX: desc.innerX,
+          innerY: desc.innerY,
+          innerW: desc.innerW,
+          innerH: desc.innerH,
           baseColor: effectiveBackgroundColor,
           points: meshGradientPoints ?? [],
+          clipPathChildren: desc.clipPathChildren,
         });
         const strokePaint =
           borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor;
@@ -1967,17 +2061,16 @@ export function ShapePreview({
             </defs>
             {mgDefs}
             {fillClipGroup}
-            <rect
-              x={hx}
-              y={hy}
-              width={iw}
-              height={ih}
-              rx={rxMesh}
-              ry={rxMesh}
+            <CompositeCardSilhouette
+              kind={kind}
+              cx={ccx}
+              cy={ccy}
+              w={iw}
+              h={ih}
+              cornerRadiusPx={cornerPx}
               fill="none"
               stroke={strokePaint}
               strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
-              strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
             />
           </svg>
         );

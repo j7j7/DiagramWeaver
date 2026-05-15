@@ -19,6 +19,7 @@ import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
 import { isIconOrEmojiType } from '@/lib/utils';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
+import { supportsDiagramMeshGradient } from '@/lib/diagram-mesh-gradient-support';
 import { ResourceIcon } from '@/components/diagram/resource-icon';
 import { ShapePreview } from './shape-preview';
 import { Card, CardContent } from '@/components/ui/card';
@@ -837,6 +838,7 @@ const renderIcon = (item: ScratchPadItem) => {
                                       t?.endsWith('.octagon') || t?.endsWith('.jigsaw') ||
                                       t?.endsWith('.arrowhead') || t?.endsWith('.chevron'));
                                 })()}
+                                supportsMeshGradientBackground={supportsDiagramMeshGradient(editingItem.type ?? "")}
                                 isRoundedRectangle={
                                   editingItem.type === 'generic.object.rounded-rectangle' ||
                                   editingItem.type === 'generic.object.text-box-heading' ||

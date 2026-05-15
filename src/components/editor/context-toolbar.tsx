@@ -66,6 +66,7 @@ import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
+import { supportsDiagramMeshGradient } from '@/lib/diagram-mesh-gradient-support';
 import { extractLineStylingFromNode, applyLineStylingToNode, syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
 import { useToast } from '@/hooks/use-toast';
@@ -2270,6 +2271,7 @@ export function ContextToolbar({
                     const closedLineFill = isLineNode && isClosedConnectorLine;
                     return isShapeNodeType(t) || closedLineFill;
                   })()}
+                  supportsMeshGradientBackground={supportsDiagramMeshGradient((selectedItem as any)?.type)}
                   isRoundedRectangle={
                     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
                     (selectedItem as any)?.type === 'generic.object.mind-map-node' ||

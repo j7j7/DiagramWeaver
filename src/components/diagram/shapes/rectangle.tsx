@@ -1,13 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useId, useMemo } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
+import { clippedMeshGradientSvg, meshGradientHubMarkersSvg } from "@/lib/mesh-gradient";
 
 interface RectangleShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
+  showMeshGradientHubIndicators?: boolean;
   tag?: string;
   tagPosition?: string;
   isEditingTag: boolean;
@@ -41,7 +43,8 @@ function normalizeTwoColors(value: unknown, fallbackA: string, fallbackB: string
 }
 
 export function RectangleShape(props: RectangleShapeProps) {
-  const { node } = props;
+  const { showMeshGradientHubIndicators = false, ...svgProps } = props;
+  const { node } = svgProps;
   const nodeAny = node as any;
 
   const hasExplicitVisualStyling =
@@ -69,6 +72,8 @@ export function RectangleShape(props: RectangleShapeProps) {
   const backgroundStyle = nodeAny.backgroundStyle || (!hasExplicitVisualStyling ? "gradient" : "solid");
   const borderStyle = nodeAny.borderStyle || (!hasExplicitVisualStyling ? "gradient" : "solid");
 
+  const isMesh = backgroundStyle === "mesh_gradient";
+
   const strokeWidth = borderStyle === "none" ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
   const half = strokeWidth / 2;
 
@@ -89,6 +94,31 @@ export function RectangleShape(props: RectangleShapeProps) {
     enabled: backgroundStyle === "gradient" || borderStyle === "gradient",
   });
 
+  const meshUidBase = `dw-rect-${useId().replace(/:/g, "")}`;
+  const meshPaint = useMemo(() => {
+    if (!isMesh) return { defs: null as React.ReactNode | null, fillClipGroup: null as React.ReactNode | null };
+    return clippedMeshGradientSvg({
+      uidBase: meshUidBase,
+      innerX: half,
+      innerY: half,
+      innerW: w,
+      innerH: h,
+      baseColor: backgroundColorFallback,
+      points: nodeAny.meshGradientPoints,
+      clipPathChildren: <rect x={half} y={half} width={w} height={h} />,
+    });
+  }, [isMesh, meshUidBase, half, w, h, backgroundColorFallback, nodeAny.meshGradientPoints]);
+
+  const meshHubMarkers = meshGradientHubMarkersSvg({
+    show: Boolean(isMesh && showMeshGradientHubIndicators),
+    points: nodeAny.meshGradientPoints,
+    baseColor: backgroundColorFallback,
+    innerX: half,
+    innerY: half,
+    innerW: w,
+    innerH: h,
+  });
+
   const fillColor = getShapeSvgFill(
     backgroundStyle,
     fillRef,
@@ -102,7 +132,7 @@ export function RectangleShape(props: RectangleShapeProps) {
 
   return (
     <SvgShapeBase
-      {...props}
+      {...svgProps}
       defaultWidth={VIEWBOX_W}
       defaultHeight={VIEWBOX_H}
       viewBox={`0 0 ${vbW} ${vbH}`}
@@ -110,17 +140,36 @@ export function RectangleShape(props: RectangleShapeProps) {
       svgContent={
         <>
           {defs}
-          <rect
-            x={half}
-            y={half}
-            width={w}
-            height={h}
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            strokeDasharray={strokeDasharray}
-            {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
-          />
+          {meshPaint.defs}
+          {isMesh ? (
+            <>
+              {meshPaint.fillClipGroup}
+              <rect
+                x={half}
+                y={half}
+                width={w}
+                height={h}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                strokeDasharray={strokeDasharray}
+                {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
+              />
+              {meshHubMarkers}
+            </>
+          ) : (
+            <rect
+              x={half}
+              y={half}
+              width={w}
+              height={h}
+              fill={fillColor}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray={strokeDasharray}
+              {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
+            />
+          )}
         </>
       }
     />

@@ -5,15 +5,16 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
   frostedPolygonClipForSvgPolygon,
-  getShapeStyles,
   polygonToRoundedPath,
   getPolygonViewBoxAndPoints,
   getShapeSvgFill,
 } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
+import { usePolygonMeshGradientLayers } from "./polygon-mesh";
 
 interface KiteShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
+  showMeshGradientHubIndicators?: boolean;
   tag?: string;
   tagPosition?: string;
   isEditingTag: boolean;
@@ -26,48 +27,63 @@ interface KiteShapeProps {
   isEditingLabel: boolean;
   editRuns: RichTextRun[];
   onRichLabelSubmit: (plainText: string, runs: RichTextRun[]) => void;
-  onVerticalAlignChange?: (position: 'top' | 'middle' | 'bottom') => void;
+  onVerticalAlignChange?: (position: "top" | "middle" | "bottom") => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
 }
 
 export function KiteShape(props: KiteShapeProps) {
-  const { node } = props;
+  const { showMeshGradientHubIndicators = false, ...svgProps } = props;
+  const { node } = svgProps;
   const nodeAny = node as any;
-  const styles = getShapeStyles(node);
   const roundedEdges = nodeAny.roundedEdges || false;
   const points = "30,5 50,30 30,55 10,30";
   const defaultW = 42;
   const defaultH = 52;
   const w = node.width ?? defaultW;
   const h = node.height ?? defaultH;
-  const borderStyle = nodeAny.borderStyle || 'solid';
-  const strokeWidthNum = borderStyle === 'none' ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
-  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(points, strokeWidthNum / 2, { w, h });
+  const borderStyle = nodeAny.borderStyle || "solid";
+  const strokeWidthNum = borderStyle === "none" ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
+  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(
+    points,
+    strokeWidthNum / 2,
+    { w, h },
+  );
 
-  const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
-  const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
+  const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || "#6b7280"];
+  const borderColors = nodeAny.borderColors || [nodeAny.borderColor || "#6b7280"];
   const gradientAngle = nodeAny.gradientAngle || 135;
   const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
-  const backgroundStyle = nodeAny.backgroundStyle || 'solid';
+  const backgroundStyle = nodeAny.backgroundStyle || "solid";
+  const isMesh = backgroundStyle === "mesh_gradient";
 
   const { defs, fillRef, strokeRef } = useSvgGradient({
-    colors: backgroundStyle === 'gradient' ? backgroundColors : [backgroundColors[0]],
+    colors: backgroundStyle === "gradient" ? backgroundColors : [backgroundColors[0]],
     angle: gradientAngle,
-    borderColors: borderStyle === 'gradient' ? borderColors : undefined,
-    borderAngle: borderStyle === 'gradient' ? borderGradientAngle : undefined,
-    enabled: backgroundStyle === 'gradient' || borderStyle === 'gradient'
+    borderColors: borderStyle === "gradient" ? borderColors : undefined,
+    borderAngle: borderStyle === "gradient" ? borderGradientAngle : undefined,
+    enabled: backgroundStyle === "gradient" || borderStyle === "gradient",
+  });
+
+  const { meshDefs, meshFillClip, meshHubMarkers } = usePolygonMeshGradientLayers({
+    isMesh,
+    showMeshGradientHubIndicators,
+    nodeAny,
+    transformedPoints,
+    roundedEdges,
+    vbW,
+    vbH,
   });
 
   const fillColor = getShapeSvgFill(backgroundStyle, fillRef, nodeAny.backgroundColor);
-  const strokeColor = borderStyle === 'gradient' ? strokeRef : (nodeAny.borderColor || '#6b7280');
-  const strokeWidth = borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
-  const strokeDasharray = borderStyle === 'dotted' ? '3,3' : undefined;
+  const strokeColor = borderStyle === "gradient" ? strokeRef : nodeAny.borderColor || "#6b7280";
+  const strokeWidth = borderStyle === "none" ? "0" : nodeAny.borderWidth || 2;
+  const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
   const strokeProps = strokeWidthNum > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {};
 
   return (
     <SvgShapeBase
-      {...props}
+      {...svgProps}
       defaultWidth={defaultW}
       defaultHeight={defaultH}
       viewBox={viewBox}
@@ -75,27 +91,54 @@ export function KiteShape(props: KiteShapeProps) {
       svgContent={
         <>
           {defs}
-          {roundedEdges ? (
-          <path
-            d={polygonToRoundedPath(transformedPoints, undefined, [vbW, vbH])}
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            strokeDasharray={strokeDasharray}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            {...strokeProps}
-          />
-        ) : (
-          <polygon
-            points={transformedPoints}
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            strokeDasharray={strokeDasharray}
-            {...strokeProps}
-          />
-        )}
+          {meshDefs}
+          {isMesh ? (
+            <>
+              {meshFillClip}
+              {roundedEdges ? (
+                <path
+                  d={polygonToRoundedPath(transformedPoints, undefined, [vbW, vbH])}
+                  fill="none"
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={strokeDasharray}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  {...strokeProps}
+                />
+              ) : (
+                <polygon
+                  points={transformedPoints}
+                  fill="none"
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={strokeDasharray}
+                  {...strokeProps}
+                />
+              )}
+              {meshHubMarkers}
+            </>
+          ) : roundedEdges ? (
+            <path
+              d={polygonToRoundedPath(transformedPoints, undefined, [vbW, vbH])}
+              fill={fillColor}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray={strokeDasharray}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              {...strokeProps}
+            />
+          ) : (
+            <polygon
+              points={transformedPoints}
+              fill={fillColor}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray={strokeDasharray}
+              {...strokeProps}
+            />
+          )}
         </>
       }
     />

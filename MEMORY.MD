@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Mesh gradient** on **simple closed shapes** (not charts / timeline / segmented / pyramid)
+
+**`supportsDiagramMeshGradient`** (`diagram-mesh-gradient-support.ts`) allowlists suffixes like **square, rectangle, circle, triangle, star, hexagon/pentagon/octagon, cloud, parallelogram, trapezoid, kite, rounded-rectangle, mind-map-node**; excludes **`generic.chart.*`**, **pyramid**, **timeline**, **timeline-bar**, **segmented-rectangle**, **progress-bar**, **UML/point/line/jigsaw** affordances, etc. Shapes render mesh via **`clippedMeshGradientSvg`** or **`usePolygonMeshGradientLayers`**; **Visual styling** / **scratch pad** use the helper for **Mesh gradient** + hub controls. Patch bumped.
+
+
 ### 2026-05-15 – **Mesh gradient Random**: **same row** as Style; Background grid **1 column** unless gradient
 
 **Random** back beside **Style** using **`grid-cols-[minmax(0,1fr)_auto]`** + **`min-w-0`** wrapper on the select. **Background** section outer grid is **`grid-cols-2`** only for **`gradient`** (Direction column); **mesh** / solid / etc. use **`grid-cols-1`** so the style dropdown uses full panel width. Patch bumped.

@@ -860,6 +860,7 @@ function DiagramNodeInner({
         : undefined,
       onLabelKeyDown: (e: React.KeyboardEvent) => handleLabelKeyDown(e, true),
       onLabelDoubleClick: handleLabelDoubleClick,
+      showMeshGradientHubIndicators,
     };
 
     const nodeType = node.type;
@@ -901,12 +902,12 @@ function DiagramNodeInner({
       const roundedNode = isDraggingCornerRadius && localCornerRadius !== null
         ? { ...visualNode, cornerRadius: localCornerRadius }
         : visualNode;
-      return <RoundedRectangleShape {...shapeProps} node={roundedNode} showMeshGradientHubIndicators={showMeshGradientHubIndicators} />;
+      return <RoundedRectangleShape {...shapeProps} node={roundedNode} />;
     } else if (nodeType === 'generic.object.mind-map-node' || nodeType?.endsWith('.mind-map-node')) {
       const mmNode = isDraggingCornerRadius && localCornerRadius !== null
         ? { ...visualNode, cornerRadius: localCornerRadius }
         : visualNode;
-      return <MindmapNodeShape {...shapeProps} node={mmNode} allMindmapNodes={diagramNodesForMindmap} showMeshGradientHubIndicators={showMeshGradientHubIndicators} />;
+      return <MindmapNodeShape {...shapeProps} node={mmNode} allMindmapNodes={diagramNodesForMindmap} />;
     } else if (nodeType === 'generic.object.progress-bar' || nodeType?.endsWith('.progress-bar')) {
       return (
         <ProgressBarShape

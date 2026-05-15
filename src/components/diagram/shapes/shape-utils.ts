@@ -758,6 +758,25 @@ export const getPolygonViewBoxAndPoints = (
   return { viewBox: `0 0 ${w} ${h}`, width: w, height: h, transformedPoints };
 };
 
+/** Axis-aligned bounding box for an SVG polygon `points` string (`"x,y x,y"`). */
+export function boundingBoxFromSvgPolygonPointsString(points: string): { x: number; y: number; w: number; h: number } {
+  const coords = parsePoints(points);
+  if (coords.length === 0) return { x: 0, y: 0, w: 1, h: 1 };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of coords) {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  const w = Math.max(0, maxX - minX);
+  const h = Math.max(0, maxY - minY);
+  return { x: minX, y: minY, w: w > 0 ? w : 1, h: h > 0 ? h : 1 };
+}
+
 /**
  * Calculate the angle between two points
  */

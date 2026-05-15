@@ -346,6 +346,8 @@ interface VisualStylingPanelProps {
   isShape?: boolean;
   /** When true, shows corner radius control (rounded-rectangle & progress-bar) */
   isRoundedRectangle?: boolean;
+  /** When true, Background may include mesh gradient (simple closed shapes; excludes charts, pyramid, timelines, etc.) */
+  supportsMeshGradientBackground?: boolean;
   /** When true, shows progress fill/track controls */
   isProgressBar?: boolean;
   /** When true, shows segmented timeline bar layout controls */
@@ -358,7 +360,7 @@ interface VisualStylingPanelProps {
   isTextBoxHeading?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -813,7 +815,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     <div
                       className={cn(
                         "items-center gap-2",
-                        styling.backgroundStyle === "mesh_gradient" && isRoundedRectangle
+                        styling.backgroundStyle === "mesh_gradient" && supportsMeshGradientBackground
                           ? "grid grid-cols-[minmax(0,1fr)_auto]"
                           : "grid grid-cols-1",
                       )}
@@ -830,7 +832,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                             <SelectItem value="none" className="text-sm">None</SelectItem>
                             <SelectItem value="solid" className="text-sm">Solid</SelectItem>
                             <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
-                            {isRoundedRectangle ? (
+                            {supportsMeshGradientBackground ? (
                               <SelectItem value="mesh_gradient" className="text-sm">
                                 Mesh gradient
                               </SelectItem>
@@ -839,7 +841,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                           </SelectContent>
                         </Select>
                       </div>
-                      {styling.backgroundStyle === "mesh_gradient" && isRoundedRectangle ? (
+                      {styling.backgroundStyle === "mesh_gradient" && supportsMeshGradientBackground ? (
                         <Button
                           type="button"
                           variant="outline"
@@ -862,7 +864,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     />
                   )}
                 </div>
-                {styling.backgroundStyle === 'mesh_gradient' && isRoundedRectangle ? (
+                {styling.backgroundStyle === 'mesh_gradient' && supportsMeshGradientBackground ? (
                   <div className="space-y-3 mb-2">
                     <div className="space-y-1">
                       <Label className="text-sm text-muted-foreground">Base fill</Label>

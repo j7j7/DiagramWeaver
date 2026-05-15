@@ -5,7 +5,7 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
-import { normalizeMeshGradientPoints, roundedRectangleMeshGradientSvg } from "@/lib/mesh-gradient";
+import { roundedRectangleMeshGradientSvg, meshGradientHubMarkersSvg } from "@/lib/mesh-gradient";
 
 interface RoundedRectangleShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -90,40 +90,15 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
     });
   }, [isMesh, meshUidBase, half, w, h, rx, ry, nodeAny.backgroundColor, nodeAny.meshGradientPoints]);
 
-  const meshHubMarkers =
-    isMesh && showMeshGradientHubIndicators ? (
-      <g pointerEvents="none" aria-hidden>
-        {normalizeMeshGradientPoints(nodeAny.meshGradientPoints, nodeAny.backgroundColor || "#6b7280").map(
-          (p, i) => {
-            const cx = half + (p.xPct / 100) * w;
-            const cy = half + (p.yPct / 100) * h;
-            const outerR = Math.max(3.5, Math.min(w, h) * 0.055);
-            const labelPx = Math.max(5, Math.min(w, h) * 0.09);
-            return (
-              <g key={i}>
-                <circle cx={cx} cy={cy} r={outerR} fill="white" stroke="#0f172a" strokeWidth={1.25} opacity={0.95} />
-                <circle cx={cx} cy={cy} r={outerR * 0.42} fill={p.color} opacity={0.9} />
-                <text
-                  x={cx}
-                  y={cy}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill="#0f172a"
-                  fontSize={labelPx}
-                  fontWeight={700}
-                  stroke="white"
-                  strokeWidth={labelPx * 0.14}
-                  paintOrder="stroke fill"
-                  style={{ userSelect: "none" }}
-                >
-                  {i + 1}
-                </text>
-              </g>
-            );
-          },
-        )}
-      </g>
-    ) : null;
+  const meshHubMarkers = meshGradientHubMarkersSvg({
+    show: Boolean(isMesh && showMeshGradientHubIndicators),
+    points: nodeAny.meshGradientPoints,
+    baseColor: nodeAny.backgroundColor || "#6b7280",
+    innerX: half,
+    innerY: half,
+    innerW: w,
+    innerH: h,
+  });
 
   return (
     <SvgShapeBase

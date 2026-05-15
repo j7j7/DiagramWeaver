@@ -1,13 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useId, useMemo } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
+import { clippedMeshGradientSvg, meshGradientHubMarkersSvg } from "@/lib/mesh-gradient";
 
 interface CircleShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
+  showMeshGradientHubIndicators?: boolean;
   tag?: string;
   tagPosition?: string;
   isEditingTag: boolean;
@@ -26,7 +28,8 @@ interface CircleShapeProps {
 }
 
 export function CircleShape(props: CircleShapeProps) {
-  const { node } = props;
+  const { showMeshGradientHubIndicators = false, ...svgProps } = props;
+  const { node } = svgProps;
   const nodeAny = node as any;
 
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || "#6b7280"];
@@ -35,6 +38,7 @@ export function CircleShape(props: CircleShapeProps) {
   const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
   const backgroundStyle = nodeAny.backgroundStyle || "solid";
   const borderStyle = nodeAny.borderStyle || "solid";
+  const isMesh = backgroundStyle === "mesh_gradient";
 
   const { defs, fillRef, strokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? backgroundColors : [backgroundColors[0]],
@@ -51,10 +55,37 @@ export function CircleShape(props: CircleShapeProps) {
   const strokeWidthNum = borderStyle === "none" ? 0 : (parseInt(String(strokeWidth), 10) || 2);
 
   const circleR = 29 - strokeWidthNum / 2;
+  const meshInner = 30 - circleR;
+
+  const meshUidBase = `dw-circ-${useId().replace(/:/g, "")}`;
+  const meshPaint = useMemo(() => {
+    if (!isMesh) return { defs: null as React.ReactNode | null, fillClipGroup: null as React.ReactNode | null };
+    const side = 2 * circleR;
+    return clippedMeshGradientSvg({
+      uidBase: meshUidBase,
+      innerX: meshInner,
+      innerY: meshInner,
+      innerW: side,
+      innerH: side,
+      baseColor: nodeAny.backgroundColor || "#6b7280",
+      points: nodeAny.meshGradientPoints,
+      clipPathChildren: <circle cx={30} cy={30} r={circleR} />,
+    });
+  }, [isMesh, meshUidBase, circleR, meshInner, nodeAny.backgroundColor, nodeAny.meshGradientPoints]);
+
+  const meshHubMarkers = meshGradientHubMarkersSvg({
+    show: Boolean(isMesh && showMeshGradientHubIndicators),
+    points: nodeAny.meshGradientPoints,
+    baseColor: nodeAny.backgroundColor || "#6b7280",
+    innerX: meshInner,
+    innerY: meshInner,
+    innerW: 2 * circleR,
+    innerH: 2 * circleR,
+  });
 
   return (
     <SvgShapeBase
-      {...props}
+      {...svgProps}
       viewBox="0 0 60 60"
       preserveAspectRatio="xMidYMid meet"
       frostedClipCircleInViewBox={
@@ -63,16 +94,34 @@ export function CircleShape(props: CircleShapeProps) {
       svgContent={
         <>
           {defs}
-          <circle
-            cx={30}
-            cy={30}
-            r={circleR}
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            strokeDasharray={strokeDasharray}
-            {...(strokeWidthNum > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
-          />
+          {meshPaint.defs}
+          {isMesh ? (
+            <>
+              {meshPaint.fillClipGroup}
+              <circle
+                cx={30}
+                cy={30}
+                r={circleR}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                strokeDasharray={strokeDasharray}
+                {...(strokeWidthNum > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
+              />
+              {meshHubMarkers}
+            </>
+          ) : (
+            <circle
+              cx={30}
+              cy={30}
+              r={circleR}
+              fill={fillColor}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray={strokeDasharray}
+              {...(strokeWidthNum > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
+            />
+          )}
         </>
       }
     />

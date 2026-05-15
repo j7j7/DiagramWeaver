@@ -122,16 +122,15 @@ export function normalizeMeshGradientPoints(raw: unknown, baseColor: string): Me
   return out;
 }
 
-export function roundedRectangleMeshGradientSvg(opts: {
+export function clippedMeshGradientSvg(opts: {
   uidBase: string;
   innerX: number;
   innerY: number;
   innerW: number;
   innerH: number;
-  rx: number;
-  ry: number;
   baseColor: string;
   points: MeshGradientPoint[] | unknown;
+  clipPathChildren: React.ReactNode;
 }): { defs: React.ReactNode; fillClipGroup: React.ReactNode } {
   const pts = normalizeMeshGradientPoints(opts.points, opts.baseColor);
   const blendMode = meshGradientBlendModeForBase(opts.baseColor);
@@ -139,9 +138,7 @@ export function roundedRectangleMeshGradientSvg(opts: {
 
   const defs = (
     <>
-      <clipPath id={clipId}>
-        <rect x={opts.innerX} y={opts.innerY} width={opts.innerW} height={opts.innerH} rx={opts.rx} ry={opts.ry} />
-      </clipPath>
+      <clipPath id={clipId}>{opts.clipPathChildren}</clipPath>
       {pts.map((p, i) => (
         <radialGradient
           key={i}
@@ -176,4 +173,74 @@ export function roundedRectangleMeshGradientSvg(opts: {
   );
 
   return { defs, fillClipGroup };
+}
+
+export function roundedRectangleMeshGradientSvg(opts: {
+  uidBase: string;
+  innerX: number;
+  innerY: number;
+  innerW: number;
+  innerH: number;
+  rx: number;
+  ry: number;
+  baseColor: string;
+  points: MeshGradientPoint[] | unknown;
+}): { defs: React.ReactNode; fillClipGroup: React.ReactNode } {
+  return clippedMeshGradientSvg({
+    uidBase: opts.uidBase,
+    innerX: opts.innerX,
+    innerY: opts.innerY,
+    innerW: opts.innerW,
+    innerH: opts.innerH,
+    baseColor: opts.baseColor,
+    points: opts.points,
+    clipPathChildren: (
+      <rect x={opts.innerX} y={opts.innerY} width={opts.innerW} height={opts.innerH} rx={opts.rx} ry={opts.ry} />
+    ),
+  });
+}
+
+/** Editor markers for mesh hubs; coordinates match **`inner*`** fill box (same as hub % mapping). */
+export function meshGradientHubMarkersSvg(opts: {
+  show: boolean;
+  points: unknown;
+  baseColor: string;
+  innerX: number;
+  innerY: number;
+  innerW: number;
+  innerH: number;
+}): React.ReactNode {
+  if (!opts.show) return null;
+  const base = opts.baseColor || "#6b7280";
+  return (
+    <g pointerEvents="none" aria-hidden>
+      {normalizeMeshGradientPoints(opts.points, base).map((p, i) => {
+        const cx = opts.innerX + (p.xPct / 100) * opts.innerW;
+        const cy = opts.innerY + (p.yPct / 100) * opts.innerH;
+        const outerR = Math.max(3.5, Math.min(opts.innerW, opts.innerH) * 0.055);
+        const labelPx = Math.max(5, Math.min(opts.innerW, opts.innerH) * 0.09);
+        return (
+          <g key={i}>
+            <circle cx={cx} cy={cy} r={outerR} fill="white" stroke="#0f172a" strokeWidth={1.25} opacity={0.95} />
+            <circle cx={cx} cy={cy} r={outerR * 0.42} fill={p.color} opacity={0.9} />
+            <text
+              x={cx}
+              y={cy}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="#0f172a"
+              fontSize={labelPx}
+              fontWeight={700}
+              stroke="white"
+              strokeWidth={labelPx * 0.14}
+              paintOrder="stroke fill"
+              style={{ userSelect: "none" }}
+            >
+              {i + 1}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
 }
