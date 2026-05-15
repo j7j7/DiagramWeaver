@@ -100,6 +100,10 @@ interface SlideNodeAnimStyle {
 interface SlideAnimation {
   startTime: number;
   durationMs: number;
+  /** Per-slide scaled motion duration (matches CSS transitions + RAF geometry/chart lerp windows). */
+  motionDurationMs: number;
+  /** Per-slide scaled chart/timeline/section segment stagger (matches segment CSS animations). */
+  segmentStaggerMs: number;
   nodeIdStyles: Map<string, SlideNodeAnimStyle>;
   connKeyStyles: Map<string, {
     opacityStart: number;
@@ -124,24 +128,28 @@ interface SlideAnimation {
 }
 
 const TRANSITION_DURATION_MS = 300;
+/** Hard cap for play/slide transitions so huge diffs stay navigable (see time budget in `startTransition`). */
+const SLIDE_TRANSITION_TOTAL_BUDGET_MS = 2000;
+/** Kept small for RAF vs CSS sync; folded into budget when scaling down. */
+const SLIDE_TRANSITION_RAF_TAIL_PAD_MS = 50;
 const EASE_OUT = 'cubic-bezier(0.0, 0.0, 0.2, 1)';
 const EASE_IN = 'cubic-bezier(0.4, 0.0, 1, 1)';
 const EASE_IN_OUT = 'cubic-bezier(0.4, 0.0, 0.2, 1)';
 
-function slideMergeTransitionWithDelay(delayMs: number): string {
-  const t = TRANSITION_DURATION_MS;
+function slideMergeTransitionWithDelay(delayMs: number, durationMs: number = TRANSITION_DURATION_MS): string {
+  const t = durationMs;
   const e = 'cubic-bezier(0.4, 0, 0.2, 1)';
   const d = delayMs;
   return `background ${t}ms ${e} ${d}ms, background-color ${t}ms ${e} ${d}ms, border-color ${t}ms ${e} ${d}ms, color ${t}ms ${e} ${d}ms, fill ${t}ms ${e} ${d}ms, stroke ${t}ms ${e} ${d}ms`;
 }
 
-function slideCrossfadeOpacityWithDelay(delayMs: number): string {
-  return `opacity ${TRANSITION_DURATION_MS}ms ${EASE_IN_OUT} ${delayMs}ms`;
+function slideCrossfadeOpacityWithDelay(delayMs: number, durationMs: number = TRANSITION_DURATION_MS): string {
+  return `opacity ${durationMs}ms ${EASE_IN_OUT} ${delayMs}ms`;
 }
 
 /** Only opacity + transform — avoid `transition: all`, which can drag box-shadow/filter into interpolation and flash during compositing. */
-function slideMotionTransition(easing: string): string {
-  const t = TRANSITION_DURATION_MS;
+function slideMotionTransition(easing: string, durationMs: number = TRANSITION_DURATION_MS): string {
+  const t = durationMs;
   return `opacity ${t}ms ${easing}, transform ${t}ms ${easing}`;
 }
 
@@ -149,11 +157,16 @@ function connKey(conn: DiagramConnectionData): string {
   return (conn as any).id || `${conn.from}\u2192${conn.to}`;
 }
 
-function timelineCardSlideStaggerBase(delayMs: number, exit: boolean): ChartSlideStagger {
+function timelineCardSlideStaggerBase(
+  delayMs: number,
+  exit: boolean,
+  segmentStaggerMs: number,
+  motionDurationMs: number,
+): ChartSlideStagger {
   return {
     baseDelayMs: delayMs,
-    staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
-    durationMs: TRANSITION_DURATION_MS,
+    staggerMs: segmentStaggerMs,
+    durationMs: motionDurationMs,
     easingCss: EASE_IN_OUT,
     exit,
   };
@@ -166,6 +179,8 @@ function computeTimelineCardTransitionStylePatch(
   prevNodesMap: Map<string, DiagramNodeData>,
   currNodesMap: Map<string, DiagramNodeData>,
   baseDelayMs: number,
+  segmentStaggerMs: number,
+  motionDurationMs: number,
 ): Pick<
   SlideTransitionStyle,
   | 'timelineSlideStagger'
@@ -178,10 +193,14 @@ function computeTimelineCardTransitionStylePatch(
   const currNode = currNodesMap.get(nodeId);
 
   if (style.isAppearingTimeline && currNode && isTimelineNodeType(currNode.type)) {
-    return { timelineSlideStagger: timelineCardSlideStaggerBase(baseDelayMs, false) };
+    return {
+      timelineSlideStagger: timelineCardSlideStaggerBase(baseDelayMs, false, segmentStaggerMs, motionDurationMs),
+    };
   }
   if (style.isDisappearingTimeline && prevNode && isTimelineNodeType(prevNode.type)) {
-    return { timelineSlideStagger: timelineCardSlideStaggerBase(baseDelayMs, true) };
+    return {
+      timelineSlideStagger: timelineCardSlideStaggerBase(baseDelayMs, true, segmentStaggerMs, motionDurationMs),
+    };
   }
   if (
     style.timelinePresentationChanged &&
@@ -199,13 +218,23 @@ function computeTimelineCardTransitionStylePatch(
     return {
       ...(addedOrder.length > 0
         ? {
-            timelineSlideStagger: timelineCardSlideStaggerBase(baseDelayMs, false),
+            timelineSlideStagger: timelineCardSlideStaggerBase(
+              baseDelayMs,
+              false,
+              segmentStaggerMs,
+              motionDurationMs,
+            ),
             timelineEnterStaggerOrder: addedOrder,
           }
         : {}),
       ...(removed.length > 0
         ? {
-            timelineRemoveStagger: timelineCardSlideStaggerBase(baseDelayMs, true),
+            timelineRemoveStagger: timelineCardSlideStaggerBase(
+              baseDelayMs,
+              true,
+              segmentStaggerMs,
+              motionDurationMs,
+            ),
             timelineRemovedCards: removed,
             timelineRemovedGhostBase: prevNode,
           }
@@ -713,9 +742,29 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       );
     }
 
+    /** Longest intrinsic moment (no tail pad): node/conn motion + stagger vs chart/timeline/section tails. */
+    const intrinsicMotionMs = Math.max(maxStaggerMs + TRANSITION_DURATION_MS, chartTailMs);
+    const slideTimeBudgetMotionMs = Math.max(
+      1,
+      SLIDE_TRANSITION_TOTAL_BUDGET_MS - SLIDE_TRANSITION_RAF_TAIL_PAD_MS,
+    );
+    const timeScale = Math.min(1, slideTimeBudgetMotionMs / Math.max(1e-6, intrinsicMotionMs));
+    const motionDurationMs = TRANSITION_DURATION_MS * timeScale;
+    const segmentStaggerMs = CHART_SLIDE_SEGMENT_STAGGER_MS * timeScale;
+
+    if (timeScale !== 1) {
+      for (const [id, ms] of nodeDelayMs) {
+        nodeDelayMs.set(id, ms * timeScale);
+      }
+      for (const [key, ms] of connectionDelayMs) {
+        connectionDelayMs.set(key, ms * timeScale);
+      }
+    }
+
+    const totalDurationMs = timeScale * intrinsicMotionMs + SLIDE_TRANSITION_RAF_TAIL_PAD_MS;
+
     const nodeDelayFor = (id: string) => nodeDelayMs.get(id) ?? 0;
     const connDelayFor = (key: string) => connectionDelayMs.get(key) ?? 0;
-    const totalDurationMs = Math.max(maxStaggerMs + TRANSITION_DURATION_MS + 50, chartTailMs + 50);
 
     setAnimatingNodes(nodesToAdd);
     setAnimatingConnections(connsToAdd);
@@ -723,6 +772,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     const newAnimation: SlideAnimation = {
       startTime: performance.now(),
       durationMs: totalDurationMs,
+      motionDurationMs,
+      segmentStaggerMs,
       nodeIdStyles,
       connKeyStyles,
       connectionDelayMs,
@@ -793,8 +844,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         const chartSlideStagger: ChartSlideStagger | undefined = useChartStagger
           ? {
               baseDelayMs: dMs0,
-              staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
-              durationMs: TRANSITION_DURATION_MS,
+              staggerMs: segmentStaggerMs,
+              durationMs: motionDurationMs,
               easingCss: EASE_IN_OUT,
               exit: !!style.isDisappearingChart,
             }
@@ -807,8 +858,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         const sectionSlideStagger: ChartSlideStagger | undefined = useSectionSlideStagger
           ? {
               baseDelayMs: dMs0,
-              staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
-              durationMs: TRANSITION_DURATION_MS,
+              staggerMs: segmentStaggerMs,
+              durationMs: motionDurationMs,
               easingCss: EASE_IN_OUT,
               exit: !!style.isDisappearingSectionedShape,
             }
@@ -820,6 +871,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           prevNodesMap,
           currNodesMap,
           dMs0,
+          segmentStaggerMs,
+          motionDurationMs,
         );
 
         const chartLerpFields =
@@ -912,7 +965,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         setNodeStyles((prev) => {
           const next = new Map(prev);
           for (const [nodeId, style] of nodeIdStyles) {
-            const transition = slideMotionTransition(style.easing);
+            const transition = slideMotionTransition(style.easing, motionDurationMs);
             const transformX = 0;
             const transformY =
               style.isDisappearingChart ||
@@ -965,8 +1018,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             const chartSlideStagger: ChartSlideStagger | undefined = useChartStagger
               ? {
                   baseDelayMs: dMs,
-                  staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
-                  durationMs: TRANSITION_DURATION_MS,
+                  staggerMs: segmentStaggerMs,
+                  durationMs: motionDurationMs,
                   easingCss: EASE_IN_OUT,
                   exit: !!style.isDisappearingChart,
                 }
@@ -979,8 +1032,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             const sectionSlideStagger: ChartSlideStagger | undefined = useSectionSlideStagger
               ? {
                   baseDelayMs: dMs,
-                  staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
-                  durationMs: TRANSITION_DURATION_MS,
+                  staggerMs: segmentStaggerMs,
+                  durationMs: motionDurationMs,
                   easingCss: EASE_IN_OUT,
                   exit: !!style.isDisappearingSectionedShape,
                 }
@@ -992,6 +1045,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               prevNodesMap,
               currNodesMap,
               dMs,
+              segmentStaggerMs,
+              motionDurationMs,
             );
 
             const chartLerpFields =
@@ -1011,7 +1066,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                   to: style.visualColorMergeEnd,
                 },
                 visualColorCrossfadeTopOpacity: 0,
-                visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs),
+                visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs, motionDurationMs),
                 ...(chartSlideStagger ? { chartSlideStagger } : {}),
                 ...(sectionSlideStagger ? { sectionSlideStagger } : {}),
                 ...tlCardPatch,
@@ -1026,7 +1081,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 transform,
                 transformOrigin,
                 visualColorMerge: style.visualColorMergeStart,
-                visualColorMergeTransition: slideMergeTransitionWithDelay(dMs),
+                visualColorMergeTransition: slideMergeTransitionWithDelay(dMs, motionDurationMs),
                 ...(chartSlideStagger ? { chartSlideStagger } : {}),
                 ...(sectionSlideStagger ? { sectionSlideStagger } : {}),
                 ...tlCardPatch,
@@ -1064,7 +1119,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                     }))
                   : undefined;
               if (sm.geomLockToPrev) {
-                const transition = slideMotionTransition(style.easing);
+                const transition = slideMotionTransition(style.easing, motionDurationMs);
                 next.set(connKeyVal, {
                   opacity: style.opacityEnd,
                   transition,
@@ -1098,7 +1153,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               continue;
             }
 
-            const transition = slideMotionTransition(style.easing);
+            const transition = slideMotionTransition(style.easing, motionDurationMs);
             const transformY = style.translateYEnd;
 
             const transform = transformY !== 0
@@ -1131,13 +1186,13 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                     to: style.visualColorMergeEnd,
                   },
                   visualColorCrossfadeTopOpacity: 1,
-                  visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs),
+                  visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs, motionDurationMs),
                 });
               } else {
                 next.set(nodeId, {
                   ...existing,
                   visualColorMerge: style.visualColorMergeEnd,
-                  visualColorMergeTransition: slideMergeTransitionWithDelay(dMs),
+                  visualColorMergeTransition: slideMergeTransitionWithDelay(dMs, motionDurationMs),
                 });
               }
             }
@@ -1188,7 +1243,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           if (!sm || sm.geomLockToPrev) continue;
 
           const delayMs = delays.get(key) ?? 0;
-          const u = Math.max(0, Math.min(1, (elapsed - delayMs) / TRANSITION_DURATION_MS));
+          const md = active.motionDurationMs;
+          const u = Math.max(0, Math.min(1, (elapsed - delayMs) / md));
           const p = easeSlideTransitionInOut(u);
 
           const wpPrev = sm.waypointPrev;
@@ -1260,7 +1316,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           const existing = next.get(nodeId);
           if (!existing) continue;
           const delayMs = nodeDelays.get(nodeId) ?? 0;
-          const u = Math.max(0, Math.min(1, (elapsed - delayMs) / TRANSITION_DURATION_MS));
+          const md = active.motionDurationMs;
+          const u = Math.max(0, Math.min(1, (elapsed - delayMs) / md));
           const p = easeSlideTransitionInOut(u);
           next.set(nodeId, {
             ...existing,

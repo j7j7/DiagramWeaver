@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Presentation / slide transitions**: **2s budget** scales stagger + motion together
+
+When **`intrinsicMotionMs`** (max of stack stagger **+** base motion duration vs chart/timeline/section tails) exceeds **`SLIDE_TRANSITION_TOTAL_BUDGET_MS − RAF_TAIL_PAD`** (**1950 ms**), **`useSlideTransition`** applies a uniform **`timeScale`** to **node/connection delays**, **`motionDurationMs`** (CSS + RAF connection geom + chart value lerp), and **`segmentStaggerMs`** (chart/timeline/pyramid/segmented cascades). **`durationMs`** stays **≤ 2000 ms** while preserving relative sequencing and easing character. Patch bumped.
+
+
 ### 2026-05-15 – **Timeline bar** section labels: **rich text** + fixed-viewport toolbar (parity with segmented rectangle)
 
 **`TimelineBarShape`**: per-segment labels use **`TextboxRichDisplay`** / **`TextboxRichEditor`** with **`toolbarFixedToViewport`**, **`buildSectionLabelRichTextNode`**, and commit **`label` + `richLabel`** on **`timelineBarSections`**; toolbar vertical placement patches **`labelVerticalAlign`** (section **0** when **`timelineBarLabelsFollowFirstSection`**). Replaces plain **`textarea`** inline edit. Patch bumped.
