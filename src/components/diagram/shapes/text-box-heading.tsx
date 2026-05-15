@@ -394,7 +394,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
         {isVerticalHeading && isEditingHeading ? (
           <div
             ref={setHeadingToolbarHost}
-            className="pointer-events-auto absolute bottom-full left-1/2 z-[100] mb-3 -translate-x-1/2"
+            className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2"
           />
         ) : null}
         {/* Hidden: natural heading block size (lines + padding) — drives strip thickness independent of overall shape height */}

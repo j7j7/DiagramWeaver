@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Rich text** inline format toolbar: **`document.body`** portal + high **z-index** (always above canvas)
+
+**Issue**: **`TextboxRichEditor`** defaulted to **`absolute z-[100]`** inside diagram nodes while **`CanvasConnectionText`** SVG uses **`z-index: 9999`**, so the bar could hide behind connections, handles, icons, or later-painted nodes. **Fix**: Toolbar is **`createPortal`**’d under **`document.body`** with **`position: fixed`** and **`TEXTBOX_RICH_TOOLBAR_Z_INDEX` (10050)** (anchored from the editor **`root`** or **`toolbarPortalHost`** for vertical heading). **`toolbarFixedToViewport`** remains on call sites but is redundant. **`text-box-heading`** pin host is **pointer-events-none** (geometry anchor only). Patch bumped.
+
+
 ### 2026-05-15 – **Presentation / slide transitions**: **2s budget** scales stagger + motion together
 
 When **`intrinsicMotionMs`** (max of stack stagger **+** base motion duration vs chart/timeline/section tails) exceeds **`SLIDE_TRANSITION_TOTAL_BUDGET_MS − RAF_TAIL_PAD`** (**1950 ms**), **`useSlideTransition`** applies a uniform **`timeScale`** to **node/connection delays**, **`motionDurationMs`** (CSS + RAF connection geom + chart value lerp), and **`segmentStaggerMs`** (chart/timeline/pyramid/segmented cascades). **`durationMs`** stays **≤ 2000 ms** while preserving relative sequencing and easing character. Patch bumped.

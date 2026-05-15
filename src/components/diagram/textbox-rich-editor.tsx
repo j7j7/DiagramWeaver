@@ -16,6 +16,9 @@ import { cn } from "@/lib/utils";
 
 const DEFAULT_JUSTIFY = DEFAULT_TEXT_STYLING.textJustify ?? "center";
 
+/** Above `CanvasConnectionText` SVG (`z-index: 9999`) and other canvas chrome so the format bar is never covered. */
+const TEXTBOX_RICH_TOOLBAR_Z_INDEX = 10_050;
+
 /** Vertical overhead: outer p-1 (8) + inner py-0.5 (4) + contentEditable border (2). scrollHeight includes contentEditable padding (py-0.5 = 4). */
 const TEXTBOX_CONTENT_OVERHEAD = 14;
 
@@ -35,15 +38,15 @@ interface TextboxRichEditorProps {
    */
   toolbarCounterRotationDeg?: number;
   /**
-   * When set, render the toolbar into this element (e.g. a slot above the full shape). Use instead of
-   * counter-rotating the bar next to a left/right heading so the menu stays centered above the shape.
+   * Optional anchor element (e.g. absolutely positioned above a heading strip). The toolbar is portaled to
+   * `document.body` and positioned from this element’s bounding rect so it stays above canvas stacking.
    */
   toolbarPortalHost?: HTMLElement | null;
-  /** When true, toolbar is portaled to `toolbarPortalHost` (or hidden until the host mounts). */
+  /** When true, use `toolbarPortalHost` for toolbar position (or hide until the host mounts). */
   toolbarPinToShapeTop?: boolean;
   /**
-   * When true (e.g. editor inside SVG `foreignObject`), portal the toolbar to `document.body` with fixed
-   * positioning so it is not clipped. Mutually prefer `toolbarPinToShapeTop` + host when available.
+   * Legacy: the toolbar is always portaled to `document.body` when visible (except the brief moment before
+   * a pin host mounts). Kept for call-site compatibility.
    */
   toolbarFixedToViewport?: boolean;
 }
@@ -58,8 +61,9 @@ export function TextboxRichEditor({
   toolbarCounterRotationDeg,
   toolbarPortalHost,
   toolbarPinToShapeTop,
-  toolbarFixedToViewport = false,
+  toolbarFixedToViewport: _toolbarFixedToViewport = false,
 }: TextboxRichEditorProps) {
+  void _toolbarFixedToViewport;
   const rootRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
@@ -73,38 +77,45 @@ export function TextboxRichEditor({
   const onHeightChangeRef = useRef(onHeightChange);
   onHeightChangeRef.current = onHeightChange;
 
-  const [fixedToolbarAnchor, setFixedToolbarAnchor] = useState<{ cx: number; top: number } | null>(null);
+  const useShapeTopToolbar = toolbarPinToShapeTop === true;
+  /** `pin` without a host still mounts — hide bar until the host ref is set. */
+  const toolbarUsesBodyPortal = !useShapeTopToolbar || Boolean(toolbarPortalHost);
 
-  const updateFixedToolbarAnchor = useCallback(() => {
-    if (!toolbarFixedToViewport) return;
-    const el = rootRef.current;
+  const [floatingToolbarAnchor, setFloatingToolbarAnchor] = useState<{ cx: number; top: number } | null>(null);
+
+  const updateFloatingToolbarAnchor = useCallback(() => {
+    if (!toolbarUsesBodyPortal) return;
+    const el =
+      useShapeTopToolbar && toolbarPortalHost ? toolbarPortalHost : rootRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setFixedToolbarAnchor({ cx: r.left + r.width / 2, top: r.top });
-  }, [toolbarFixedToViewport]);
+    setFloatingToolbarAnchor({ cx: r.left + r.width / 2, top: r.top });
+  }, [toolbarUsesBodyPortal, useShapeTopToolbar, toolbarPortalHost]);
 
   useLayoutEffect(() => {
-    if (!toolbarFixedToViewport) return;
-    updateFixedToolbarAnchor();
-    const onScrollOrResize = () => updateFixedToolbarAnchor();
+    if (!toolbarUsesBodyPortal) return;
+    updateFloatingToolbarAnchor();
+    const onScrollOrResize = () => updateFloatingToolbarAnchor();
     window.addEventListener("scroll", onScrollOrResize, true);
     window.addEventListener("resize", onScrollOrResize);
     const ro = new ResizeObserver(onScrollOrResize);
-    if (rootRef.current) ro.observe(rootRef.current);
+    const anchorEl =
+      useShapeTopToolbar && toolbarPortalHost ? toolbarPortalHost : rootRef.current;
+    if (anchorEl) ro.observe(anchorEl);
     return () => {
       window.removeEventListener("scroll", onScrollOrResize, true);
       window.removeEventListener("resize", onScrollOrResize);
       ro.disconnect();
     };
-  }, [toolbarFixedToViewport, updateFixedToolbarAnchor]);
+  }, [toolbarUsesBodyPortal, useShapeTopToolbar, toolbarPortalHost, updateFloatingToolbarAnchor]);
 
   useEffect(() => {
-    if (!toolbarFixedToViewport) return;
+    if (!toolbarUsesBodyPortal) return;
     const el = editorRef.current;
     if (!el) return;
     let raf = 0;
     const tick = () => {
-      updateFixedToolbarAnchor();
+      updateFloatingToolbarAnchor();
       if (document.activeElement === el) {
         raf = requestAnimationFrame(tick);
       }
@@ -122,7 +133,7 @@ export function TextboxRichEditor({
       el.removeEventListener("blur", onBlur);
       cancelAnimationFrame(raf);
     };
-  }, [toolbarFixedToViewport, updateFixedToolbarAnchor]);
+  }, [toolbarUsesBodyPortal, updateFloatingToolbarAnchor]);
 
   useEffect(() => {
     if (!editorRef.current || hasInitialized.current) return;
@@ -246,9 +257,7 @@ export function TextboxRichEditor({
 
   const toolbarClass =
     "flex gap-0.5 rounded-md border border-border bg-background/95 text-foreground px-1 py-1 shadow-sm";
-  const useShapeTopToolbar = toolbarPinToShapeTop === true;
-  const useFixedViewportToolbar = toolbarFixedToViewport === true && !useShapeTopToolbar;
-  const counterRot = !useShapeTopToolbar && !useFixedViewportToolbar && toolbarCounterRotationDeg != null;
+  const counterRot = !useShapeTopToolbar && toolbarCounterRotationDeg != null;
 
   const toolbarBar = (
     <div className={toolbarClass} onMouseDown={(e) => e.stopPropagation()}>
@@ -368,53 +377,44 @@ export function TextboxRichEditor({
     </div>
   );
 
-  const toolbarChrome = useShapeTopToolbar ? (
-    toolbarPortalHost ? (
-      createPortal(toolbarBar, toolbarPortalHost)
-    ) : null
-  ) : useFixedViewportToolbar ? (
-    fixedToolbarAnchor && typeof document !== "undefined" ? (
-      createPortal(
-        <div
-          className="pointer-events-auto"
-          style={{
-            position: "fixed",
-            left: fixedToolbarAnchor.cx,
-            top: fixedToolbarAnchor.top,
-            transform: "translate(-50%, calc(-100% - 0.75rem))",
-            zIndex: 10000,
-          }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          {toolbarBar}
-        </div>,
-        document.body,
-      )
-    ) : null
-  ) : (
+  const toolbarBarWrapped =
+    counterRot ? (
       <div
-        className={cn(
-          "absolute bottom-full mb-3 z-[100]",
-          counterRot ? "left-1/2 -translate-x-1/2" : "left-0"
-        )}
+        style={{
+          transform: `rotate(${toolbarCounterRotationDeg}deg)`,
+          transformOrigin: "bottom center",
+        }}
       >
-        <div
-          style={
-            counterRot
-              ? {
-                  transform: `rotate(${toolbarCounterRotationDeg}deg)`,
-                  transformOrigin: "bottom center",
-                }
-              : undefined
-          }
-        >
-          {toolbarBar}
-        </div>
+        {toolbarBar}
       </div>
+    ) : (
+      toolbarBar
     );
+
+  const toolbarChrome =
+    toolbarUsesBodyPortal &&
+    floatingToolbarAnchor &&
+    typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="pointer-events-auto"
+            style={{
+              position: "fixed",
+              left: floatingToolbarAnchor.cx,
+              top: floatingToolbarAnchor.top,
+              transform: "translate(-50%, calc(-100% - 0.75rem))",
+              zIndex: TEXTBOX_RICH_TOOLBAR_Z_INDEX,
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            {toolbarBarWrapped}
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div ref={rootRef} className="relative h-full w-full flex min-h-0 flex-col">
