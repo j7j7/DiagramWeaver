@@ -529,6 +529,7 @@ export function TimelineBarShape({
                       color: lc,
                       lineHeight: lineHeightMul,
                       textAlign: textAlignResolved,
+                      whiteSpace: "pre-wrap",
                       wordBreak: "break-word",
                       overflowWrap: "anywhere",
                       ...(letterSpacingPx !== undefined ? { letterSpacing: `${letterSpacingPx}px` } : {}),

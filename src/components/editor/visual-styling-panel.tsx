@@ -1069,8 +1069,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Hue difference between consecutive segments when Fill is Theme hue — timeline bar sections or pyramid
-                      tiers (empty = {DIAGRAM_THEME_HUE_STEP_DEG}°, same default as timeline cards).
+                      Hue difference between consecutive segments when Fill is Theme hue. Pyramid tiers follow the Hue step
+                      field in the Themes menu under &quot;Step hue for multi-selection&quot;. Use this field for an optional
+                      per-shape timeline bar override (empty = {`${DIAGRAM_THEME_HUE_STEP_DEG}°`}, same default as timeline cards).
                     </p>
                   </div>
                   {styling.timelineBarSectionBorder === true ? (
@@ -1101,30 +1102,6 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       </div>
                     </div>
                   ) : null}
-                </StylingAccordionSection>
-              ) : null}
-
-              {isPyramid ? (
-                <StylingAccordionSection
-                  defaultOpen
-                  title="Segment theme hues"
-                  dotClassName="bg-teal-500"
-                  outerClassName="border-teal-200/50 bg-teal-50/50"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-sm text-muted-foreground">Theme hue step (°)</Label>
-                      <TimelineBarHueStepInput
-                        committedDeg={styling.timelineBarHueStepDeg}
-                        onCommit={(v) => handlePropertyChange("timelineBarHueStepDeg", v, true)}
-                        className="h-9 w-[4.5rem] text-sm"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Same setting as segmented Timeline bar. Hue shift between consecutive Theme hue tiers when Fill style is
-                      Theme hue (empty = {DIAGRAM_THEME_HUE_STEP_DEG}° default, as for timeline cards).
-                    </p>
-                  </div>
                 </StylingAccordionSection>
               ) : null}
 

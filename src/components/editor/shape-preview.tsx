@@ -27,6 +27,7 @@ import {
 import { CompositeCardSilhouette } from '@/components/diagram/shapes/composite-card-silhouette';
 import { normalizeCompositeBodyShapeKind } from '@/lib/shape-type-swap';
 import { shiftHueOfColor } from '@/lib/color-shift';
+import { useThemeMenuHueStepDeg } from '@/hooks/use-theme-menu-hue-step-deg';
 import { pyramidStackWideNarrowYs, pyramidWidthFracAtY, type PyramidInterpolatedWidthParams } from '@/lib/pyramid';
 
 function formatBarPreviewValue(n: number): string {
@@ -172,6 +173,7 @@ export function ShapePreview({
   chart,
   compositeBodyShape,
 }: ShapePreviewProps) {
+  const themeMenuHueStepDeg = useThemeMenuHueStepDeg();
   const [pieSliceTooltip, setPieSliceTooltip] = useState<{
     x: number;
     y: number;
@@ -1037,12 +1039,15 @@ export function ShapePreview({
       const defaultOutlineWidthVb =
         typeof chartSpecifiedW === 'number' && Number.isFinite(chartSpecifiedW)
           ? Math.max(0, Math.min(5, chartSpecifiedW))
-          : Math.max(0.25, Math.min(5, borderSw));
+          : borderSw <= 0
+            ? 0
+            : Math.max(0.25, Math.min(5, borderSw));
       const { slices } = ringSlicesForSvg(30, 30, spec.series, spec, {
         defaultOutlineWidthVb,
       });
       const chartStrokeFallback =
         spec.sliceBorderColor?.trim() || effectiveBorderColor;
+      const ringSliceOutlineDasharray = borderStyle === 'dotted' ? '3,3' : undefined;
       const ringGradBase = `sp-ring-${gradientId.replace(/:/g, '')}`;
       const ringGradCoords = getGradientCoordinates(gradientAngle);
       const previewRingPointerHandlers = (s: (typeof slices)[number]) => {
@@ -1128,6 +1133,7 @@ export function ShapePreview({
                   fill={fill}
                   stroke={hasBorder ? outlineColorEffective : 'none'}
                   strokeWidth={hasBorder ? outlineWResolved : 0}
+                  strokeDasharray={hasBorder ? ringSliceOutlineDasharray : undefined}
                   vectorEffect="non-scaling-stroke"
                   style={{ pointerEvents: 'none' }}
                 />
@@ -2106,15 +2112,6 @@ export function ShapePreview({
         direction,
       };
 
-      const tierStroke =
-        sw > 0
-          ? borderStyle === "gradient"
-            ? `url(#${borderGradientId})`
-            : borderStyle === "none"
-              ? "transparent"
-              : effectiveBorderColor
-          : "none";
-
       const tierPaths = Array.from({ length: tierCount }, (_, i) => {
         const band = tierBands[i];
         const wb = iw * pyramidWidthFracAtY(band.yBottom, wp);
@@ -2126,15 +2123,15 @@ export function ShapePreview({
         const yB = band.yBottom;
         const yT = band.yTop;
         const d = `M ${xl0} ${yB} L ${xr0} ${yB} L ${xr1} ${yT} L ${xl1} ${yT} Z`;
-        const hueStepDeg = 10; // aligns with default timeline bar / pyramid palette `timelineBarHueStepDeg`
-        const fillHue = shiftHueOfColor(hueBase, i * hueStepDeg);
+        const fillHue = shiftHueOfColor(hueBase, i * themeMenuHueStepDeg);
+        const segStroke = sw > 0 ? fillHue : "none";
         return (
           <path
             key={`py-prev-${i}`}
             d={d}
             fill={fillHue}
             opacity={0.95}
-            stroke={tierStroke}
+            stroke={segStroke}
             strokeWidth={sw}
             strokeDasharray={borderStyle === "dotted" ? "3,3" : undefined}
             vectorEffect="non-scaling-stroke"

@@ -5,9 +5,11 @@ import type { DiagramNodeData, PyramidDirection, PyramidSizing, RichTextRun, Tim
 import { SvgShapeBase } from "./svg-shape-base";
 import { getGradientCoordinates, svgForeignObjectInlineInputStyle } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
+import { svgUserPointFromClient } from "@/lib/chart-pointer-geometry";
 import {
   normalizePyramidSections,
   pyramidHullClipPathCssPercent,
+  pyramidMoveJointAtHorizontalBoundary,
   pyramidOuterHullPolygonVb,
   pyramidTierHeights,
   pyramidTiersLayoutVb,
@@ -22,6 +24,7 @@ import {
   timelineBarSectionResolvedVerticalJustify,
   timelineBarSectionThemeHueFill,
 } from "@/lib/timeline-bar";
+import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
 
 interface PyramidShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -48,6 +51,9 @@ interface PyramidShapeProps {
   isReadOnly?: boolean;
   onPatch?: (patch: Partial<DiagramNodeData>) => void;
   sectionLabelInteractionEnabled?: boolean;
+  /** Weighted sizing only: drag horizontal strips between tiers to rebalance **`weight`** values. */
+  sectionBoundaryInteractionEnabled?: boolean;
+  onSectionBoundaryDragSessionChange?: (active: boolean) => void;
 }
 
 const VIEWBOX_W = 120;
@@ -72,13 +78,19 @@ export function PyramidShape({
   overrideHeight,
   isEditingLabel,
   sectionLabelInteractionEnabled,
+  sectionBoundaryInteractionEnabled,
+  onSectionBoundaryDragSessionChange,
   onPatch,
   isReadOnly = false,
   ...rest
 }: PyramidShapeProps) {
+  const themeMenuHueStepDeg = useThemeMenuHueStepDeg();
   const nodeAny = node as unknown as Record<string, unknown>;
   const clipId = useId().replace(/:/g, "");
   const inlineSectionLabelCancelledRef = useRef(false);
+  const boundaryDragActiveRef = useRef(false);
+  const pyramidBoundaryIndexDragRef = useRef(0);
+  const pyramidBoundaryWorkingSectionsRef = useRef<TimelineBarSectionData[]>([]);
 
   const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
   const [sectionLabelDraft, setSectionLabelDraft] = useState("");
@@ -168,6 +180,101 @@ export function PyramidShape({
     }
   }, [editingSectionIndex, sections.length]);
 
+  const stackBottomY = half + innerHb;
+
+  const endPyramidBoundaryDrag = useCallback(() => {
+    if (!boundaryDragActiveRef.current) return;
+    boundaryDragActiveRef.current = false;
+    onSectionBoundaryDragSessionChange?.(false);
+  }, [onSectionBoundaryDragSessionChange]);
+
+  const applyPyramidBoundaryClient = useCallback(
+    (clientX: number, clientY: number, boundaryIdx: number, svg: SVGSVGElement) => {
+      if (!onPatch) return;
+      const pt = svgUserPointFromClient(svg, clientX, clientY);
+      if (!pt) return;
+      const depthPx = stackBottomY - pt.y;
+      const next = pyramidMoveJointAtHorizontalBoundary(
+        pyramidBoundaryWorkingSectionsRef.current,
+        boundaryIdx,
+        innerHb,
+        gapPx,
+        depthPx,
+      );
+      if (!next) return;
+      pyramidBoundaryWorkingSectionsRef.current = next.map((s) => ({ ...s }));
+      onPatch({ pyramidSections: next });
+    },
+    [gapPx, innerHb, onPatch, stackBottomY],
+  );
+
+  const onPointerDownPyramidBoundary = useCallback(
+    (boundaryIdx: number) => (e: React.PointerEvent<SVGRectElement>) => {
+      if (
+        !sectionBoundaryInteractionEnabled ||
+        !onPatch ||
+        sizing !== "weighted" ||
+        isReadOnly ||
+        isEditingLabel ||
+        editingSectionIndex != null ||
+        sections.length <= 1
+      )
+        return;
+      e.stopPropagation();
+      e.preventDefault();
+      pyramidBoundaryWorkingSectionsRef.current = sections.map((s) => ({ ...s }));
+      pyramidBoundaryIndexDragRef.current = boundaryIdx;
+      boundaryDragActiveRef.current = true;
+      onSectionBoundaryDragSessionChange?.(true);
+      const svg = (e.currentTarget as SVGRectElement).ownerSVGElement;
+      if (svg) applyPyramidBoundaryClient(e.clientX, e.clientY, boundaryIdx, svg);
+      (e.currentTarget as SVGRectElement).setPointerCapture(e.pointerId);
+    },
+    [
+      applyPyramidBoundaryClient,
+      editingSectionIndex,
+      isEditingLabel,
+      isReadOnly,
+      onPatch,
+      onSectionBoundaryDragSessionChange,
+      sectionBoundaryInteractionEnabled,
+      sections,
+      sizing,
+    ],
+  );
+
+  const onPointerMovePyramidBoundary = useCallback(
+    (e: React.PointerEvent<SVGRectElement>) => {
+      if (!boundaryDragActiveRef.current || !onPatch) return;
+      const svg = (e.currentTarget as SVGRectElement).ownerSVGElement;
+      if (svg) applyPyramidBoundaryClient(e.clientX, e.clientY, pyramidBoundaryIndexDragRef.current, svg);
+    },
+    [applyPyramidBoundaryClient, onPatch],
+  );
+
+  const onPointerUpPyramidBoundary = useCallback(
+    (e: React.PointerEvent<SVGRectElement>) => {
+      try {
+        (e.currentTarget as SVGRectElement).releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      endPyramidBoundaryDrag();
+    },
+    [endPyramidBoundaryDrag],
+  );
+
+  const canDragPyramidWeightedBoundaries =
+    Boolean(
+      sectionBoundaryInteractionEnabled &&
+      sizing === "weighted" &&
+      onPatch &&
+      !isReadOnly &&
+      !isEditingLabel &&
+      editingSectionIndex == null &&
+      sections.length > 1,
+    );
+
   const strokePaint =
     borderStyle === "none"
       ? "none"
@@ -175,16 +282,6 @@ export function PyramidShape({
         ? strokeRef
         : String(nodeAny.borderColor || "#6b7280");
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
-
-  // Theme-hue tiers: same `timelineBarHueStepDeg` as segmented timeline bars; migrate display from legacy `pyramidHueStepDeg`.
-  const themeHueFillNode: DiagramNodeData = (() => {
-    const t = nodeAny.timelineBarHueStepDeg;
-    if (typeof t === "number" && Number.isFinite(t)) return node;
-    const pLegacy = nodeAny.pyramidHueStepDeg;
-    if (typeof pLegacy === "number" && Number.isFinite(pLegacy))
-      return { ...node, timelineBarHueStepDeg: pLegacy } as DiagramNodeData;
-    return node;
-  })();
 
   const frostedHullCss = pyramidHullClipPathCssPercent(hull, vbW, vbH);
 
@@ -228,12 +325,18 @@ export function PyramidShape({
           } else if (fs === "gradient") {
             fillPaint = `url(#${clipId}-sg-${i})`;
           } else if (fs === "theme-hue") {
-            fillPaint = timelineBarSectionThemeHueFill(themeHueFillNode, sections, i);
+            fillPaint = timelineBarSectionThemeHueFill(node, sections, i, themeMenuHueStepDeg);
           } else {
             fillPaint = String(seg.fill ?? "#6b7280");
           }
           const segStroke =
-            strokeWidth > 0 ? (strokePaint === "none" ? "transparent" : strokePaint) : "none";
+            strokeWidth <= 0
+              ? "none"
+              : fs === "none"
+                ? strokePaint === "none"
+                  ? "transparent"
+                  : strokePaint
+                : fillPaint;
           return (
             <polygon
               key={seg.id || i}
@@ -381,6 +484,34 @@ export function PyramidShape({
           </g>
         );
       })}
+      {canDragPyramidWeightedBoundaries && tiers.length > 1
+        ? Array.from({ length: tiers.length - 1 }, (_, j) => {
+            const yGapBottom = tiers[j + 1]!.yBottom;
+            const yGapTop = tiers[j]!.yTop;
+            const gVis = Math.max(0, yGapTop - yGapBottom);
+            const hitH = Math.max(8, Math.min(28, gVis > 0.5 ? Math.max(gVis * 2, 10) : 10));
+            const yCenter = yGapBottom + gVis / 2;
+            const y = yCenter - hitH / 2;
+            return (
+              <rect
+                key={`py-bd-${sections[j]?.id ?? j}`}
+                data-dw-pyramid-boundary={j}
+                x={half}
+                y={y}
+                width={innerW}
+                height={hitH}
+                fill="transparent"
+                stroke="none"
+                pointerEvents="auto"
+                style={{ cursor: "ns-resize", touchAction: "none" }}
+                onPointerDown={onPointerDownPyramidBoundary(j)}
+                onPointerMove={onPointerMovePyramidBoundary}
+                onPointerUp={onPointerUpPyramidBoundary}
+                onPointerCancel={onPointerUpPyramidBoundary}
+              />
+            );
+          })
+        : null}
     </>
   );
 

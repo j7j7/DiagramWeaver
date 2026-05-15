@@ -74,6 +74,12 @@ export interface ThemeApplicationOptions {
    * on nodes and connections (for multi-select “step hue by layout”).
    */
   hueShiftDegrees?: number;
+  /**
+   * Degrees between consecutive pie / ring / bar / line series rows when applying a theme.
+   * Omit to use `DIAGRAM_THEME_HUE_STEP_DEG` (36°). Themes menu passes the same value as
+   * {@link ThemeMenuApplyOptions.multiSelectHueStepDegrees}.
+   */
+  chartSeriesHueStepDegrees?: number;
 }
 
 /** Options passed from the Themes dropdown when applying a theme to the selection. */
@@ -81,8 +87,9 @@ export interface ThemeMenuApplyOptions {
   /** When true and multiple items are selected, stagger hue by vertical or horizontal order. */
   multiSelectHueByLayout?: boolean;
   /**
-   * Degrees between consecutive items in layout order when multi-select hue stepping is on.
-   * Omit to use the default chart hue step (see `DIAGRAM_THEME_HUE_STEP_DEG`).
+   * Degrees between consecutive items in layout order when multi-select hue stepping is on,
+   * and between consecutive chart series rows (pie, ring, bar, line) within each chart.
+   * Omit to use the persisted Themes “Hue step (°)” value or `DIAGRAM_THEME_HUE_STEP_DEG`.
    */
   multiSelectHueStepDegrees?: number;
 }

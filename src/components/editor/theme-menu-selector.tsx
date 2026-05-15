@@ -18,6 +18,11 @@ import {
 } from 'lucide-react';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { themeManager, DIAGRAM_THEME_HUE_STEP_DEG } from '@/lib/theme-manager';
+import {
+  clampThemeMenuHueStepDeg,
+  dispatchThemeMenuHueStepChanged,
+  THEME_MENU_HUE_STEP_STORAGE_KEY,
+} from '@/lib/theme-menu-hue-step';
 import { Input } from '@/components/ui/input';
 import { getVisualStylingCSS, themePropertiesToVisualStyling } from '@/lib/visual-styling';
 
@@ -25,12 +30,6 @@ import { getVisualStylingCSS, themePropertiesToVisualStyling } from '@/lib/visua
 const THEME_DESCRIPTION_TOOLTIP_DELAY_MS = 1500;
 
 const MULTI_HUE_LAYOUT_STORAGE_KEY = 'diagram-weaver-theme-multi-hue-layout';
-const MULTI_HUE_STEP_STORAGE_KEY = 'diagram-weaver-theme-multi-hue-step-deg';
-
-function clampMultiHueStepDeg(value: number): number {
-  if (!Number.isFinite(value)) return DIAGRAM_THEME_HUE_STEP_DEG;
-  return Math.min(360, Math.max(1, Math.round(value)));
-}
 
 interface ThemeMenuSelectorProps {
   onThemeSelect?: (theme: DiagramTheme, options?: ThemeMenuApplyOptions) => void;
@@ -121,10 +120,10 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
     try {
       if (typeof window === 'undefined') return;
       setMultiHueByLayout(localStorage.getItem(MULTI_HUE_LAYOUT_STORAGE_KEY) === '1');
-      const rawStep = localStorage.getItem(MULTI_HUE_STEP_STORAGE_KEY);
+      const rawStep = localStorage.getItem(THEME_MENU_HUE_STEP_STORAGE_KEY);
       if (rawStep != null) {
         const parsed = Number(rawStep);
-        const n = clampMultiHueStepDeg(parsed);
+        const n = clampThemeMenuHueStepDeg(parsed);
         setMultiHueStepDeg(n);
         setHueStepInput(String(n));
       }
@@ -136,14 +135,15 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
   const commitHueStepInput = (): number => {
     const raw = hueStepInput.trim();
     const n =
-      raw === '' ? multiHueStepDeg : clampMultiHueStepDeg(Number(raw));
+      raw === '' ? multiHueStepDeg : clampThemeMenuHueStepDeg(Number(raw));
     setMultiHueStepDeg(n);
     setHueStepInput(String(n));
     try {
-      localStorage.setItem(MULTI_HUE_STEP_STORAGE_KEY, String(n));
+      localStorage.setItem(THEME_MENU_HUE_STEP_STORAGE_KEY, String(n));
     } catch {
       /* ignore */
     }
+    dispatchThemeMenuHueStepChanged(n);
     return n;
   };
 

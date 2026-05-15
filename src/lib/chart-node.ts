@@ -165,7 +165,7 @@ export function defaultPieChartSpec(): NodeChartSpecPie {
 /** Inner radius baseline distance from ring center (SVG viewBox chart). */
 export const DEFAULT_RING_INNER_RADIUS = 14;
 /** Default radial band thickness when `ringThickness` is omitted. */
-export const DEFAULT_RING_THICKNESS = 9;
+export const DEFAULT_RING_THICKNESS = 10;
 const RING_MIN_THICKNESS = 2;
 const RING_MAX_THICKNESS = 24;
 const RING_OUTER_RADIUS_BUDGET = 28;
@@ -177,6 +177,7 @@ export function defaultRingChartSpec(): NodeChartSpecRing {
     kind: "ring",
     innerRadius: DEFAULT_RING_INNER_RADIUS,
     segmentAngularGapDeg: 2,
+    shadow: true,
     series: [
       {
         id: newChartSliceId(),
@@ -189,15 +190,15 @@ export function defaultRingChartSpec(): NodeChartSpecRing {
         id: newChartSliceId(),
         name: "B",
         value: 30,
-        ringThickness: 7,
-        ringRadialOffset: 1.5,
+        ringThickness: DEFAULT_RING_THICKNESS,
+        ringRadialOffset: 0,
       },
       {
         id: newChartSliceId(),
         name: "C",
         value: 25,
-        ringThickness: 10,
-        ringRadialOffset: -0.5,
+        ringThickness: DEFAULT_RING_THICKNESS,
+        ringRadialOffset: 0,
       },
     ],
   };

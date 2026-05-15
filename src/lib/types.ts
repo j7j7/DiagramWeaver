@@ -79,7 +79,7 @@ export interface ChartRingSeriesItem {
   gradientColors?: [string, string];
   labelFontSize?: number;
   /**
-   * Radial band thickness in ring SVG viewBox units (inside→outside); default renderer ~9 when omitted.
+   * Radial band thickness in ring SVG viewBox units (inside→outside); default renderer ~10 when omitted.
    */
   ringThickness?: number;
   /**

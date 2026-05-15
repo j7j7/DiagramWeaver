@@ -20,7 +20,8 @@ import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from '@/lib/custo
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
 import { applyMindmapHueAnchorsAfterVisualChanges } from "@/lib/mindmap-layout";
-import { themeManager, DIAGRAM_THEME_HUE_STEP_DEG, DEFAULT_THEMES } from '@/lib/theme-manager';
+import { themeManager, DEFAULT_THEMES } from '@/lib/theme-manager';
+import { readThemeMenuHueStepDegFromStorage } from '@/lib/theme-menu-hue-step';
 import { orderSelectedIdsForThemeHue } from '@/lib/selection-theme-order';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { TutorialProvider } from './tutorial/tutorial-provider';
@@ -3303,10 +3304,14 @@ export default function DiagramEditor() {
 
   const handleThemeApplyToSelected = (theme: DiagramTheme, menuOptions?: ThemeMenuApplyOptions) => {
     const multiHue = menuOptions?.multiSelectHueByLayout === true;
+    const chartStepDeg =
+      menuOptions?.multiSelectHueStepDegrees ?? readThemeMenuHueStepDegFromStorage();
     if (!selectedItemIds || selectedItemIds.size === 0) {
       // Apply to single selected item
       if (selectedItem) {
-        const updatedItem = themeManager.applyThemeToItem(selectedItem, theme);
+        const updatedItem = themeManager.applyThemeToItem(selectedItem, theme, {
+          chartSeriesHueStepDegrees: chartStepDeg,
+        });
         handleItemUpdate(updatedItem as any);
       }
     } else {
@@ -3317,18 +3322,19 @@ export default function DiagramEditor() {
             ? orderSelectedIdsForThemeHue(selectedItemIds, prevData.nodes, prevData.connections ?? [])
             : null;
 
-        const stepDeg =
-          menuOptions?.multiSelectHueStepDegrees ?? DIAGRAM_THEME_HUE_STEP_DEG;
         const hueShiftForId = (id: string): number => {
           if (!orderMap) return 0;
           const idx = orderMap.get(id) ?? 0;
-          return idx * stepDeg;
+          return idx * chartStepDeg;
         };
 
         const updatedNodes = prevData.nodes.map((node) => {
           if (selectedItemIds.has(node.id)) {
             const hueShift = hueShiftForId(node.id);
-            return themeManager.applyThemeToItem(node, theme, { hueShiftDegrees: hueShift }) as DiagramNodeData;
+            return themeManager.applyThemeToItem(node, theme, {
+              hueShiftDegrees: hueShift,
+              chartSeriesHueStepDegrees: chartStepDeg,
+            }) as DiagramNodeData;
           }
           return node;
         });
@@ -3336,7 +3342,10 @@ export default function DiagramEditor() {
           const connId = (connection as DiagramConnectionData).id ?? `${connection.from}-${connection.to}`;
           if (selectedItemIds.has(connId)) {
             const hueShift = hueShiftForId(connId);
-            return themeManager.applyThemeToItem(connection, theme, { hueShiftDegrees: hueShift }) as DiagramConnectionData;
+            return themeManager.applyThemeToItem(connection, theme, {
+              hueShiftDegrees: hueShift,
+              chartSeriesHueStepDegrees: chartStepDeg,
+            }) as DiagramConnectionData;
           }
           return connection;
         });

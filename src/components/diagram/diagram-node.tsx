@@ -932,7 +932,16 @@ function DiagramNodeInner({
           {...shapeProps}
           isReadOnly={isReadOnly}
           onPatch={onUpdate && !isReadOnly ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
+          sectionBoundaryInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
           sectionLabelInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
+          onSectionBoundaryDragSessionChange={
+            onUpdate && !isReadOnly
+              ? (active) => {
+                  chartValueDragInteractionRef.current = active;
+                  onChartValueDragSessionChange?.(active);
+                }
+              : undefined
+          }
         />
       );
     } else if (nodeType === 'generic.object.text-box-heading' || nodeType?.endsWith('.text-box-heading')) {

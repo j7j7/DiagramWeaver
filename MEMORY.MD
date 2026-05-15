@@ -3,6 +3,41 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Ring chart** palette default: uniform band (**10** vb), **radial offset 0**, **shadow on**
+
+**`defaultRingChartSpec`**: **`shadow: true`** (SVG **`feDropShadow`** in **`RingChartShape`**); **`DEFAULT_RING_THICKNESS`** **10**, all **`ringRadialOffset: 0`**. Patch bumped.
+
+
+### 2026-05-15 – Theme apply: **chart segment hue step** from Themes menu
+
+**`ThemeApplicationOptions.chartSeriesHueStepDegrees`** drives pie / ring / bar / line series hue stepping in **`theme-manager.applyThemeToItem`** (fills + ring **`sliceOutlineColor`**). **`diagram-editor`** passes the Themes dropdown **Hue step (°)** (`multiSelectHueStepDegrees` or **`readThemeMenuHueStepDegFromStorage`** fallback) for single- and multi-selection apply. Patch bumped.
+
+
+### 2026-05-15 – Ring chart: **segment outlines** match **theme hues** + dotted border
+
+**`theme-manager.applyThemeToItem`**: for **`kind: 'ring'`**, stamps **`sliceOutlineColor`** per series row with **`shiftHueOfColor(borderBase, rowHue)`** (same step as segment fills) and sets chart **`sliceBorderColor`** to the themed border base; clears those when themed **`borderStyle`** is **`none`**. **`RingChartShape`**: outline width falls back to **0** when the node border is off (no more **`0.25`** vb minimum unless **`sliceBorderWidth`** is set); **`strokeDasharray`** on slice strokes when **`borderStyle === 'dotted'`** (every segment). **`shape-preview`** ring matches outline width + dotted dash. Patch bumped.
+
+
+### 2026-05-15 – Pyramid: **per-segment stroke** matches fill (theme hue, etc.)
+
+Tier **`<polygon>`** strokes use each tier’s resolved **`fillPaint`** (theme-hue, solid, gradient `url(...)`) instead of a single shape **`borderColor`**. **`fillStyle: none`** tiers still use the global border paint. **`ShapePreview`** pyramid tiers use the same shifted hue for stroke per tier. Patch bumped.
+
+
+### 2026-05-15 – Pyramid **theme-hue** step from **Themes** menu only
+
+Removed teal **Segment theme hues** block from pyramid Visual styling. **`PyramidShape`** and palette **`ShapePreview`** use **`useThemeMenuHueStepDeg`**: same **`localStorage`** key as Themes → &quot;Step hue for multi-selection&quot; (**`theme-menu-hue-step.ts`** + dispatch on commit in **`theme-menu-selector.tsx`**). **`timelineBarHueStepDeg`** remains for timeline bar only; pyramid palette default no longer sets it. **`pyramidMemoPayload`** omits hue-step fields. Patch bumped.
+
+
+### 2026-05-15 – Timeline bar: **section bar label line breaks**
+
+Per-segment **`label`** supports newlines like pyramid tiers: **`whiteSpace: pre-wrap`** on the canvas label (**`timeline-bar.tsx`**); **timeline-bar** modal uses **`Textarea`** + short hint (Enter / Ctrl/Cmd+Enter); segment header summary uses the **first line** only (**`timelineBarSegmentSummaryLabel`**). Patch bumped.
+
+
+### 2026-05-15 – Pyramid: **weighted tier drag joints** on canvas
+
+With **`pyramidSizing: weighted`** and single selection (**`diagram-node.tsx`**), **`PyramidShape`** renders full-width **`ns-resize`** strips on tier gaps. **`pyramidMoveJointAtHorizontalBoundary`** + **`pyramidMinTierBandHeight`** (**`pyramid.ts`**) adjust **`pyramidSections[].weight`** from vertical pointer position; **`chartValueDragInteractionRef`** tied like timeline-bar column joints. Patch bumped.
+
+
 ### 2026-05-15 – Pyramid modal: **Sizing Select + click-outside**
 
 Document **`mousedown`** outside-panel handler treated Radix **`Select`** dropdown items/viewport as outside the dialog (portal not under **`panelRef`**). Only **`data-radix-select-content`** was ignored; pyramid modal now skips closes for **`select-viewport`** and **`select-item`** like **timeline-bar** / **chart-data** modals. Patch bumped.

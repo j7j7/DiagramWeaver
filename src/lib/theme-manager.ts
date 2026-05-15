@@ -6,6 +6,7 @@ import type {
   ChartSeriesItem,
   ChartRingSeriesItem,
   ChartBarSegmentItem,
+  NodeChartSpecRing,
 } from './types';
 import { getThemeSpectrumSortKey } from './theme-spectrum';
 import { isChartNodeType } from './chart-node';
@@ -1773,6 +1774,11 @@ class ThemeManager {
   ): DiagramNodeData | DiagramGroupData | DiagramConnectionData {
     const { properties } = theme;
     const hueShift = options.hueShiftDegrees ?? 0;
+    const chartSeriesHueStepDeg =
+      options.chartSeriesHueStepDegrees != null &&
+      Number.isFinite(options.chartSeriesHueStepDegrees)
+        ? options.chartSeriesHueStepDegrees
+        : DIAGRAM_THEME_HUE_STEP_DEG;
     const colorProps = hueShift !== 0 ? shiftDiagramThemePropertiesColors(properties, hueShift) : properties;
     const updated = { ...item };
 
@@ -1849,7 +1855,7 @@ class ThemeManager {
       ) {
         const bgStyle = properties.backgroundStyle;
         const series = chart.series.map((sliceRow: ChartSeriesItem | ChartRingSeriesItem, i) => {
-          const hue = i * DIAGRAM_THEME_HUE_STEP_DEG + hueShift;
+          const hue = i * chartSeriesHueStepDeg + hueShift;
           const base: ChartSeriesItem | ChartRingSeriesItem = { ...sliceRow };
           if (colorProps.textColor !== undefined) {
             base.labelColor = colorProps.textColor;
@@ -1882,14 +1888,42 @@ class ThemeManager {
           base.color = shiftHueOfColor(c, hue);
           return base;
         });
-        node.chart = { ...chart, series } as DiagramNodeData["chart"];
+        if (chart.kind === "ring") {
+          const themeBorderBase =
+            colorProps.borderColor ??
+            (colorProps.borderColors && colorProps.borderColors.length > 0
+              ? colorProps.borderColors[0]
+              : "#6b7280");
+          const ringSeries = (series as ChartRingSeriesItem[]).map((row, i) => {
+            const hue = i * chartSeriesHueStepDeg + hueShift;
+            const next = { ...row };
+            if (properties.borderStyle === "none") {
+              delete next.sliceOutlineColor;
+            } else {
+              next.sliceOutlineColor = shiftHueOfColor(themeBorderBase, hue);
+            }
+            return next;
+          });
+          const nextRing: NodeChartSpecRing = {
+            ...(chart as NodeChartSpecRing),
+            series: ringSeries,
+          };
+          if (properties.borderStyle === "none") {
+            delete nextRing.sliceBorderColor;
+          } else {
+            nextRing.sliceBorderColor = themeBorderBase;
+          }
+          node.chart = nextRing as DiagramNodeData["chart"];
+        } else {
+          node.chart = { ...chart, series } as DiagramNodeData["chart"];
+        }
       } else if (
         (chart?.kind === "bar" || chart?.kind === "line") &&
         Array.isArray(chart.series)
       ) {
         const bgStyle = properties.backgroundStyle;
         const series: ChartBarSegmentItem[] = chart.series.map((row, i) => {
-          const hue = i * DIAGRAM_THEME_HUE_STEP_DEG + hueShift;
+          const hue = i * chartSeriesHueStepDeg + hueShift;
           const base: ChartBarSegmentItem = {
             id: row.id,
             name: row.name,

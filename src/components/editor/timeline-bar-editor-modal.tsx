@@ -6,6 +6,7 @@ import { AlignHorizontalSpaceAround, ChevronDown, Plus, Trash2, X } from "lucide
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorPicker } from "@/components/ui/color-picker";
@@ -48,7 +49,8 @@ function timelineBarSegmentSummaryLabel(
   spanLayoutEnabled: boolean,
   sizing: "equal" | "weighted",
 ): string {
-  const title = (row.label ?? "").trim() || `Section ${index + 1}`;
+  const raw = (row.label ?? "").trim();
+  const title = (raw.split(/\n/)[0] ?? "").trim() || `Section ${index + 1}`;
   const fs = row.fillStyle ?? "solid";
   const parts: string[] = [title, fs];
   if (spanLayoutEnabled) {
@@ -714,14 +716,22 @@ export function TimelineBarEditorModal({
                       </div>
                       <CollapsibleContent className="overflow-hidden">
                         <div className="space-y-2 p-3 pt-2">
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            <Input
-                              value={row.label ?? ""}
-                              onChange={(e) => patchRow(i, { label: e.target.value })}
-                              placeholder="Bar text"
-                              className="h-8 flex-1 text-xs"
-                              disabled={isReadOnly}
-                            />
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <Textarea
+                                value={row.label ?? ""}
+                                onChange={(e) => patchRow(i, { label: e.target.value })}
+                                placeholder="Bar text"
+                                rows={3}
+                                className="min-h-[4.5rem] resize-y text-xs"
+                                disabled={isReadOnly}
+                                spellCheck
+                              />
+                              <p className="text-[10px] text-muted-foreground">
+                                Line breaks show in the bar (same as pyramid tiers). Inline edit: Enter adds a line; Ctrl/Cmd+Enter
+                                commits.
+                              </p>
+                            </div>
                             {!hideSectionTickFields ? (
                               <Input
                                 value={row.tickLabel ?? ""}
@@ -1239,8 +1249,8 @@ export function TimelineBarEditorModal({
                             {(row.fillStyle ?? "solid") === "theme-hue" ? (
                               <p className="text-xs text-muted-foreground">
                                 Uses the bar background colour for the first theme-hue segment; each further theme-hue segment
-                                shifts hue (same idea as timeline cards). Set the step under Visual styling → Timeline bar (or Segment
-                                theme hues when a segmented pyramid is selected).
+                                shifts hue (same idea as timeline cards). Set the step under Visual styling → Timeline bar, or use
+                                the Hue step in the Themes menu (pyramid tiers follow that menu value only).
                                 {node && rows.length > 0 ? (
                                   <span className="mt-1 flex items-center gap-2">
                                     <span

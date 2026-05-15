@@ -122,6 +122,7 @@ export function RingChartShape(props: RingChartShapeProps) {
     if (typeof chartSpecifiedW === "number" && Number.isFinite(chartSpecifiedW)) {
       return Math.max(0, Math.min(5, chartSpecifiedW));
     }
+    if (strokeWidthNode <= 0) return 0;
     return Math.max(0.25, Math.min(5, strokeWidthNode));
   }, [chartSpecifiedW, strokeWidthNode]);
 
@@ -394,6 +395,7 @@ export function RingChartShape(props: RingChartShapeProps) {
     ringChart?.sliceBorderColor?.trim() || node.borderColor || "#6b7280";
   const svgShadow = ringChart?.shadow === true;
   const showSegmentLabels = ringChart?.showSegmentLabels !== false;
+  const sliceOutlineDasharray = borderStyle === "dotted" ? "3,3" : undefined;
 
   const gradients = slices.map((s, i) =>
     s.fillMode === "gradient" ? (
@@ -588,6 +590,7 @@ export function RingChartShape(props: RingChartShapeProps) {
                       ? 2
                       : 0
                 }
+                strokeDasharray={hasBorder ? sliceOutlineDasharray : undefined}
                 vectorEffect="non-scaling-stroke"
                 style={{
                   filter: isHover ? "brightness(1.12)" : undefined,

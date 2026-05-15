@@ -185,6 +185,61 @@ export function pyramidTierHeights(innerBodyH: number, gapPx: number, sections: 
   return wt.map((w) => (w / sum) * usable);
 }
 
+/** Smallest tier band height (`px`) so weighted pyramid joints cannot collapse bands. Scales gently with stacked count and usable pixels. */
+export function pyramidMinTierBandHeight(innerBodyH: number, gapPx: number, n: number): number {
+  const g = clampGapPx(gapPx);
+  const kk = Math.max(0, n - 1);
+  const usable = Math.max(0.01 * Math.max(1, n), innerBodyH - g * kk);
+  return Math.max(2, Math.min(usable * 0.2, usable / Math.max(n * 8, 8)));
+}
+
+/**
+ * Moves the horizontal joint between stacked tier index `boundaryIndex` (toward wide base) and tier `boundaryIndex + 1` (toward apex).
+ * `depthFromInnerBottomPx` is distance upward from **inner stack bottom** (`half + innerBodyH`) to **`tiers[boundaryIndex].yTop`** (top edge of the lower polygon), i.e. `Σᵢ≤ⱼ hᵢ + boundaryIndex · gapPx`.
+ */
+export function pyramidMoveJointAtHorizontalBoundary(
+  sections: TimelineBarSectionData[],
+  boundaryIndex: number,
+  innerBodyH: number,
+  gapPx: number,
+  depthFromInnerBottomPx: number,
+): TimelineBarSectionData[] | null {
+  const g = clampGapPx(gapPx);
+  const n = sections.length;
+  if (n < 2) return null;
+  if (boundaryIndex < 0 || boundaryIndex >= n - 1) return null;
+  if (!(innerBodyH > 0)) return null;
+
+  const totalGap = g * Math.max(0, n - 1);
+  const usable = Math.max(0.01 * n, innerBodyH - totalGap);
+  const minH = pyramidMinTierBandHeight(innerBodyH, gapPx, n);
+
+  const minSumBelow = (boundaryIndex + 1) * minH;
+  const maxSumBelow = usable - (n - boundaryIndex - 1) * minH;
+  if (!(minSumBelow <= maxSumBelow + 1e-9)) return null;
+
+  const sumBelowRaw = depthFromInnerBottomPx - boundaryIndex * g;
+  const sb = Math.max(minSumBelow, Math.min(maxSumBelow, sumBelowRaw));
+  const sa = usable - sb;
+  const EPS = 1e-9;
+
+  const curHeights = pyramidTierHeights(innerBodyH, gapPx, sections, "weighted");
+  let sbc = 0;
+  for (let i = 0; i <= boundaryIndex; i++) sbc += curHeights[i] ?? 0;
+  let sac = usable - sbc;
+  sac = Math.max(EPS, sac);
+  sbc = Math.max(EPS, sbc);
+
+  const scaleB = sb / sbc;
+  const scaleA = sa / sac;
+
+  return sections.map((s, i) => {
+    const w = Math.max(EPS, s.weight ?? 1);
+    const f = i <= boundaryIndex ? scaleB : scaleA;
+    return { ...s, weight: Math.max(1e-6, w * f) };
+  });
+}
+
 export function pyramidTiersLayoutVb(params: {
   half: number;
   innerHb: number;
@@ -255,7 +310,6 @@ export function defaultPalettePyramidNodeProps(nodeId: string): Partial<DiagramN
     pyramidSectionBorder: false,
     pyramidSectionBorderWidth: 1,
     pyramidSectionBorderColor: "#ffffff",
-    timelineBarHueStepDeg: 10,
     textJustify: "center",
     textVerticalPosition: "middle",
     borderWidth: 2,
@@ -277,8 +331,6 @@ export function pyramidMemoPayload(n: DiagramNodeData): string {
     pyramidSectionBorder?: boolean;
     pyramidSectionBorderWidth?: number;
     pyramidSectionBorderColor?: string;
-    timelineBarHueStepDeg?: number;
-    pyramidHueStepDeg?: number; // legacy (read for theme fill + memo until cleared)
     pyramidLabelsFollowFirstSection?: boolean;
   };
   return JSON.stringify([
@@ -290,8 +342,6 @@ export function pyramidMemoPayload(n: DiagramNodeData): string {
     x.pyramidSectionBorder,
     x.pyramidSectionBorderWidth,
     x.pyramidSectionBorderColor,
-    x.timelineBarHueStepDeg,
-    x.pyramidHueStepDeg,
     x.pyramidLabelsFollowFirstSection,
     x.cornerRadius,
     x.backgroundStyle,

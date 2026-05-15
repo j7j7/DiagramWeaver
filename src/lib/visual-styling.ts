@@ -50,7 +50,7 @@ export interface VisualStyling {
   timelineBarSectionBorder?: boolean;
   timelineBarSectionBorderWidth?: number;
   timelineBarSectionBorderColor?: string;
-  timelineBarHueStepDeg?: number; // Timeline bar segments + pyramid theme-hue tiers
+  timelineBarHueStepDeg?: number; // Timeline bar segments (per-shape). Pyramid theme-hue tiers use Themes menu hue step.
   pyramidSizing?: PyramidSizing;
   pyramidSegmentGap?: number;
   pyramidDirection?: PyramidDirection;

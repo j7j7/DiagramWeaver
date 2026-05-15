@@ -598,8 +598,8 @@ export function PyramidEditorModal({ x, y, visible, onClose, node, onSave, isRea
                           </div>
                         ) : (
                           <p className="text-[11px] text-muted-foreground">
-                            Uses the same theme hue step as segmented Timeline bar; set it under Visual styling → Segment
-                            theme hues (or Timeline bar when that shape is selected).
+                            Tier fills use the Hue step field in the Themes menu (&quot;Step hue for multi-selection&quot;),
+                            shifting from the shape background colour like timeline cards.
                           </p>
                         )}
                         <div className="grid gap-3 sm:grid-cols-2">
