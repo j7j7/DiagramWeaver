@@ -24,6 +24,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
 
+/** Native steppers steal horizontal space on short inputs and clip fractional values (Chrome/Safari/Firefox). */
+const NUMBER_INPUT_NO_SPINNER =
+  "[appearance:textfield] [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
 /** Spatial halo radius (blur size), distinct from RGBA opacity on the glow colour picker. */
 function HighlightGlowStrengthSlider({
   intensity,
@@ -233,7 +237,7 @@ function HighlightAnimEffectControls({
                       commitDuration();
                       setDurFocused(false);
                     }}
-                    className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 text-sm")}
                   />
                 </div>
                 <div className="space-y-1">
@@ -253,7 +257,7 @@ function HighlightAnimEffectControls({
                       commitInterval();
                       setIntFocused(false);
                     }}
-                    className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 text-sm")}
                   />
                 </div>
               </>
@@ -635,7 +639,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                             const n = parseInt(e.target.value, 10);
                             if (!isNaN(n)) handlePropertyChange('borderWidth', Math.min(20, Math.max(0, n)));
                           }}
-                          className="h-9 w-14 text-sm"
+                          className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 min-w-[4rem] w-16 tabular-nums text-sm")}
                         />
                         {styling.borderStyle === 'gradient' && (
                           <GradientAnglePicker
@@ -1027,7 +1031,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                           min={1}
                           max={200}
                           step={0.5}
-                          className="h-9 text-sm"
+                          className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 text-sm tabular-nums")}
                           value={
                             styling.timelineBarAxisLabelFontSize !== undefined &&
                             styling.timelineBarAxisLabelFontSize !== null
@@ -1065,7 +1069,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       <TimelineBarHueStepInput
                         committedDeg={styling.timelineBarHueStepDeg}
                         onCommit={(v) => handlePropertyChange("timelineBarHueStepDeg", v, true)}
-                        className="h-9 w-[4.5rem] text-sm"
+                        className="h-9 min-w-[5rem] w-[5.25rem] tabular-nums text-sm"
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -1088,7 +1092,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                             const n = parseFloat(e.target.value);
                             if (!isNaN(n)) handlePropertyChange("timelineBarSectionBorderWidth", n, true);
                           }}
-                          className="h-8 w-14 text-xs"
+                          className={cn(NUMBER_INPUT_NO_SPINNER, "h-8 min-w-[4rem] w-16 tabular-nums text-xs")}
                         />
                       </div>
                       <div className="space-y-1">
@@ -1140,7 +1144,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       min={0}
                       max={32}
                       step={1}
-                      className="h-9 w-[4.25rem] text-sm tabular-nums"
+                      className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 min-w-[4.75rem] w-[5rem] text-sm tabular-nums")}
                       value={styling.pyramidSegmentGap ?? 2}
                       onChange={(e) => {
                         const n = parseFloat(e.target.value);
@@ -1177,7 +1181,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       min={0}
                       max={100}
                       step={1}
-                      className="h-9 w-[4.5rem] text-sm tabular-nums"
+                      className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 min-w-[4.75rem] w-[5rem] text-sm tabular-nums")}
                       value={Math.round((styling.pyramidApexWidthRatio ?? 0.12) * 100)}
                       onChange={(e) => {
                         const n = parseFloat(e.target.value);
@@ -1193,6 +1197,43 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       onCheckedChange={(checked) => handlePropertyChange("pyramidLabelsFollowFirstSection", checked, true)}
                     />
                   </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Borders between tiers</Label>
+                    <Switch
+                      checked={styling.pyramidSectionBorder === true}
+                      onCheckedChange={(checked) => handlePropertyChange("pyramidSectionBorder", checked, true)}
+                    />
+                  </div>
+                  {styling.pyramidSectionBorder === true ? (
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs text-muted-foreground">Tier outline width</Label>
+                        <Input
+                          type="number"
+                          min={0.5}
+                          max={4}
+                          step={0.5}
+                          value={styling.pyramidSectionBorderWidth ?? 1}
+                          onChange={(e) => {
+                            const n = parseFloat(e.target.value);
+                            if (!isNaN(n)) handlePropertyChange("pyramidSectionBorderWidth", n, true);
+                          }}
+                          className={cn(NUMBER_INPUT_NO_SPINNER, "h-8 min-w-[4rem] w-16 tabular-nums text-xs")}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">
+                          Tier outline color (solid / gradient tiers; Theme hue tiers use a darker hue-matched stroke)
+                        </Label>
+                        <ColorPicker
+                          value={styling.pyramidSectionBorderColor || "#ffffff"}
+                          onChange={(value) => handlePropertyChange("pyramidSectionBorderColor", value, true)}
+                          showAlpha={true}
+                          allowTransparent={true}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
                 </StylingAccordionSection>
               ) : null}
             </div>

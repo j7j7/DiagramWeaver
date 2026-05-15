@@ -145,3 +145,42 @@ export function shiftHueOfColor(input: string, deltaDegrees: number): string {
   }
   return toHex6(nr, ng, nb);
 }
+
+/**
+ * Multiply HSL lightness by `factor`, clamped to [0, 1]. Hue and saturation unchanged.
+ * Supports #RGB, #RRGGBB, #RRGGBBAA, rgb(), rgba().
+ */
+export function multiplyLightnessOfColor(input: string, factor: number): string {
+  if (!Number.isFinite(factor)) return input;
+  const trimmed = input.trim();
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let a: number | undefined;
+
+  if (trimmed.startsWith("#")) {
+    const hx = hexToRgb(trimmed);
+    if (!hx) return input;
+    r = hx.r;
+    g = hx.g;
+    b = hx.b;
+    a = hx.a;
+  } else if (trimmed.toLowerCase().startsWith("rgb")) {
+    const rgb = rgbFnToRgb(trimmed);
+    if (!rgb) return input;
+    r = rgb.r;
+    g = rgb.g;
+    b = rgb.b;
+    a = rgb.a;
+  } else {
+    return input;
+  }
+
+  const { h, s, l } = rgbToHsl(r, g, b);
+  const l2 = Math.max(0, Math.min(1, l * factor));
+  const [nr, ng, nb] = hslToRgb(h, s, l2);
+  if (a !== undefined && a < 1) {
+    return toHex8(nr, ng, nb, a);
+  }
+  return toHex6(nr, ng, nb);
+}

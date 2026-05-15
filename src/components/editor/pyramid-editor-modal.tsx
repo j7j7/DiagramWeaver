@@ -24,8 +24,10 @@ import {
   newPyramidSectionId,
   normalizePyramidSections,
 } from "@/lib/pyramid";
+import { timelineBarSectionThemeHueFill } from "@/lib/timeline-bar";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import { cn } from "@/lib/utils";
+import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
 
 type Row = TimelineBarSectionData;
 
@@ -130,12 +132,15 @@ interface PyramidEditorModalProps {
 }
 
 export function PyramidEditorModal({ x, y, visible, onClose, node, onSave, isReadOnly = false }: PyramidEditorModalProps) {
+  const themesMenuHueStepDeg = useThemeMenuHueStepDeg();
   const panelRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [rows, setRows] = useState<Row[]>([]);
   const [sizing, setSizing] = useState<PyramidSizing>("equal");
   const [segmentGapPx, setSegmentGapPx] = useState(2);
+  const [tierSpacingFocused, setTierSpacingFocused] = useState(false);
+  const [tierSpacingDraft, setTierSpacingDraft] = useState("");
   const [direction, setDirection] = useState<PyramidDirection>("narrow-at-top");
   const [apexPercent, setApexPercent] = useState(12);
   const [labelsFollowFirstSection, setLabelsFollowFirstSection] = useState(false);
@@ -174,6 +179,14 @@ export function PyramidEditorModal({ x, y, visible, onClose, node, onSave, isRea
       setCollapsedSegIds(def.length > 2 ? new Set(def.map((r, j) => pyramidSectionRowId(r, j))) : new Set());
     }
   }, [visible, node]);
+
+  useEffect(() => {
+    if (!tierSpacingFocused) setTierSpacingDraft(String(segmentGapPx));
+  }, [segmentGapPx, tierSpacingFocused]);
+
+  useEffect(() => {
+    if (!visible) setTierSpacingFocused(false);
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -372,18 +385,36 @@ export function PyramidEditorModal({ x, y, visible, onClose, node, onSave, isRea
             <div className="flex items-center gap-2">
               <Label className="text-xs whitespace-nowrap">Spacing</Label>
               <Input
-                type="number"
-                min={0}
-                max={32}
-                step={1}
-                className="h-8 w-16 tabular-nums text-xs"
-                value={segmentGapPx}
-                onChange={(e) => {
-                  const n = parseFloat(e.target.value);
-                  if (!Number.isFinite(n)) return;
-                  setSegmentGapPx(Math.min(32, Math.max(0, n)));
-                }}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                className="h-8 min-w-[4rem] tabular-nums text-xs"
                 disabled={isReadOnly}
+                value={tierSpacingFocused ? tierSpacingDraft : String(segmentGapPx)}
+                onFocus={() => {
+                  setTierSpacingFocused(true);
+                  setTierSpacingDraft(String(segmentGapPx));
+                }}
+                onChange={(e) => setTierSpacingDraft(e.target.value)}
+                onBlur={() => {
+                  setTierSpacingFocused(false);
+                  const t = tierSpacingDraft.trim();
+                  if (t === "") {
+                    setTierSpacingDraft(String(segmentGapPx));
+                    return;
+                  }
+                  const n = parseFloat(t.replace(",", "."));
+                  if (!Number.isFinite(n)) {
+                    setTierSpacingDraft(String(segmentGapPx));
+                    return;
+                  }
+                  const clamped = Math.min(32, Math.max(0, n));
+                  setSegmentGapPx(clamped);
+                  setTierSpacingDraft(String(clamped));
+                }}
+                onKeyDown={(ev) => {
+                  if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
+                }}
               />
             </div>
           </div>
@@ -597,10 +628,30 @@ export function PyramidEditorModal({ x, y, visible, onClose, node, onSave, isRea
                             />
                           </div>
                         ) : (
-                          <p className="text-[11px] text-muted-foreground">
-                            Tier fills use the Hue step field in the Themes menu (&quot;Step hue for multi-selection&quot;),
-                            shifting from the shape background colour like timeline cards.
-                          </p>
+                          <div className="space-y-1">
+                            <p className="text-[11px] text-muted-foreground">
+                              Uses the shape background colour as the base; each further theme-hue tier shifts hue by the value in
+                              the Themes menu (&quot;Step hue for multi-selection&quot;) — not the Timeline bar step under Visual
+                              styling.
+                            </p>
+                            {node && rows.length > 0 ? (
+                              <span className="mt-1 flex items-center gap-2">
+                                <span
+                                  className="inline-block h-4 w-4 shrink-0 rounded border border-border"
+                                  style={{
+                                    backgroundColor: timelineBarSectionThemeHueFill(
+                                      { ...node, pyramidSections: rows } as DiagramNodeData,
+                                      normalizePyramidSections({ ...node, pyramidSections: rows } as DiagramNodeData),
+                                      i,
+                                      themesMenuHueStepDeg,
+                                    ),
+                                  }}
+                                  title="Preview using Themes menu hue step"
+                                />
+                                <span className="text-[10px] text-muted-foreground">Matches canvas tier colour</span>
+                              </span>
+                            ) : null}
+                          </div>
                         )}
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="flex min-w-0 flex-col gap-1">

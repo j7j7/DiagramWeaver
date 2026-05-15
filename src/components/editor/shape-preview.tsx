@@ -26,7 +26,7 @@ import {
 } from '@/lib/line-chart-layout';
 import { CompositeCardSilhouette } from '@/components/diagram/shapes/composite-card-silhouette';
 import { normalizeCompositeBodyShapeKind } from '@/lib/shape-type-swap';
-import { shiftHueOfColor } from '@/lib/color-shift';
+import { multiplyLightnessOfColor, shiftHueOfColor } from '@/lib/color-shift';
 import { useThemeMenuHueStepDeg } from '@/hooks/use-theme-menu-hue-step-deg';
 import { pyramidStackWideNarrowYs, pyramidWidthFracAtY, type PyramidInterpolatedWidthParams } from '@/lib/pyramid';
 
@@ -2124,7 +2124,7 @@ export function ShapePreview({
         const yT = band.yTop;
         const d = `M ${xl0} ${yB} L ${xr0} ${yB} L ${xr1} ${yT} L ${xl1} ${yT} Z`;
         const fillHue = shiftHueOfColor(hueBase, i * themeMenuHueStepDeg);
-        const segStroke = sw > 0 ? fillHue : "none";
+        const segStroke = sw > 0 ? multiplyLightnessOfColor(fillHue, 0.62) : "none";
         return (
           <path
             key={`py-prev-${i}`}

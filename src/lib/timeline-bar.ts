@@ -281,7 +281,7 @@ export function timelineBarSectionThemeHueFill(
   node: DiagramNodeData,
   sections: TimelineBarSectionData[],
   sectionIndex: number,
-  /** Optional hue step (`°`). When set, overrides `timelineBarHueStepDeg` on the node. */
+  /** Optional hue step (`°`). Pass **only** when caller passes a 4th argument (pyramid uses Themes-menu step via `useThemeMenuHueStepDeg`; timeline omits this). */
   hueStepDegOverride?: number,
 ): string {
   const seg = sections[sectionIndex];
@@ -290,9 +290,14 @@ export function timelineBarSectionThemeHueFill(
   }
   const rank = timelineBarThemeHueRankAtSection(sections, sectionIndex);
   const base = timelineBarThemeHueBaseColor(node);
-  const stepRaw =
-    hueStepDegOverride !== undefined
+  /** Pyramid passes arity 4 with a finite step from the Themes menu; timeline omits → use `timelineBarHueStepDeg` on the node. */
+  const explicitMenuStep =
+    arguments.length >= 4 && typeof hueStepDegOverride === "number" && Number.isFinite(hueStepDegOverride)
       ? hueStepDegOverride
+      : undefined;
+  const stepRaw =
+    explicitMenuStep !== undefined
+      ? explicitMenuStep
       : (node as DiagramNodeData & { timelineBarHueStepDeg?: number }).timelineBarHueStepDeg;
   const step = typeof stepRaw === "number" && Number.isFinite(stepRaw) ? stepRaw : DIAGRAM_THEME_HUE_STEP_DEG;
   const delta = rank * step;

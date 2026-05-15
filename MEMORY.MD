@@ -3,6 +3,16 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – Pyramid **theme-hue step**: Themes menu only (explicit arity)
+
+**`timelineBarSectionThemeHueFill`**: when called with **four** arguments and a finite step, that step wins (pyramid passes **`useThemeMenuHueStepDeg()`**); three-argument calls still use **`timelineBarHueStepDeg`** on the node (timeline bar). **`PyramidEditorModal`** previews theme-hue tiers with the same menu step + copy that it is not the Timeline bar control. Patch bumped.
+
+
+### 2026-05-15 – Pyramid **tier borders**: **pyramidSectionBorder** + theme-hue outline
+
+**`PyramidShape`**: **`pyramidSectionBorder`** / width / color (parity with segmented timeline bar). When **on**, tier strokes use **`multiplyLightnessOfColor(fill, ~0.62)`** for **`fillStyle: theme-hue`** so each tier keeps the Themes-menu hue step on fill while outlines stay visible; solid/gradient tiers use **`pyramidSectionBorderColor`**. When **off**, tier stroke uses the shape **`borderStyle`** / **`borderColor`** (gradient **`strokeRef`** included). ViewBox padding uses **`max(node border, tier stroke)`**. Palette default **`pyramidSectionBorder: true`**. Visual styling → Pyramid tiers: **Borders between tiers** + outline width/color. **`shape-preview`** pyramid uses the same darker hue-matched tier stroke. **`multiplyLightnessOfColor`** in **`color-shift.ts`**. Patch bumped.
+
+
 ### 2026-05-15 – **Ring chart** palette default: uniform band (**10** vb), **radial offset 0**, **shadow on**
 
 **`defaultRingChartSpec`**: **`shadow: true`** (SVG **`feDropShadow`** in **`RingChartShape`**); **`DEFAULT_RING_THICKNESS`** **10**, all **`ringRadialOffset: 0`**. Patch bumped.
@@ -18,9 +28,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 **`theme-manager.applyThemeToItem`**: for **`kind: 'ring'`**, stamps **`sliceOutlineColor`** per series row with **`shiftHueOfColor(borderBase, rowHue)`** (same step as segment fills) and sets chart **`sliceBorderColor`** to the themed border base; clears those when themed **`borderStyle`** is **`none`**. **`RingChartShape`**: outline width falls back to **0** when the node border is off (no more **`0.25`** vb minimum unless **`sliceBorderWidth`** is set); **`strokeDasharray`** on slice strokes when **`borderStyle === 'dotted'`** (every segment). **`shape-preview`** ring matches outline width + dotted dash. Patch bumped.
 
 
-### 2026-05-15 – Pyramid: **per-segment stroke** matches fill (theme hue, etc.)
+### 2026-05-15 – Pyramid: ~~per-segment stroke matches fill~~ **superseded** — see **tier borders** note above
 
-Tier **`<polygon>`** strokes use each tier’s resolved **`fillPaint`** (theme-hue, solid, gradient `url(...)`) instead of a single shape **`borderColor`**. **`fillStyle: none`** tiers still use the global border paint. **`ShapePreview`** pyramid tiers use the same shifted hue for stroke per tier. Patch bumped.
+Historic attempt set tier **`stroke`** equal to **`fillPaint`**, which hid seams; current behavior uses **`pyramidSectionBorder`** + hue-matched darker outlines (**`multiplyLightnessOfColor`**).
 
 
 ### 2026-05-15 – Pyramid **theme-hue** step from **Themes** menu only

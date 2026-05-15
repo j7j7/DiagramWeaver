@@ -24,7 +24,11 @@ import {
   timelineBarSectionResolvedVerticalJustify,
   timelineBarSectionThemeHueFill,
 } from "@/lib/timeline-bar";
+import { multiplyLightnessOfColor } from "@/lib/color-shift";
 import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
+
+/** Tier outline vs fill for theme-hue when **pyramidSectionBorder** is on (same hue step as fill). */
+const PYRAMID_THEME_HUE_TIER_OUTLINE_LIGHTNESS_MUL = 0.62;
 
 interface PyramidShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -84,7 +88,8 @@ export function PyramidShape({
   isReadOnly = false,
   ...rest
 }: PyramidShapeProps) {
-  const themeMenuHueStepDeg = useThemeMenuHueStepDeg();
+  /** Themes dropdown → “Step hue for multi-selection” (`THEME_MENU_HUE_STEP_STORAGE_KEY`); pyramid ignores `timelineBarHueStepDeg`. */
+  const themesMenuHueStepDeg = useThemeMenuHueStepDeg();
   const nodeAny = node as unknown as Record<string, unknown>;
   const clipId = useId().replace(/:/g, "");
   const inlineSectionLabelCancelledRef = useRef(false);
@@ -110,13 +115,23 @@ export function PyramidShape({
     enabled: backgroundStyle === "gradient" || borderStyle === "gradient",
   });
 
-  const strokeWidth = borderStyle === "none" ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
-  const half = strokeWidth / 2;
+  const nodeStrokeW = borderStyle === "none" ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
+  /** Shape border **none** → no tier outlines either (`pyramidSectionBorder` ignored). */
+  const pyramidTierStrokeAllowed = borderStyle !== "none";
 
   const w = (node.width ?? VIEWBOX_W) as number;
   const h = (node.height ?? VIEWBOX_H) as number;
 
   const sections = normalizePyramidSections(node);
+  const pyramidSectionBorderOn = pyramidTierStrokeAllowed && nodeAny.pyramidSectionBorder === true;
+  const secBorderW =
+    pyramidSectionBorderOn && sections.length > 0
+      ? Math.max(0.5, Math.min(4, Number(nodeAny.pyramidSectionBorderWidth) || 1))
+      : 0;
+  const tierStrokeWidth = pyramidSectionBorderOn && secBorderW > 0 ? secBorderW : nodeStrokeW;
+  const secBorderColor = String(nodeAny.pyramidSectionBorderColor || "#ffffff");
+  const half = Math.max(nodeStrokeW, tierStrokeWidth) / 2;
+
   const sizing = ((nodeAny.pyramidSizing as string) || "equal") as PyramidSizing;
   const gapPx = typeof nodeAny.pyramidSegmentGap === "number" ? (nodeAny.pyramidSegmentGap as number) : 2;
   const direction = ((nodeAny.pyramidDirection as string) === "narrow-at-bottom"
@@ -143,8 +158,9 @@ export function PyramidShape({
 
   const heights = pyramidTierHeights(innerHb, gapPx, sections, sizing);
 
-  const vbW = w + strokeWidth;
-  const vbH = h + strokeWidth;
+  const vbPad = Math.max(nodeStrokeW, tierStrokeWidth);
+  const vbW = w + vbPad;
+  const vbH = h + vbPad;
 
   const textCol = String(nodeAny.textColor || "#111827");
 
@@ -325,26 +341,35 @@ export function PyramidShape({
           } else if (fs === "gradient") {
             fillPaint = `url(#${clipId}-sg-${i})`;
           } else if (fs === "theme-hue") {
-            fillPaint = timelineBarSectionThemeHueFill(node, sections, i, themeMenuHueStepDeg);
+            fillPaint = timelineBarSectionThemeHueFill(node, sections, i, themesMenuHueStepDeg);
           } else {
             fillPaint = String(seg.fill ?? "#6b7280");
           }
-          const segStroke =
-            strokeWidth <= 0
-              ? "none"
-              : fs === "none"
-                ? strokePaint === "none"
-                  ? "transparent"
-                  : strokePaint
-                : fillPaint;
+          let segStroke: string;
+          if (tierStrokeWidth <= 0) {
+            segStroke = "none";
+          } else if (fs === "none") {
+            segStroke = strokePaint === "none" ? "transparent" : strokePaint;
+          } else if (pyramidSectionBorderOn) {
+            if (fs === "theme-hue") {
+              segStroke = multiplyLightnessOfColor(fillPaint, PYRAMID_THEME_HUE_TIER_OUTLINE_LIGHTNESS_MUL);
+            } else if (fs === "gradient") {
+              segStroke = secBorderColor;
+            } else {
+              segStroke = secBorderColor;
+            }
+          } else {
+            segStroke = strokePaint === "none" ? "transparent" : strokePaint;
+          }
+          const tierDasharray = pyramidSectionBorderOn ? undefined : strokeDasharray;
           return (
             <polygon
               key={seg.id || i}
               points={trapezoidPoints(cx, innerW, tier.yBottom, tier.yTop, tier.wBottomFrac, tier.wTopFrac)}
               fill={fillPaint}
               stroke={segStroke}
-              strokeWidth={strokeWidth}
-              strokeDasharray={strokeDasharray}
+              strokeWidth={tierStrokeWidth}
+              strokeDasharray={tierDasharray}
               vectorEffect="non-scaling-stroke"
               strokeLinejoin="miter"
             />
