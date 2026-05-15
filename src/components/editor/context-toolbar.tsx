@@ -1245,6 +1245,7 @@ export function ContextToolbar({
       backgroundStyle: undefined,
       backgroundColor: undefined,
       backgroundColors: undefined,
+      meshGradientPoints: undefined,
       gradientAngle: undefined,
       shadow: undefined,
       borderWidth: undefined,
@@ -2234,6 +2235,7 @@ export function ContextToolbar({
                   styling={getCurrentVisualStyling}
                   onStylingChange={handleVisualStylingChange}
                   onReset={handleVisualStylingReset}
+                  onClose={() => handleVisualStylingOpenChange(false)}
                   selectedItemIds={selectedItemIds}
                   tag={(selectedItem as any)?.tag}
                   tagPosition={(selectedItem as any)?.tagPosition}

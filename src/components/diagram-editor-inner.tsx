@@ -379,6 +379,8 @@ export function DiagramEditorInner({
     }
   }, [presentationSnapshotsCollapsed]);
 
+  const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
+
   const { start, isOpen: tutorialOpen, steps: tutorialSteps, currentIndex: tutorialStepIndex } = useTutorial();
 
   const handleTopBarFitToView = React.useCallback(() => {
@@ -576,6 +578,7 @@ export function DiagramEditorInner({
                     }}
                     onToggleScratchPad={() => setScratchPadOpen(!scratchPadOpen)}
                     scratchPadOpen={scratchPadOpen}
+                    onVisualStylingPanelOpenChange={setVisualStylingPanelOpen}
                     onToggleRulesEditor={() => setRulesEditorOpen(true)}
                     onRulesEditorOpenChange={setRulesEditorOpen}
                     rulesEditorOpen={rulesEditorOpen}
@@ -762,6 +765,7 @@ export function DiagramEditorInner({
                     onOpenZOrderList={openZOrderList}
                     wheelZoomSuppressed={zOrderListModal.open}
                     showDotGrid={!presentationPlayerOpen}
+                    visualStylingPanelOpen={visualStylingPanelOpen}
                     />
                   </div>
 

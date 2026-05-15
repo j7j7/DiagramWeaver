@@ -11,6 +11,7 @@ const VISUAL_COLOR_KEYS = [
   'frostedTransparency',
   'frostedPerlinNoise',
   'gradientAngle',
+  'meshGradientPoints',
   'borderColor',
   'borderColors',
   'borderStyle',
@@ -97,6 +98,7 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
 function hasGradientPaint(f: Record<string, unknown>): boolean {
   return (
     f.backgroundStyle === 'gradient' ||
+    f.backgroundStyle === 'mesh_gradient' ||
     f.borderStyle === 'gradient' ||
     f.backgroundStyle === 'frosted' ||
     f.progressFillStyle === 'gradient'

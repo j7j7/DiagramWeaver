@@ -436,6 +436,14 @@ export function TopMenuBar({
   const [viewerUrlDialogOpen, setViewerUrlDialogOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
+
+  const handleVisualStylingPanelOpenChange = React.useCallback(
+    (open: boolean) => {
+      setVisualStylingPanelOpen(open);
+      onVisualStylingPanelOpenChange?.(open);
+    },
+    [onVisualStylingPanelOpenChange],
+  );
   const [lineStylingPanelOpen, setLineStylingPanelOpen] = React.useState(false);
   const [connectionSettingsPanelOpen, setConnectionSettingsPanelOpen] = React.useState(false);
 
@@ -1324,7 +1332,7 @@ export function TopMenuBar({
             lineStylingPanelOpen={lineStylingPanelOpen}
             connectionSettingsPanelOpen={connectionSettingsPanelOpen}
             onTextStylingPanelOpenChange={setTextStylingPanelOpen}
-            onVisualStylingPanelOpenChange={setVisualStylingPanelOpen}
+            onVisualStylingPanelOpenChange={handleVisualStylingPanelOpenChange}
             onLineStylingPanelOpenChange={setLineStylingPanelOpen}
             onConnectionSettingsPanelOpenChange={setConnectionSettingsPanelOpen}
             isReadOnly={isReadOnly}

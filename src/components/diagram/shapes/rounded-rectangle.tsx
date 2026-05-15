@@ -1,13 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useId, useMemo } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
+import { normalizeMeshGradientPoints, roundedRectangleMeshGradientSvg } from "@/lib/mesh-gradient";
 
 interface RoundedRectangleShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
+  /** When true (editor, single-selected), draw numbered markers at mesh hub positions. */
+  showMeshGradientHubIndicators?: boolean;
   tag?: string;
   tagPosition?: string;
   isEditingTag: boolean;
@@ -29,7 +32,8 @@ const VIEWBOX_W = 80;
 const VIEWBOX_H = 50;
 
 export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
-  const { node } = props;
+  const { showMeshGradientHubIndicators = false, ...svgShapeRest } = props;
+  const { node } = svgShapeRest;
   const nodeAny = node as any;
 
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || "#6b7280"];
@@ -38,6 +42,7 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
   const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
   const backgroundStyle = nodeAny.backgroundStyle || "solid";
   const borderStyle = nodeAny.borderStyle || "solid";
+  const isMesh = backgroundStyle === "mesh_gradient";
 
   const strokeWidth = borderStyle === "none" ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
   const half = strokeWidth / 2;
@@ -68,9 +73,61 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
   const strokeColor = borderStyle === "gradient" ? strokeRef : (nodeAny.borderColor || "#6b7280");
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
 
+  const meshUidBase = `dw-rr-${useId().replace(/:/g, "")}`;
+  const meshPaint = useMemo(() => {
+    if (!isMesh) return { defs: null as React.ReactNode, fillClipGroup: null as React.ReactNode };
+    const baseCol = nodeAny.backgroundColor || "#6b7280";
+    return roundedRectangleMeshGradientSvg({
+      uidBase: meshUidBase,
+      innerX: half,
+      innerY: half,
+      innerW: w,
+      innerH: h,
+      rx,
+      ry,
+      baseColor: baseCol,
+      points: nodeAny.meshGradientPoints,
+    });
+  }, [isMesh, meshUidBase, half, w, h, rx, ry, nodeAny.backgroundColor, nodeAny.meshGradientPoints]);
+
+  const meshHubMarkers =
+    isMesh && showMeshGradientHubIndicators ? (
+      <g pointerEvents="none" aria-hidden>
+        {normalizeMeshGradientPoints(nodeAny.meshGradientPoints, nodeAny.backgroundColor || "#6b7280").map(
+          (p, i) => {
+            const cx = half + (p.xPct / 100) * w;
+            const cy = half + (p.yPct / 100) * h;
+            const outerR = Math.max(3.5, Math.min(w, h) * 0.055);
+            const labelPx = Math.max(5, Math.min(w, h) * 0.09);
+            return (
+              <g key={i}>
+                <circle cx={cx} cy={cy} r={outerR} fill="white" stroke="#0f172a" strokeWidth={1.25} opacity={0.95} />
+                <circle cx={cx} cy={cy} r={outerR * 0.42} fill={p.color} opacity={0.9} />
+                <text
+                  x={cx}
+                  y={cy}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="#0f172a"
+                  fontSize={labelPx}
+                  fontWeight={700}
+                  stroke="white"
+                  strokeWidth={labelPx * 0.14}
+                  paintOrder="stroke fill"
+                  style={{ userSelect: "none" }}
+                >
+                  {i + 1}
+                </text>
+              </g>
+            );
+          },
+        )}
+      </g>
+    ) : null;
+
   return (
     <SvgShapeBase
-      {...props}
+      {...svgShapeRest}
       defaultWidth={VIEWBOX_W}
       defaultHeight={VIEWBOX_H}
       viewBox={`0 0 ${vbW} ${vbH}`}
@@ -78,19 +135,40 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
       svgContent={
         <>
           {defs}
-          <rect
-            x={half}
-            y={half}
-            width={w}
-            height={h}
-            rx={rx}
-            ry={ry}
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            strokeDasharray={strokeDasharray}
-            {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
-          />
+          {meshPaint.defs}
+          {isMesh ? (
+            <>
+              {meshPaint.fillClipGroup}
+              <rect
+                x={half}
+                y={half}
+                width={w}
+                height={h}
+                rx={rx}
+                ry={ry}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                strokeDasharray={strokeDasharray}
+                {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
+              />
+              {meshHubMarkers}
+            </>
+          ) : (
+            <rect
+              x={half}
+              y={half}
+              width={w}
+              height={h}
+              rx={rx}
+              ry={ry}
+              fill={fillColor}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray={strokeDasharray}
+              {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
+            />
+          )}
         </>
       }
     />

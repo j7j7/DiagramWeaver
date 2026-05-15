@@ -13,7 +13,7 @@ export type SelectedItem = (
       backgroundColor?: string;
       borderStyle?: "solid" | "dotted" | "gradient" | "none";
       borderColors?: string[];
-      backgroundStyle?: "solid" | "gradient" | "frosted" | "none";
+      backgroundStyle?: "solid" | "gradient" | "frosted" | "none" | "mesh_gradient";
       backgroundColors?: string[];
       frostedDiffusion?: number;
       frostedTransparency?: number;

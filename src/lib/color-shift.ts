@@ -111,32 +111,84 @@ function toHex8(r: number, g: number, b: number, a: number): string {
   return `#${h(clampByte(r))}${h(clampByte(g))}${h(clampByte(b))}${h(ai)}`;
 }
 
+function parseColorToRgbChannels(trimmed: string): { r: number; g: number; b: number; a?: number } | null {
+  if (trimmed.startsWith("#")) {
+    return hexToRgb(trimmed);
+  }
+  if (trimmed.toLowerCase().startsWith("rgb")) {
+    return rgbFnToRgb(trimmed);
+  }
+  return null;
+}
+
+function hslToHexWithAlpha(h: number, s: number, l: number, a?: number): string {
+  const [nr, ng, nb] = hslToRgb(h, s, l);
+  if (a !== undefined && a < 1) {
+    return toHex8(nr, ng, nb, a);
+  }
+  return toHex6(nr, ng, nb);
+}
+
+/**
+ * Three mesh hub colours: **uniform random hue** on [0, 360°) (full spectrum), saturation in a vivid range,
+ * HSL lightness capped at `maxHslLightness` (default **0.5**) so hubs stay **not too bright**.
+ * Preserves alpha from `baseColor` when present.
+ */
+export function randomMeshGradientHubColors(
+  baseColor: string,
+  options?: { maxHslLightness?: number; minSaturation?: number },
+): string[] {
+  const maxL = options?.maxHslLightness ?? 0.5;
+  const minS = options?.minSaturation ?? 0.36;
+  const trimmed = baseColor.trim();
+  const rgb = parseColorToRgbChannels(trimmed);
+  const alpha = rgb?.a;
+
+  const pickOne = (): string => {
+    const h2 = Math.random() * 360;
+    const sSpread = Math.max(0.05, 0.97 - minS);
+    const s2 = Math.min(1, minS + Math.random() * sSpread);
+    const lFloor = 0.08;
+    const l2 = lFloor + Math.random() * Math.max(0, maxL - lFloor);
+    return hslToHexWithAlpha(h2, s2, l2, alpha);
+  };
+
+  return [pickOne(), pickOne(), pickOne()];
+}
+
+/** Deterministic fallback hubs: hues ~120° apart around base; lightness capped. */
+export function meshGradientFallbackHubColors(baseColor: string): string[] {
+  const maxL = 0.5;
+  const trimmed = baseColor.trim();
+  const rgb = parseColorToRgbChannels(trimmed);
+  if (!rgb) {
+    return [
+      hslToHexWithAlpha(328, 0.62, 0.42),
+      hslToHexWithAlpha(142, 0.55, 0.38),
+      hslToHexWithAlpha(38, 0.58, 0.4),
+    ];
+  }
+  const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  const alpha = rgb.a;
+  const hueSteps = [0, 131, 262];
+  return hueSteps.map((step) => {
+    const h2 = (h + step + 360) % 360;
+    const s2 = Math.min(1, Math.max(0.38, s * 0.72 + 0.2));
+    const l2 = Math.min(Math.max(0.12, l), maxL);
+    return hslToHexWithAlpha(h2, s2, l2, alpha);
+  });
+}
+
 /** Degrees to add to hue (wraps). */
 export function shiftHueOfColor(input: string, deltaDegrees: number): string {
   if (!Number.isFinite(deltaDegrees) || deltaDegrees === 0) return input;
   const trimmed = input.trim();
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  let a: number | undefined;
-
-  if (trimmed.startsWith("#")) {
-    const hx = hexToRgb(trimmed);
-    if (!hx) return input;
-    r = hx.r;
-    g = hx.g;
-    b = hx.b;
-    a = hx.a;
-  } else if (trimmed.toLowerCase().startsWith("rgb")) {
-    const rgb = rgbFnToRgb(trimmed);
-    if (!rgb) return input;
-    r = rgb.r;
-    g = rgb.g;
-    b = rgb.b;
-    a = rgb.a;
-  } else {
-    return input;
-  }
+  const rgb = parseColorToRgbChannels(trimmed);
+  if (!rgb) return input;
+  const r = rgb.r;
+  const g = rgb.g;
+  const b = rgb.b;
+  const a = rgb.a;
 
   const { h, s, l } = rgbToHsl(r, g, b);
   const [nr, ng, nb] = hslToRgb(h + deltaDegrees, s, l);
@@ -153,28 +205,12 @@ export function shiftHueOfColor(input: string, deltaDegrees: number): string {
 export function multiplyLightnessOfColor(input: string, factor: number): string {
   if (!Number.isFinite(factor)) return input;
   const trimmed = input.trim();
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  let a: number | undefined;
-
-  if (trimmed.startsWith("#")) {
-    const hx = hexToRgb(trimmed);
-    if (!hx) return input;
-    r = hx.r;
-    g = hx.g;
-    b = hx.b;
-    a = hx.a;
-  } else if (trimmed.toLowerCase().startsWith("rgb")) {
-    const rgb = rgbFnToRgb(trimmed);
-    if (!rgb) return input;
-    r = rgb.r;
-    g = rgb.g;
-    b = rgb.b;
-    a = rgb.a;
-  } else {
-    return input;
-  }
+  const rgb = parseColorToRgbChannels(trimmed);
+  if (!rgb) return input;
+  const r = rgb.r;
+  const g = rgb.g;
+  const b = rgb.b;
+  const a = rgb.a;
 
   const { h, s, l } = rgbToHsl(r, g, b);
   const l2 = Math.max(0, Math.min(1, l * factor));

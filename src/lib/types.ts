@@ -257,6 +257,15 @@ export type DiagramCompositeBodyShapeKind = (typeof DIAGRAM_COMPOSITE_BODY_SHAPE
 export type PyramidSizing = "equal" | "weighted";
 export type PyramidDirection = "narrow-at-top" | "narrow-at-bottom";
 
+/** Hub for `backgroundStyle: 'mesh_gradient'` (rounded rectangle / mind-map rounded body). */
+export interface MeshGradientPoint {
+  /** 0–100, relative to fill box width. */
+  xPct: number;
+  /** 0–100, relative to fill box height. */
+  yPct: number;
+  color: string;
+}
+
 export interface DiagramNodeData {
   id: string;
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
@@ -284,8 +293,10 @@ export interface DiagramNodeData {
   textColor?: string; // Text color for label nodes
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style for label/textbox/shape nodes
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style for label/textbox/shape nodes
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none' | 'mesh_gradient'; // Background style for label/textbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  /** When `backgroundStyle` is `mesh_gradient`: three radial colour hubs (% positions in the fill box). */
+  meshGradientPoints?: MeshGradientPoint[];
   /** `backgroundStyle: 'frosted'`: 0 = sharp, 1 = heavy blur (backdrop diffusion). */
   frostedDiffusion?: number;
   /** `backgroundStyle: 'frosted'`: 0 = fully transparent, 1 = more opaque (see-through of content below). */
@@ -621,9 +632,10 @@ export interface TimelineEntryData {
   t?: number;
   label?: string;
   richLabel?: RichTextRun[];
-  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none';
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none' | 'mesh_gradient';
   backgroundColor?: string;
   backgroundColors?: string[];
+  meshGradientPoints?: MeshGradientPoint[];
   gradientAngle?: number;
   frostedDiffusion?: number;
   frostedTransparency?: number;
@@ -763,8 +775,9 @@ export interface DiagramNodeItem {
   textColor?: string; // Text color for label nodes
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style for label/textbox/shape nodes
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style for label/textbox/shape nodes
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none' | 'mesh_gradient'; // Background style for label/textbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  meshGradientPoints?: MeshGradientPoint[];
   frostedDiffusion?: number;
   frostedTransparency?: number;
   frostedPerlinNoise?: number;
@@ -880,7 +893,7 @@ export interface DiagramZoneItem {
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none' | 'mesh_gradient'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   frostedDiffusion?: number;
   frostedTransparency?: number;
@@ -952,7 +965,7 @@ export interface DiagramZoneData {
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none' | 'mesh_gradient'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   frostedDiffusion?: number;
   frostedTransparency?: number;

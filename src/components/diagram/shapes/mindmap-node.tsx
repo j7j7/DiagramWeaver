@@ -38,6 +38,8 @@ interface MindmapNodeShapeProps {
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
   slideColorTransition?: string;
+  /** Editor: mesh gradient hub markers on rounded-rectangle body. */
+  showMeshGradientHubIndicators?: boolean;
 }
 
 export function MindmapNodeShape(props: MindmapNodeShapeProps) {

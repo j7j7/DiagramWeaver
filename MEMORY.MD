@@ -3,6 +3,51 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Mesh gradient Random**: **same row** as Style; Background grid **1 column** unless gradient
+
+**Random** back beside **Style** using **`grid-cols-[minmax(0,1fr)_auto]`** + **`min-w-0`** wrapper on the select. **Background** section outer grid is **`grid-cols-2`** only for **`gradient`** (Direction column); **mesh** / solid / etc. use **`grid-cols-1`** so the style dropdown uses full panel width. Patch bumped.
+
+
+### 2026-05-15 – **Mesh gradient** hub colours: **full hue range**, still capped lightness
+
+**`randomMeshGradientHubColors`**: uniform **H** on **[0,360°)**; **S** roughly **0.36–0.97**; **L** up to **0.5**. **`meshGradientFallbackHubColors`**: ~**120°**-spaced hues around base when repairing invalid data. Patch bumped.
+
+
+### 2026-05-15 – **Mesh gradient**: hub positions **minimum spacing**
+
+**`createRandomMeshGradientPoints`** rejects triplets whose pairwise Euclidean distance in **x%/y%** space is **under 24** (up to 120 tries), then uses **stratified jitter** zones so hubs stay apart. Patch bumped.
+
+
+### 2026-05-15 – **Mesh gradient**: **Random** hub positions + colours (Visual styling)
+
+**Background → Style** row: **`Random`** outline button (shuffle icon) when **Mesh gradient** + rounded rectangle; re-seeds **`meshGradientPoints`** via **`createRandomMeshGradientPoints`** (current base fill). Patch bumped.
+
+
+### 2026-05-15 – **Mesh gradient**: first-time **dark base** + hub hues / lightness
+
+First switch to **`mesh_gradient`** (no existing **`meshGradientPoints`**) sets **Base fill** to **`#6b57b2`** (**`MESH_GRADIENT_INITIAL_BASE_COLOR`**). **`randomMeshGradientHubColors`** (**`color-shift.ts`**) picks three hub colours with **uniform random hue** on the full circle and **HSL lightness ≤ 0.5**. **`meshGradientFallbackHubColors`** for **`normalizeMeshGradientPoints`**. Patch bumped.
+
+
+### 2026-05-15 – **Ring chart**: Visual styling **Glow** follows **donut** (not node frame)
+
+**`isHighlightPulseShapeSilhouetteType`**: **`generic.chart.ring`** (and `*.chart.ring`) uses **silhouette** highlight like circles — **`getHighlightAnimStyleForNode`** **`pulseFollowsShapeSilhouette`** so **`drop-shadow` / dual-layer alpha glow** applies on the inner **`renderShape()`** wrapper and tracks SVG segment alpha (no rectangular **`box-shadow`** filling the hole). Patch bumped.
+
+
+### 2026-05-15 – **Mesh gradient** hub markers only when **Visual styling** panel is open
+
+Canvas **`visualStylingPanelOpen`** lifted via **`TopMenuBar` → `DiagramEditorInner` → `EditorCanvas` → `DiagramNode`**; markers require panel open + single-select + mesh. **`TopMenuBar`** notifies parent on open/close. **`VisualStylingPanel`** in **`context-toolbar`** gets **`onClose`** so **X** clears parent flag. Patch bumped.
+
+
+### 2026-05-15 – **Mesh gradient**: hub markers on canvas + **X/Y sliders** in Visual styling
+
+Single-selected rounded rectangles (and mind-map rounded bodies) with **`mesh_gradient`** show **numbered 1–3** SVG markers at hub **`xPct`/`yPct`** (editor only). Panel uses **sliders** (0–100) for horizontal/vertical position. Patch bumped.
+
+
+### 2026-05-15 – **Rounded rectangle**: **Mesh gradient** fill (`mesh_gradient`)
+
+**`backgroundStyle: 'mesh_gradient'`** with **`meshGradientPoints`**: three **`{ xPct, yPct, color }`** hubs (0–100% inside the fill box). **Visual styling → Background**: option for rounded rectangles and mind-map nodes (rounded body uses **`RoundedRectangleShape`**). First selection seeds random **`xPct`/`yPct`** (inset) and **`shiftHueOfColor`** hubs at **+0° / +120° / +240°** from **Base fill**; SVG stacks radial fades with **multiply** vs **screen** from base luminance (**`mesh-gradient.tsx`**). **`slide-visual-color`** treats mesh like gradients for crossfade. Visual styling **Reset** clears **`meshGradientPoints`**. Patch bumped.
+
+
 ### 2026-05-15 – **Timeline bar** orientation toggle: **swap width/height** + **vertical axis labels** uncropped
 
 **`augmentTimelineBarOrientationPatch`** (`timeline-bar.ts`): when **`timelineBarOrientation`** flips horizontal↔vertical, patches **`width`/`height`** like segmented rectangles (**`context-toolbar`** **`handleVisualStylingChange`** chains segmented patch → timeline patch per node; **scratch pad** Visual tab same). **`TimelineBarShape`**: vertical axis uses **`textAnchor="start"`** at **`verticalAxisLabelX`** (inner-left tick band) and **`markerTailX`** ≥ stroke inset; **`svgOverflowVisible`** when vertical so rare glyph spill isn’t clipped. Patch bumped.

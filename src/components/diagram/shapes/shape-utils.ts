@@ -579,6 +579,8 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
       ? 'transparent'
       : backgroundStyle === 'gradient'
         ? getGradientWithAngle(backgroundColors, gradientAngle)
+        : backgroundStyle === 'mesh_gradient'
+          ? backgroundColor
         : backgroundStyle === 'none'
           ? 'transparent'
           : backgroundColor,
@@ -594,6 +596,8 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
         ? 'transparent'
         : backgroundStyle === 'gradient'
           ? backgroundColors[0]
+          : backgroundStyle === 'mesh_gradient'
+            ? backgroundColor
           : backgroundStyle === 'none'
             ? 'transparent'
             : backgroundColor,
@@ -610,6 +614,7 @@ export function getShapeSvgFill(
 ): string {
   if (backgroundStyle === 'frosted') return 'transparent';
   if (backgroundStyle === 'gradient') return gradientFillRef;
+  if (backgroundStyle === 'mesh_gradient') return solidColor || solidFallback;
   if (backgroundStyle === 'none') return 'transparent';
   return solidColor || solidFallback;
 }

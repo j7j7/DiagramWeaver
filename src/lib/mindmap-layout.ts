@@ -294,6 +294,7 @@ function mindmapHueDrivingVisualChanged(before: DiagramNodeData, after: DiagramN
     "backgroundColor",
     "backgroundColors",
     "backgroundStyle",
+    "meshGradientPoints",
     "borderColor",
     "borderColors",
     "borderStyle",

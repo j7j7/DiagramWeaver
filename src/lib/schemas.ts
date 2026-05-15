@@ -17,6 +17,13 @@ const RichTextRunSchema = z.object({
   lineFontFamily: z.string().optional(),
 });
 
+const DiagramBackgroundStyleSchema = z.enum(["solid", "gradient", "frosted", "none", "mesh_gradient"]);
+const MeshGradientPointSchema = z.object({
+  xPct: z.number().min(0).max(100),
+  yPct: z.number().min(0).max(100),
+  color: z.string(),
+});
+
 const CustomImageCropSchema = z.object({
   x: z.number().min(-300).max(300),
   y: z.number().min(-300).max(300),
@@ -200,9 +207,10 @@ export const TimelineEntryDataSchema = z.object({
   t: z.number().optional(),
   label: z.string().optional(),
   richLabel: z.array(RichTextRunSchema).optional(),
-  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(),
+  backgroundStyle: DiagramBackgroundStyleSchema.optional(),
   backgroundColor: z.string().optional(),
   backgroundColors: z.array(z.string()).optional(),
+  meshGradientPoints: z.tuple([MeshGradientPointSchema, MeshGradientPointSchema, MeshGradientPointSchema]).optional(),
   gradientAngle: z.number().optional(),
   frostedDiffusion: z.number().min(0).max(1).optional(),
   frostedTransparency: z.number().min(0).max(1).optional(),
@@ -295,8 +303,9 @@ export const DiagramNodeDataSchema = z.object({
   textColor: z.string().optional(), // Text color for label nodes
   borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style for label/textbox/shape nodes
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(), // Background style for label/textbox/shape nodes
+  backgroundStyle: DiagramBackgroundStyleSchema.optional(), // Background style for label/textbox/shape nodes
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
+  meshGradientPoints: z.tuple([MeshGradientPointSchema, MeshGradientPointSchema, MeshGradientPointSchema]).optional(),
   frostedDiffusion: z.number().min(0).max(1).optional(),
   frostedTransparency: z.number().min(0).max(1).optional(),
   frostedPerlinNoise: z.number().min(0).max(10).optional(),
@@ -552,7 +561,7 @@ export const DiagramGroupDataSchema = z.object({
   backgroundColor: z.string().optional(),
   borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(),
   borderColors: z.array(z.string()).optional(), // [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(),
+  backgroundStyle: DiagramBackgroundStyleSchema.optional(),
   backgroundColors: z.array(z.string()).optional(), // [startColor, endColor]
   frostedDiffusion: z.number().min(0).max(1).optional(),
   frostedTransparency: z.number().min(0).max(1).optional(),
@@ -734,8 +743,9 @@ export const DiagramNodeItemSchema = z.object({
   textColor: z.string().optional(), // Text color for label nodes
   borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style for label/textbox/shape nodes
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(), // Background style for label/textbox/shape nodes
+  backgroundStyle: DiagramBackgroundStyleSchema.optional(), // Background style for label/textbox/shape nodes
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
+  meshGradientPoints: z.tuple([MeshGradientPointSchema, MeshGradientPointSchema, MeshGradientPointSchema]).optional(),
   frostedDiffusion: z.number().min(0).max(1).optional(),
   frostedTransparency: z.number().min(0).max(1).optional(),
   frostedPerlinNoise: z.number().min(0).max(10).optional(),
@@ -878,7 +888,7 @@ export const DiagramGroupItemSchema = z.object({
   backgroundColor: z.string().optional(), // Background color (legacy, kept for compatibility)
   borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(), // Background style
+  backgroundStyle: DiagramBackgroundStyleSchema.optional(), // Background style
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
   frostedDiffusion: z.number().min(0).max(1).optional(),
   frostedTransparency: z.number().min(0).max(1).optional(),

@@ -9,13 +9,18 @@ import { Switch } from "@/components/ui/switch";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { VisualStyling, VISUAL_STYLES, getPredefinedVisualStyle, findClosestPredefinedStyle } from "@/lib/visual-styling";
 import {
+  createRandomMeshGradientPoints,
+  MESH_GRADIENT_INITIAL_BASE_COLOR,
+  normalizeMeshGradientPoints,
+} from "@/lib/mesh-gradient";
+import {
   HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC,
   HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
   HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY,
   HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
   highlightGlowApproxHaloPx,
 } from "@/lib/highlight-anim";
-import { ChevronDown, Palette, RotateCcw, X } from "lucide-react";
+import { ChevronDown, Palette, RotateCcw, Shuffle, X } from "lucide-react";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import { Slider } from "@/components/ui/slider";
 import Draggable from "react-draggable";
@@ -485,10 +490,29 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         frostedPerlinNoise: styling.frostedPerlinNoise ?? 0,
         backgroundColor: (styling.backgroundColor as string | undefined) || "#f3f4f6",
       });
+    } else if (value === "mesh_gradient") {
+      const existing = styling.meshGradientPoints;
+      const isFirstMeshSetup = !existing || existing.length !== 3;
+      const base = isFirstMeshSetup
+        ? MESH_GRADIENT_INITIAL_BASE_COLOR
+        : ((styling.backgroundColor as string | undefined) || MESH_GRADIENT_INITIAL_BASE_COLOR);
+      const points =
+        existing && existing.length === 3 ? existing : createRandomMeshGradientPoints(base);
+      onStylingChange({
+        backgroundStyle: "mesh_gradient" as const,
+        meshGradientPoints: points,
+        backgroundColor: base,
+      });
     } else {
       handlePropertyChange("backgroundStyle", value as "solid" | "gradient" | "none", true);
     }
   };
+
+  const handleRandomizeMeshGradient = useCallback(() => {
+    const base =
+      (styling.backgroundColor as string | undefined) || MESH_GRADIENT_INITIAL_BASE_COLOR;
+    handlePropertyChange("meshGradientPoints", createRandomMeshGradientPoints(base), true);
+  }, [styling.backgroundColor, handlePropertyChange]);
 
   const handleReset = () => {
     if (onReset) {
@@ -778,23 +802,57 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               </StylingAccordionSection>
 
               <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Background" dotClassName="bg-emerald-500" outerClassName="border-emerald-200/50 bg-emerald-50/50">
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <div className="space-y-1">
+                <div
+                  className={cn(
+                    "mb-2 grid gap-2",
+                    styling.backgroundStyle === "gradient" ? "grid-cols-2" : "grid-cols-1",
+                  )}
+                >
+                  <div className="min-w-0 space-y-1">
                     <Label className="text-sm text-muted-foreground">Style</Label>
-                    <Select
-                      value={styling.backgroundStyle || 'solid'}
-                      onValueChange={handleBackgroundStyleSelect}
+                    <div
+                      className={cn(
+                        "items-center gap-2",
+                        styling.backgroundStyle === "mesh_gradient" && isRoundedRectangle
+                          ? "grid grid-cols-[minmax(0,1fr)_auto]"
+                          : "grid grid-cols-1",
+                      )}
                     >
-                      <SelectTrigger className="h-9 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="z-[70]">
-                        <SelectItem value="none" className="text-sm">None</SelectItem>
-                        <SelectItem value="solid" className="text-sm">Solid</SelectItem>
-                        <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
-                        <SelectItem value="frosted" className="text-sm">Frosted glass</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <div className="min-w-0">
+                        <Select
+                          value={styling.backgroundStyle || 'solid'}
+                          onValueChange={handleBackgroundStyleSelect}
+                        >
+                          <SelectTrigger className="h-9 w-full min-w-0 text-sm [&>span]:min-w-0 [&>span]:truncate [&>span]:block [&>span]:text-left">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="z-[70]">
+                            <SelectItem value="none" className="text-sm">None</SelectItem>
+                            <SelectItem value="solid" className="text-sm">Solid</SelectItem>
+                            <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
+                            {isRoundedRectangle ? (
+                              <SelectItem value="mesh_gradient" className="text-sm">
+                                Mesh gradient
+                              </SelectItem>
+                            ) : null}
+                            <SelectItem value="frosted" className="text-sm">Frosted glass</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {styling.backgroundStyle === "mesh_gradient" && isRoundedRectangle ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 shrink-0 gap-1 px-2.5"
+                          onClick={handleRandomizeMeshGradient}
+                          title="Randomize hub positions and colours"
+                        >
+                          <Shuffle className="h-3.5 w-3.5 shrink-0" />
+                          Random
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                   {styling.backgroundStyle === 'gradient' && (
                     <GradientAnglePicker
@@ -804,6 +862,103 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     />
                   )}
                 </div>
+                {styling.backgroundStyle === 'mesh_gradient' && isRoundedRectangle ? (
+                  <div className="space-y-3 mb-2">
+                    <div className="space-y-1">
+                      <Label className="text-sm text-muted-foreground">Base fill</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Underpaint for the mesh; hub colours are multiplied or screened on top for contrast.
+                        With Visual styling open and the shape selected, numbered markers (1–3) appear at each hub’s position.
+                      </p>
+                      <ColorPicker
+                        value={styling.backgroundColor || '#f3f4f6'}
+                        onChange={(value) => handlePropertyChange('backgroundColor', value, true)}
+                        placeholder="#f3f4f6"
+                        showAlpha={true}
+                        allowTransparent={true}
+                      />
+                    </div>
+                    {normalizeMeshGradientPoints(
+                      styling.meshGradientPoints,
+                      styling.backgroundColor || '#f3f4f6',
+                    ).map((pt, idx) => (
+                      <div key={idx} className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                        <Label className="text-xs font-medium text-foreground">Hub {idx + 1}</Label>
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <Label className="text-xs text-muted-foreground">Horizontal (X %)</Label>
+                              <span className="w-9 tabular-nums text-right text-xs text-muted-foreground">
+                                {Math.round(pt.xPct)}
+                              </span>
+                            </div>
+                            <Slider
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={[Math.min(100, Math.max(0, Math.round(pt.xPct)))]}
+                              onValueChange={([v]) => {
+                                const meshPts = normalizeMeshGradientPoints(
+                                  styling.meshGradientPoints,
+                                  styling.backgroundColor || '#f3f4f6',
+                                );
+                                const next = meshPts.map((p, i) =>
+                                  i === idx ? { ...p, xPct: v } : p,
+                                );
+                                handlePropertyChange('meshGradientPoints', next, true);
+                              }}
+                              className="w-full"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <Label className="text-xs text-muted-foreground">Vertical (Y %)</Label>
+                              <span className="w-9 tabular-nums text-right text-xs text-muted-foreground">
+                                {Math.round(pt.yPct)}
+                              </span>
+                            </div>
+                            <Slider
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={[Math.min(100, Math.max(0, Math.round(pt.yPct)))]}
+                              onValueChange={([v]) => {
+                                const meshPts = normalizeMeshGradientPoints(
+                                  styling.meshGradientPoints,
+                                  styling.backgroundColor || '#f3f4f6',
+                                );
+                                const next = meshPts.map((p, i) =>
+                                  i === idx ? { ...p, yPct: v } : p,
+                                );
+                                handlePropertyChange('meshGradientPoints', next, true);
+                              }}
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Colour</Label>
+                          <ColorPicker
+                            value={pt.color}
+                            onChange={(value) => {
+                              const meshPts = normalizeMeshGradientPoints(
+                                styling.meshGradientPoints,
+                                styling.backgroundColor || '#f3f4f6',
+                              );
+                              const next = meshPts.map((p, i) =>
+                                i === idx ? { ...p, color: value } : p,
+                              );
+                              handlePropertyChange('meshGradientPoints', next, true);
+                            }}
+                            placeholder="#6b7280"
+                            showAlpha={true}
+                            allowTransparent={true}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 {styling.backgroundStyle === 'frosted' && (
                   <div className="space-y-3 mb-2">
                     <div className="space-y-1">
@@ -856,7 +1011,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     </div>
                   </div>
                 )}
-                {styling.backgroundStyle && styling.backgroundStyle !== 'none' && (
+                {styling.backgroundStyle &&
+                  styling.backgroundStyle !== 'none' &&
+                  styling.backgroundStyle !== 'mesh_gradient' && (
                   <div className="space-y-2">
                     {styling.backgroundStyle === 'gradient' ? (
                       <div className="grid grid-cols-2 gap-2">

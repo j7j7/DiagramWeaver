@@ -60,10 +60,13 @@ export function isMindmapNodeType(type: string | undefined): boolean {
 /**
  * Highlight pulse uses animated `filter: drop-shadow` on the shape subtree so the glow follows
  * painted geometry (SVG alpha). `false` for rectangular box-like objects and connector lines.
- * Timeline bar uses SVG pill geometry (same idea as progress bar) — included so glow is not a plain rectangle.
+ * Ring chart (`generic.chart.ring`) and timeline bar use the same idea so glow is not a plain rectangle.
  */
 export function isHighlightPulseShapeSilhouetteType(type: string | undefined): boolean {
-  if (!type || !type.startsWith('generic.object.')) return false
+  if (!type) return false
+  /** Donut segments are pure SVG alpha; frame `box-shadow` reads as a full rectangle (hole glows). */
+  if (type === 'generic.chart.ring' || type.endsWith('.chart.ring')) return true
+  if (!type.startsWith('generic.object.')) return false
   if (isConnectorLineNodeType(type)) return false
   if (isTimelineNodeType(type)) return false
   if (type === 'generic.object.square' || type.endsWith('.square')) return false

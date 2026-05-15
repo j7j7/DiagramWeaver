@@ -348,6 +348,8 @@ interface DiagramNodeProps {
   onTimelineSpineContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, arcRatio: number) => void;
   /** Mind-map theme-hues: pass all diagram nodes so anchor cascade can resolve fill/border base. */
   diagramNodesForMindmap?: DiagramNodeData[];
+  /** Editor: Visual styling panel open — mesh gradient hub markers use this with selection. */
+  visualStylingPanelOpen?: boolean;
 }
 
 function isProgressBarType(t: string | undefined): boolean {
@@ -498,7 +500,8 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onTimelineEntrySelect === next.onTimelineEntrySelect &&
     prev.onTimelineCardTap === next.onTimelineCardTap &&
     prev.onTimelineEntryContextMenu === next.onTimelineEntryContextMenu &&
-    prev.onTimelineSpineContextMenu === next.onTimelineSpineContextMenu;
+    prev.onTimelineSpineContextMenu === next.onTimelineSpineContextMenu &&
+    prev.visualStylingPanelOpen === next.visualStylingPanelOpen;
 }
 
 function DiagramNodeInner({
@@ -547,6 +550,7 @@ function DiagramNodeInner({
   onTimelineEntryContextMenu,
   onTimelineSpineContextMenu,
   diagramNodesForMindmap,
+  visualStylingPanelOpen = false,
 }: DiagramNodeProps) {
   const timelineSlidePopBase = `dwTlCard${useId().replace(/:/g, "")}`;
   const timelineSegPopInId = `${timelineSlidePopBase}In`;
@@ -825,6 +829,12 @@ function DiagramNodeInner({
   const renderShapeForVisualNode = (visualNode: DiagramNodeData, slideColorTransition?: string) => {
     if (isIconOrEmojiType(node.type)) return null
     const nodeAny = node as any;
+    const showMeshGradientHubIndicators =
+      !isReadOnly &&
+      isSelected &&
+      !isMultiSelected &&
+      visualStylingPanelOpen &&
+      visualNode.backgroundStyle === "mesh_gradient";
     const shapeProps = {
       node: visualNode,
       slideColorTransition,
@@ -891,12 +901,12 @@ function DiagramNodeInner({
       const roundedNode = isDraggingCornerRadius && localCornerRadius !== null
         ? { ...visualNode, cornerRadius: localCornerRadius }
         : visualNode;
-      return <RoundedRectangleShape {...shapeProps} node={roundedNode} />;
+      return <RoundedRectangleShape {...shapeProps} node={roundedNode} showMeshGradientHubIndicators={showMeshGradientHubIndicators} />;
     } else if (nodeType === 'generic.object.mind-map-node' || nodeType?.endsWith('.mind-map-node')) {
       const mmNode = isDraggingCornerRadius && localCornerRadius !== null
         ? { ...visualNode, cornerRadius: localCornerRadius }
         : visualNode;
-      return <MindmapNodeShape {...shapeProps} node={mmNode} allMindmapNodes={diagramNodesForMindmap} />;
+      return <MindmapNodeShape {...shapeProps} node={mmNode} allMindmapNodes={diagramNodesForMindmap} showMeshGradientHubIndicators={showMeshGradientHubIndicators} />;
     } else if (nodeType === 'generic.object.progress-bar' || nodeType?.endsWith('.progress-bar')) {
       return (
         <ProgressBarShape

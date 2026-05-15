@@ -480,6 +480,7 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
             borderColors={itemData.borderColors}
             gradientAngle={itemData.gradientAngle}
             borderGradientAngle={itemData.borderGradientAngle}
+            meshGradientPoints={(itemData as DiagramNodeData).meshGradientPoints}
             label={item.label}
             textColor={itemData.textColor}
             textOutlineWidth={itemData.textOutlineWidth}

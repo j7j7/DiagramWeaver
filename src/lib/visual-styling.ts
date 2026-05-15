@@ -3,6 +3,7 @@ import type {
   DiagramNodeItem,
   DiagramGroupData,
   DiagramGroupItem,
+  MeshGradientPoint,
   PyramidDirection,
   PyramidSizing,
 } from "./types";
@@ -13,9 +14,11 @@ export interface VisualStyling {
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none';
   borderColor?: string;
   borderColors?: string[]; // For gradient borders [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none';
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none' | 'mesh_gradient';
   backgroundColor?: string;
   backgroundColors?: string[]; // For gradient backgrounds [startColor, endColor]
+  /** Three radial hubs when `backgroundStyle` is `mesh_gradient` (rounded rectangle). */
+  meshGradientPoints?: MeshGradientPoint[];
   /** `frosted`: 0 = sharp, 1 = heavy blur. */
   frostedDiffusion?: number;
   /** `frosted`: 0 = fully transparent, 1 = more opaque. */
@@ -249,6 +252,8 @@ export function getVisualStylingCSS(styling: VisualStyling): React.CSSProperties
     css.opacity = 0.92;
   } else if (styling.backgroundStyle === 'gradient' && styling.backgroundColors) {
     css.background = `linear-gradient(${styling.gradientAngle || 135}deg, ${styling.backgroundColors[0]}, ${styling.backgroundColors[1]})`;
+  } else if (styling.backgroundStyle === 'mesh_gradient') {
+    css.backgroundColor = styling.backgroundColor || '#f3f4f6';
   } else if (styling.backgroundStyle === 'solid') {
     css.backgroundColor = styling.backgroundColor || '#f3f4f6';
   }
@@ -312,6 +317,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     timelineBarAxisLabelFontFamily: (node as any).timelineBarAxisLabelFontFamily,
     headingBackgroundColor: (node as any).headingBackgroundColor,
     headingBackgroundStyle: (node as any).headingBackgroundStyle,
+    meshGradientPoints: (node as any).meshGradientPoints,
     frostedDiffusion: (node as any).frostedDiffusion,
     frostedTransparency: (node as any).frostedTransparency,
     frostedPerlinNoise: (node as any).frostedPerlinNoise,
@@ -482,6 +488,8 @@ export function applyVisualStylingToNode(
       styling.headingBackgroundStyle !== undefined
         ? styling.headingBackgroundStyle
         : (node as any).headingBackgroundStyle,
+    meshGradientPoints:
+      styling.meshGradientPoints !== undefined ? styling.meshGradientPoints : (node as any).meshGradientPoints,
     frostedDiffusion: styling.frostedDiffusion !== undefined ? styling.frostedDiffusion : (node as any).frostedDiffusion,
     frostedTransparency: styling.frostedTransparency !== undefined ? styling.frostedTransparency : (node as any).frostedTransparency,
     frostedPerlinNoise: styling.frostedPerlinNoise !== undefined ? styling.frostedPerlinNoise : (node as any).frostedPerlinNoise,
