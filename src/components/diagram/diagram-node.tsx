@@ -1317,6 +1317,12 @@ function DiagramNodeInner({
     const useDefaultIconBorderClass =
       !nodeAny.noIconBackground && !showCustomIconOutline && !(isSelected || isTargetable);
 
+    const rawIconOpacity = nodeAny.iconOpacity;
+    const iconGlyphOpacity =
+      typeof rawIconOpacity === "number" && Number.isFinite(rawIconOpacity)
+        ? Math.min(1, Math.max(0, rawIconOpacity))
+        : undefined;
+
     return (
       <div className={cn(
         "flex flex-col items-center w-full h-full",
@@ -1356,6 +1362,7 @@ function DiagramNodeInner({
             style={{
               width: icon,
               height: icon,
+              ...(iconGlyphOpacity !== undefined ? { opacity: iconGlyphOpacity } : {}),
               ...(!animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
                 ? { transition: animationStyle.visualColorMergeTransition }
                 : {}),

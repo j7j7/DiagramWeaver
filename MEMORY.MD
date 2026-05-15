@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – Icon / resource nodes: **Icon opacity** in Visual Styling
+
+**`iconOpacity`** (`0`–`1`) on **`DiagramNodeData`**, Zod **`schemas`**, **`visual-styling`** extract/apply, **`slide-visual-color`** (transitions), paste **colour** aspect, and visual reset **`iconOpacity: undefined`**. **`visual-styling-panel`**: slider under icon color / remove-background (all **`showRemoveBackground`** targets: Lucide, emoji, provider resource icons). **`diagram-node`** + **`ResourceIcon`** / **`CustomIconImage`** apply opacity on the glyph. Connection memo keys include **`iconOpacity`** where **`iconColor`** already did. Patch bumped.
+
+
 ### 2026-05-14 – ESLint: `react-hooks/use-memo` in diagram-node line/timeline layout
 
 **`diagram-node.tsx`**: `useMemo` / line-sync `useEffect` dependency arrays no longer use `(node as any).…`, optional chains, or inline **`JSON.stringify`** (forbidden by **`react-hooks/use-memo`** as non-simple expressions). Values are read once into **`nodeLineTimelineSync`** and primitive/string sync fields (**`syncStartPosX`**, **`syncLineControlPointsKey`**, etc.) so **`npm run lint`** has **0 errors** (warnings unchanged). Patch bumped.

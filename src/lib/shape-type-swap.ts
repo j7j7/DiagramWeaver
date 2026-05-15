@@ -215,6 +215,7 @@ function clearIconResourceFields(n: DiagramNodeData): void {
   delete n.iconName;
   delete n.emoji;
   delete n.iconColor;
+  delete (n as DiagramNodeData & { iconOpacity?: unknown }).iconOpacity;
   delete n.imageUrl;
   delete n.imageOptions;
   delete n.noIconBackground;

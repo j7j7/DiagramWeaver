@@ -110,6 +110,7 @@ function positionablesEqual(a: OrthogonalConnectionProps["from"], b: OrthogonalC
     (a as any).borderStyle === (b as any).borderStyle &&
     JSON.stringify((a as any).borderColors) === JSON.stringify((b as any).borderColors) &&
     (a as any).iconColor === (b as any).iconColor &&
+    (a as any).iconOpacity === (b as any).iconOpacity &&
     (a as any).color === (b as any).color &&
     (a as any).nodeSize === (b as any).nodeSize &&
     (a as any).sizeMode === (b as any).sizeMode &&

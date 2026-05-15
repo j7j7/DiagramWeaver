@@ -51,6 +51,8 @@ export interface VisualStyling {
   /** Text box with heading: `gradient` = fade to transparent; `solid` = flat fill */
   headingBackgroundStyle?: 'gradient' | 'solid';
   iconColor?: string; // Color for Lucide icons (context-aware, icons only)
+  /** Icon glyph opacity 0–1 (icons / resource tiles only). */
+  iconOpacity?: number;
   noIconBackground?: boolean; // Remove background from icon/resource nodes
   nodeSize?: 'normal' | 'half' | 'quarter'; // Size mode for nodes and icons
   /** When true, orthogonal connectors do not route around this shape or zone. */
@@ -270,6 +272,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     frostedTransparency: (node as any).frostedTransparency,
     frostedPerlinNoise: (node as any).frostedPerlinNoise,
     iconColor: (node as DiagramNodeData).iconColor,
+    iconOpacity: (node as DiagramNodeData).iconOpacity,
     noIconBackground: (node as any).noIconBackground,
     nodeSize: (node as any).nodeSize,
     highlightAnim: (node as any).highlightAnim,
@@ -386,6 +389,7 @@ export function applyVisualStylingToNode(
     frostedTransparency: styling.frostedTransparency !== undefined ? styling.frostedTransparency : (node as any).frostedTransparency,
     frostedPerlinNoise: styling.frostedPerlinNoise !== undefined ? styling.frostedPerlinNoise : (node as any).frostedPerlinNoise,
     iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor,
+    iconOpacity: styling.iconOpacity !== undefined ? styling.iconOpacity : (node as DiagramNodeData).iconOpacity,
     noIconBackground: styling.noIconBackground !== undefined ? styling.noIconBackground : (node as any).noIconBackground,
     nodeSize: styling.nodeSize !== undefined ? styling.nodeSize : (node as any).nodeSize,
     highlightAnim: styling.highlightAnim !== undefined ? styling.highlightAnim : (node as any).highlightAnim,

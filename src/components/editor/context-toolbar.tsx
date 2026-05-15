@@ -1233,6 +1233,7 @@ export function ContextToolbar({
       shadow: undefined,
       borderWidth: undefined,
       iconColor: undefined,
+      iconOpacity: undefined,
       nodeSize: undefined,
       headingBackgroundColor: undefined,
       headingBackgroundStyle: undefined,

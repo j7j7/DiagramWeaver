@@ -425,6 +425,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         width={props.width}
         height={props.height}
         alt={type}
+        style={props.style}
       />
     );
   }
@@ -443,6 +444,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
           justifyContent: "center",
           width: `${size}px`,
           height: `${size}px`,
+          ...(typeof props.style === "object" && props.style !== null ? props.style : {}),
         }}
       >
         {emoji}
@@ -469,7 +471,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       const emojiChar = emojiMap[slug] || "📌";
       const size = typeof props.width === "number" ? props.width : parseInt(String(props.width || 70), 10) || 70;
       return (
-        <span role="img" aria-label={type} style={{ fontSize: `${size}px`, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: `${size}px`, height: `${size}px` }}>
+        <span role="img" aria-label={type} style={{ fontSize: `${size}px`, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: `${size}px`, height: `${size}px`, ...(typeof props.style === "object" && props.style !== null ? props.style : {}) }}>
           {emojiChar}
         </span>
       );
@@ -517,6 +519,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
           WebkitUserSelect: "none",
           userSelect: "none",
           touchAction: "none",
+          ...(typeof props.style === "object" && props.style !== null ? props.style : {}),
         }}
       />
     );

@@ -478,6 +478,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-5">
           <div className="space-y-4">
           {(isLucideIcon || showRemoveBackground) && (
+            <>
             <div className={`grid gap-4 ${isLucideIcon && showRemoveBackground ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {isLucideIcon && (
                 <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
@@ -506,6 +507,32 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </div>
               )}
             </div>
+            <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm font-semibold text-foreground">Icon opacity</Label>
+                <span className="tabular-nums text-xs text-muted-foreground">
+                  {Math.round(
+                    (typeof styling.iconOpacity === "number" && Number.isFinite(styling.iconOpacity)
+                      ? Math.min(1, Math.max(0, styling.iconOpacity))
+                      : 1) * 100,
+                  )}
+                  %
+                </span>
+              </div>
+              <Slider
+                min={0}
+                max={1}
+                step={0.01}
+                value={[
+                  typeof styling.iconOpacity === "number" && Number.isFinite(styling.iconOpacity)
+                    ? Math.min(1, Math.max(0, styling.iconOpacity))
+                    : 1,
+                ]}
+                onValueChange={([v]) => handlePropertyChange("iconOpacity", v, true)}
+                className="mt-2 w-full"
+              />
+            </div>
+            </>
           )}
 
           {!showFullStyling && (

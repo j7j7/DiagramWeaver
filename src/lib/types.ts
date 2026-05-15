@@ -389,6 +389,8 @@ export interface DiagramNodeData {
   iconName?: string; // Lucide icon name (e.g. 'Home', 'Shield')
   emoji?: string; // Emoji character for emoji icons
   iconColor?: string; // Color for Lucide icons (hex, e.g. '#3b82f6')
+  /** Opacity for the icon glyph only (0–1); omit for fully opaque. */
+  iconOpacity?: number;
   imageUrl?: string; // External image URL for generic.icon.custom nodes (http/https only)
   imageOptions?: CustomImageOptions; // Crop/scale/orientation options for custom icon images
 

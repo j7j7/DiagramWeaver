@@ -18,6 +18,7 @@ const VISUAL_COLOR_KEYS = [
   'textGlowColor',
   'textShadowColor',
   'iconColor',
+  'iconOpacity',
   'lineColor',
   'highlightAnimGlowColor',
   'progressFillStyle',

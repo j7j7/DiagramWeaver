@@ -345,6 +345,7 @@ export const DiagramNodeDataSchema = z.object({
   iconName: z.string().optional(),
   emoji: z.string().optional(),
   iconColor: z.string().optional(), // Color for Lucide icons (hex)
+  iconOpacity: z.number().min(0).max(1).optional(),
   imageUrl: HttpImageUrlSchema.optional(),
   imageOptions: CustomImageOptionsSchema.optional(),
 

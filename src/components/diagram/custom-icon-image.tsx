@@ -12,9 +12,10 @@ interface CustomIconImageProps {
   height?: number | string;
   alt?: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export function CustomIconImage({ imageUrl, imageOptions, width, height, alt = "Custom icon", className }: CustomIconImageProps) {
+export function CustomIconImage({ imageUrl, imageOptions, width, height, alt = "Custom icon", className, style }: CustomIconImageProps) {
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imgFailed, setImgFailed] = useState(false);
@@ -97,7 +98,7 @@ export function CustomIconImage({ imageUrl, imageOptions, width, height, alt = "
     return (
       <div
         className={className}
-        style={containerStyle}
+        style={{ ...containerStyle, ...style }}
       >
         <Loader2 className="w-[50%] h-[50%] text-muted-foreground animate-spin" />
       </div>
@@ -110,7 +111,7 @@ export function CustomIconImage({ imageUrl, imageOptions, width, height, alt = "
       <div
         className={className}
         title={error || "Using fallback icon"}
-        style={containerStyle}
+        style={{ ...containerStyle, ...style }}
       >
         <ImageIcon className="w-[70%] h-[70%] text-muted-foreground" />
       </div>
@@ -131,6 +132,7 @@ export function CustomIconImage({ imageUrl, imageOptions, width, height, alt = "
         ...wrapperStyle,
         ...containerStyle,
         ...suppressNativeImgTouchArtifacts,
+        ...style,
       }}
     >
       <img
