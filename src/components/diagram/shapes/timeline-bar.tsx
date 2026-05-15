@@ -3,10 +3,14 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { DiagramNodeData, RichTextRun, TimelineBarSectionData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientCoordinates, getShapeSvgFill, svgForeignObjectInlineInputStyle } from "./shape-utils";
+import { getGradientCoordinates, getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 import { svgUserPointFromClient } from "@/lib/chart-pointer-geometry";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
+import { labelToRuns, normalizeRuns, getPlainTextFromRuns } from "@/lib/rich-text";
+import { TextboxRichEditor } from "../textbox-rich-editor";
+import { TextboxRichDisplay } from "../textbox-rich-display";
+import { buildSectionLabelRichTextNode } from "@/lib/section-label-rich-node";
 import {
   clampTimelineBarT,
   normalizeTimelineBarAxisLabels,
@@ -89,7 +93,6 @@ export function TimelineBarShape({
   const inlineSectionLabelCancelledRef = useRef(false);
 
   const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
-  const [sectionLabelDraft, setSectionLabelDraft] = useState("");
 
   const backgroundColors = (nodeAny.backgroundColors as string[]) || [(nodeAny.backgroundColor as string) || "#f3f4f6"];
   const borderColors = (nodeAny.borderColors as string[]) || [(nodeAny.borderColor as string) || "#6b7280"];
@@ -273,26 +276,54 @@ export function TimelineBarShape({
     onPatch && sectionLabelInteractionEnabled && !isReadOnly && !isEditingLabel,
   );
 
-  const commitSectionLabelEdit = useCallback(() => {
-    if (inlineSectionLabelCancelledRef.current) {
-      inlineSectionLabelCancelledRef.current = false;
-      return;
-    }
-    if (editingSectionIndex == null || !onPatch) return;
-    const idx = editingSectionIndex;
-    const next = sectionLabelDraft.trim();
-    const prev = (sections[idx]?.label ?? "").trim();
-    if (next !== prev) {
-      const nextSecs = sections.map((s, j) => (j === idx ? { ...s, label: next } : s));
-      onPatch({ timelineBarSections: nextSecs });
-    }
-    setEditingSectionIndex(null);
-  }, [editingSectionIndex, onPatch, sectionLabelDraft, sections]);
+  const handleSectionRichLabelSubmit = useCallback(
+    (plainText: string, runs: RichTextRun[]) => {
+      if (inlineSectionLabelCancelledRef.current) {
+        inlineSectionLabelCancelledRef.current = false;
+        return;
+      }
+      if (editingSectionIndex == null || !onPatch) return;
+      const idx = editingSectionIndex;
+      const norm = normalizeRuns(runs);
+      const nextPlain = plainText.trim();
+      const prevRuns = normalizeRuns(sections[idx].richLabel ?? labelToRuns(sections[idx].label ?? ""));
+      const prevPlain = getPlainTextFromRuns(prevRuns).trim();
+      if (nextPlain !== prevPlain || JSON.stringify(norm) !== JSON.stringify(prevRuns)) {
+        const nextSecs = sections.map((s, j) =>
+          j === idx
+            ? {
+                ...s,
+                label: nextPlain,
+                richLabel: norm.length > 0 ? norm : undefined,
+              }
+            : s,
+        );
+        onPatch({ timelineBarSections: nextSecs });
+      }
+      setEditingSectionIndex(null);
+    },
+    [editingSectionIndex, onPatch, sections],
+  );
 
   const cancelSectionLabelEdit = useCallback(() => {
     inlineSectionLabelCancelledRef.current = true;
     setEditingSectionIndex(null);
   }, []);
+
+  const patchEditingSectionLabelVerticalAlign = useCallback(
+    (position: "top" | "middle" | "bottom") => {
+      if (editingSectionIndex == null || !onPatch) return;
+      const labelsFollowFirst =
+        (nodeAny.timelineBarLabelsFollowFirstSection as boolean | undefined) === true;
+      const targetIdx =
+        labelsFollowFirst && editingSectionIndex > 0 ? 0 : editingSectionIndex;
+      const nextSecs = sections.map((s, j) =>
+        j === targetIdx ? { ...s, labelVerticalAlign: position } : s,
+      );
+      onPatch({ timelineBarSections: nextSecs });
+    },
+    [editingSectionIndex, nodeAny.timelineBarLabelsFollowFirstSection, onPatch, sections],
+  );
 
   useEffect(() => {
     if (editingSectionIndex == null) return;
@@ -427,15 +458,17 @@ export function TimelineBarShape({
       {sections.map((seg: TimelineBarSectionData, i: number) => {
         const wi = widths[i] ?? 0;
         const x0 = half + (starts[i] ?? 0);
-        const lab = (seg.label ?? "").trim();
-        if (!lab) return null;
+        const displayRuns = normalizeRuns(seg.richLabel ?? labelToRuns(seg.label ?? ""));
+        const plainDisplay = getPlainTextFromRuns(displayRuns).trim();
+        if (!plainDisplay) return null;
         const lc = seg.labelColor ? String(seg.labelColor) : textCol;
         const padX = Math.max(2, Math.min(6, wi * 0.04));
         const padY = Math.max(1, Math.min(4, barH * 0.08));
         const foW = Math.max(2, wi - 2 * padX);
         const foH = Math.max(2, barH - 2 * padY);
-        const isEditing = canEditSectionLabel && editingSectionIndex === i;
-        const labelPointer = canEditSectionLabel ? "auto" : "none";
+        const isEditingSection = editingSectionIndex === i;
+        const isEditing = Boolean(onPatch && !isReadOnly && isEditingSection);
+        const labelPointer = canEditSectionLabel || isEditingSection ? "auto" : "none";
         const labelsFollowFirst =
           (nodeAny.timelineBarLabelsFollowFirstSection as boolean | undefined) === true;
         const styleIdx = labelsFollowFirst && i > 0 ? 0 : i;
@@ -465,10 +498,23 @@ export function TimelineBarShape({
             ? nodeAny.letterSpacing
             : undefined;
         const textTransform = ((nodeAny.textTransform as string) || "none") as React.CSSProperties["textTransform"];
-        const opacityStyle =
-          Number(nodeAny.textOpacity) >= 0 && Number(nodeAny.textOpacity) !== 1
-            ? { opacity: Number(nodeAny.textOpacity) }
-            : {};
+        const textVerticalPosition: "top" | "middle" | "bottom" =
+          justifyContent === "flex-start" ? "top" : justifyContent === "flex-end" ? "bottom" : "middle";
+        const sectionTextNode = buildSectionLabelRichTextNode(
+          node,
+          lc,
+          segFontSize,
+          textAlignResolved,
+          fontWeightResolved,
+          fontFamily,
+          fontStyle as DiagramNodeData["fontStyle"],
+          textDecoration as DiagramNodeData["textDecoration"],
+          lineHeightMul,
+          letterSpacingPx,
+          textTransform as DiagramNodeData["textTransform"],
+          textVerticalPosition,
+        );
+        const editRuns = normalizeRuns(seg.richLabel ?? labelToRuns(seg.label ?? ""));
 
         return (
           <g key={`tlab-${seg.id}-${i}`}>
@@ -477,11 +523,11 @@ export function TimelineBarShape({
               y={half + padY}
               width={foW}
               height={foH}
-              style={{ overflow: "hidden", pointerEvents: labelPointer }}
+              style={{ overflow: isEditing ? "visible" : "hidden", pointerEvents: labelPointer }}
             >
               <div
                 className={`flex h-full min-h-0 w-full flex-col ${
-                  canEditSectionLabel ? "cursor-text" : "cursor-default"
+                  canEditSectionLabel || isEditingSection ? "cursor-text" : "cursor-default"
                 }`}
                 style={{ justifyContent }}
                 onPointerDown={(e) => canEditSectionLabel && !isEditing && e.stopPropagation()}
@@ -490,74 +536,44 @@ export function TimelineBarShape({
                   e.stopPropagation();
                   e.preventDefault();
                   setEditingSectionIndex(i);
-                  setSectionLabelDraft(seg.label ?? "");
                 }}
               >
                 {isEditing ? (
-                  <textarea
-                    value={sectionLabelDraft}
-                    autoFocus
-                    aria-label="Edit section label"
-                    className="m-0 box-border min-h-0 w-full flex-1 resize-none bg-transparent shadow-none focus:outline-none focus:ring-0"
-                    style={{
-                      ...svgForeignObjectInlineInputStyle({
-                        fontSize: segFontSize,
-                        fontWeight: fontWeightResolved,
-                        color: lc,
-                        caretColor: lc,
-                        textAlign: textAlignResolved,
-                      }),
-                      minHeight: `${segFontSize * lineHeightMul}px`,
-                      lineHeight: lineHeightMul,
-                      overflow: "auto",
-                      fontFamily,
-                      fontStyle,
-                      textDecoration,
-                      ...(letterSpacingPx !== undefined ? { letterSpacing: `${letterSpacingPx}px` } : {}),
-                      textTransform,
-                      ...opacityStyle,
-                    }}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setSectionLabelDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      e.stopPropagation();
-                      if (e.key === "Escape") {
-                        e.preventDefault();
-                        cancelSectionLabelEdit();
-                      } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                        e.preventDefault();
-                        commitSectionLabelEdit();
-                      }
-                    }}
-                    onBlur={() => commitSectionLabelEdit()}
+                  <div
+                    className="relative min-h-0 w-full flex-1 overflow-visible"
                     onClick={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
                     onDoubleClick={(e) => e.stopPropagation()}
-                  />
-                ) : (
-                  <div
-                    className="min-h-0 w-full overflow-auto"
-                    style={{
-                      ...opacityStyle,
-                      margin: 0,
-                      padding: 2,
-                      boxSizing: "border-box",
-                      fontFamily,
-                      fontSize: segFontSize,
-                      fontWeight: fontWeightResolved,
-                      fontStyle,
-                      textDecoration,
-                      color: lc,
-                      lineHeight: lineHeightMul,
-                      textAlign: textAlignResolved,
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      overflowWrap: "anywhere",
-                      ...(letterSpacingPx !== undefined ? { letterSpacing: `${letterSpacingPx}px` } : {}),
-                      textTransform,
-                    }}
                   >
-                    {lab}
+                    <TextboxRichEditor
+                      key={`tb-edit-${seg.id}-${i}`}
+                      node={sectionTextNode}
+                      runs={editRuns}
+                      onSubmit={handleSectionRichLabelSubmit}
+                      toolbarFixedToViewport
+                      onVerticalAlignChange={patchEditingSectionLabelVerticalAlign}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          cancelSectionLabelEdit();
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="min-h-0 w-full overflow-auto" style={{ padding: 2, boxSizing: "border-box" }}>
+                    <TextboxRichDisplay
+                      node={sectionTextNode}
+                      runs={displayRuns}
+                      suppressHoverBackground
+                      onDoubleClick={(e) => {
+                        if (!canEditSectionLabel) return;
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setEditingSectionIndex(i);
+                      }}
+                    />
                   </div>
                 )}
               </div>

@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Timeline bar** section labels: **rich text** + fixed-viewport toolbar (parity with segmented rectangle)
+
+**`TimelineBarShape`**: per-segment labels use **`TextboxRichDisplay`** / **`TextboxRichEditor`** with **`toolbarFixedToViewport`**, **`buildSectionLabelRichTextNode`**, and commit **`label` + `richLabel`** on **`timelineBarSections`**; toolbar vertical placement patches **`labelVerticalAlign`** (section **0** when **`timelineBarLabelsFollowFirstSection`**). Replaces plain **`textarea`** inline edit. Patch bumped.
+
+
 ### 2026-05-15 – **Segmented rectangle** sections modal: **Add section** inherits last segment’s theme
 
 **`timeline-bar-editor-modal`**: **`addRow`** for **segmented rectangle** copies **`fillStyle`** (e.g. **theme-hue**), **per-segment gradient** stops/angle when relevant, and optional **outline / label colour** from the **previous row** instead of defaulting to **solid** slate (**`#94a3b8`**). Timeline bar **Add section** unchanged. Patch bumped.
