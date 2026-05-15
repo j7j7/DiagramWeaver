@@ -89,6 +89,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType === 'generic.object.mind-map-node' ||
          nodeType === 'generic.object.progress-bar' ||
          nodeType === 'generic.object.timeline-bar' ||
+         nodeType === 'generic.object.segmented-rectangle' ||
          nodeType === 'generic.object.pyramid' ||
          nodeType === 'generic.object.text-box-heading' ||
          nodeType === 'generic.object.triangle' ||
@@ -111,6 +112,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType?.endsWith('.mind-map-node') ||
          nodeType?.endsWith('.progress-bar') ||
          nodeType?.endsWith('.timeline-bar') ||
+         nodeType?.endsWith('.segmented-rectangle') ||
          nodeType?.endsWith('.pyramid') ||
          nodeType?.endsWith('.text-box-heading') ||
          nodeType?.endsWith('.triangle') ||

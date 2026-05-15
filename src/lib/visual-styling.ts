@@ -51,6 +51,15 @@ export interface VisualStyling {
   timelineBarSectionBorderWidth?: number;
   timelineBarSectionBorderColor?: string;
   timelineBarHueStepDeg?: number; // Timeline bar segments only; pyramid theme-hue uses Themes menu step (`useThemeMenuHueStepDeg`).
+  /** Segmented rectangle (`generic.object.segmented-rectangle`) */
+  segmentedRectangleSizing?: "equal" | "weighted";
+  segmentedRectangleSegmentGap?: number;
+  segmentedRectangleOutlineMode?: "container" | "segments" | "none";
+  segmentedRectangleDividers?: boolean;
+  segmentedRectangleDividerWidth?: number;
+  segmentedRectangleDividerColor?: string;
+  segmentedRectangleDividerInset?: number;
+  segmentedRectangleHueStepDeg?: number;
   pyramidSizing?: PyramidSizing;
   pyramidSegmentGap?: number;
   pyramidDirection?: PyramidDirection;
@@ -279,6 +288,14 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     timelineBarSectionBorderWidth: (node as any).timelineBarSectionBorderWidth,
     timelineBarSectionBorderColor: (node as any).timelineBarSectionBorderColor,
     timelineBarHueStepDeg: (node as any).timelineBarHueStepDeg,
+    segmentedRectangleSizing: (node as any).segmentedRectangleSizing,
+    segmentedRectangleSegmentGap: (node as any).segmentedRectangleSegmentGap,
+    segmentedRectangleOutlineMode: (node as any).segmentedRectangleOutlineMode,
+    segmentedRectangleDividers: (node as any).segmentedRectangleDividers,
+    segmentedRectangleDividerWidth: (node as any).segmentedRectangleDividerWidth,
+    segmentedRectangleDividerColor: (node as any).segmentedRectangleDividerColor,
+    segmentedRectangleDividerInset: (node as any).segmentedRectangleDividerInset,
+    segmentedRectangleHueStepDeg: (node as any).segmentedRectangleHueStepDeg,
     pyramidSizing: (node as any).pyramidSizing,
     pyramidSegmentGap: (node as any).pyramidSegmentGap,
     pyramidDirection: (node as any).pyramidDirection,
@@ -396,6 +413,38 @@ export function applyVisualStylingToNode(
         : (node as any).timelineBarSectionBorderColor,
     timelineBarHueStepDeg:
       styling.timelineBarHueStepDeg !== undefined ? styling.timelineBarHueStepDeg : (node as any).timelineBarHueStepDeg,
+    segmentedRectangleSizing:
+      styling.segmentedRectangleSizing !== undefined
+        ? styling.segmentedRectangleSizing
+        : (node as any).segmentedRectangleSizing,
+    segmentedRectangleSegmentGap:
+      styling.segmentedRectangleSegmentGap !== undefined
+        ? styling.segmentedRectangleSegmentGap
+        : (node as any).segmentedRectangleSegmentGap,
+    segmentedRectangleOutlineMode:
+      styling.segmentedRectangleOutlineMode !== undefined
+        ? styling.segmentedRectangleOutlineMode
+        : (node as any).segmentedRectangleOutlineMode,
+    segmentedRectangleDividers:
+      styling.segmentedRectangleDividers !== undefined
+        ? styling.segmentedRectangleDividers
+        : (node as any).segmentedRectangleDividers,
+    segmentedRectangleDividerWidth:
+      styling.segmentedRectangleDividerWidth !== undefined
+        ? styling.segmentedRectangleDividerWidth
+        : (node as any).segmentedRectangleDividerWidth,
+    segmentedRectangleDividerColor:
+      styling.segmentedRectangleDividerColor !== undefined
+        ? styling.segmentedRectangleDividerColor
+        : (node as any).segmentedRectangleDividerColor,
+    segmentedRectangleDividerInset:
+      styling.segmentedRectangleDividerInset !== undefined
+        ? styling.segmentedRectangleDividerInset
+        : (node as any).segmentedRectangleDividerInset,
+    segmentedRectangleHueStepDeg:
+      styling.segmentedRectangleHueStepDeg !== undefined
+        ? styling.segmentedRectangleHueStepDeg
+        : (node as any).segmentedRectangleHueStepDeg,
     pyramidSizing: styling.pyramidSizing !== undefined ? styling.pyramidSizing : (node as any).pyramidSizing,
     pyramidSegmentGap: styling.pyramidSegmentGap !== undefined ? styling.pyramidSegmentGap : (node as any).pyramidSegmentGap,
     pyramidDirection: styling.pyramidDirection !== undefined ? styling.pyramidDirection : (node as any).pyramidDirection,

@@ -345,13 +345,15 @@ interface VisualStylingPanelProps {
   isProgressBar?: boolean;
   /** When true, shows segmented timeline bar layout controls */
   isTimelineBar?: boolean;
+  /** When true, shows segmented rectangle layout controls */
+  isSegmentedRectangle?: boolean;
   /** When true, shows segmented pyramid layout controls */
   isPyramid?: boolean;
   /** When true, shows heading strip color (text-box-heading only) */
   isTextBoxHeading?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isProgressBar = false, isTimelineBar = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -359,6 +361,16 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   const [pyramidTierOutlineDraft, setPyramidTierOutlineDraft] = useState("");
   const [pyramidTierGapFocused, setPyramidTierGapFocused] = useState(false);
   const [pyramidTierGapDraft, setPyramidTierGapDraft] = useState("");
+  const [borderWidthFocused, setBorderWidthFocused] = useState(false);
+  const [borderWidthDraft, setBorderWidthDraft] = useState("");
+
+  useEffect(() => {
+    if (!borderWidthFocused) {
+      const bw = styling.borderWidth;
+      const shown = typeof bw === "number" && Number.isFinite(bw) ? bw : 2;
+      setBorderWidthDraft(String(shown));
+    }
+  }, [styling.borderWidth, borderWidthFocused]);
 
   useEffect(() => {
     if (!pyramidTierOutlineFocused) {
@@ -468,8 +480,8 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   const currentPredefinedStyle = findClosestPredefinedStyle(styling as VisualStyling);
 
   /** Progress bar + timeline bar + pyramid: start layout sections folded */
-  const accordionDefaultOpen = !isProgressBar && !isTimelineBar && !isPyramid;
-  const accordionRemountKey = `${[...(selectedItemIds ?? new Set<string>())].sort().join("|")}-${isProgressBar ? "pb" : isTimelineBar ? "tb" : isPyramid ? "py" : "std"}`;
+  const accordionDefaultOpen = !isProgressBar && !isTimelineBar && !isSegmentedRectangle && !isPyramid;
+  const accordionRemountKey = `${[...(selectedItemIds ?? new Set<string>())].sort().join("|")}-${isProgressBar ? "pb" : isTimelineBar ? "tb" : isSegmentedRectangle ? "sr" : isPyramid ? "py" : "std"}`;
 
   return (
     <Draggable
@@ -651,13 +663,42 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       <div className="flex flex-wrap items-center gap-2">
                         <Label className="text-sm text-muted-foreground shrink-0">Width</Label>
                         <Input
-                          type="number"
-                          min={0}
-                          max={20}
-                          value={styling.borderWidth ?? 2}
-                          onChange={(e) => {
-                            const n = parseInt(e.target.value, 10);
-                            if (!isNaN(n)) handlePropertyChange('borderWidth', Math.min(20, Math.max(0, n)));
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          value={
+                            borderWidthFocused ? borderWidthDraft : String(typeof styling.borderWidth === "number" && Number.isFinite(styling.borderWidth) ? styling.borderWidth : 2)
+                          }
+                          onFocus={() => {
+                            setBorderWidthFocused(true);
+                            const bw = styling.borderWidth;
+                            setBorderWidthDraft(
+                              String(typeof bw === "number" && Number.isFinite(bw) ? bw : 2),
+                            );
+                          }}
+                          onChange={(e) => setBorderWidthDraft(e.target.value)}
+                          onBlur={() => {
+                            setBorderWidthFocused(false);
+                            const t = borderWidthDraft.trim();
+                            const revert =
+                              typeof styling.borderWidth === "number" && Number.isFinite(styling.borderWidth)
+                                ? styling.borderWidth
+                                : 2;
+                            if (t === "") {
+                              setBorderWidthDraft(String(revert));
+                              return;
+                            }
+                            const n = parseFloat(t.replace(",", "."));
+                            if (!Number.isFinite(n)) {
+                              setBorderWidthDraft(String(revert));
+                              return;
+                            }
+                            const clamped = Math.min(20, Math.max(0, n));
+                            handlePropertyChange("borderWidth", clamped, true);
+                            setBorderWidthDraft(String(clamped));
+                          }}
+                          onKeyDown={(ev) => {
+                            if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
                           }}
                           className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 min-w-[4rem] w-16 tabular-nums text-sm")}
                         />
@@ -1129,6 +1170,184 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </StylingAccordionSection>
               ) : null}
 
+              {isSegmentedRectangle ? (
+                <StylingAccordionSection
+                  defaultOpen={accordionDefaultOpen}
+                  title="Segmented rectangle"
+                  dotClassName="bg-cyan-500"
+                  outerClassName="border-cyan-200/50 bg-cyan-50/50"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm text-muted-foreground">Corner radius</Label>
+                      <span className="w-12 text-right tabular-nums text-xs text-muted-foreground">
+                        {Math.round((styling.cornerRadius ?? 0.12) * 100)}%
+                      </span>
+                    </div>
+                    <Slider
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={[styling.cornerRadius ?? 0.12]}
+                      onValueChange={([v]) => handlePropertyChange("cornerRadius", v, true)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Auto-size sections</Label>
+                    <Select
+                      value={styling.segmentedRectangleSizing === "weighted" ? "weighted" : "equal"}
+                      onValueChange={(v) =>
+                        handlePropertyChange("segmentedRectangleSizing", v === "weighted" ? "weighted" : "equal", true)
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-[160px] text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="equal" className="text-sm">
+                          Equal widths
+                        </SelectItem>
+                        <SelectItem value="weighted" className="text-sm">
+                          By weight
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Gap between segments (px)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={64}
+                      step={1}
+                      className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 w-[4.5rem] tabular-nums text-sm")}
+                      value={
+                        typeof styling.segmentedRectangleSegmentGap === "number" &&
+                        Number.isFinite(styling.segmentedRectangleSegmentGap)
+                          ? styling.segmentedRectangleSegmentGap
+                          : 0
+                      }
+                      onChange={(e) => {
+                        const n = parseFloat(e.target.value);
+                        if (!Number.isFinite(n) || n < 0) return;
+                        handlePropertyChange("segmentedRectangleSegmentGap", Math.min(64, n), true);
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Outline mode</Label>
+                    <Select
+                      value={
+                        styling.segmentedRectangleOutlineMode === "segments"
+                          ? "segments"
+                          : styling.segmentedRectangleOutlineMode === "none"
+                            ? "none"
+                            : "container"
+                      }
+                      onValueChange={(v) =>
+                        handlePropertyChange(
+                          "segmentedRectangleOutlineMode",
+                          v === "segments" ? "segments" : v === "none" ? "none" : "container",
+                          true,
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-[160px] text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="container" className="text-sm">
+                          Single container
+                        </SelectItem>
+                        <SelectItem value="segments" className="text-sm">
+                          Per segment
+                        </SelectItem>
+                        <SelectItem value="none" className="text-sm">
+                          No outline
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Internal dividers</Label>
+                    <Switch
+                      checked={styling.segmentedRectangleDividers === true}
+                      onCheckedChange={(checked) => handlePropertyChange("segmentedRectangleDividers", checked, true)}
+                    />
+                  </div>
+                  {styling.segmentedRectangleDividers === true ? (
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs text-muted-foreground">Divider width</Label>
+                        <Input
+                          type="number"
+                          min={0.5}
+                          max={8}
+                          step={0.5}
+                          value={styling.segmentedRectangleDividerWidth ?? 1.5}
+                          onChange={(e) => {
+                            const n = parseFloat(e.target.value);
+                            if (!Number.isNaN(n)) handlePropertyChange("segmentedRectangleDividerWidth", n, true);
+                          }}
+                          className={cn(NUMBER_INPUT_NO_SPINNER, "h-8 min-w-[4rem] w-16 tabular-nums text-xs")}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Divider colour</Label>
+                        <ColorPicker
+                          value={styling.segmentedRectangleDividerColor || "#64748b"}
+                          onChange={(value) => handlePropertyChange("segmentedRectangleDividerColor", value, true)}
+                          showAlpha={true}
+                          allowTransparent={true}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs text-muted-foreground">Divider inset (0–0.45)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={0.45}
+                          step={0.02}
+                          value={
+                            typeof styling.segmentedRectangleDividerInset === "number"
+                              ? styling.segmentedRectangleDividerInset
+                              : 0.1
+                          }
+                          onChange={(e) => {
+                            const n = parseFloat(e.target.value);
+                            if (!Number.isNaN(n))
+                              handlePropertyChange(
+                                "segmentedRectangleDividerInset",
+                                Math.min(0.45, Math.max(0, n)),
+                                true,
+                              );
+                          }}
+                          className={cn(NUMBER_INPUT_NO_SPINNER, "h-8 w-[4.5rem] tabular-nums text-xs")}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Inset shrinks divider length from top and bottom (fraction of bar height).
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm text-muted-foreground">Theme hue step (°)</Label>
+                      <TimelineBarHueStepInput
+                        committedDeg={styling.segmentedRectangleHueStepDeg}
+                        onCommit={(v) => handlePropertyChange("segmentedRectangleHueStepDeg", v, true)}
+                        className="h-9 min-w-[5rem] w-[5.25rem] tabular-nums text-sm"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Hue shift between consecutive segments when fill is Theme hue (per-shape override; empty uses diagram
+                      default).
+                    </p>
+                  </div>
+                </StylingAccordionSection>
+              ) : null}
+
               {isPyramid ? (
                 <StylingAccordionSection
                   defaultOpen={accordionDefaultOpen}
@@ -1350,7 +1569,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     handlePropertyChange={handlePropertyChange}
                     onStylingChange={onStylingChange}
                   />
-                  {isRoundedRectangle && !isProgressBar && !isTimelineBar && !isPyramid && (
+                  {isRoundedRectangle && !isProgressBar && !isTimelineBar && !isSegmentedRectangle && !isPyramid && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-2">
                         <Label className="text-sm text-muted-foreground">Corner radius</Label>

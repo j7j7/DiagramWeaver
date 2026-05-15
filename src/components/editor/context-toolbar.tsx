@@ -474,6 +474,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
     (selectedItem as any)?.type === 'generic.object.progress-bar' ||
     (selectedItem as any)?.type === 'generic.object.timeline-bar' ||
+    (selectedItem as any)?.type === 'generic.object.segmented-rectangle' ||
     (selectedItem as any)?.type === 'generic.object.pyramid' ||
     (selectedItem as any)?.type === 'generic.object.text-box-heading' ||
     (selectedItem as any)?.type === 'generic.object.triangle' ||
@@ -499,6 +500,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.rounded-rectangle') ||
     (selectedItem as any)?.type?.endsWith('.progress-bar') ||
     (selectedItem as any)?.type?.endsWith('.timeline-bar') ||
+    (selectedItem as any)?.type?.endsWith('.segmented-rectangle') ||
     (selectedItem as any)?.type?.endsWith('.pyramid') ||
     (selectedItem as any)?.type?.endsWith('.text-box-heading') ||
     (selectedItem as any)?.type?.endsWith('.triangle') ||
@@ -2271,6 +2273,10 @@ export function ContextToolbar({
                   isTimelineBar={
                     (selectedItem as any)?.type === 'generic.object.timeline-bar' ||
                     (selectedItem as any)?.type?.endsWith?.('.timeline-bar')
+                  }
+                  isSegmentedRectangle={
+                    (selectedItem as any)?.type === 'generic.object.segmented-rectangle' ||
+                    (selectedItem as any)?.type?.endsWith?.('.segmented-rectangle')
                   }
                   isPyramid={
                     (selectedItem as any)?.type === 'generic.object.pyramid' ||

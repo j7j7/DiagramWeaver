@@ -358,6 +358,23 @@ export interface DiagramNodeData {
   /** When true, segments after the first mirror the first tier’s segment-label typography (timeline-bar parity). */
   pyramidLabelsFollowFirstSection?: boolean;
 
+  /** Segmented rectangle (`generic.object.segmented-rectangle`): horizontal segments (same payload as timeline-bar sections). */
+  segmentedRectangleSections?: TimelineBarSectionData[];
+  segmentedRectangleSizing?: "equal" | "weighted";
+  /** Horizontal gap between segments in shape units (0 = flush). */
+  segmentedRectangleSegmentGap?: number;
+  /** `container` = one outer border; `segments` = stroke each segment; `none` = no strokes. */
+  segmentedRectangleOutlineMode?: "container" | "segments" | "none";
+  /** Internal vertical dividers between segments (inset from top/bottom via `segmentedRectangleDividerInset`). */
+  segmentedRectangleDividers?: boolean;
+  segmentedRectangleDividerWidth?: number;
+  segmentedRectangleDividerColor?: string;
+  /** Fraction of bar height inset from top (and symmetrically bottom) for divider endpoints; clamped ~0–0.45. */
+  segmentedRectangleDividerInset?: number;
+  /** Hue step between consecutive **theme-hue** segments (defaults like timeline bar). */
+  segmentedRectangleHueStepDeg?: number;
+  segmentedRectangleLabelsFollowFirstSection?: boolean;
+
   /** Progress bar (`generic.object.progress-bar`): completed amount 0–100 */
   progressPercent?: number;
   /** Progress bar: show numeric percent on the bar (default true) */
@@ -547,6 +564,8 @@ export interface TimelineBarSectionData {
   id: string;
   /** Text drawn inside the segment (optional). */
   label?: string;
+  /** Rich text for the segment label (optional); plain `label` is kept in sync for search/export. */
+  richLabel?: RichTextRun[];
   /** Solid fill when `fillStyle` is solid or omitted (legacy). */
   fill?: string;
   /** Segment fill: solid (default), linear gradient, transparent track, or **theme hue** (shifts from bar `background*` like timeline cards). */
@@ -585,6 +604,10 @@ export interface TimelineBarSectionData {
   labelFontStyle?: DiagramNodeData["fontStyle"] | typeof TIMELINE_BAR_LABEL_FIRST_SECTION;
   /** Override text decoration for this segment’s bar label; `first-section` mirrors section 0. */
   labelTextDecoration?: DiagramNodeData["textDecoration"] | typeof TIMELINE_BAR_LABEL_FIRST_SECTION;
+  /** Per-segment outline for `generic.object.segmented-rectangle` when `segmentedRectangleOutlineMode` is `segments`. */
+  segmentOutlineColor?: string;
+  segmentOutlineWidth?: number;
+  segmentOutlineStyle?: "solid" | "dotted" | "none";
 }
 
 /** Timeline card row — optional visual overrides inherit from the parent timeline node when omitted. */

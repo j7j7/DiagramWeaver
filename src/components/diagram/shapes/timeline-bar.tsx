@@ -23,6 +23,7 @@ import {
   timelineBarSectionResolvedTextDecoration,
   timelineBarSectionResolvedVerticalJustify,
   timelineBarSectionThemeHueFill,
+  timelineBarSectionThemeHueFillGradient,
   timelineBarSegmentLayout,
   timelineBarUsesSpanLayout,
   snapTimelineBarBoundaryT,
@@ -331,6 +332,25 @@ export function TimelineBarShape({
             </linearGradient>
           );
         })}
+        {sections.map((segTh: TimelineBarSectionData, gi: number) => {
+          if ((segTh.fillStyle ?? "solid") !== "theme-hue") return null;
+          const thg = timelineBarSectionThemeHueFillGradient(node, sections, gi);
+          if (!thg) return null;
+          const coords = getGradientCoordinates(thg.angleDeg);
+          return (
+            <linearGradient
+              key={`${clipId}-thfg-${gi}`}
+              id={`${clipId}-th-fill-${gi}`}
+              x1={coords.x1}
+              y1={coords.y1}
+              x2={coords.x2}
+              y2={coords.y2}
+            >
+              <stop offset="0%" stopColor={thg.start} />
+              <stop offset="100%" stopColor={thg.end} />
+            </linearGradient>
+          );
+        })}
       </defs>
 
       <g clipPath={`url(#${clipId}-barclip)`} pointerEvents="none">
@@ -345,7 +365,8 @@ export function TimelineBarShape({
           } else if (fs === "gradient") {
             fillPaint = `url(#${clipId}-sg-${i})`;
           } else if (fs === "theme-hue") {
-            fillPaint = timelineBarSectionThemeHueFill(node, sections, i);
+            const thg = timelineBarSectionThemeHueFillGradient(node, sections, i);
+            fillPaint = thg ? `url(#${clipId}-th-fill-${i})` : timelineBarSectionThemeHueFill(node, sections, i);
           } else {
             fillPaint = String(seg.fill ?? "#6b7280");
           }

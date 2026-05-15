@@ -26,6 +26,7 @@ import {
 import { TIMELINE_DEFAULT_SPINE_LENGTH_PX, TIMELINE_NODE_TYPE } from "@/lib/timeline-layout";
 import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
+import { defaultPaletteSegmentedRectangleNodeProps } from "@/lib/segmented-rectangle";
 import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
 import {
   nextMindmapAutoNumericLabel,
@@ -108,6 +109,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.rounded-rectangle' ||
                                 itemType === 'generic.object.progress-bar' ||
                                 itemType === 'generic.object.timeline-bar' ||
+                                itemType === 'generic.object.segmented-rectangle' ||
                                 itemType === 'generic.object.pyramid' ||
                                 itemType === 'generic.object.text-box-heading' ||
                                 itemType === 'generic.object.triangle' ||
@@ -135,6 +137,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.rounded-rectangle') ||
                                 itemType?.endsWith('.progress-bar') ||
                                 itemType?.endsWith('.timeline-bar') ||
+                                itemType?.endsWith('.segmented-rectangle') ||
                                 itemType?.endsWith('.pyramid') ||
                                 itemType?.endsWith('.text-box-heading') ||
                                 itemType?.endsWith('.triangle') ||
@@ -200,6 +203,7 @@ export function useCanvasOperations({
              itemType === MINDMAP_NODE_TYPE ? 80 :
              itemType === 'generic.object.progress-bar' ? 80 :
              itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(790, 40) :
+             itemType === 'generic.object.segmented-rectangle' ? snapDimensionToGrid(320, 40) :
              itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(390, 40) :
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
@@ -222,6 +226,7 @@ export function useCanvasOperations({
              itemType === MINDMAP_NODE_TYPE ? 50 :
              itemType === 'generic.object.progress-bar' ? 50 :
              itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(150, 28) :
+             itemType === 'generic.object.segmented-rectangle' ? snapDimensionToGrid(56, 28) :
              itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(310, 28) :
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
@@ -316,6 +321,10 @@ export function useCanvasOperations({
           }),
           ...((itemType === 'generic.object.timeline-bar' || itemType?.endsWith('.timeline-bar')) && !isFromScratchPad && {
             ...defaultPaletteTimelineBarNodeProps(newNodeId),
+          }),
+          ...((itemType === 'generic.object.segmented-rectangle' || itemType?.endsWith('.segmented-rectangle')) &&
+            !isFromScratchPad && {
+            ...defaultPaletteSegmentedRectangleNodeProps(newNodeId),
           }),
           ...((itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid')) && !isFromScratchPad && {
             ...defaultPalettePyramidNodeProps(newNodeId),

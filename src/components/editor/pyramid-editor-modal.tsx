@@ -24,7 +24,11 @@ import {
   newPyramidSectionId,
   normalizePyramidSections,
 } from "@/lib/pyramid";
-import { timelineBarSectionThemeHueFill } from "@/lib/timeline-bar";
+import {
+  timelineBarSectionThemeHueBorderGradient,
+  timelineBarSectionThemeHueFill,
+  timelineBarSectionThemeHueFillGradient,
+} from "@/lib/timeline-bar";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import { cn } from "@/lib/utils";
 import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
@@ -636,18 +640,53 @@ export function PyramidEditorModal({ x, y, visible, onClose, node, onSave, isRea
                             </p>
                             {node && rows.length > 0 ? (
                               <span className="mt-1 flex items-center gap-2">
-                                <span
-                                  className="inline-block h-4 w-4 shrink-0 rounded border border-border"
-                                  style={{
-                                    backgroundColor: timelineBarSectionThemeHueFill(
-                                      { ...node, pyramidSections: rows } as DiagramNodeData,
-                                      normalizePyramidSections({ ...node, pyramidSections: rows } as DiagramNodeData),
-                                      i,
-                                      themesMenuHueStepDeg,
-                                    ),
-                                  }}
-                                  title="Preview using Themes menu hue step"
-                                />
+                                {(() => {
+                                  const previewHueNode = { ...node, pyramidSections: rows } as DiagramNodeData;
+                                  const previewSecs = normalizePyramidSections(previewHueNode);
+                                  const fillGrad = timelineBarSectionThemeHueFillGradient(
+                                    previewHueNode,
+                                    previewSecs,
+                                    i,
+                                    themesMenuHueStepDeg,
+                                  );
+                                  const borderGrad = timelineBarSectionThemeHueBorderGradient(
+                                    previewHueNode,
+                                    previewSecs,
+                                    i,
+                                    themesMenuHueStepDeg,
+                                  );
+                                  const fillSolid = timelineBarSectionThemeHueFill(
+                                    previewHueNode,
+                                    previewSecs,
+                                    i,
+                                    themesMenuHueStepDeg,
+                                  );
+                                  const innerStyle: React.CSSProperties = fillGrad
+                                    ? {
+                                        background: `linear-gradient(${fillGrad.angleDeg}deg, ${fillGrad.start}, ${fillGrad.end})`,
+                                      }
+                                    : { backgroundColor: fillSolid };
+                                  if (borderGrad) {
+                                    return (
+                                      <span
+                                        className="inline-block shrink-0 rounded p-[2px]"
+                                        style={{
+                                          background: `linear-gradient(${borderGrad.angleDeg}deg, ${borderGrad.start}, ${borderGrad.end})`,
+                                        }}
+                                        title="Preview: fill and border (this tier, Themes menu hue step)"
+                                      >
+                                        <span className="block h-4 w-4 rounded-sm" style={innerStyle} />
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <span
+                                      className="inline-block h-4 w-4 shrink-0 rounded border border-border"
+                                      style={innerStyle}
+                                      title="Preview using Themes menu hue step"
+                                    />
+                                  );
+                                })()}
                                 <span className="text-[10px] text-muted-foreground">Matches canvas tier colour</span>
                               </span>
                             ) : null}

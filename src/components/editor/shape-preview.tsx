@@ -2071,6 +2071,71 @@ export function ShapePreview({
       );
     }
 
+    // Segmented rectangle (palette preview: four segments + light gap)
+    if (type === "generic.object.segmented-rectangle" || type?.endsWith(".segmented-rectangle")) {
+      const cr = Math.max(0, Math.min(1, cornerRadius));
+      const sw = borderStyle === "none" ? 0 : strokeWidth;
+      const iw = Math.max(0, displayWidth - sw);
+      const ih = Math.max(0, displayHeight - sw);
+      const hx = sw / 2;
+      const hy = sw / 2;
+      const radius = cr * Math.min(iw, ih) * 0.5;
+      const cid = gradientId.replace(/:/g, "");
+      const fills = ["#ea580c", "#f97316", "#fb923c", "#fbbf24"];
+      const gap = Math.min(3, iw * 0.04);
+      const n = 4;
+      const contentW = Math.max(0, iw - gap * (n - 1));
+      const ew = contentW / n;
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {borderStyle === "gradient" && (
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+            <clipPath id={`${cid}-sr-prev`}>
+              <rect x={hx} y={hy} width={iw} height={ih} rx={radius} ry={radius} />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${cid}-sr-prev)`}>
+            {fills.map((c, i) => (
+              <rect
+                key={i}
+                x={hx + i * (ew + gap)}
+                y={hy}
+                width={ew}
+                height={ih}
+                fill={c}
+                opacity={0.92}
+              />
+            ))}
+          </g>
+          {sw > 0 ? (
+            <rect
+              x={hx}
+              y={hy}
+              width={iw}
+              height={ih}
+              rx={radius}
+              ry={radius}
+              fill="none"
+              stroke={
+                borderStyle === "gradient"
+                  ? `url(#${borderGradientId})`
+                  : borderStyle === "none"
+                    ? "transparent"
+                    : effectiveBorderColor
+              }
+              strokeWidth={sw}
+              strokeDasharray={borderStyle === "dotted" ? "3,3" : undefined}
+            />
+          ) : null}
+        </svg>
+      );
+    }
+
     // Pyramid (segmented; preview uses narrow-at-top + four tiers)
     if (type === "generic.object.pyramid" || type?.endsWith(".pyramid")) {
       const cr = Math.max(0, Math.min(1, cornerRadius));
@@ -2090,6 +2155,9 @@ export function ShapePreview({
       const direction: PyramidDirection = "narrow-at-top";
       const cx = hx + iw / 2;
       const hueBase = "#94a3b8";
+      const pyGradCoords = getGradientCoordinates(gradientAngle);
+      const pyUseThemeHueGradientTiers =
+        effectiveBackgroundStyle === "gradient" && bgColors.length >= 2;
       const tierBands: { yBottom: number; yTop: number }[] = [];
       let yCursor = hy + ih;
       for (let di = 0; di < n; di++) {
@@ -2124,14 +2192,21 @@ export function ShapePreview({
         const yT = band.yTop;
         const d = `M ${xl0} ${yB} L ${xr0} ${yB} L ${xr1} ${yT} L ${xl1} ${yT} Z`;
         const fillHue = shiftHueOfColor(hueBase, i * themeMenuHueStepDeg);
-        const segStroke = sw > 0 ? multiplyLightnessOfColor(fillHue, 0.62) : "none";
+        const fillAttr = pyUseThemeHueGradientTiers ? `url(#${cid}-py-th-${i})` : fillHue;
+        const segStrokeAttr = pyUseThemeHueGradientTiers
+          ? sw > 0
+            ? `url(#${cid}-py-th-stroke-${i})`
+            : "none"
+          : sw > 0
+            ? multiplyLightnessOfColor(fillHue, 0.62)
+            : "none";
         return (
           <path
             key={`py-prev-${i}`}
             d={d}
-            fill={fillHue}
+            fill={fillAttr}
             opacity={0.95}
-            stroke={segStroke}
+            stroke={segStrokeAttr}
             strokeWidth={sw}
             strokeDasharray={borderStyle === "dotted" ? "3,3" : undefined}
             vectorEffect="non-scaling-stroke"
@@ -2157,6 +2232,38 @@ export function ShapePreview({
             <clipPath id={`${cid}-py-prev`}>
               <rect x={hx} y={hy} width={iw} height={ih} rx={radius} ry={radius} />
             </clipPath>
+            {pyUseThemeHueGradientTiers
+              ? Array.from({ length: tierCount }, (_, pi) => {
+                  const c0 = shiftHueOfColor(bgColors[0], pi * themeMenuHueStepDeg);
+                  const c1 = shiftHueOfColor(bgColors[1] ?? bgColors[0], pi * themeMenuHueStepDeg);
+                  return (
+                    <React.Fragment key={`py-th-def-${pi}`}>
+                      <linearGradient
+                        id={`${cid}-py-th-${pi}`}
+                        x1={pyGradCoords.x1}
+                        y1={pyGradCoords.y1}
+                        x2={pyGradCoords.x2}
+                        y2={pyGradCoords.y2}
+                      >
+                        <stop offset="0%" stopColor={c0} />
+                        <stop offset="100%" stopColor={c1} />
+                      </linearGradient>
+                      {sw > 0 ? (
+                        <linearGradient
+                          id={`${cid}-py-th-stroke-${pi}`}
+                          x1={pyGradCoords.x1}
+                          y1={pyGradCoords.y1}
+                          x2={pyGradCoords.x2}
+                          y2={pyGradCoords.y2}
+                        >
+                          <stop offset="0%" stopColor={multiplyLightnessOfColor(c0, 0.62)} />
+                          <stop offset="100%" stopColor={multiplyLightnessOfColor(c1, 0.62)} />
+                        </linearGradient>
+                      ) : null}
+                    </React.Fragment>
+                  );
+                })
+              : null}
           </defs>
           <g clipPath={`url(#${cid}-py-prev)`}>{tierPaths}</g>
         </svg>

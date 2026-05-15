@@ -4,6 +4,7 @@ import type { DiagramCompositeBodyShapeKind, DiagramNodeData, TimelineBarSection
 import { DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS } from "@/lib/types";
 import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
+import { defaultPaletteSegmentedRectangleNodeProps } from "@/lib/segmented-rectangle";
 import { isMindmapNodeType, isTimelineNodeType } from "@/lib/utils";
 
 export type CompositeBodyShapeKind = DiagramCompositeBodyShapeKind;
@@ -43,6 +44,7 @@ export const SWAPPABLE_OBJECT_SHAPE_OPTIONS = [
   { kind: "chevron", label: "Chevron" },
   { kind: "progress-bar", label: "Progress bar" },
   { kind: "timeline-bar", label: "Timeline bar" },
+  { kind: "segmented-rectangle", label: "Segmented rectangle" },
   { kind: "pyramid", label: "Pyramid" },
   { kind: "text-box-heading", label: "Text box heading" },
   { kind: "uml-class", label: "UML class" },
@@ -107,6 +109,10 @@ function defaultDimensionsForSwappableKind(kind: SwappableObjectKind): { width: 
     case "timeline-bar":
       wRaw = 790;
       hRaw = 150;
+      break;
+    case "segmented-rectangle":
+      wRaw = 320;
+      hRaw = 56;
       break;
     case "pyramid":
       wRaw = 120;
@@ -201,6 +207,20 @@ function stripTimelineBarFields(n: DiagramNodeData): void {
   delete (n as DiagramNodeData & { timelineBarHueStepDeg?: unknown }).timelineBarHueStepDeg;
 }
 
+function stripSegmentedRectangleFields(n: DiagramNodeData): void {
+  delete (n as DiagramNodeData & { segmentedRectangleSections?: unknown }).segmentedRectangleSections;
+  delete (n as DiagramNodeData & { segmentedRectangleSizing?: unknown }).segmentedRectangleSizing;
+  delete (n as DiagramNodeData & { segmentedRectangleSegmentGap?: unknown }).segmentedRectangleSegmentGap;
+  delete (n as DiagramNodeData & { segmentedRectangleOutlineMode?: unknown }).segmentedRectangleOutlineMode;
+  delete (n as DiagramNodeData & { segmentedRectangleDividers?: unknown }).segmentedRectangleDividers;
+  delete (n as DiagramNodeData & { segmentedRectangleDividerWidth?: unknown }).segmentedRectangleDividerWidth;
+  delete (n as DiagramNodeData & { segmentedRectangleDividerColor?: unknown }).segmentedRectangleDividerColor;
+  delete (n as DiagramNodeData & { segmentedRectangleDividerInset?: unknown }).segmentedRectangleDividerInset;
+  delete (n as DiagramNodeData & { segmentedRectangleHueStepDeg?: unknown }).segmentedRectangleHueStepDeg;
+  delete (n as DiagramNodeData & { segmentedRectangleLabelsFollowFirstSection?: unknown })
+    .segmentedRectangleLabelsFollowFirstSection;
+}
+
 function stripPyramidFields(n: DiagramNodeData): void {
   delete (n as DiagramNodeData & { pyramidSections?: unknown }).pyramidSections;
   delete (n as DiagramNodeData & { pyramidSizing?: unknown }).pyramidSizing;
@@ -264,6 +284,13 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
   const capturedPyramidSections = Array.isArray(node.pyramidSections)
     ? node.pyramidSections.map((s) => ({ ...s }))
     : undefined;
+  const capturedSegmentedSections = Array.isArray(
+    (node as DiagramNodeData & { segmentedRectangleSections?: TimelineBarSectionData[] }).segmentedRectangleSections,
+  )
+    ? (node as DiagramNodeData & { segmentedRectangleSections: TimelineBarSectionData[] }).segmentedRectangleSections.map(
+        (s) => ({ ...s }),
+      )
+    : undefined;
 
   const next: DiagramNodeData = { ...node, type: buildNodeTypeForObjectKind(node.type, newKind) };
 
@@ -275,6 +302,7 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
   stripChartAndUml(next);
   stripProgressHeading(next);
   stripTimelineBarFields(next);
+  stripSegmentedRectangleFields(next);
   stripPyramidFields(next);
   clearIconResourceFields(next);
 
@@ -294,6 +322,46 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
       if (typeof node.pyramidSectionBorderWidth === "number") next.timelineBarSectionBorderWidth = node.pyramidSectionBorderWidth;
       if (node.pyramidSectionBorderColor != null) next.timelineBarSectionBorderColor = node.pyramidSectionBorderColor;
     }
+    if (prevKindSuffix === "segmented-rectangle" && capturedSegmentedSections?.length) {
+      next.timelineBarSections = capturedSegmentedSections.map((s) => ({ ...s }));
+      if (node.segmentedRectangleSizing === "equal" || node.segmentedRectangleSizing === "weighted") {
+        next.timelineBarSizing = node.segmentedRectangleSizing;
+      }
+      if (typeof node.segmentedRectangleHueStepDeg === "number") {
+        next.timelineBarHueStepDeg = node.segmentedRectangleHueStepDeg;
+      }
+      if (typeof node.segmentedRectangleLabelsFollowFirstSection === "boolean") {
+        next.timelineBarLabelsFollowFirstSection = node.segmentedRectangleLabelsFollowFirstSection;
+      }
+    }
+  }
+
+  if (newKind === "segmented-rectangle") {
+    Object.assign(next, defaultPaletteSegmentedRectangleNodeProps(next.id));
+    if (prevKindSuffix === "timeline-bar" && capturedTimelineSections?.length) {
+      next.segmentedRectangleSections = capturedTimelineSections.map((s) => ({ ...s }));
+      if (node.timelineBarSizing === "equal" || node.timelineBarSizing === "weighted") {
+        next.segmentedRectangleSizing = node.timelineBarSizing;
+      }
+      if (typeof node.timelineBarHueStepDeg === "number") {
+        next.segmentedRectangleHueStepDeg = node.timelineBarHueStepDeg;
+      }
+      if (typeof node.timelineBarLabelsFollowFirstSection === "boolean") {
+        next.segmentedRectangleLabelsFollowFirstSection = node.timelineBarLabelsFollowFirstSection;
+      }
+    }
+    if (prevKindSuffix === "pyramid" && capturedPyramidSections?.length) {
+      next.segmentedRectangleSections = timelineBarSectionsToPyramidSections(capturedPyramidSections).map((s) => ({
+        ...s,
+      }));
+      if (node.pyramidSizing === "equal" || node.pyramidSizing === "weighted") {
+        next.segmentedRectangleSizing = node.pyramidSizing;
+      }
+      if (typeof node.pyramidHueStepDeg === "number") next.segmentedRectangleHueStepDeg = node.pyramidHueStepDeg;
+      if (typeof node.pyramidLabelsFollowFirstSection === "boolean") {
+        next.segmentedRectangleLabelsFollowFirstSection = node.pyramidLabelsFollowFirstSection;
+      }
+    }
   }
 
   if (newKind === "pyramid") {
@@ -303,7 +371,7 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
       if (node.timelineBarSizing === "equal" || node.timelineBarSizing === "weighted") {
         next.pyramidSizing = node.timelineBarSizing;
       }
-      if (typeof node.timelineBarHueStepDeg === "number") next.timelineBarHueStepDeg = node.timelineBarHueStepDeg;
+      if (typeof node.timelineBarHueStepDeg === "number") next.pyramidHueStepDeg = node.timelineBarHueStepDeg;
       if (typeof node.timelineBarLabelsFollowFirstSection === "boolean") {
         next.pyramidLabelsFollowFirstSection = node.timelineBarLabelsFollowFirstSection;
       }
@@ -313,6 +381,18 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
       }
       if (node.timelineBarSectionBorderColor != null) {
         next.pyramidSectionBorderColor = node.timelineBarSectionBorderColor;
+      }
+    }
+    if (prevKindSuffix === "segmented-rectangle" && capturedSegmentedSections?.length) {
+      next.pyramidSections = timelineBarSectionsToPyramidSections(capturedSegmentedSections);
+      if (node.segmentedRectangleSizing === "equal" || node.segmentedRectangleSizing === "weighted") {
+        next.pyramidSizing = node.segmentedRectangleSizing;
+      }
+      if (typeof node.segmentedRectangleHueStepDeg === "number") {
+        next.pyramidHueStepDeg = node.segmentedRectangleHueStepDeg;
+      }
+      if (typeof node.segmentedRectangleLabelsFollowFirstSection === "boolean") {
+        next.pyramidLabelsFollowFirstSection = node.segmentedRectangleLabelsFollowFirstSection;
       }
     }
   }

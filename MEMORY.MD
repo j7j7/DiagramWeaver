@@ -3,6 +3,51 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Segmented rectangle** section labels: **richLabel** survives normalize; **vertical** toolbar → `labelVerticalAlign`
+
+**`normalizeTimelineBarSections`** now **preserves** **`richLabel`** (normalized with **`normalizeRuns`**) so bold/italic/per-line **`lineJustify`** from **`TextboxRichEditor` are not dropped** on the next render (was omitted from the normalized section object, so blur appeared to “reset” to shape **`textJustify` / `textVerticalPosition`**). **`SegmentedRectangleShape`**: **`segmentedSectionLabelTextNode`** sets **`textVerticalPosition`** from the resolved segment so the toolbar matches the flex column; **`onVerticalAlignChange`** patches **`labelVerticalAlign`** on the edited section (**section 0** when **`segmentedRectangleLabelsFollowFirstSection`** and editing segment &gt; 0). Patch bumped.
+
+
+### 2026-05-15 – **Segmented rectangle**: per-segment outline **not clipped**; **Visual styling** border width draft field
+
+**`SegmentedRectangleShape`**: **`viewBox`** padding matches **`timeline-bar`** when **`outlineMode === 'segments'`** (max drawable segment **`strokeWidth`**, respecting per-segment **none/dotted/solid**) so **`vectorEffect`** strokes are not clipped at the bottom; **`svgOverflowVisible`** when bleed &gt; 0. **`visual-styling-panel`**: Border **Width** uses a **draft `type="text"`** field (**focus/blur**) so users can clear with backspace and set **0** or fractional values (clamped **0–20**) like other numeric drafts. Patch bumped.
+
+
+### 2026-05-15 – **Rich text** `htmlToRuns`: alignment + span formatting round-trip
+
+**`normalizeTextAlignToLineJustify`** maps **start/end/justify-all** and reads legacy **`align`** on blocks. **Line** fields (`lineJustify`, per-line font) attach to **every** text run under the current block context so **partial `<span>`** italics and **execCommand** alignment survive parse (previously only the first text node in a div received them). **Span** parsing adds **`text-align`** into the child block context and treats **`font-style: oblique`** as italic. Patch bumped.
+
+
+### 2026-05-15 – **Segmented rectangle** section edit: no Text Styling auto-open; **commit** on blur
+
+Double-clicking a section label **no longer** opens the Text Styling panel (removed `onTriggerTextStylingPanel` wiring). **While editing**, the editor **stays mounted** even if the node is deselected so **`blur` / unmount flush** can persist **`richLabel`**. **`TextboxRichEditor`** flushes on **unmount** once (deduped with blur) so clicks outside still save. **`htmlToRuns`**: **`span`** `font-weight` / `font-style` / `underline` so **`execCommand`** bold survives parse. Patch bumped.
+
+
+### 2026-05-15 – **TextboxRichEditor** + **segmented rectangle**: fixed-viewport formatting bar
+
+**`toolbarFixedToViewport`** portals the inline formatting toolbar to **`document.body`** with **`position: fixed`** (re-anchor on scroll, resize, `ResizeObserver`, and rAF while the field is focused so canvas pan/zoom stays aligned). Used for **segmented-rectangle** section labels inside SVG **`foreignObject`** (normal `absolute bottom-full` is clipped there). Patch bumped.
+
+
+### 2026-05-15 – **Segmented rectangle**: section labels = **rich text editor** + **Text Styling** panel
+
+Section label edit uses **`TextboxRichEditor`** / **`TextboxRichDisplay`** (same inline formatting toolbar as shapes like rounded rectangle). Double-click opens the **Text Styling** panel via **`onTriggerTextStylingPanel`**. **`TimelineBarSectionData.richLabel`** (optional) persists runs on **`segmentedRectangleSections`**. Patch bumped.
+
+
+### 2026-05-15 – **Pyramid** theme-hue tiers + **gradient** fill (canvas, modal, palette preview)
+
+Theme-hue tiers reuse **`timelineBarSectionThemeHueFillGradient`** with the **Themes menu** hue step (4th arg): **`<linearGradient>`** per tier when the shape background is a gradient; **tier outline** (`pyramidSectionBorder`) uses a matching gradient with **`multiplyLightnessOfColor`** on both stops. **Pyramid tier modal** preview shows CSS gradient fill and optional border ring like the timeline/segmented section editor. **Shape preview** pyramid uses per-tier shifted background-gradient stops when the preview uses a gradient background. Patch bumped.
+
+
+### 2026-05-15 – **Theme-hue** + shape **gradient** (timeline bar, segmented rectangle, section modal)
+
+When a section uses **Theme hue** and the node has a **linear gradient** fill or border, **stops are hue-shifted per segment** (same angle) instead of collapsing to the first stop as a flat colour. **`timeline-bar.ts`**: `timelineBarSectionThemeHueFillGradient`, `timelineBarSectionThemeHueBorderGradient`, **`timelineBarSectionThemeHueDeltaDeg`**. **`TimelineBarShape`** / **`SegmentedRectangleShape`** use per-section `<linearGradient>` defs; **per-segment outline** (segments mode) uses **gradient stroke** + hue-shift when the segment is theme-hue and no custom outline colour. **Timeline/segmented section modal** preview shows gradient fill and optional gradient border ring. Patch bumped.
+
+
+### 2026-05-15 – **Segmented rectangle** shape (`generic.object.segmented-rectangle`)
+
+Timeline-bar-style **sections** (labels, fill / gradient / theme-hue, weights, spans) with **gap**, **outline mode** (container / per-segment / none), optional **inset dividers**, and **section editor** + **visual styling** parity. Resource **`segmented-rectangle.svg`** (layout reference) + palette entry. Shape swap / pyramid / timeline migration for sections. Patch bumped.
+
+
 ### 2026-05-15 – **Pie chart** palette drop: default **190×180** only
 
 **`canvas-operations`** grid-snapped width/height for **`generic.chart.pie`**; random built-in theme + **`applyThemeToItem`** unchanged (no fixed border/background/slice styling). Patch bumped.

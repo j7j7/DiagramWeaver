@@ -56,6 +56,7 @@ import {
   LineChartShape,
   ProgressBarShape,
   TimelineBarShape,
+  SegmentedRectangleShape,
   PyramidShape,
 } from "./shapes";
 import {
@@ -77,6 +78,7 @@ import {
 import { buildSyntheticTimelineEntryCardNode } from "@/lib/timeline-styling";
 import { normalizeCompositeBodyShapeKind } from "@/lib/shape-type-swap";
 import { isTimelineBarNodeType, timelineBarMemoPayload } from "@/lib/timeline-bar";
+import { isSegmentedRectangleNodeType, segmentedRectangleMemoPayload } from "@/lib/segmented-rectangle";
 import { isPyramidNodeType, pyramidMemoPayload } from "@/lib/pyramid";
 import {
   syncClosedConnectorLineBorderWidth,
@@ -394,6 +396,9 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     const pTb = isTimelineBarNodeType(p.type) ? timelineBarMemoPayload(p) : '';
     const nTb = isTimelineBarNodeType(n.type) ? timelineBarMemoPayload(n) : '';
     if (pTb !== nTb) return false;
+    const pSr = isSegmentedRectangleNodeType(p.type) ? segmentedRectangleMemoPayload(p) : '';
+    const nSr = isSegmentedRectangleNodeType(n.type) ? segmentedRectangleMemoPayload(n) : '';
+    if (pSr !== nSr) return false;
     const pPy = isPyramidNodeType(p.type) ? pyramidMemoPayload(p) : '';
     const nPy = isPyramidNodeType(n.type) ? pyramidMemoPayload(n) : '';
     if (pPy !== nPy) return false;
@@ -913,6 +918,26 @@ function DiagramNodeInner({
           {...shapeProps}
           isReadOnly={isReadOnly}
           diagramSnapX={timelineSnapX}
+          onPatch={onUpdate && !isReadOnly ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
+          sectionBoundaryInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
+          sectionLabelInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
+          onSectionBoundaryDragSessionChange={
+            onUpdate && !isReadOnly
+              ? (active) => {
+                  chartValueDragInteractionRef.current = active;
+                  onChartValueDragSessionChange?.(active);
+                }
+              : undefined
+          }
+        />
+      );
+    } else if (nodeType === 'generic.object.segmented-rectangle' || nodeType?.endsWith('.segmented-rectangle')) {
+      const snapX = resizePosition?.x ?? node.x;
+      return (
+        <SegmentedRectangleShape
+          {...shapeProps}
+          isReadOnly={isReadOnly}
+          diagramSnapX={snapX}
           onPatch={onUpdate && !isReadOnly ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
           sectionBoundaryInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
           sectionLabelInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}

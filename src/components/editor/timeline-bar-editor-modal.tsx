@@ -33,9 +33,15 @@ import {
   normalizeTimelineBarAxisLabels,
   normalizeTimelineBarSections,
   timelineBarEvenAxisPositions,
+  timelineBarSectionThemeHueBorderGradient,
   timelineBarSectionThemeHueFill,
+  timelineBarSectionThemeHueFillGradient,
   timelineBarUsesSpanLayout,
 } from "@/lib/timeline-bar";
+import {
+  isSegmentedRectangleNodeType,
+  normalizeSegmentedRectangleSections,
+} from "@/lib/segmented-rectangle";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import { cn } from "@/lib/utils";
 
@@ -216,20 +222,38 @@ export function TimelineBarEditorModal({
   const [labelsFollowFirstSection, setLabelsFollowFirstSection] = useState(false);
 
   useEffect(() => {
-    if (visible && node && isTimelineBarNodeType(node.type)) {
-      const sec = normalizeTimelineBarSections(node).map((s) => ({ ...s }));
+    if (visible && node && (isTimelineBarNodeType(node.type) || isSegmentedRectangleNodeType(node.type))) {
+      const segmented = isSegmentedRectangleNodeType(node.type);
+      const sec = (segmented ? normalizeSegmentedRectangleSections(node) : normalizeTimelineBarSections(node)).map(
+        (s) => ({ ...s }),
+      );
       setRows(sec);
-      setSizing(((node as DiagramNodeData & { timelineBarSizing?: string }).timelineBarSizing as "equal" | "weighted") || "equal");
-      const ax = normalizeTimelineBarAxisLabels(node).map((a) => ({ ...a }));
-      setAxisRows(ax);
+      setSizing(
+        (segmented
+          ? ((node as DiagramNodeData & { segmentedRectangleSizing?: string }).segmentedRectangleSizing as
+              | "equal"
+              | "weighted")
+          : ((node as DiagramNodeData & { timelineBarSizing?: string }).timelineBarSizing as "equal" | "weighted")) ||
+          "equal",
+      );
+      if (segmented) {
+        setAxisRows([]);
+        setAxisSectionOpen(false);
+      } else {
+        const ax = normalizeTimelineBarAxisLabels(node).map((a) => ({ ...a }));
+        setAxisRows(ax);
+        setAxisSectionOpen(ax.length <= 2);
+      }
       setSpanLayoutEnabled(timelineBarUsesSpanLayout(sec));
-      setAxisSectionOpen(ax.length <= 2);
       setCollapsedSegIds(
         sec.length > 2 ? new Set(sec.map((r, j) => timelineBarSectionRowId(r, j))) : new Set(),
       );
       setLabelsFollowFirstSection(
-        (node as DiagramNodeData & { timelineBarLabelsFollowFirstSection?: boolean }).timelineBarLabelsFollowFirstSection ===
-          true,
+        segmented
+          ? (node as DiagramNodeData & { segmentedRectangleLabelsFollowFirstSection?: boolean })
+              .segmentedRectangleLabelsFollowFirstSection === true
+          : (node as DiagramNodeData & { timelineBarLabelsFollowFirstSection?: boolean })
+              .timelineBarLabelsFollowFirstSection === true,
       );
     } else if (visible && node) {
       const def = defaultTimelineBarSections();
@@ -319,6 +343,8 @@ export function TimelineBarEditorModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [visible, onClose]);
 
+  const editorIsSegmented = Boolean(visible && node && isSegmentedRectangleNodeType(node.type));
+
   const handleSave = () => {
     if (!node || isReadOnly) return;
     const useSpan = spanLayoutEnabled && rows.length > 0;
@@ -334,6 +360,15 @@ export function TimelineBarEditorModal({
         fillStyle: fs,
         ...patchTimelineBarSectionLabelFields(r, i),
       };
+      if (typeof r.segmentOutlineWidth === "number" && Number.isFinite(r.segmentOutlineWidth) && r.segmentOutlineWidth >= 0) {
+        base.segmentOutlineWidth = r.segmentOutlineWidth;
+      }
+      if (typeof r.segmentOutlineColor === "string" && r.segmentOutlineColor.trim()) {
+        base.segmentOutlineColor = r.segmentOutlineColor.trim();
+      }
+      if (r.segmentOutlineStyle === "solid" || r.segmentOutlineStyle === "dotted" || r.segmentOutlineStyle === "none") {
+        base.segmentOutlineStyle = r.segmentOutlineStyle;
+      }
       if (fs === "gradient") {
         const g0 = r.fillGradientColors?.[0] ?? r.fill ?? "#6b7280";
         const g1 = r.fillGradientColors?.[1] ?? g0;
@@ -451,7 +486,7 @@ export function TimelineBarEditorModal({
     });
   };
 
-  const hideSectionTickFields = axisRows.some((a) => (a.label ?? "").trim().length > 0);
+  const hideSectionTickFields = editorIsSegmented || axisRows.some((a) => (a.label ?? "").trim().length > 0);
 
   const patchRow = (i: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -473,7 +508,9 @@ export function TimelineBarEditorModal({
           <div className="tb-modal-drag-handle flex cursor-move items-center justify-between border-b px-4 py-2.5">
             <div className="flex min-w-0 items-center gap-2">
               <AlignHorizontalSpaceAround className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-              <h3 className="truncate text-sm font-semibold text-foreground">Timeline bar sections</h3>
+              <h3 className="truncate text-sm font-semibold text-foreground">
+                {editorIsSegmented ? "Segmented rectangle sections" : "Timeline bar sections"}
+              </h3>
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -485,6 +522,7 @@ export function TimelineBarEditorModal({
             </Tooltip>
           </div>
           <div className="max-h-[min(70vh,560px)] space-y-4 overflow-y-auto p-5">
+            {!editorIsSegmented ? (
             <Collapsible open={axisSectionOpen} onOpenChange={setAxisSectionOpen}>
               <div className="space-y-2 rounded-md border border-teal-200/60 bg-teal-50/35 p-3 dark:border-border dark:bg-background">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -601,6 +639,7 @@ export function TimelineBarEditorModal({
                 </CollapsibleContent>
               </div>
             </Collapsible>
+            ) : null}
 
             <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2 dark:border-border dark:bg-background">
               <div>
@@ -1248,22 +1287,65 @@ export function TimelineBarEditorModal({
                             ) : null}
                             {(row.fillStyle ?? "solid") === "theme-hue" ? (
                               <p className="text-xs text-muted-foreground">
-                                Uses the bar background colour for the first theme-hue segment; each further theme-hue segment
-                                shifts hue (same idea as timeline cards). Set the step under Visual styling → Timeline bar, or use
+                                Uses the shape background colour for the first theme-hue segment; each further theme-hue segment
+                                shifts hue (same idea as timeline cards). Set the step under Visual styling →{" "}
+                                {editorIsSegmented ? "Segmented rectangle" : "Timeline bar"}, or use
                                 the Hue step in the Themes menu (pyramid tiers follow that menu value only).
                                 {node && rows.length > 0 ? (
                                   <span className="mt-1 flex items-center gap-2">
-                                    <span
-                                      className="inline-block h-4 w-4 shrink-0 rounded border border-border"
-                                      style={{
-                                        backgroundColor: timelineBarSectionThemeHueFill(
-                                          { ...node, timelineBarSections: rows } as DiagramNodeData,
-                                          normalizeTimelineBarSections({ ...node, timelineBarSections: rows } as DiagramNodeData),
-                                          i,
-                                        ),
-                                      }}
-                                      title="Preview from current bar background"
-                                    />
+                                    {(() => {
+                                      const previewHueNode = editorIsSegmented
+                                        ? ({
+                                            ...node,
+                                            timelineBarHueStepDeg: (
+                                              node as DiagramNodeData & { segmentedRectangleHueStepDeg?: number }
+                                            ).segmentedRectangleHueStepDeg,
+                                          } as DiagramNodeData)
+                                        : ({ ...node, timelineBarSections: rows } as DiagramNodeData);
+                                      const previewSecs = normalizeTimelineBarSections({
+                                        ...node,
+                                        timelineBarSections: rows,
+                                      } as DiagramNodeData);
+                                      const fillGrad = timelineBarSectionThemeHueFillGradient(
+                                        previewHueNode,
+                                        previewSecs,
+                                        i,
+                                      );
+                                      const borderGrad = timelineBarSectionThemeHueBorderGradient(
+                                        previewHueNode,
+                                        previewSecs,
+                                        i,
+                                      );
+                                      const fillSolid = timelineBarSectionThemeHueFill(previewHueNode, previewSecs, i);
+                                      const innerStyle: React.CSSProperties = fillGrad
+                                        ? {
+                                            background: `linear-gradient(${fillGrad.angleDeg}deg, ${fillGrad.start}, ${fillGrad.end})`,
+                                          }
+                                        : { backgroundColor: fillSolid };
+                                      if (borderGrad) {
+                                        return (
+                                          <span
+                                            className="inline-block shrink-0 rounded p-[2px]"
+                                            style={{
+                                              background: `linear-gradient(${borderGrad.angleDeg}deg, ${borderGrad.start}, ${borderGrad.end})`,
+                                            }}
+                                            title="Preview: fill and border (this segment, from current shape styling)"
+                                          >
+                                            <span
+                                              className="block h-4 w-4 rounded-sm"
+                                              style={innerStyle}
+                                            />
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <span
+                                          className="inline-block h-4 w-4 shrink-0 rounded border border-border"
+                                          style={innerStyle}
+                                          title="Preview from current shape background"
+                                        />
+                                      );
+                                    })()}
                                     <span>Preview from current background</span>
                                   </span>
                                 ) : null}
@@ -1286,6 +1368,82 @@ export function TimelineBarEditorModal({
                                 disabled={isReadOnly}
                                 title="Weight"
                               />
+                            </div>
+                          ) : null}
+                          {editorIsSegmented ? (
+                            <div className="space-y-2 rounded-md border border-border/50 bg-muted/10 p-2">
+                              <Label className="text-xs font-medium text-foreground">Segment outline</Label>
+                              <p className="text-[10px] text-muted-foreground">
+                                Used when Visual styling → Segmented rectangle → Outline mode is &quot;segments&quot;. Omit width to use the shape border width.
+                              </p>
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] text-muted-foreground">Stroke colour</Label>
+                                  <ColorPicker
+                                    value={row.segmentOutlineColor ?? String((node as DiagramNodeData).borderColor ?? "#78350f")}
+                                    onChange={(value) => patchRow(i, { segmentOutlineColor: value })}
+                                    showAlpha={true}
+                                    allowTransparent={true}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] text-muted-foreground">Width (px, blank = shape border)</Label>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={16}
+                                    step={0.5}
+                                    className="h-8 text-xs tabular-nums"
+                                    placeholder="inherit"
+                                    value={
+                                      typeof row.segmentOutlineWidth === "number" && Number.isFinite(row.segmentOutlineWidth)
+                                        ? row.segmentOutlineWidth
+                                        : ""
+                                    }
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      if (raw === "") {
+                                        patchRow(i, { segmentOutlineWidth: undefined });
+                                        return;
+                                      }
+                                      const n = parseFloat(raw);
+                                      if (Number.isFinite(n) && n >= 0) patchRow(i, { segmentOutlineWidth: n });
+                                    }}
+                                    disabled={isReadOnly}
+                                  />
+                                </div>
+                                <div className="space-y-1 sm:col-span-2">
+                                  <Label className="text-[10px] text-muted-foreground">Stroke style</Label>
+                                  <Select
+                                    value={row.segmentOutlineStyle ?? "__inherit__"}
+                                    onValueChange={(v) =>
+                                      patchRow(i, {
+                                        segmentOutlineStyle:
+                                          v === "__inherit__" ? undefined : (v as "solid" | "dotted" | "none"),
+                                      })
+                                    }
+                                    disabled={isReadOnly}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="z-[80]">
+                                      <SelectItem value="__inherit__" className="text-xs">
+                                        Same as shape border
+                                      </SelectItem>
+                                      <SelectItem value="solid" className="text-xs">
+                                        Solid
+                                      </SelectItem>
+                                      <SelectItem value="dotted" className="text-xs">
+                                        Dotted
+                                      </SelectItem>
+                                      <SelectItem value="none" className="text-xs">
+                                        None
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
                             </div>
                           ) : null}
                         </div>

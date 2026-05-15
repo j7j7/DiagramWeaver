@@ -83,7 +83,6 @@ import {
   lastTimelineEntryIdOnNodeFromOrderedKeys,
   parseTimelineEntryKey,
 } from "@/lib/timeline-layout";
-import { isTimelineBarNodeType } from "@/lib/timeline-bar";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import {
   getConnectorLikeSpinePlacementAnchor,

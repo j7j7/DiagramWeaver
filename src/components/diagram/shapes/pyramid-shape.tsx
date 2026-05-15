@@ -23,6 +23,7 @@ import {
   timelineBarSectionResolvedTextDecoration,
   timelineBarSectionResolvedVerticalJustify,
   timelineBarSectionThemeHueFill,
+  timelineBarSectionThemeHueFillGradient,
 } from "@/lib/timeline-bar";
 import { multiplyLightnessOfColor } from "@/lib/color-shift";
 import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
@@ -336,19 +337,67 @@ export function PyramidShape({
             </linearGradient>
           );
         })}
+        {sections.map((segTh: TimelineBarSectionData, gi: number) => {
+          if ((segTh.fillStyle ?? "solid") !== "theme-hue") return null;
+          const thg = timelineBarSectionThemeHueFillGradient(node, sections, gi, themesMenuHueStepDeg);
+          if (!thg) return null;
+          const coords = getGradientCoordinates(thg.angleDeg);
+          return (
+            <linearGradient
+              key={`${clipId}-thfg-${gi}`}
+              id={`${clipId}-th-fill-${gi}`}
+              x1={coords.x1}
+              y1={coords.y1}
+              x2={coords.x2}
+              y2={coords.y2}
+            >
+              <stop offset="0%" stopColor={thg.start} />
+              <stop offset="100%" stopColor={thg.end} />
+            </linearGradient>
+          );
+        })}
+        {pyramidSectionBorderOn
+          ? sections.map((segO: TimelineBarSectionData, gi: number) => {
+              if ((segO.fillStyle ?? "solid") !== "theme-hue") return null;
+              const thg = timelineBarSectionThemeHueFillGradient(node, sections, gi, themesMenuHueStepDeg);
+              if (!thg) return null;
+              const coords = getGradientCoordinates(thg.angleDeg);
+              const o0 = multiplyLightnessOfColor(thg.start, PYRAMID_THEME_HUE_TIER_OUTLINE_LIGHTNESS_MUL);
+              const o1 = multiplyLightnessOfColor(thg.end, PYRAMID_THEME_HUE_TIER_OUTLINE_LIGHTNESS_MUL);
+              return (
+                <linearGradient
+                  key={`${clipId}-thout-${gi}`}
+                  id={`${clipId}-th-tier-outline-${gi}`}
+                  x1={coords.x1}
+                  y1={coords.y1}
+                  x2={coords.x2}
+                  y2={coords.y2}
+                >
+                  <stop offset="0%" stopColor={o0} />
+                  <stop offset="100%" stopColor={o1} />
+                </linearGradient>
+              );
+            })
+          : null}
       </defs>
 
       <g pointerEvents="none">
         {tiers.map((tier, i) => {
           const seg = sections[i];
           const fs = seg.fillStyle ?? "solid";
+          const thFillGrad =
+            fs === "theme-hue"
+              ? timelineBarSectionThemeHueFillGradient(node, sections, i, themesMenuHueStepDeg)
+              : null;
           let fillPaint: string;
           if (fs === "none") {
             fillPaint = "transparent";
           } else if (fs === "gradient") {
             fillPaint = `url(#${clipId}-sg-${i})`;
           } else if (fs === "theme-hue") {
-            fillPaint = timelineBarSectionThemeHueFill(node, sections, i, themesMenuHueStepDeg);
+            fillPaint = thFillGrad
+              ? `url(#${clipId}-th-fill-${i})`
+              : timelineBarSectionThemeHueFill(node, sections, i, themesMenuHueStepDeg);
           } else {
             fillPaint = String(seg.fill ?? "#6b7280");
           }
@@ -359,7 +408,9 @@ export function PyramidShape({
             segStroke = strokePaint === "none" ? "transparent" : strokePaint;
           } else if (pyramidSectionBorderOn) {
             if (fs === "theme-hue") {
-              segStroke = multiplyLightnessOfColor(fillPaint, PYRAMID_THEME_HUE_TIER_OUTLINE_LIGHTNESS_MUL);
+              segStroke = thFillGrad
+                ? `url(#${clipId}-th-tier-outline-${i})`
+                : multiplyLightnessOfColor(fillPaint, PYRAMID_THEME_HUE_TIER_OUTLINE_LIGHTNESS_MUL);
             } else if (fs === "gradient") {
               segStroke = secBorderColor;
             } else {
@@ -559,6 +610,8 @@ export function PyramidShape({
       overrideHeight={overrideHeight}
       viewBox={`0 0 ${vbW} ${vbH}`}
       frostedClipPathOverride={backgroundStyle === "frosted" ? frostedHullCss : undefined}
+      /** Tier / hull strokes extend past hull baseline; SVG default clips and cuts the flat bottom seam. */
+      svgOverflowVisible={tierStrokeWidth > 0 || nodeStrokeW > 0}
       svgPointerEvents="none"
       svgContent={content}
     />

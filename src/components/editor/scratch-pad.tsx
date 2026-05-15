@@ -813,7 +813,7 @@ const renderIcon = (item: ScratchPadItem) => {
                                       t.startsWith('generic.chart.') ||
                                       t?.endsWith('.square') || t?.endsWith('.circle') ||
                                       t?.endsWith('.point') || t?.endsWith('.rectangle') ||
-                                      t?.endsWith('.rounded-rectangle') || t?.endsWith('.mind-map-node') || t?.endsWith('.progress-bar') || t?.endsWith('.timeline-bar') || t?.endsWith('.text-box-heading') ||
+                                      t?.endsWith('.rounded-rectangle') || t?.endsWith('.mind-map-node') || t?.endsWith('.progress-bar') || t?.endsWith('.timeline-bar') || t?.endsWith('.segmented-rectangle') || t?.endsWith('.text-box-heading') ||
                                       t?.endsWith('.triangle') || t?.endsWith('.star') ||
                                       t?.endsWith('.cloud') || t?.endsWith('.parallelogram') ||
                                       t?.endsWith('.trapezoid') || t?.endsWith('.kite') ||
@@ -836,6 +836,10 @@ const renderIcon = (item: ScratchPadItem) => {
                                 isTimelineBar={
                                   editingItem.type === 'generic.object.timeline-bar' ||
                                   editingItem.type?.endsWith?.('.timeline-bar')
+                                }
+                                isSegmentedRectangle={
+                                  editingItem.type === 'generic.object.segmented-rectangle' ||
+                                  editingItem.type?.endsWith?.('.segmented-rectangle')
                                 }
                             />
                         </TabsContent>

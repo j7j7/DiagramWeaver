@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect, useCallback, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown } from "lucide-react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
@@ -41,6 +41,11 @@ interface TextboxRichEditorProps {
   toolbarPortalHost?: HTMLElement | null;
   /** When true, toolbar is portaled to `toolbarPortalHost` (or hidden until the host mounts). */
   toolbarPinToShapeTop?: boolean;
+  /**
+   * When true (e.g. editor inside SVG `foreignObject`), portal the toolbar to `document.body` with fixed
+   * positioning so it is not clipped. Mutually prefer `toolbarPinToShapeTop` + host when available.
+   */
+  toolbarFixedToViewport?: boolean;
 }
 
 export function TextboxRichEditor({
@@ -53,13 +58,71 @@ export function TextboxRichEditor({
   toolbarCounterRotationDeg,
   toolbarPortalHost,
   toolbarPinToShapeTop,
+  toolbarFixedToViewport = false,
 }: TextboxRichEditorProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
+  const submitFlushedRef = useRef(false);
+  const onSubmitRef = useRef(onSubmit);
+  onSubmitRef.current = onSubmit;
+  const nodeForHtmlRef = useRef(node);
+  nodeForHtmlRef.current = node;
   const rafId = useRef<number | null>(null);
   const lastReportedHeight = useRef<number | null>(null);
   const onHeightChangeRef = useRef(onHeightChange);
   onHeightChangeRef.current = onHeightChange;
+
+  const [fixedToolbarAnchor, setFixedToolbarAnchor] = useState<{ cx: number; top: number } | null>(null);
+
+  const updateFixedToolbarAnchor = useCallback(() => {
+    if (!toolbarFixedToViewport) return;
+    const el = rootRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setFixedToolbarAnchor({ cx: r.left + r.width / 2, top: r.top });
+  }, [toolbarFixedToViewport]);
+
+  useLayoutEffect(() => {
+    if (!toolbarFixedToViewport) return;
+    updateFixedToolbarAnchor();
+    const onScrollOrResize = () => updateFixedToolbarAnchor();
+    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", onScrollOrResize);
+    const ro = new ResizeObserver(onScrollOrResize);
+    if (rootRef.current) ro.observe(rootRef.current);
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize, true);
+      window.removeEventListener("resize", onScrollOrResize);
+      ro.disconnect();
+    };
+  }, [toolbarFixedToViewport, updateFixedToolbarAnchor]);
+
+  useEffect(() => {
+    if (!toolbarFixedToViewport) return;
+    const el = editorRef.current;
+    if (!el) return;
+    let raf = 0;
+    const tick = () => {
+      updateFixedToolbarAnchor();
+      if (document.activeElement === el) {
+        raf = requestAnimationFrame(tick);
+      }
+    };
+    const onFocus = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(tick);
+    };
+    const onBlur = () => cancelAnimationFrame(raf);
+    el.addEventListener("focus", onFocus);
+    el.addEventListener("blur", onBlur);
+    if (document.activeElement === el) onFocus();
+    return () => {
+      el.removeEventListener("focus", onFocus);
+      el.removeEventListener("blur", onBlur);
+      cancelAnimationFrame(raf);
+    };
+  }, [toolbarFixedToViewport, updateFixedToolbarAnchor]);
 
   useEffect(() => {
     if (!editorRef.current || hasInitialized.current) return;
@@ -70,6 +133,22 @@ export function TextboxRichEditor({
   useEffect(() => {
     editorRef.current?.focus();
   }, []);
+
+  const flushEditorToSubmit = useCallback(() => {
+    if (submitFlushedRef.current || !editorRef.current || !hasInitialized.current) return;
+    submitFlushedRef.current = true;
+    const html = editorRef.current.innerHTML;
+    const rawRuns = htmlToRuns(html, nodeForHtmlRef.current);
+    const normRuns = normalizeRuns(rawRuns);
+    const plainText = getPlainTextFromRuns(normRuns);
+    onSubmitRef.current(plainText, normRuns);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      flushEditorToSubmit();
+    };
+  }, [flushEditorToSubmit]);
 
   const measureAndReportHeight = useCallback(() => {
     const el = editorRef.current;
@@ -118,12 +197,7 @@ export function TextboxRichEditor({
   }, [onHeightChange, scheduleHeightCheck]);
 
   const handleBlur = () => {
-    if (!editorRef.current) return;
-    const html = editorRef.current.innerHTML;
-    const rawRuns = htmlToRuns(html, node);
-    const normRuns = normalizeRuns(rawRuns);
-    const plainText = getPlainTextFromRuns(normRuns);
-    onSubmit(plainText, normRuns);
+    flushEditorToSubmit();
   };
 
   const applyFormat = (command: "bold" | "italic" | "underline" | "insertUnorderedList" | "insertOrderedList", e: React.MouseEvent) => {
@@ -173,7 +247,8 @@ export function TextboxRichEditor({
   const toolbarClass =
     "flex gap-0.5 rounded-md border border-border bg-background/95 text-foreground px-1 py-1 shadow-sm";
   const useShapeTopToolbar = toolbarPinToShapeTop === true;
-  const counterRot = !useShapeTopToolbar && toolbarCounterRotationDeg != null;
+  const useFixedViewportToolbar = toolbarFixedToViewport === true && !useShapeTopToolbar;
+  const counterRot = !useShapeTopToolbar && !useFixedViewportToolbar && toolbarCounterRotationDeg != null;
 
   const toolbarBar = (
     <div className={toolbarClass} onMouseDown={(e) => e.stopPropagation()}>
@@ -297,6 +372,28 @@ export function TextboxRichEditor({
     toolbarPortalHost ? (
       createPortal(toolbarBar, toolbarPortalHost)
     ) : null
+  ) : useFixedViewportToolbar ? (
+    fixedToolbarAnchor && typeof document !== "undefined" ? (
+      createPortal(
+        <div
+          className="pointer-events-auto"
+          style={{
+            position: "fixed",
+            left: fixedToolbarAnchor.cx,
+            top: fixedToolbarAnchor.top,
+            transform: "translate(-50%, calc(-100% - 0.75rem))",
+            zIndex: 10000,
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          {toolbarBar}
+        </div>,
+        document.body,
+      )
+    ) : null
   ) : (
       <div
         className={cn(
@@ -320,7 +417,7 @@ export function TextboxRichEditor({
     );
 
   return (
-    <div className="relative w-full h-full flex flex-col min-h-0">
+    <div ref={rootRef} className="relative h-full w-full flex min-h-0 flex-col">
       {toolbarChrome}
 
       {/* contentEditable area - fills same space as display, no layout shift */}

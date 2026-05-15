@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import type { DiagramData, DiagramNodeData, PresentationDeck, Slide } from "@/lib/types";
+import { isSegmentedRectangleNodeType } from "@/lib/segmented-rectangle";
 import { useTutorial } from "./tutorial/tutorial-provider";
 import { getTutorialSteps } from "./tutorial/tutorial-steps";
 import { DiagramBreadcrumb } from "./editor/diagram-breadcrumb";
@@ -903,6 +904,19 @@ export function DiagramEditorInner({
                 nodes:
                   prev.nodes?.map((n: DiagramNodeData) => {
                     if (n.id !== nodeId) return n;
+                    if (isSegmentedRectangleNodeType(n.type)) {
+                      const next = {
+                        ...n,
+                        segmentedRectangleSections: payload.sections,
+                        segmentedRectangleSizing: payload.sizing,
+                      } as DiagramNodeData & { segmentedRectangleLabelsFollowFirstSection?: boolean };
+                      if (payload.labelsFollowFirstSection) {
+                        next.segmentedRectangleLabelsFollowFirstSection = true;
+                      } else {
+                        delete next.segmentedRectangleLabelsFollowFirstSection;
+                      }
+                      return next;
+                    }
                     const next = {
                       ...n,
                       timelineBarSections: payload.sections,

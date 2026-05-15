@@ -3421,6 +3421,7 @@ export default function DiagramEditor() {
                            node.type === 'generic.object.rounded-rectangle' ||
                            node.type === 'generic.object.progress-bar' ||
                            node.type === 'generic.object.timeline-bar' ||
+                           node.type === 'generic.object.segmented-rectangle' ||
                            node.type === 'generic.object.text-box-heading' ||
                            node.type === 'generic.object.triangle' ||
                            node.type === 'generic.object.star' ||

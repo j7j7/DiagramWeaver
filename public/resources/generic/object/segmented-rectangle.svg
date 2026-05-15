@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+  <title id="title">Segmented rectangle variations</title>
+  <desc id="desc">Examples: spaced segments with outlines, joined with outlines, joined without outline, single container, container with inset dividers.</desc>
+  <rect width="100%" height="100%" fill="#fafaf9"/>
+  <text x="320" y="28" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" fill="#44403c">Segmented rectangle  layout modes</text>
+  <!-- Row 1: spaced + per-segment stroke -->
+  <g transform="translate(24,48)">
+    <text x="0" y="-8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#78716c">Gaps + per-segment outline</text>
+    <rect x="0" y="0" width="52" height="56" rx="4" fill="#fb923c" stroke="#78350f" stroke-width="2"/>
+    <rect x="58" y="0" width="52" height="56" rx="4" fill="#fbbf24" stroke="#78350f" stroke-width="2"/>
+    <rect x="116" y="0" width="52" height="56" rx="4" fill="#fcd34d" stroke="#78350f" stroke-width="2"/>
+    <rect x="174" y="0" width="52" height="56" rx="4" fill="#fde68a" stroke="#78350f" stroke-width="2"/>
+    <text x="26" y="34" text-anchor="middle" font-size="14" fill="#431407">1</text>
+    <text x="84" y="34" text-anchor="middle" font-size="14" fill="#431407">2</text>
+    <text x="142" y="34" text-anchor="middle" font-size="14" fill="#431407">3</text>
+    <text x="200" y="34" text-anchor="middle" font-size="14" fill="#431407">4</text>
+  </g>
+  <!-- Row 2: joined + per-segment stroke -->
+  <g transform="translate(24,140)">
+    <text x="0" y="-8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#78716c">Joined + per-segment outline</text>
+    <rect x="0" y="0" width="56" height="56" rx="0" fill="#fb923c" stroke="#78350f" stroke-width="2"/>
+    <rect x="56" y="0" width="56" height="56" rx="0" fill="#fbbf24" stroke="#78350f" stroke-width="2"/>
+    <rect x="112" y="0" width="56" height="56" rx="0" fill="#fcd34d" stroke="#78350f" stroke-width="2"/>
+    <rect x="168" y="0" width="56" height="56" rx="0" fill="#fde68a" stroke="#78350f" stroke-width="2"/>
+    <text x="28" y="34" text-anchor="middle" font-size="14" fill="#431407">1</text>
+    <text x="84" y="34" text-anchor="middle" font-size="14" fill="#431407">2</text>
+    <text x="140" y="34" text-anchor="middle" font-size="14" fill="#431407">3</text>
+    <text x="196" y="34" text-anchor="middle" font-size="14" fill="#431407">4</text>
+  </g>
+  <!-- Row 3: joined, no stroke -->
+  <g transform="translate(24,232)">
+    <text x="0" y="-8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#78716c">Joined, no outline</text>
+    <rect x="0" y="0" width="56" height="56" fill="#fb923c"/>
+    <rect x="56" y="0" width="56" height="56" fill="#fbbf24"/>
+    <rect x="112" y="0" width="56" height="56" fill="#fcd34d"/>
+    <rect x="168" y="0" width="56" height="56" fill="#fde68a"/>
+    <text x="28" y="34" text-anchor="middle" font-size="14" fill="#431407">1</text>
+    <text x="84" y="34" text-anchor="middle" font-size="14" fill="#431407">2</text>
+    <text x="140" y="34" text-anchor="middle" font-size="14" fill="#431407">3</text>
+    <text x="196" y="34" text-anchor="middle" font-size="14" fill="#431407">4</text>
+  </g>
+  <!-- Right: single container -->
+  <g transform="translate(360,48)">
+    <text x="0" y="-8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#78716c">Single container outline</text>
+    <rect x="0" y="0" width="224" height="56" rx="6" fill="#ffedd5" stroke="#78350f" stroke-width="2"/>
+    <text x="28" y="34" text-anchor="middle" font-size="14" fill="#431407">1</text>
+    <text x="84" y="34" text-anchor="middle" font-size="14" fill="#431407">2</text>
+    <text x="140" y="34" text-anchor="middle" font-size="14" fill="#431407">3</text>
+    <text x="196" y="34" text-anchor="middle" font-size="14" fill="#431407">4</text>
+  </g>
+  <!-- Right: container + inset dividers -->
+  <g transform="translate(360,140)">
+    <text x="0" y="-8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#78716c">Container + inset dividers</text>
+    <rect x="0" y="0" width="224" height="56" rx="6" fill="#ffedd5" stroke="#78350f" stroke-width="2"/>
+    <text x="28" y="34" text-anchor="middle" font-size="14" fill="#431407">1</text>
+    <text x="84" y="34" text-anchor="middle" font-size="14" fill="#431407">2</text>
+    <text x="140" y="34" text-anchor="middle" font-size="14" fill="#431407">3</text>
+    <text x="196" y="34" text-anchor="middle" font-size="14" fill="#431407">4</text>
+    <line x1="56" y1="12" x2="56" y2="44" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="112" y1="12" x2="112" y2="44" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
+    <line x1="168" y1="12" x2="168" y2="44" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -18,6 +18,7 @@ export function isBorderShapeNode(type?: string): boolean {
     type === "generic.object.rounded-rectangle" ||
     type === "generic.object.progress-bar" ||
     type === "generic.object.timeline-bar" ||
+    type === "generic.object.segmented-rectangle" ||
     type === "generic.object.text-box-heading" ||
     type === "generic.object.circle" ||
     type === "generic.object.point" ||
@@ -26,6 +27,7 @@ export function isBorderShapeNode(type?: string): boolean {
     type?.endsWith(".rounded-rectangle") ||
     type?.endsWith(".progress-bar") ||
     type?.endsWith(".timeline-bar") ||
+    type?.endsWith(".segmented-rectangle") ||
     type?.endsWith(".text-box-heading") ||
     type?.endsWith(".circle") ||
     type?.endsWith(".point")

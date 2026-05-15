@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
 import { isTimelineBarNodeType } from '@/lib/timeline-bar';
+import { isSegmentedRectangleNodeType } from '@/lib/segmented-rectangle';
 import { isPyramidNodeType } from '@/lib/pyramid';
 import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical, Shapes, ClipboardPaste, AlignHorizontalSpaceAround, Pin } from 'lucide-react';
 import type { PasteSpecialAspect } from '@/lib/paste-special-properties';
@@ -363,7 +364,7 @@ export function ContextMenu({
         </button>
       )}
 
-      {onEditTimelineBarSections && isTimelineBarNodeType(nodeType) && (
+      {onEditTimelineBarSections && (isTimelineBarNodeType(nodeType) || isSegmentedRectangleNodeType(nodeType)) && (
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
           onClick={() => {
@@ -372,7 +373,7 @@ export function ContextMenu({
           }}
         >
           <AlignHorizontalSpaceAround className="w-4 h-4" />
-          Timeline bar sections
+          {isSegmentedRectangleNodeType(nodeType) ? "Segmented rectangle sections" : "Timeline bar sections"}
         </button>
       )}
 

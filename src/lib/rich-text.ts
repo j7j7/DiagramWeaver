@@ -60,6 +60,17 @@ function escapeCssString(s: string): string {
   return `"${s.replace(/"/g, '\\"')}"`;
 }
 
+/** Map CSS text-align to stored lineJustify (handles start/end/startforwards). */
+function normalizeTextAlignToLineJustify(raw: string | null | undefined): RichTextRun["lineJustify"] | undefined {
+  if (!raw) return undefined;
+  const a = raw.toLowerCase().trim();
+  if (a === "justify" || a === "justify-all") return "full";
+  if (a === "left" || a === "start") return "left";
+  if (a === "right" || a === "end") return "right";
+  if (a === "center") return "center";
+  return undefined;
+}
+
 /** Convert runs to HTML for contentEditable. Supports per-line justify/font. */
 export function runsToHtml(runs: RichTextRun[], node?: DiagramNodeData | null): string {
   if (runs.length === 0) return "";
@@ -158,11 +169,18 @@ export function htmlToRuns(html: string, node?: DiagramNodeData | null): RichTex
   ];
 
   function getBlockLineFormat(el: Element): Partial<RichTextRun> {
-    const style = (el as HTMLElement).style;
     const format: Partial<RichTextRun> = {};
-    const align = style?.textAlign;
-    if (align) {
-      format.lineJustify = align === "justify" ? "full" : (align as "left" | "center" | "right");
+    const he = el as HTMLElement;
+    const style = he.style;
+    const fromStyle = normalizeTextAlignToLineJustify(style?.textAlign);
+    if (fromStyle) format.lineJustify = fromStyle;
+    if (!format.lineJustify) {
+      const alignAttr = el.getAttribute("align");
+      if (alignAttr) {
+        const a = alignAttr.toLowerCase().trim();
+        if (a === "justify") format.lineJustify = "full";
+        else if (a === "left" || a === "center" || a === "right") format.lineJustify = a;
+      }
     }
     const fs = style?.fontSize;
     if (fs && fs !== "inherit") {
@@ -192,13 +210,13 @@ export function htmlToRuns(html: string, node?: DiagramNodeData | null): RichTex
           underline: fmt.underline || undefined,
           listType: fmt.listType,
         };
-        if (firstRunOfBlock && Object.keys(effectiveBlockFormat).length > 0) {
-          if (effectiveBlockFormat.lineJustify) run.lineJustify = effectiveBlockFormat.lineJustify;
-          if (effectiveBlockFormat.lineFontSize != null) run.lineFontSize = effectiveBlockFormat.lineFontSize;
-          if (effectiveBlockFormat.lineFontWeight != null) run.lineFontWeight = effectiveBlockFormat.lineFontWeight;
-          if (effectiveBlockFormat.lineFontFamily) run.lineFontFamily = effectiveBlockFormat.lineFontFamily;
-          firstRunOfBlock = false;
-        }
+        // Apply current block/line context to every run so partial <span> alignment/italic
+        // and execCommand output still round-trip (not only the first text node in a div).
+        if (effectiveBlockFormat.lineJustify) run.lineJustify = effectiveBlockFormat.lineJustify;
+        if (effectiveBlockFormat.lineFontSize != null) run.lineFontSize = effectiveBlockFormat.lineFontSize;
+        if (effectiveBlockFormat.lineFontWeight != null) run.lineFontWeight = effectiveBlockFormat.lineFontWeight;
+        if (effectiveBlockFormat.lineFontFamily) run.lineFontFamily = effectiveBlockFormat.lineFontFamily;
+        firstRunOfBlock = false;
         runs.push(run);
       }
       return;
@@ -253,6 +271,25 @@ export function htmlToRuns(html: string, node?: DiagramNodeData | null): RichTex
       for (const child of el.childNodes) visit(child, lineFmt);
       stack.pop();
       firstRunOfBlock = prevFirst;
+      return;
+    } else if (tag === "span") {
+      const nextFmt = { ...fmt };
+      const st = (el as HTMLElement).style;
+      const fw = st.fontWeight;
+      if (fw && fw !== "inherit" && fw !== "normal" && fw !== "400") {
+        const n = parseInt(String(fw), 10);
+        if (fw === "bold" || fw === "bolder" || (!Number.isNaN(n) && n >= 600)) nextFmt.bold = true;
+      }
+      const fs = st.fontStyle;
+      if (fs === "italic" || fs === "oblique") nextFmt.italic = true;
+      const td = String(st.textDecorationLine || st.textDecoration || "");
+      if (td.includes("underline")) nextFmt.underline = true;
+      const alignFromSpan = normalizeTextAlignToLineJustify(st.textAlign);
+      const childBlock = { ...effectiveBlockFormat };
+      if (alignFromSpan) childBlock.lineJustify = alignFromSpan;
+      stack.push(nextFmt);
+      for (const child of el.childNodes) visit(child, childBlock);
+      stack.pop();
       return;
     }
 

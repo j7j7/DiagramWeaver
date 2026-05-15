@@ -1,5 +1,6 @@
 import { shiftHueOfColor } from "@/lib/color-shift";
 import { GRID_STEP, snapToGrid } from "@/components/editor/canvas-constants";
+import { normalizeRuns } from "@/lib/rich-text";
 import {
   TIMELINE_BAR_LABEL_FIRST_SECTION,
   type DiagramNodeData,
@@ -277,6 +278,29 @@ export function timelineBarThemeHueRankAtSection(sections: TimelineBarSectionDat
   return rank >= 0 ? rank : 0;
 }
 
+/** Hue shift (`°`) applied to a theme-hue section (rank × step). Returns `0` when the section is not theme-hue. */
+export function timelineBarSectionThemeHueDeltaDeg(
+  node: DiagramNodeData,
+  sections: TimelineBarSectionData[],
+  sectionIndex: number,
+  /** Optional hue step (`°`). Pyramid passes a finite 4th arg from the Themes menu; timeline / segmented rectangle omit → use node `timelineBarHueStepDeg` / segmented override. */
+  hueStepDegOverride?: number,
+): number {
+  const seg = sections[sectionIndex];
+  if ((seg?.fillStyle ?? "solid") !== "theme-hue") return 0;
+  const rank = timelineBarThemeHueRankAtSection(sections, sectionIndex);
+  const explicitMenuStep =
+    arguments.length >= 4 && typeof hueStepDegOverride === "number" && Number.isFinite(hueStepDegOverride)
+      ? hueStepDegOverride
+      : undefined;
+  const stepRaw =
+    explicitMenuStep !== undefined
+      ? explicitMenuStep
+      : (node as DiagramNodeData & { timelineBarHueStepDeg?: number }).timelineBarHueStepDeg;
+  const step = typeof stepRaw === "number" && Number.isFinite(stepRaw) ? stepRaw : DIAGRAM_THEME_HUE_STEP_DEG;
+  return rank * step;
+}
+
 export function timelineBarSectionThemeHueFill(
   node: DiagramNodeData,
   sections: TimelineBarSectionData[],
@@ -288,21 +312,58 @@ export function timelineBarSectionThemeHueFill(
   if ((seg?.fillStyle ?? "solid") !== "theme-hue") {
     return String(seg?.fill ?? "#6b7280");
   }
-  const rank = timelineBarThemeHueRankAtSection(sections, sectionIndex);
   const base = timelineBarThemeHueBaseColor(node);
-  /** Pyramid passes arity 4 with a finite step from the Themes menu; timeline omits → use `timelineBarHueStepDeg` on the node. */
-  const explicitMenuStep =
-    arguments.length >= 4 && typeof hueStepDegOverride === "number" && Number.isFinite(hueStepDegOverride)
-      ? hueStepDegOverride
-      : undefined;
-  const stepRaw =
-    explicitMenuStep !== undefined
-      ? explicitMenuStep
-      : (node as DiagramNodeData & { timelineBarHueStepDeg?: number }).timelineBarHueStepDeg;
-  const step = typeof stepRaw === "number" && Number.isFinite(stepRaw) ? stepRaw : DIAGRAM_THEME_HUE_STEP_DEG;
-  const delta = rank * step;
+  const delta = timelineBarSectionThemeHueDeltaDeg(node, sections, sectionIndex, hueStepDegOverride);
   if (!Number.isFinite(delta) || delta === 0) return base;
   return shiftHueOfColor(base, delta);
+}
+
+/** When the shape background is a linear gradient, theme-hue sections use hue-shifted stops at the same angle; otherwise `null` — use solid {@link timelineBarSectionThemeHueFill}. */
+export function timelineBarSectionThemeHueFillGradient(
+  node: DiagramNodeData,
+  sections: TimelineBarSectionData[],
+  sectionIndex: number,
+  hueStepDegOverride?: number,
+): { start: string; end: string; angleDeg: number } | null {
+  const seg = sections[sectionIndex];
+  if ((seg?.fillStyle ?? "solid") !== "theme-hue") return null;
+  const n = node as unknown as Record<string, unknown>;
+  const bgStyle = (n.backgroundStyle as string) || "solid";
+  if (bgStyle !== "gradient") return null;
+  const bgs = n.backgroundColors as string[] | undefined;
+  if (!Array.isArray(bgs) || bgs.length < 2) return null;
+  const c0 = String(bgs[0]);
+  const c1 = String(bgs[1] ?? bgs[0]);
+  const angleDeg = typeof n.gradientAngle === "number" && Number.isFinite(n.gradientAngle) ? n.gradientAngle : 135;
+  const delta = timelineBarSectionThemeHueDeltaDeg(node, sections, sectionIndex, hueStepDegOverride);
+  const start = !Number.isFinite(delta) || delta === 0 ? c0 : shiftHueOfColor(c0, delta);
+  const end = !Number.isFinite(delta) || delta === 0 ? c1 : shiftHueOfColor(c1, delta);
+  return { start, end, angleDeg };
+}
+
+/** When the shape border is a linear gradient, theme-hue sections can use hue-shifted border stops (e.g. per-segment outline). */
+export function timelineBarSectionThemeHueBorderGradient(
+  node: DiagramNodeData,
+  sections: TimelineBarSectionData[],
+  sectionIndex: number,
+  hueStepDegOverride?: number,
+): { start: string; end: string; angleDeg: number } | null {
+  const seg = sections[sectionIndex];
+  if ((seg?.fillStyle ?? "solid") !== "theme-hue") return null;
+  const n = node as unknown as Record<string, unknown>;
+  const borderStyle = ((n.borderStyle as string) || "solid") as string;
+  if (borderStyle !== "gradient") return null;
+  const bc = n.borderColors as string[] | undefined;
+  if (!Array.isArray(bc) || bc.length < 2) return null;
+  const c0 = String(bc[0]);
+  const c1 = String(bc[1] ?? bc[0]);
+  const gradientAngle = typeof n.gradientAngle === "number" && Number.isFinite(n.gradientAngle) ? n.gradientAngle : 135;
+  const angleDeg =
+    typeof n.borderGradientAngle === "number" && Number.isFinite(n.borderGradientAngle) ? n.borderGradientAngle : gradientAngle;
+  const delta = timelineBarSectionThemeHueDeltaDeg(node, sections, sectionIndex, hueStepDegOverride);
+  const start = !Number.isFinite(delta) || delta === 0 ? c0 : shiftHueOfColor(c0, delta);
+  const end = !Number.isFinite(delta) || delta === 0 ? c1 : shiftHueOfColor(c1, delta);
+  return { start, end, angleDeg };
 }
 
 const DEFAULT_SECTION_COLORS = ["#3b82f6", "#8b5cf6", "#f97316", "#22c55e"];
@@ -623,9 +684,13 @@ export function normalizeTimelineBarSections(node: DiagramNodeData): TimelineBar
         labelFontSize = szRaw;
       }
 
+      const richLabelNorm =
+        Array.isArray(s.richLabel) && s.richLabel.length > 0 ? normalizeRuns(s.richLabel) : undefined;
+
       return {
         id: typeof s.id === "string" && s.id ? s.id : `tb-${i}`,
         label: s.label,
+        ...(richLabelNorm && richLabelNorm.length > 0 ? { richLabel: richLabelNorm } : {}),
         fill: baseFill,
         fillStyle,
         fillGradientColors,
@@ -641,6 +706,17 @@ export function normalizeTimelineBarSections(node: DiagramNodeData): TimelineBar
         ...(labelFontWeight ? { labelFontWeight } : {}),
         ...(labelFontStyle ? { labelFontStyle } : {}),
         ...(labelTextDecoration ? { labelTextDecoration } : {}),
+        ...(typeof s.segmentOutlineColor === "string" && s.segmentOutlineColor.trim()
+          ? { segmentOutlineColor: s.segmentOutlineColor.trim() }
+          : {}),
+        ...(typeof s.segmentOutlineWidth === "number" &&
+        Number.isFinite(s.segmentOutlineWidth) &&
+        s.segmentOutlineWidth >= 0
+          ? { segmentOutlineWidth: s.segmentOutlineWidth }
+          : {}),
+        ...(s.segmentOutlineStyle === "solid" || s.segmentOutlineStyle === "dotted" || s.segmentOutlineStyle === "none"
+          ? { segmentOutlineStyle: s.segmentOutlineStyle }
+          : {}),
       };
     });
   }
