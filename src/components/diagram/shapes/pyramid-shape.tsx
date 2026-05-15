@@ -3,9 +3,13 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { DiagramNodeData, PyramidDirection, PyramidSizing, RichTextRun, TimelineBarSectionData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientCoordinates, svgForeignObjectInlineInputStyle } from "./shape-utils";
+import { getGradientCoordinates } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 import { svgUserPointFromClient } from "@/lib/chart-pointer-geometry";
+import { labelToRuns, normalizeRuns, getPlainTextFromRuns } from "@/lib/rich-text";
+import { TextboxRichEditor } from "../textbox-rich-editor";
+import { TextboxRichDisplay } from "../textbox-rich-display";
+import { buildSectionLabelRichTextNode } from "@/lib/section-label-rich-node";
 import {
   normalizePyramidSections,
   pyramidHullClipPathCssPercent,
@@ -15,6 +19,7 @@ import {
   pyramidTiersLayoutVb,
 } from "@/lib/pyramid";
 import {
+  normalizeTimelineBarSections,
   timelineBarSectionResolvedFontFamily,
   timelineBarSectionResolvedFontSizePx,
   timelineBarSectionResolvedFontStyle,
@@ -99,7 +104,6 @@ export function PyramidShape({
   const pyramidBoundaryWorkingSectionsRef = useRef<TimelineBarSectionData[]>([]);
 
   const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
-  const [sectionLabelDraft, setSectionLabelDraft] = useState("");
 
   const backgroundColors = (nodeAny.backgroundColors as string[]) || [(nodeAny.backgroundColor as string) || "#f3f4f6"];
   const borderColors = (nodeAny.borderColors as string[]) || [(nodeAny.borderColor as string) || "#6b7280"];
@@ -124,6 +128,7 @@ export function PyramidShape({
   const h = (node.height ?? VIEWBOX_H) as number;
 
   const sections = normalizePyramidSections(node);
+  const normSections = normalizeTimelineBarSections({ ...node, timelineBarSections: sections } as DiagramNodeData);
   const pyramidSectionBorderOn = pyramidTierStrokeAllowed && nodeAny.pyramidSectionBorder === true;
   const rawOutline =
     typeof nodeAny.pyramidSectionBorderWidth === "number" && Number.isFinite(nodeAny.pyramidSectionBorderWidth as number)
@@ -176,26 +181,52 @@ export function PyramidShape({
 
   const cx = half + innerW / 2;
 
-  const commitSectionLabelEdit = useCallback(() => {
-    if (inlineSectionLabelCancelledRef.current) {
-      inlineSectionLabelCancelledRef.current = false;
-      return;
-    }
-    if (editingSectionIndex == null || !onPatch) return;
-    const idx = editingSectionIndex;
-    const next = sectionLabelDraft.trim();
-    const prev = (sections[idx]?.label ?? "").trim();
-    if (next !== prev) {
-      const nextSecs = sections.map((s, j) => (j === idx ? { ...s, label: next } : s));
-      onPatch({ pyramidSections: nextSecs });
-    }
-    setEditingSectionIndex(null);
-  }, [editingSectionIndex, onPatch, sectionLabelDraft, sections]);
+  const handleSectionRichLabelSubmit = useCallback(
+    (plainText: string, runs: RichTextRun[]) => {
+      if (inlineSectionLabelCancelledRef.current) {
+        inlineSectionLabelCancelledRef.current = false;
+        return;
+      }
+      if (editingSectionIndex == null || !onPatch) return;
+      const idx = editingSectionIndex;
+      const norm = normalizeRuns(runs);
+      const nextPlain = plainText.trim();
+      const prevRuns = normalizeRuns(sections[idx].richLabel ?? labelToRuns(sections[idx].label ?? ""));
+      const prevPlain = getPlainTextFromRuns(prevRuns).trim();
+      if (nextPlain !== prevPlain || JSON.stringify(norm) !== JSON.stringify(prevRuns)) {
+        const nextSecs = sections.map((s, j) =>
+          j === idx
+            ? {
+                ...s,
+                label: nextPlain,
+                richLabel: norm.length > 0 ? norm : undefined,
+              }
+            : s,
+        );
+        onPatch({ pyramidSections: nextSecs });
+      }
+      setEditingSectionIndex(null);
+    },
+    [editingSectionIndex, onPatch, sections],
+  );
 
   const cancelSectionLabelEdit = useCallback(() => {
     inlineSectionLabelCancelledRef.current = true;
     setEditingSectionIndex(null);
   }, []);
+
+  const patchEditingSectionLabelVerticalAlign = useCallback(
+    (position: "top" | "middle" | "bottom") => {
+      if (editingSectionIndex == null || !onPatch) return;
+      const labelsFollowFirst = (nodeAny.pyramidLabelsFollowFirstSection as boolean | undefined) === true;
+      const targetIdx = labelsFollowFirst && editingSectionIndex > 0 ? 0 : editingSectionIndex;
+      const nextSecs = sections.map((s, j) =>
+        j === targetIdx ? { ...s, labelVerticalAlign: position } : s,
+      );
+      onPatch({ pyramidSections: nextSecs });
+    },
+    [editingSectionIndex, nodeAny.pyramidLabelsFollowFirstSection, onPatch, sections],
+  );
 
   useEffect(() => {
     if (editingSectionIndex == null) return;
@@ -438,8 +469,9 @@ export function PyramidShape({
       {sections.map((seg: TimelineBarSectionData, i: number) => {
         const tier = tiers[i];
         if (!tier) return null;
-        const lab = (seg.label ?? "").trim();
-        if (!lab) return null;
+        const displayRuns = normalizeRuns(seg.richLabel ?? labelToRuns(seg.label ?? ""));
+        const plainDisplay = getPlainTextFromRuns(displayRuns).trim();
+        if (!plainDisplay) return null;
         const tierH = Math.max(0.5, heights[i] ?? Math.abs(tier.yBottom - tier.yTop));
         const lc = seg.labelColor ? String(seg.labelColor) : textCol;
         const wTopPx = tier.wTopFrac * innerW;
@@ -452,21 +484,22 @@ export function PyramidShape({
         const foLeft = cx - bandMidW / 2 + padX;
         const foTop = tier.yTop + padY;
 
-        const isEditing = canEditSectionLabel && editingSectionIndex === i;
-        const labelPointer = canEditSectionLabel ? "auto" : "none";
+        const isEditingSection = editingSectionIndex === i;
+        const isEditing = Boolean(onPatch && !isReadOnly && isEditingSection);
+        const labelPointer = canEditSectionLabel || isEditingSection ? "auto" : "none";
         const styleIdx = labelsFollowFirst && i > 0 ? 0 : i;
         const styleSeg = sections[styleIdx] ?? seg;
         const segFontSize = Math.min(
           tierH * 0.52,
-          timelineBarSectionResolvedFontSizePx(styleSeg, styleIdx, sections, node),
+          timelineBarSectionResolvedFontSizePx(styleSeg, styleIdx, normSections, node),
           24,
         );
-        const textAlignResolved = timelineBarSectionResolvedTextAlign(styleSeg, styleIdx, sections, node);
-        const justifyContent = timelineBarSectionResolvedVerticalJustify(styleSeg, styleIdx, sections, node);
-        const fontWeightResolved = timelineBarSectionResolvedFontWeight(styleSeg, styleIdx, sections, node);
-        const fontFamily = timelineBarSectionResolvedFontFamily(styleSeg, styleIdx, sections, node);
-        const fontStyle = timelineBarSectionResolvedFontStyle(styleSeg, styleIdx, sections, node) as React.CSSProperties["fontStyle"];
-        const textDecoration = timelineBarSectionResolvedTextDecoration(styleSeg, styleIdx, sections, node) as React.CSSProperties["textDecoration"];
+        const textAlignResolved = timelineBarSectionResolvedTextAlign(styleSeg, styleIdx, normSections, node);
+        const justifyContent = timelineBarSectionResolvedVerticalJustify(styleSeg, styleIdx, normSections, node);
+        const fontWeightResolved = timelineBarSectionResolvedFontWeight(styleSeg, styleIdx, normSections, node);
+        const fontFamily = timelineBarSectionResolvedFontFamily(styleSeg, styleIdx, normSections, node);
+        const fontStyle = timelineBarSectionResolvedFontStyle(styleSeg, styleIdx, normSections, node) as React.CSSProperties["fontStyle"];
+        const textDecoration = timelineBarSectionResolvedTextDecoration(styleSeg, styleIdx, normSections, node) as React.CSSProperties["textDecoration"];
         const lineHeightMul =
           typeof nodeAny.lineHeight === "number" && Number.isFinite(nodeAny.lineHeight) ? Number(nodeAny.lineHeight) : 1.2;
         const letterSpacingPx =
@@ -474,16 +507,37 @@ export function PyramidShape({
             ? (nodeAny.letterSpacing as number)
             : undefined;
         const textTransform = ((nodeAny.textTransform as string) || "none") as React.CSSProperties["textTransform"];
-        const opacityStyle =
-          Number(nodeAny.textOpacity) >= 0 && Number(nodeAny.textOpacity) !== 1
-            ? { opacity: Number(nodeAny.textOpacity) }
-            : {};
+        const textVerticalPosition: "top" | "middle" | "bottom" =
+          justifyContent === "flex-start" ? "top" : justifyContent === "flex-end" ? "bottom" : "middle";
+        const sectionTextNode = buildSectionLabelRichTextNode(
+          node,
+          lc,
+          segFontSize,
+          textAlignResolved,
+          fontWeightResolved,
+          fontFamily,
+          fontStyle as DiagramNodeData["fontStyle"],
+          textDecoration as DiagramNodeData["textDecoration"],
+          lineHeightMul,
+          letterSpacingPx,
+          textTransform as DiagramNodeData["textTransform"],
+          textVerticalPosition,
+        );
+        const editRuns = normalizeRuns(seg.richLabel ?? labelToRuns(seg.label ?? ""));
 
         return (
           <g key={`pylab-${seg.id}-${i}`}>
-            <foreignObject x={foLeft} y={foTop} width={foW} height={foH} style={{ overflow: "hidden", pointerEvents: labelPointer }}>
+            <foreignObject
+              x={foLeft}
+              y={foTop}
+              width={foW}
+              height={foH}
+              style={{ overflow: isEditing ? "visible" : "hidden", pointerEvents: labelPointer }}
+            >
               <div
-                className={`flex h-full min-h-0 w-full flex-col ${canEditSectionLabel ? "cursor-text" : "cursor-default"}`}
+                className={`flex h-full min-h-0 w-full flex-col ${
+                  canEditSectionLabel || isEditing ? "cursor-text" : "cursor-default"
+                }`}
                 style={{ justifyContent }}
                 onPointerDown={(e) => canEditSectionLabel && !isEditing && e.stopPropagation()}
                 onDoubleClick={(e) => {
@@ -491,75 +545,44 @@ export function PyramidShape({
                   e.stopPropagation();
                   e.preventDefault();
                   setEditingSectionIndex(i);
-                  setSectionLabelDraft(seg.label ?? "");
                 }}
               >
                 {isEditing ? (
-                  <textarea
-                    value={sectionLabelDraft}
-                    autoFocus
-                    aria-label="Edit pyramid segment label"
-                    className="m-0 box-border min-h-0 w-full flex-1 resize-none bg-transparent shadow-none focus:outline-none focus:ring-0"
-                    style={{
-                      ...svgForeignObjectInlineInputStyle({
-                        fontSize: segFontSize,
-                        fontWeight: fontWeightResolved,
-                        color: lc,
-                        caretColor: lc,
-                        textAlign: textAlignResolved,
-                      }),
-                      minHeight: `${segFontSize * lineHeightMul}px`,
-                      lineHeight: lineHeightMul,
-                      overflow: "auto",
-                      fontFamily,
-                      fontStyle,
-                      textDecoration,
-                      ...(letterSpacingPx !== undefined ? { letterSpacing: `${letterSpacingPx}px` } : {}),
-                      textTransform,
-                      whiteSpace: "pre-wrap",
-                      ...opacityStyle,
-                    }}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setSectionLabelDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      e.stopPropagation();
-                      if (e.key === "Escape") {
-                        e.preventDefault();
-                        cancelSectionLabelEdit();
-                      } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                        e.preventDefault();
-                        commitSectionLabelEdit();
-                      }
-                    }}
-                    onBlur={() => commitSectionLabelEdit()}
+                  <div
+                    className="relative min-h-0 w-full flex-1 overflow-visible"
                     onClick={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
                     onDoubleClick={(e) => e.stopPropagation()}
-                  />
-                ) : (
-                  <div
-                    className="min-h-0 w-full overflow-auto"
-                    style={{
-                      ...opacityStyle,
-                      margin: 0,
-                      padding: 2,
-                      boxSizing: "border-box",
-                      fontFamily,
-                      fontSize: segFontSize,
-                      fontWeight: fontWeightResolved,
-                      fontStyle,
-                      textDecoration,
-                      color: lc,
-                      lineHeight: lineHeightMul,
-                      textAlign: textAlignResolved,
-                      wordBreak: "break-word",
-                      overflowWrap: "anywhere",
-                      ...(letterSpacingPx !== undefined ? { letterSpacing: `${letterSpacingPx}px` } : {}),
-                      textTransform,
-                      whiteSpace: "pre-wrap",
-                    }}
                   >
-                    {lab}
+                    <TextboxRichEditor
+                      key={`py-edit-${seg.id}-${i}`}
+                      node={sectionTextNode}
+                      runs={editRuns}
+                      onSubmit={handleSectionRichLabelSubmit}
+                      toolbarFixedToViewport
+                      onVerticalAlignChange={patchEditingSectionLabelVerticalAlign}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          cancelSectionLabelEdit();
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="min-h-0 w-full overflow-auto" style={{ padding: 2, boxSizing: "border-box" }}>
+                    <TextboxRichDisplay
+                      node={sectionTextNode}
+                      runs={displayRuns}
+                      suppressHoverBackground
+                      onDoubleClick={(e) => {
+                        if (!canEditSectionLabel) return;
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setEditingSectionIndex(i);
+                      }}
+                    />
                   </div>
                 )}
               </div>

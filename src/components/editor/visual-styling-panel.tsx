@@ -363,6 +363,10 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   const [pyramidTierGapDraft, setPyramidTierGapDraft] = useState("");
   const [borderWidthFocused, setBorderWidthFocused] = useState(false);
   const [borderWidthDraft, setBorderWidthDraft] = useState("");
+  const [segmentedRectangleDividerWidthFocused, setSegmentedRectangleDividerWidthFocused] = useState(false);
+  const [segmentedRectangleDividerWidthDraft, setSegmentedRectangleDividerWidthDraft] = useState("");
+  const [segmentedRectangleSegmentGapFocused, setSegmentedRectangleSegmentGapFocused] = useState(false);
+  const [segmentedRectangleSegmentGapDraft, setSegmentedRectangleSegmentGapDraft] = useState("");
 
   useEffect(() => {
     if (!borderWidthFocused) {
@@ -387,6 +391,22 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
       setPyramidTierGapDraft(String(shown));
     }
   }, [styling.pyramidSegmentGap, pyramidTierGapFocused]);
+
+  useEffect(() => {
+    if (!segmentedRectangleDividerWidthFocused) {
+      const v = styling.segmentedRectangleDividerWidth;
+      const shown = typeof v === "number" && Number.isFinite(v) ? v : 1.5;
+      setSegmentedRectangleDividerWidthDraft(String(shown));
+    }
+  }, [styling.segmentedRectangleDividerWidth, segmentedRectangleDividerWidthFocused]);
+
+  useEffect(() => {
+    if (!segmentedRectangleSegmentGapFocused) {
+      const v = styling.segmentedRectangleSegmentGap;
+      const shown = typeof v === "number" && Number.isFinite(v) ? v : 0;
+      setSegmentedRectangleSegmentGapDraft(String(shown));
+    }
+  }, [styling.segmentedRectangleSegmentGap, segmentedRectangleSegmentGapFocused]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -1217,21 +1237,51 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-sm text-muted-foreground">Gap between segments (px)</Label>
                     <Input
-                      type="number"
-                      min={0}
-                      max={64}
-                      step={1}
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 w-[4.5rem] tabular-nums text-sm")}
                       value={
-                        typeof styling.segmentedRectangleSegmentGap === "number" &&
-                        Number.isFinite(styling.segmentedRectangleSegmentGap)
-                          ? styling.segmentedRectangleSegmentGap
-                          : 0
+                        segmentedRectangleSegmentGapFocused
+                          ? segmentedRectangleSegmentGapDraft
+                          : String(
+                              typeof styling.segmentedRectangleSegmentGap === "number" &&
+                                Number.isFinite(styling.segmentedRectangleSegmentGap)
+                                ? styling.segmentedRectangleSegmentGap
+                                : 0,
+                            )
                       }
-                      onChange={(e) => {
-                        const n = parseFloat(e.target.value);
-                        if (!Number.isFinite(n) || n < 0) return;
-                        handlePropertyChange("segmentedRectangleSegmentGap", Math.min(64, n), true);
+                      onFocus={() => {
+                        setSegmentedRectangleSegmentGapFocused(true);
+                        const v = styling.segmentedRectangleSegmentGap;
+                        setSegmentedRectangleSegmentGapDraft(
+                          String(typeof v === "number" && Number.isFinite(v) ? v : 0),
+                        );
+                      }}
+                      onChange={(e) => setSegmentedRectangleSegmentGapDraft(e.target.value)}
+                      onBlur={() => {
+                        setSegmentedRectangleSegmentGapFocused(false);
+                        const t = segmentedRectangleSegmentGapDraft.trim();
+                        const revert =
+                          typeof styling.segmentedRectangleSegmentGap === "number" &&
+                          Number.isFinite(styling.segmentedRectangleSegmentGap)
+                            ? styling.segmentedRectangleSegmentGap
+                            : 0;
+                        if (t === "") {
+                          setSegmentedRectangleSegmentGapDraft(String(revert));
+                          return;
+                        }
+                        const n = parseFloat(t.replace(",", "."));
+                        if (!Number.isFinite(n)) {
+                          setSegmentedRectangleSegmentGapDraft(String(revert));
+                          return;
+                        }
+                        const clamped = Math.min(64, Math.max(0, n));
+                        handlePropertyChange("segmentedRectangleSegmentGap", clamped, true);
+                        setSegmentedRectangleSegmentGapDraft(String(clamped));
+                      }}
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
                       }}
                     />
                   </div>
@@ -1281,14 +1331,52 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       <div className="flex items-center justify-between gap-2">
                         <Label className="text-xs text-muted-foreground">Divider width</Label>
                         <Input
-                          type="number"
-                          min={0.5}
-                          max={8}
-                          step={0.5}
-                          value={styling.segmentedRectangleDividerWidth ?? 1.5}
-                          onChange={(e) => {
-                            const n = parseFloat(e.target.value);
-                            if (!Number.isNaN(n)) handlePropertyChange("segmentedRectangleDividerWidth", n, true);
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          value={
+                            segmentedRectangleDividerWidthFocused
+                              ? segmentedRectangleDividerWidthDraft
+                              : String(
+                                  typeof styling.segmentedRectangleDividerWidth === "number" &&
+                                    Number.isFinite(styling.segmentedRectangleDividerWidth)
+                                    ? styling.segmentedRectangleDividerWidth
+                                    : 1.5,
+                                )
+                          }
+                          onFocus={() => {
+                            setSegmentedRectangleDividerWidthFocused(true);
+                            const v = styling.segmentedRectangleDividerWidth;
+                            setSegmentedRectangleDividerWidthDraft(
+                              String(
+                                typeof v === "number" && Number.isFinite(v) ? v : 1.5,
+                              ),
+                            );
+                          }}
+                          onChange={(e) => setSegmentedRectangleDividerWidthDraft(e.target.value)}
+                          onBlur={() => {
+                            setSegmentedRectangleDividerWidthFocused(false);
+                            const t = segmentedRectangleDividerWidthDraft.trim();
+                            const revert =
+                              typeof styling.segmentedRectangleDividerWidth === "number" &&
+                              Number.isFinite(styling.segmentedRectangleDividerWidth)
+                                ? styling.segmentedRectangleDividerWidth
+                                : 1.5;
+                            if (t === "") {
+                              setSegmentedRectangleDividerWidthDraft(String(revert));
+                              return;
+                            }
+                            const n = parseFloat(t.replace(",", "."));
+                            if (!Number.isFinite(n)) {
+                              setSegmentedRectangleDividerWidthDraft(String(revert));
+                              return;
+                            }
+                            const clamped = Math.min(8, Math.max(0.5, n));
+                            handlePropertyChange("segmentedRectangleDividerWidth", clamped, true);
+                            setSegmentedRectangleDividerWidthDraft(String(clamped));
+                          }}
+                          onKeyDown={(ev) => {
+                            if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
                           }}
                           className={cn(NUMBER_INPUT_NO_SPINNER, "h-8 min-w-[4rem] w-16 tabular-nums text-xs")}
                         />

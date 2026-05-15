@@ -203,7 +203,7 @@ export function useCanvasOperations({
              itemType === MINDMAP_NODE_TYPE ? 80 :
              itemType === 'generic.object.progress-bar' ? 80 :
              itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(790, 40) :
-             itemType === 'generic.object.segmented-rectangle' ? snapDimensionToGrid(320, 40) :
+             itemType === 'generic.object.segmented-rectangle' ? snapDimensionToGrid(780, 40) :
              itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(390, 40) :
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
@@ -226,7 +226,7 @@ export function useCanvasOperations({
              itemType === MINDMAP_NODE_TYPE ? 50 :
              itemType === 'generic.object.progress-bar' ? 50 :
              itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(150, 28) :
-             itemType === 'generic.object.segmented-rectangle' ? snapDimensionToGrid(56, 28) :
+             itemType === 'generic.object.segmented-rectangle' ? snapDimensionToGrid(210, 28) :
              itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(310, 28) :
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :

@@ -3,6 +3,30 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Visual styling**: segmented rectangle **Gap between segments** draft field (backspace-friendly)
+
+**`visual-styling-panel`**: **Gap between segments (px)** uses **`type="text"`** + **focus/blur draft** like divider width; **blur** commits **`segmentedRectangleSegmentGap`** clamped **0–64** (comma decimals accepted). Patch bumped.
+
+
+### 2026-05-15 – **Visual styling**: segmented rectangle **Divider width** draft field (backspace-friendly)
+
+**`visual-styling-panel`**: Divider width uses **`type="text"`** + **focus/blur draft** (same pattern as border width) so the field can be cleared while editing; **blur** commits **`segmentedRectangleDividerWidth`** clamped **0.5–8** (comma decimal accepted). **`SegmentedRectangleShape`**: divider stroke clamp **max 8** (was 6) to match the panel. Patch bumped.
+
+
+### 2026-05-15 – **Segmented rectangle** palette defaults: warm gradients, **64px** gap, dividers, **780×210**, **Section One–Four** **`richLabel`**
+
+**`defaultPaletteSegmentedRectangleNodeProps`** / **`defaultSegmentedRectangleSections`** (**`segmented-rectangle.ts`**): gradient border/background and shadow/line styling aligned with the catalog preview; **`segmentedRectangleOutlineMode: segments`**, gap **64**, dividers **on**; four **theme-hue** sections with **`Section\nOne`…`Four`** + per-line centered **12px/600** runs. New drops / shape-swap dimensions **780×210** (**`canvas-operations`**, **`shape-type-swap`**). Patch bumped.
+
+
+### 2026-05-15 – **Segmented rectangle**, **weighted** widths: draggable segment boundaries (parity with timeline bar)
+
+When **`segmentedRectangleSizing`** is **`weighted`**, boundary **drag handles** work even when a **positive** **`segmentedRectangleSegmentGap`** was set: on first interact gap is cleared to **0**, sections migrate to **`spanStart`/`spanEnd`**, neighbouring segments resize with no gutters. **`jointXs`** drives hit-testing so grabs align with drawn dividers.
+
+### 2026-05-15 – **Pyramid** tier labels: **rich text** edit + display (parity with segmented rectangle)
+
+**`PyramidShape`**: section labels use **`TextboxRichEditor`** / **`TextboxRichDisplay`** (fixed-viewport toolbar), persist **`label` + `richLabel`** on **`pyramidSections`**, **`onVerticalAlignChange`** → **`labelVerticalAlign`** (tier **0** when **`pyramidLabelsFollowFirstSection`** and editing lower tiers). Uses **`normSections`** for timeline section resolution and **`buildSectionLabelRichTextNode`**. Shared helper **`src/lib/section-label-rich-node.ts`**; **`SegmentedRectangleShape`** imports it (removes duplicate local helper). Patch bumped.
+
+
 ### 2026-05-15 – **Segmented rectangle** section labels: **richLabel** survives normalize; **vertical** toolbar → `labelVerticalAlign`
 
 **`normalizeTimelineBarSections`** now **preserves** **`richLabel`** (normalized with **`normalizeRuns`**) so bold/italic/per-line **`lineJustify`** from **`TextboxRichEditor` are not dropped** on the next render (was omitted from the normalized section object, so blur appeared to “reset” to shape **`textJustify` / `textVerticalPosition`**). **`SegmentedRectangleShape`**: **`segmentedSectionLabelTextNode`** sets **`textVerticalPosition`** from the resolved segment so the toolbar matches the flex column; **`onVerticalAlignChange`** patches **`labelVerticalAlign`** on the edited section (**section 0** when **`segmentedRectangleLabelsFollowFirstSection`** and editing segment &gt; 0). Patch bumped.

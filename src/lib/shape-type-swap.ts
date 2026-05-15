@@ -111,8 +111,8 @@ function defaultDimensionsForSwappableKind(kind: SwappableObjectKind): { width: 
       hRaw = 150;
       break;
     case "segmented-rectangle":
-      wRaw = 320;
-      hRaw = 56;
+      wRaw = 780;
+      hRaw = 210;
       break;
     case "pyramid":
       wRaw = 120;

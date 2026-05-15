@@ -1,9 +1,7 @@
-import type { DiagramNodeData, TimelineBarSectionData } from "@/lib/types";
+import type { DiagramNodeData, RichTextRun, TimelineBarSectionData } from "@/lib/types";
 import {
   normalizeTimelineBarSections,
-  timelineBarInteriorDividerXs,
   timelineBarSegmentLayout,
-  timelineBarUsesSpanLayout,
 } from "@/lib/timeline-bar";
 
 export const SEGMENTED_RECTANGLE_NODE_TYPE = "generic.object.segmented-rectangle" as const;
@@ -30,43 +28,69 @@ export function newSegmentedRectangleSectionId(nodeId: string): string {
 }
 
 const DEFAULT_SEG_FILLS = ["#fb923c", "#fbbf24", "#fcd34d", "#fde68a"];
+const DEFAULT_SECTION_SUBLABELS = ["One", "Two", "Three", "Four"] as const;
+
+function defaultSegmentedRectangleSectionRichLabel(suffix: string): RichTextRun[] {
+  return [
+    { text: "Section", lineJustify: "center", lineFontSize: 12, lineFontWeight: "600" },
+    { text: "\n" },
+    { text: suffix, lineJustify: "center", lineFontSize: 12, lineFontWeight: "600" },
+  ];
+}
 
 export function defaultSegmentedRectangleSections(): TimelineBarSectionData[] {
-  return [1, 2, 3, 4].map((n, i) => ({
+  return DEFAULT_SECTION_SUBLABELS.map((suffix, i) => ({
     id: `sr-${i}`,
-    label: String(n),
+    label: `Section\n${suffix}`,
+    richLabel: defaultSegmentedRectangleSectionRichLabel(suffix),
     fill: DEFAULT_SEG_FILLS[i % DEFAULT_SEG_FILLS.length] ?? "#94a3b8",
     fillStyle: "theme-hue" as const,
     weight: 1,
+    ...(i === 0 ? { labelVerticalAlign: "middle" as const } : {}),
   }));
 }
 
 /** Palette / shape-swap defaults for `generic.object.segmented-rectangle`. */
 export function defaultPaletteSegmentedRectangleNodeProps(nodeId: string): Partial<DiagramNodeData> {
-  const segmentedRectangleSections: TimelineBarSectionData[] = [1, 2, 3, 4].map((n, i) => ({
+  const segmentedRectangleSections: TimelineBarSectionData[] = DEFAULT_SECTION_SUBLABELS.map((suffix, i) => ({
     id: newSegmentedRectangleSectionId(nodeId),
-    label: String(n),
+    label: `Section\n${suffix}`,
+    richLabel: defaultSegmentedRectangleSectionRichLabel(suffix),
     fill: DEFAULT_SEG_FILLS[i % DEFAULT_SEG_FILLS.length] ?? "#94a3b8",
     fillStyle: "theme-hue",
     weight: 1,
+    ...(i === 0 ? { labelVerticalAlign: "middle" as const } : {}),
   }));
 
   return {
-    borderStyle: "solid",
+    borderStyle: "gradient",
+    borderColors: ["#9a3412", "#b45309"],
     borderWidth: 2,
-    borderColor: "#78350f",
-    backgroundStyle: "solid",
-    backgroundColor: "#ffedd5",
-    textColor: "#431407",
-    cornerRadius: 0.12,
+    borderColor: "#9a3412",
+    backgroundStyle: "gradient",
+    backgroundColors: ["#fef3c7", "#fed7aa"],
+    backgroundColor: "#fef3c7",
+    backgroundOpacity: 1,
+    lineStyle: "solid",
+    lineColor: "#3b82f6",
+    lineWidth: 2.5,
+    lineOpacity: 1,
+    shadow: true,
+    shadowColor: "#000000",
+    shadowOpacity: 0.5,
+    shadowBlur: 8,
+    textColor: "#7c2d12",
+    textOpacity: 1,
+    gradientAngle: 115,
     textJustify: "center",
     textVerticalPosition: "middle",
+    cornerRadius: 0.12,
     segmentedRectangleSections,
     segmentedRectangleSizing: "equal",
-    segmentedRectangleSegmentGap: 0,
-    segmentedRectangleOutlineMode: "container",
-    segmentedRectangleDividers: false,
-    segmentedRectangleDividerWidth: 1.5,
+    segmentedRectangleSegmentGap: 64,
+    segmentedRectangleOutlineMode: "segments",
+    segmentedRectangleDividers: true,
+    segmentedRectangleDividerWidth: 2,
     segmentedRectangleDividerColor: "#64748b",
     segmentedRectangleDividerInset: 0.1,
     segmentedRectangleHueStepDeg: 14,

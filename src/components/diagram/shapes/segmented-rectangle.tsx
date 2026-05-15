@@ -16,7 +16,6 @@ import {
   normalizeTimelineBarSections,
   snapTimelineBarBoundaryT,
   timelineBarEnsureSpanSections,
-  timelineBarInteriorDividerXs,
   timelineBarMinSegmentT,
   timelineBarMoveJointAtVisualBoundary,
   timelineBarSectionResolvedFontFamily,
@@ -29,7 +28,6 @@ import {
   timelineBarSectionThemeHueBorderGradient,
   timelineBarSectionThemeHueFill,
   timelineBarSectionThemeHueFillGradient,
-  timelineBarSegmentLayout,
   timelineBarUsesSpanLayout,
 } from "@/lib/timeline-bar";
 import {
@@ -37,6 +35,7 @@ import {
   segmentedRectangleDividerInnerXs,
   segmentedRectangleSegmentLayout,
 } from "@/lib/segmented-rectangle";
+import { buildSectionLabelRichTextNode } from "@/lib/section-label-rich-node";
 
 interface SegmentedRectangleShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -70,45 +69,6 @@ interface SegmentedRectangleShapeProps {
 
 const VIEWBOX_W = 120;
 const VIEWBOX_H = 48;
-
-function segmentedSectionLabelTextNode(
-  node: DiagramNodeData,
-  labelColor: string,
-  segFontSize: number,
-  textAlignResolved: "left" | "center" | "right" | "justify",
-  fontWeightResolved: string | number,
-  fontFamily: string,
-  fontStyle: React.CSSProperties["fontStyle"],
-  textDecoration: React.CSSProperties["textDecoration"],
-  lineHeightMul: number,
-  letterSpacingPx: number | undefined,
-  textTransform: React.CSSProperties["textTransform"],
-  textVerticalPosition: "top" | "middle" | "bottom",
-): DiagramNodeData {
-  const nodeAny = node as unknown as Record<string, unknown>;
-  const textJustify: DiagramNodeData["textJustify"] =
-    textAlignResolved === "justify"
-      ? "full"
-      : textAlignResolved === "left" || textAlignResolved === "right" || textAlignResolved === "center"
-        ? textAlignResolved
-        : "center";
-  const topOpacity = Number(nodeAny.textOpacity);
-  return {
-    ...node,
-    textColor: labelColor,
-    fontSize: segFontSize,
-    fontWeight: fontWeightResolved as DiagramNodeData["fontWeight"],
-    fontFamily,
-    fontStyle: fontStyle as DiagramNodeData["fontStyle"],
-    textDecoration: textDecoration as DiagramNodeData["textDecoration"],
-    textJustify,
-    textVerticalPosition,
-    lineHeight: lineHeightMul,
-    ...(letterSpacingPx !== undefined ? { letterSpacing: letterSpacingPx } : {}),
-    textTransform: textTransform as DiagramNodeData["textTransform"],
-    ...(topOpacity >= 0 && topOpacity !== 1 ? { textOpacity: topOpacity } : {}),
-  } as DiagramNodeData;
-}
 
 export function SegmentedRectangleShape({
   node,
@@ -172,7 +132,7 @@ export function SegmentedRectangleShape({
   const showDividers = nodeAny.segmentedRectangleDividers === true;
   const divW =
     showDividers && sectionsRaw.length > 1
-      ? Math.max(0.5, Math.min(6, Number(nodeAny.segmentedRectangleDividerWidth) || 1))
+      ? Math.max(0.5, Math.min(8, Number(nodeAny.segmentedRectangleDividerWidth) || 1))
       : 0;
   const divColor = String(nodeAny.segmentedRectangleDividerColor || "#64748b");
   let divInsetFrac = Number(nodeAny.segmentedRectangleDividerInset);
@@ -183,11 +143,12 @@ export function SegmentedRectangleShape({
   const { starts, widths } = segmentedRectangleSegmentLayout(sectionsRaw, w, sizing, gapPx);
   const sections = sectionsRaw;
   const normSections = normalizeTimelineBarSections({ ...node, timelineBarSections: sections } as DiagramNodeData);
+  /** Divider lines + boundary drag hit targets (inner coords along the inner width). */
   const jointXs = segmentedRectangleDividerInnerXs(sections, starts, widths, gapPx);
 
-  const layoutNoGap = gapPx === 0 ? timelineBarSegmentLayout(sections, w, sizing) : { starts: [], widths: [] };
-  const dividerInnerXs =
-    gapPx === 0 ? timelineBarInteriorDividerXs(sections, layoutNoGap.starts, w) : ([] as number[]);
+  /** Boundary drag matches timeline spans only when contiguous (no gap) or weighted (gap clears when dragging). */
+  const boundaryResizeLayout =
+    gapPx === 0 || sizing === "weighted";
 
   const scale = getNodeSizeMultiplier(nodeAny.nodeSize as "normal" | "half" | "quarter" | undefined);
   const baseW = node.width ?? defaultWidth;
@@ -207,7 +168,7 @@ export function SegmentedRectangleShape({
 
   const applyClientToBoundary = useCallback(
     (clientX: number, _clientY: number, boundaryIdx: number, svg: SVGSVGElement) => {
-      if (!onPatch || gapPx !== 0) return;
+      if (!onPatch || !boundaryResizeLayout) return;
       const pt = svgUserPointFromClient(svg, clientX, _clientY);
       if (!pt) return;
       let t = (pt.x - half) / Math.max(1e-6, w);
@@ -226,7 +187,7 @@ export function SegmentedRectangleShape({
       workingSectionsRef.current = next;
       onPatch({ segmentedRectangleSections: next });
     },
-    [diagramSnapX, gapPx, half, onPatch, snapBarWidthPx, w],
+    [boundaryResizeLayout, diagramSnapX, half, onPatch, snapBarWidthPx, w],
   );
 
   const onPointerDownBoundary = useCallback(
@@ -237,16 +198,24 @@ export function SegmentedRectangleShape({
         isReadOnly ||
         isEditingLabel ||
         editingSectionIndex != null ||
-        gapPx !== 0
+        !boundaryResizeLayout
       )
         return;
       e.stopPropagation();
       e.preventDefault();
-      const migrated = timelineBarEnsureSpanSections(sections, w, sizing);
+      const clearGapForWeightedDrag = gapPx > 0 && sizing === "weighted";
+      const secsForMigrate =
+        clearGapForWeightedDrag && timelineBarUsesSpanLayout(sections)
+          ? sections.map(({ spanStart: _a, spanEnd: _b, ...rest }) => rest)
+          : sections;
+      const migrated = timelineBarEnsureSpanSections(secsForMigrate, w, sizing);
       workingSectionsRef.current = migrated;
-      if (!timelineBarUsesSpanLayout(sections)) {
-        onPatch({ segmentedRectangleSections: migrated });
+      const dragPatch: Partial<DiagramNodeData> = {};
+      if (clearGapForWeightedDrag) dragPatch.segmentedRectangleSegmentGap = 0;
+      if (clearGapForWeightedDrag || !timelineBarUsesSpanLayout(sections)) {
+        dragPatch.segmentedRectangleSections = migrated;
       }
+      if (Object.keys(dragPatch).length > 0) onPatch(dragPatch);
       boundaryIndexRef.current = boundaryIdx;
       dragActiveRef.current = true;
       onSectionBoundaryDragSessionChange?.(true);
@@ -256,6 +225,7 @@ export function SegmentedRectangleShape({
     },
     [
       applyClientToBoundary,
+      boundaryResizeLayout,
       gapPx,
       isEditingLabel,
       isReadOnly,
@@ -634,18 +604,18 @@ export function SegmentedRectangleShape({
         const textTransform = ((nodeAny.textTransform as string) || "none") as React.CSSProperties["textTransform"];
         const textVerticalPosition: "top" | "middle" | "bottom" =
           justifyContent === "flex-start" ? "top" : justifyContent === "flex-end" ? "bottom" : "middle";
-        const sectionTextNode = segmentedSectionLabelTextNode(
+        const sectionTextNode = buildSectionLabelRichTextNode(
           node,
           lc,
           segFontSize,
           textAlignResolved,
           fontWeightResolved,
           fontFamily,
-          fontStyle,
-          textDecoration,
+          fontStyle as DiagramNodeData["fontStyle"],
+          textDecoration as DiagramNodeData["textDecoration"],
           lineHeightMul,
           letterSpacingPx,
-          textTransform,
+          textTransform as DiagramNodeData["textTransform"],
           textVerticalPosition,
         );
         const editRuns = normalizeRuns(seg.richLabel ?? labelToRuns(seg.label ?? ""));
@@ -721,9 +691,9 @@ export function SegmentedRectangleShape({
       !isReadOnly &&
       !isEditingLabel &&
       editingSectionIndex === null &&
-      gapPx === 0 &&
+      boundaryResizeLayout &&
       sections.length > 1
-        ? dividerInnerXs.map((innerX, k) => {
+        ? jointXs.map((innerX, k) => {
             const hitW = Math.max(6, Math.min(24, w * 0.08));
             const cx = half + innerX;
             const hx = cx - hitW / 2;
