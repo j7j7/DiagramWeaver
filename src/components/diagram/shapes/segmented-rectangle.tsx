@@ -65,7 +65,10 @@ interface SegmentedRectangleShapeProps {
   overrideWidth?: number;
   overrideHeight?: number;
   isReadOnly?: boolean;
+  /** Diagram X of node origin — snap segment boundaries onto the horizontal grid (`horizontal` placement only). */
   diagramSnapX?: number;
+  /** Diagram Y of node origin — snap segment boundaries onto the vertical grid (`vertical` placement only). */
+  diagramSnapY?: number;
   onPatch?: (patch: Partial<DiagramNodeData>) => void;
   sectionBoundaryInteractionEnabled?: boolean;
   sectionLabelInteractionEnabled?: boolean;
@@ -85,6 +88,7 @@ export function SegmentedRectangleShape({
   overrideWidth,
   overrideHeight,
   diagramSnapX,
+  diagramSnapY,
   isEditingLabel,
   sectionBoundaryInteractionEnabled,
   sectionLabelInteractionEnabled,
@@ -150,11 +154,14 @@ export function SegmentedRectangleShape({
   divInsetFrac = Math.min(0.45, Math.max(0, divInsetFrac));
 
   const barH = Math.max(4, h);
-  const { starts, widths } = segmentedRectangleSegmentLayout(sectionsRaw, w, sizing, gapPx);
+  const placementVertical =
+    ((nodeAny.segmentedRectanglePlacementOrder as string | undefined) ?? "horizontal") === "vertical";
+  const layoutAlong = placementVertical ? barH : w;
+  const { starts, widths } = segmentedRectangleSegmentLayout(sectionsRaw, layoutAlong, sizing, gapPx);
   const sections = sectionsRaw;
   const normSections = normalizeTimelineBarSections({ ...node, timelineBarSections: sections } as DiagramNodeData);
-  /** Divider lines + boundary drag hit targets (inner coords along the inner width). */
-  const jointXs = segmentedRectangleDividerInnerXs(sections, starts, widths, gapPx);
+  /** Divider lines + boundary drag hit targets (inner coords along the stacking axis). */
+  const jointAlongAxis = segmentedRectangleDividerInnerXs(sections, starts, widths, gapPx);
 
   /** Boundary drag matches timeline spans only when contiguous (no gap) or weighted (gap clears when dragging). */
   const boundaryResizeLayout =
@@ -162,7 +169,10 @@ export function SegmentedRectangleShape({
 
   const scale = getNodeSizeMultiplier(nodeAny.nodeSize as "normal" | "half" | "quarter" | undefined);
   const baseW = node.width ?? defaultWidth;
+  const baseH = node.height ?? defaultHeight;
   const snapBarWidthPx = overrideWidth ?? (node.width != null ? node.width : Math.round(baseW * scale));
+  const snapBarHeightPx = overrideHeight ?? (node.height != null ? node.height : Math.round(baseH * scale));
+  const snapAlongPx = placementVertical ? snapBarHeightPx : snapBarWidthPx;
 
   const hueStepRaw = nodeAny.segmentedRectangleHueStepDeg as number | undefined;
   const nodeForHue: DiagramNodeData = {
@@ -177,16 +187,19 @@ export function SegmentedRectangleShape({
   }, [onSectionBoundaryDragSessionChange]);
 
   const applyClientToBoundary = useCallback(
-    (clientX: number, _clientY: number, boundaryIdx: number, svg: SVGSVGElement) => {
+    (clientX: number, clientY: number, boundaryIdx: number, svg: SVGSVGElement) => {
       if (!onPatch || !boundaryResizeLayout) return;
-      const pt = svgUserPointFromClient(svg, clientX, _clientY);
+      const pt = svgUserPointFromClient(svg, clientX, clientY);
       if (!pt) return;
-      let t = (pt.x - half) / Math.max(1e-6, w);
+      let t = placementVertical
+        ? (pt.y - half) / Math.max(1e-6, barH)
+        : (pt.x - half) / Math.max(1e-6, w);
       t = clampTimelineBarT(t);
-      if (typeof diagramSnapX === "number" && Number.isFinite(diagramSnapX)) {
-        t = snapTimelineBarBoundaryT(diagramSnapX, snapBarWidthPx, t);
+      const snapOrigin = placementVertical ? diagramSnapY : diagramSnapX;
+      if (typeof snapOrigin === "number" && Number.isFinite(snapOrigin)) {
+        t = snapTimelineBarBoundaryT(snapOrigin, snapAlongPx, t);
       }
-      const minDt = timelineBarMinSegmentT(snapBarWidthPx);
+      const minDt = timelineBarMinSegmentT(snapAlongPx);
       const next = timelineBarMoveJointAtVisualBoundary(
         workingSectionsRef.current,
         boundaryIdx,
@@ -197,7 +210,7 @@ export function SegmentedRectangleShape({
       workingSectionsRef.current = next;
       onPatch({ segmentedRectangleSections: next });
     },
-    [boundaryResizeLayout, diagramSnapX, half, onPatch, snapBarWidthPx, w],
+    [barH, boundaryResizeLayout, diagramSnapX, diagramSnapY, half, onPatch, placementVertical, snapAlongPx, w],
   );
 
   const onPointerDownBoundary = useCallback(
@@ -218,7 +231,7 @@ export function SegmentedRectangleShape({
         clearGapForWeightedDrag && timelineBarUsesSpanLayout(sections)
           ? sections.map(({ spanStart: _a, spanEnd: _b, ...rest }) => rest)
           : sections;
-      const migrated = timelineBarEnsureSpanSections(secsForMigrate, w, sizing);
+      const migrated = timelineBarEnsureSpanSections(secsForMigrate, placementVertical ? barH : w, sizing);
       workingSectionsRef.current = migrated;
       const dragPatch: Partial<DiagramNodeData> = {};
       if (clearGapForWeightedDrag) dragPatch.segmentedRectangleSegmentGap = 0;
@@ -236,11 +249,13 @@ export function SegmentedRectangleShape({
     [
       applyClientToBoundary,
       boundaryResizeLayout,
+      barH,
       gapPx,
       isEditingLabel,
       isReadOnly,
       onPatch,
       onSectionBoundaryDragSessionChange,
+      placementVertical,
       sectionBoundaryInteractionEnabled,
       editingSectionIndex,
       sections,
@@ -452,7 +467,11 @@ export function SegmentedRectangleShape({
       <g clipPath={`url(#${clipId}-sr-clip)`} pointerEvents="none">
         {sections.map((seg: TimelineBarSectionData, i: number) => {
           const wi = widths[i] ?? 0;
-          const x0 = half + (starts[i] ?? 0);
+          const s0 = starts[i] ?? 0;
+          const bx = placementVertical ? half : half + s0;
+          const by = placementVertical ? half + s0 : half;
+          const bw = placementVertical ? w : Math.max(0, wi);
+          const bh = placementVertical ? Math.max(0, wi) : barH;
           const fs = seg.fillStyle ?? "solid";
           let fillPaint: string;
           if (fs === "none") {
@@ -465,7 +484,12 @@ export function SegmentedRectangleShape({
           } else {
             fillPaint = String(seg.fill ?? "#6b7280");
           }
-          const segRx = outlineMode === "segments" ? Math.min(rx, wi / 2, barH / 2) : 0;
+          const segRx =
+            outlineMode === "segments"
+              ? placementVertical
+                ? Math.min(rx, wi / 2, w / 2)
+                : Math.min(rx, wi / 2, barH / 2)
+              : 0;
           const fillPopStyle = chartSegmentPopAnimationStyle(
             i,
             sectionSlidePopInId,
@@ -477,10 +501,10 @@ export function SegmentedRectangleShape({
           return (
             <g key={`sr-fill-${seg.id ?? i}`} style={fillPopStyle}>
               <rect
-                x={x0}
-                y={half}
-                width={Math.max(0, wi)}
-                height={barH}
+                x={bx}
+                y={by}
+                width={bw}
+                height={bh}
                 rx={segRx}
                 ry={segRx}
                 fill={fillPaint}
@@ -493,31 +517,53 @@ export function SegmentedRectangleShape({
 
       {showDividers && sections.length > 1 && divW > 0 ? (
         <g pointerEvents="none">
-          {jointXs.map((jx, k) => {
-            const xi = half + jx;
-            const y1 = half + barH * divInsetFrac;
-            const y2 = half + barH * (1 - divInsetFrac);
-            return (
-              <line
-                key={`sr-div-${k}`}
-                x1={xi}
-                y1={y1}
-                x2={xi}
-                y2={y2}
-                stroke={divColor}
-                strokeWidth={divW}
-                vectorEffect="non-scaling-stroke"
-              />
-            );
-          })}
+          {placementVertical
+            ? jointAlongAxis.map((ja, k) => {
+                const yi = half + ja;
+                const x1 = half + w * divInsetFrac;
+                const x2 = half + w * (1 - divInsetFrac);
+                return (
+                  <line
+                    key={`sr-div-${k}`}
+                    x1={x1}
+                    y1={yi}
+                    x2={x2}
+                    y2={yi}
+                    stroke={divColor}
+                    strokeWidth={divW}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              })
+            : jointAlongAxis.map((ja, k) => {
+                const xi = half + ja;
+                const y1 = half + barH * divInsetFrac;
+                const y2 = half + barH * (1 - divInsetFrac);
+                return (
+                  <line
+                    key={`sr-div-${k}`}
+                    x1={xi}
+                    y1={y1}
+                    x2={xi}
+                    y2={y2}
+                    stroke={divColor}
+                    strokeWidth={divW}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              })}
         </g>
       ) : null}
 
       {outlineMode === "segments"
         ? sections.map((seg: TimelineBarSectionData, i: number) => {
             const wi = widths[i] ?? 0;
-            const x0 = half + (starts[i] ?? 0);
-            const segRx = Math.min(rx, wi / 2, barH / 2);
+            const s0 = starts[i] ?? 0;
+            const bx = placementVertical ? half : half + s0;
+            const by = placementVertical ? half + s0 : half;
+            const bw = placementVertical ? w : Math.max(0, wi);
+            const bh = placementVertical ? Math.max(0, wi) : barH;
+            const segRx = placementVertical ? Math.min(rx, wi / 2, w / 2) : Math.min(rx, wi / 2, barH / 2);
             const swSeg =
               typeof seg.segmentOutlineWidth === "number" && Number.isFinite(seg.segmentOutlineWidth)
                 ? Math.max(0, seg.segmentOutlineWidth)
@@ -560,10 +606,10 @@ export function SegmentedRectangleShape({
             return (
               <g key={`sr-seg-stroke-${seg.id}-${i}`} style={outlinePopStyle}>
                 <rect
-                  x={x0}
-                  y={half}
-                  width={Math.max(0, wi)}
-                  height={barH}
+                  x={bx}
+                  y={by}
+                  width={bw}
+                  height={bh}
                   rx={segRx}
                   ry={segRx}
                   fill="none"
@@ -597,15 +643,20 @@ export function SegmentedRectangleShape({
 
       {sections.map((seg: TimelineBarSectionData, i: number) => {
         const wi = widths[i] ?? 0;
-        const x0 = half + (starts[i] ?? 0);
+        const s0 = starts[i] ?? 0;
+        const lx = placementVertical ? half : half + s0;
+        const ly = placementVertical ? half + s0 : half;
+        const crossSpan = placementVertical ? w : barH;
+        const padAlong = Math.max(2, Math.min(6, wi * 0.04));
+        const padCross = Math.max(1, Math.min(4, crossSpan * 0.08));
+        const foW = placementVertical ? Math.max(2, crossSpan - 2 * padCross) : Math.max(2, wi - 2 * padAlong);
+        const foH = placementVertical ? Math.max(2, wi - 2 * padAlong) : Math.max(2, crossSpan - 2 * padCross);
+        const fox = placementVertical ? lx + padCross : lx + padAlong;
+        const foy = placementVertical ? ly + padAlong : ly + padCross;
         const displayRuns = normalizeRuns(seg.richLabel ?? labelToRuns(seg.label ?? ""));
         const plainDisplay = getPlainTextFromRuns(displayRuns).trim();
         if (!plainDisplay) return null;
         const lc = seg.labelColor ? String(seg.labelColor) : textCol;
-        const padX = Math.max(2, Math.min(6, wi * 0.04));
-        const padY = Math.max(1, Math.min(4, barH * 0.08));
-        const foW = Math.max(2, wi - 2 * padX);
-        const foH = Math.max(2, barH - 2 * padY);
         const isEditingSection = editingSectionIndex === i;
         const isEditing = Boolean(onPatch && !isReadOnly && isEditingSection);
         const labelPointer = canEditSectionLabel || isEditingSection ? "auto" : "none";
@@ -614,7 +665,7 @@ export function SegmentedRectangleShape({
         const styleIdx = labelsFollowFirst && i > 0 ? 0 : i;
         const styleSeg = sections[styleIdx] ?? seg;
         const segFontSize = Math.min(
-          barH * 0.42,
+          crossSpan * 0.42,
           timelineBarSectionResolvedFontSizePx(styleSeg, styleIdx, normSections, node),
           22,
         );
@@ -667,8 +718,8 @@ export function SegmentedRectangleShape({
         return (
           <g key={`srlab-${seg.id}-${i}`} style={labelPopStyle}>
             <foreignObject
-              x={x0 + padX}
-              y={half + padY}
+              x={fox}
+              y={foy}
               width={foW}
               height={foH}
               style={{ overflow: isEditing ? "visible" : "hidden", pointerEvents: labelPointer }}
@@ -737,9 +788,32 @@ export function SegmentedRectangleShape({
       editingSectionIndex === null &&
       boundaryResizeLayout &&
       sections.length > 1
-        ? jointXs.map((innerX, k) => {
+        ? jointAlongAxis.map((innerAlong, k) => {
+            if (placementVertical) {
+              const hitT = Math.max(6, Math.min(24, barH * 0.08));
+              const cy = half + innerAlong;
+              const hy = cy - hitT / 2;
+              return (
+                <rect
+                  key={`sr-bound-${k}`}
+                  data-dw-timeline-boundary={k}
+                  x={half}
+                  y={hy}
+                  width={w}
+                  height={hitT}
+                  fill="transparent"
+                  stroke="none"
+                  pointerEvents="auto"
+                  style={{ cursor: "row-resize", touchAction: "none" }}
+                  onPointerDown={onPointerDownBoundary(k)}
+                  onPointerMove={onPointerMoveBoundary}
+                  onPointerUp={onPointerUpBoundary}
+                  onPointerCancel={onPointerUpBoundary}
+                />
+              );
+            }
             const hitW = Math.max(6, Math.min(24, w * 0.08));
-            const cx = half + innerX;
+            const cx = half + innerAlong;
             const hx = cx - hitW / 2;
             return (
               <rect

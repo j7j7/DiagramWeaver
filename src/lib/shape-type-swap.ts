@@ -210,6 +210,7 @@ function stripTimelineBarFields(n: DiagramNodeData): void {
 function stripSegmentedRectangleFields(n: DiagramNodeData): void {
   delete (n as DiagramNodeData & { segmentedRectangleSections?: unknown }).segmentedRectangleSections;
   delete (n as DiagramNodeData & { segmentedRectangleSizing?: unknown }).segmentedRectangleSizing;
+  delete (n as DiagramNodeData & { segmentedRectanglePlacementOrder?: unknown }).segmentedRectanglePlacementOrder;
   delete (n as DiagramNodeData & { segmentedRectangleSegmentGap?: unknown }).segmentedRectangleSegmentGap;
   delete (n as DiagramNodeData & { segmentedRectangleOutlineMode?: unknown }).segmentedRectangleOutlineMode;
   delete (n as DiagramNodeData & { segmentedRectangleDividers?: unknown }).segmentedRectangleDividers;

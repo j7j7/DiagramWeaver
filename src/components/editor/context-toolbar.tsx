@@ -64,6 +64,8 @@ import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEF
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType, isTimelineNodeType } from '@/lib/utils';
 import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
+import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
+import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
 import { extractLineStylingFromNode, applyLineStylingToNode, syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
 import { useToast } from '@/hooks/use-toast';
@@ -1175,6 +1177,8 @@ export function ContextToolbar({
   };
 
   const handleVisualStylingChange = (styling: any) => {
+    const stylingObj = styling as Record<string, unknown>;
+
     // Check if multiple items are selected
     if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
       // Apply styling change to all selected items
@@ -1183,8 +1187,10 @@ export function ContextToolbar({
       // Update nodes
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
         if (selectedItemIds.has(node.id)) {
+          let augmented = augmentSegmentedRectangleStylingPlacementPatch(node, stylingObj);
+          augmented = augmentTimelineBarOrientationPatch(node, augmented);
           const merged = { ...node } as Record<string, unknown>;
-          for (const [k, v] of Object.entries(styling)) {
+          for (const [k, v] of Object.entries(augmented)) {
             if (v === null) delete merged[k];
             else if (v !== undefined) merged[k] = v;
           }
@@ -1198,7 +1204,7 @@ export function ContextToolbar({
         updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
           if (!selectedItemIds.has(zone.id)) return zone;
           const merged = { ...zone } as Record<string, unknown>;
-          for (const [k, v] of Object.entries(styling)) {
+          for (const [k, v] of Object.entries(stylingObj)) {
             if (v === null) delete merged[k];
             else if (v !== undefined) merged[k] = v;
           }
@@ -1215,8 +1221,14 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
+      const augmented = selectedItem
+        ? augmentTimelineBarOrientationPatch(
+            selectedItem as DiagramNodeData,
+            augmentSegmentedRectangleStylingPlacementPatch(selectedItem as DiagramNodeData, stylingObj),
+          )
+        : stylingObj;
       const merged = { ...selectedItem } as Record<string, unknown>;
-      for (const [k, v] of Object.entries(styling)) {
+      for (const [k, v] of Object.entries(augmented)) {
         if (v === null) delete merged[k];
         else if (v !== undefined) merged[k] = v;
       }

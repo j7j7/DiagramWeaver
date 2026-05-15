@@ -15,6 +15,25 @@ export function isTimelineBarNodeType(type: string | undefined): boolean {
   return type === TIMELINE_BAR_NODE_TYPE || !!type?.endsWith(".timeline-bar");
 }
 
+/** When timeline-bar orientation flips horizontal↔vertical, swap intrinsic `width`/`height` so axes match footprint (parity with segmented rectangle). */
+export function augmentTimelineBarOrientationPatch(
+  nodeBefore: DiagramNodeData,
+  stylingPatch: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!isTimelineBarNodeType(nodeBefore.type)) return stylingPatch;
+  if (stylingPatch.timelineBarOrientation === undefined) return stylingPatch;
+  const next = stylingPatch.timelineBarOrientation === "vertical" ? ("vertical" as const) : ("horizontal" as const);
+  const prev = nodeBefore.timelineBarOrientation === "vertical" ? ("vertical" as const) : ("horizontal" as const);
+  if (prev === next) return stylingPatch;
+
+  const w = nodeBefore.width;
+  const h = nodeBefore.height;
+  if (typeof w === "number" && typeof h === "number" && Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+    return { ...stylingPatch, width: h, height: w };
+  }
+  return stylingPatch;
+}
+
 /** First background colour — chain base when section `fillStyle` is `theme-hue` (theme updates this). */
 export function timelineBarThemeHueBaseColor(node: DiagramNodeData): string {
   const n = node as unknown as Record<string, unknown>;
@@ -85,18 +104,18 @@ export function timelineBarEnsureSpanSections(
   });
 }
 
-/** Map normalized boundary `t` so the corresponding diagram X lands on the canvas grid. */
-export function snapTimelineBarBoundaryT(diagramX: number, diagramBarWidth: number, t: number): number {
-  if (!(diagramBarWidth > 0)) return clampTimelineBarT(t);
-  const abs = diagramX + clampTimelineBarT(t) * diagramBarWidth;
+/** Snaps normalized boundary `t` so the diagram coordinate along the bar axis hits the grid (`diagramBarOrigin` = bar min along that axis; extent = bar length in px). */
+export function snapTimelineBarBoundaryT(diagramBarOrigin: number, diagramBarExtentPx: number, t: number): number {
+  if (!(diagramBarExtentPx > 0)) return clampTimelineBarT(t);
+  const abs = diagramBarOrigin + clampTimelineBarT(t) * diagramBarExtentPx;
   const snappedAbs = snapToGrid(abs);
-  return clampTimelineBarT((snappedAbs - diagramX) / diagramBarWidth);
+  return clampTimelineBarT((snappedAbs - diagramBarOrigin) / diagramBarExtentPx);
 }
 
-/** Minimum span width in 0–1 `t` so each segment is at least one grid step wide in diagram pixels. */
-export function timelineBarMinSegmentT(diagramBarWidth: number): number {
-  if (!(diagramBarWidth > 0)) return 1e-4;
-  return Math.min(1, GRID_STEP / diagramBarWidth);
+/** Minimum span in 0–1 `t` so each segment is at least one grid step along the bar axis in diagram px. */
+export function timelineBarMinSegmentT(diagramBarExtentPx: number): number {
+  if (!(diagramBarExtentPx > 0)) return 1e-4;
+  return Math.min(1, GRID_STEP / diagramBarExtentPx);
 }
 
 /** Move the joint between two adjacent sections in visual order (`visualBoundaryIndex` 0 = first gap left→right). */
@@ -744,6 +763,7 @@ export function timelineBarMemoPayload(n: DiagramNodeData): string {
   const x = n as DiagramNodeData & {
     timelineBarSections?: TimelineBarSectionData[];
     timelineBarSizing?: string;
+    timelineBarOrientation?: string;
     timelineBarShowTicks?: boolean;
     timelineBarTickMarkers?: boolean;
     timelineBarSectionBorder?: boolean;
@@ -771,6 +791,7 @@ export function timelineBarMemoPayload(n: DiagramNodeData): string {
   return JSON.stringify([
     x.timelineBarSections,
     x.timelineBarSizing,
+    x.timelineBarOrientation,
     x.timelineBarShowTicks,
     x.timelineBarTickMarkers,
     x.timelineBarSectionBorder,

@@ -56,8 +56,10 @@ interface TimelineBarShapeProps {
   overrideWidth?: number;
   overrideHeight?: number;
   isReadOnly?: boolean;
-  /** Diagram X of bar's left edge (px) for snapping section boundaries to the canvas grid. */
+  /** Diagram X of bar's left edge (px); horizontal layout boundary snap. */
   diagramSnapX?: number;
+  /** Diagram Y of bar's top edge (px); vertical layout boundary snap. */
+  diagramSnapY?: number;
   onPatch?: (patch: Partial<DiagramNodeData>) => void;
   /** Single-node selection, editor — show drag handles on section boundaries. */
   sectionBoundaryInteractionEnabled?: boolean;
@@ -77,6 +79,7 @@ export function TimelineBarShape({
   overrideWidth,
   overrideHeight,
   diagramSnapX,
+  diagramSnapY,
   isEditingLabel,
   sectionBoundaryInteractionEnabled,
   sectionLabelInteractionEnabled,
@@ -114,10 +117,7 @@ export function TimelineBarShape({
 
   const w = (node.width ?? VIEWBOX_W) as number;
   const h = (node.height ?? VIEWBOX_H) as number;
-  const minDim = Math.min(w, h);
   const cornerRadius = Math.max(0, Math.min(1, ((nodeAny.cornerRadius as number) ?? 0.35) as number));
-  const maxRadius = minDim / 2;
-  const rx = Math.min(cornerRadius * maxRadius, maxRadius);
 
   const sections = normalizeTimelineBarSections(node);
   const sizing = ((nodeAny.timelineBarSizing as string) || "equal") as "equal" | "weighted";
@@ -134,39 +134,58 @@ export function TimelineBarShape({
         )
       : 0;
   const secBorderColor = String(nodeAny.timelineBarSectionBorderColor || "#ffffff");
-  /** Gap + tick band scale with **short** nodes; once tall enough, lock to the default (`VIEWBOX_H`) footprint so axis labels stay a fixed distance below the bar when height grows. Axis font can widen the tick band. */
-  const minBarH = 8;
+  const isVertical = nodeAny.timelineBarOrientation === "vertical";
+
+  const minBarNarrow = 8;
   let gapTick = 0;
   let baseTickBand = 0;
   if (showTicks) {
-    const refH = VIEWBOX_H;
-    const gapRef = Math.max(3, refH * 0.06);
-    const bandRef = Math.max(12, refH * 0.26);
-    if (h >= gapRef + bandRef + minBarH) {
+    const refOuter = isVertical ? VIEWBOX_W : VIEWBOX_H;
+    const outerNow = isVertical ? w : h;
+    const gapRef = Math.max(3, refOuter * 0.06);
+    const bandRef = Math.max(12, refOuter * 0.26);
+    if (outerNow >= gapRef + bandRef + minBarNarrow) {
       gapTick = gapRef;
       baseTickBand = bandRef;
     } else {
-      gapTick = Math.max(3, h * 0.06);
-      baseTickBand = Math.max(12, h * 0.26);
+      gapTick = Math.max(3, outerNow * 0.06);
+      baseTickBand = Math.max(12, outerNow * 0.26);
     }
   }
   const baseBodyFont = Number(nodeAny.fontSize) || 12;
   const rawUserAxisFs = nodeAny.timelineBarAxisLabelFontSize as number | undefined;
   const userAxisFs =
     typeof rawUserAxisFs === "number" && Number.isFinite(rawUserAxisFs) && rawUserAxisFs > 0 ? rawUserAxisFs : undefined;
-  /** ~2× legacy caps (`0.55·band`, `0.85·fontSize`, max 14). */
   const autoAxisFs = Math.min(baseTickBand * 1.1, baseBodyFont * 1.7, 28);
   const desiredAxisFs = showTicks ? (userAxisFs ?? autoAxisFs) : 0;
   const tickBand = showTicks ? Math.max(baseTickBand, desiredAxisFs * 1.22) : 0;
-  const barH = Math.max(minBarH, h - tickBand - gapTick);
+  const ticksLeading = showTicks ? tickBand + gapTick : 0;
+  const barNarrow = isVertical
+    ? Math.max(minBarNarrow, w - ticksLeading)
+    : Math.max(minBarNarrow, h - ticksLeading);
+  const segmentAlongLen = isVertical ? h : w;
+  const barLeft = isVertical ? half + ticksLeading : half;
   const tickFont = showTicks ? Math.min(desiredAxisFs, tickBand * 0.9) : 0;
-  const { starts, widths } = timelineBarSegmentLayout(sections, w, sizing);
-  const dividerInnerXs = timelineBarInteriorDividerXs(sections, starts, w);
+  const { starts, widths } = timelineBarSegmentLayout(sections, segmentAlongLen, sizing);
+  const dividerInnerAlong = timelineBarInteriorDividerXs(sections, starts, segmentAlongLen);
+
+  const clipW = isVertical ? barNarrow : w;
+  const clipH = isVertical ? h : barNarrow;
+  const rxBasisMin = Math.min(clipW, clipH);
+  const maxRadius = rxBasisMin / 2;
+  const rx = Math.min(cornerRadius * maxRadius, maxRadius);
 
   const scale = getNodeSizeMultiplier(nodeAny.nodeSize as "normal" | "half" | "quarter" | undefined);
   const baseW = node.width ?? defaultWidth;
+  const baseH = node.height ?? defaultHeight;
   const snapBarWidthPx =
     overrideWidth ?? (node.width != null ? node.width : Math.round(baseW * scale));
+  const snapBarHeightPx =
+    overrideHeight ?? (node.height != null ? node.height : Math.round(baseH * scale));
+  const snapBarExtentPx = isVertical ? snapBarHeightPx : snapBarWidthPx;
+  const diagramSnapCoord = isVertical ? diagramSnapY : diagramSnapX;
+  const diagramSnapOrigin =
+    typeof diagramSnapCoord === "number" && Number.isFinite(diagramSnapCoord) ? diagramSnapCoord : undefined;
 
   const endBoundaryDrag = useCallback(() => {
     if (!dragActiveRef.current) return;
@@ -175,16 +194,18 @@ export function TimelineBarShape({
   }, [onSectionBoundaryDragSessionChange]);
 
   const applyClientToBoundary = useCallback(
-    (clientX: number, _clientY: number, boundaryIdx: number, svg: SVGSVGElement) => {
+    (clientX: number, clientY: number, boundaryIdx: number, svg: SVGSVGElement) => {
       if (!onPatch) return;
-      const pt = svgUserPointFromClient(svg, clientX, _clientY);
+      const pt = svgUserPointFromClient(svg, clientX, clientY);
       if (!pt) return;
-      let t = (pt.x - half) / Math.max(1e-6, w);
+      let t = isVertical
+        ? (pt.y - half) / Math.max(1e-6, segmentAlongLen)
+        : (pt.x - half) / Math.max(1e-6, segmentAlongLen);
       t = clampTimelineBarT(t);
-      if (typeof diagramSnapX === "number" && Number.isFinite(diagramSnapX)) {
-        t = snapTimelineBarBoundaryT(diagramSnapX, snapBarWidthPx, t);
+      if (diagramSnapOrigin != null) {
+        t = snapTimelineBarBoundaryT(diagramSnapOrigin, snapBarExtentPx, t);
       }
-      const minDt = timelineBarMinSegmentT(snapBarWidthPx);
+      const minDt = timelineBarMinSegmentT(snapBarExtentPx);
       const next = timelineBarMoveJointAtVisualBoundary(
         workingSectionsRef.current,
         boundaryIdx,
@@ -195,7 +216,7 @@ export function TimelineBarShape({
       workingSectionsRef.current = next;
       onPatch({ timelineBarSections: next });
     },
-    [diagramSnapX, half, onPatch, snapBarWidthPx, w],
+    [diagramSnapOrigin, half, isVertical, onPatch, segmentAlongLen, snapBarExtentPx],
   );
 
   const onPointerDownBoundary = useCallback(
@@ -204,7 +225,7 @@ export function TimelineBarShape({
         return;
       e.stopPropagation();
       e.preventDefault();
-      const migrated = timelineBarEnsureSpanSections(sections, w, sizing);
+      const migrated = timelineBarEnsureSpanSections(sections, segmentAlongLen, sizing);
       workingSectionsRef.current = migrated;
       if (!timelineBarUsesSpanLayout(sections)) {
         onPatch({ timelineBarSections: migrated });
@@ -226,7 +247,7 @@ export function TimelineBarShape({
       editingSectionIndex,
       sections,
       sizing,
-      w,
+      segmentAlongLen,
     ],
   );
 
@@ -332,15 +353,19 @@ export function TimelineBarShape({
     }
   }, [editingSectionIndex, sections.length]);
 
-  const tickTop = half + barH + gapTick;
-  const markerBottom = tickTop + tickBand * 0.35;
+  const tickRowTop = half + barNarrow + gapTick;
+  const markerBelowBar = tickRowTop + tickBand * 0.35;
+  /** Vertical axis: anchor labels at the inner-left of the tick band so text grows rightward (avoids left-edge clipping). */
+  const verticalAxisLabelX = half + Math.max(2, tickBand * 0.06);
+  /** Tick stubs extend left from the bar but stay inside the stroke inset. */
+  const markerTailX = Math.max(half + 1.5, barLeft - tickBand * 0.35);
 
   const content = (
     <>
       {bgDefs}
       <defs>
         <clipPath id={`${clipId}-barclip`}>
-          <rect x={half} y={half} width={w} height={barH} rx={rx} ry={rx} />
+          <rect x={barLeft} y={half} width={clipW} height={clipH} rx={rx} ry={rx} />
         </clipPath>
         {sections.map((seg: TimelineBarSectionData, gi: number) => {
           if ((seg.fillStyle ?? "solid") !== "gradient") return null;
@@ -385,10 +410,13 @@ export function TimelineBarShape({
       </defs>
 
       <g clipPath={`url(#${clipId}-barclip)`} pointerEvents="none">
-        <rect x={half} y={half} width={w} height={barH} rx={0} ry={0} fill={trackPaint} stroke="none" />
+        <rect x={barLeft} y={half} width={clipW} height={clipH} rx={0} ry={0} fill={trackPaint} stroke="none" />
         {sections.map((seg: TimelineBarSectionData, i: number) => {
           const wi = widths[i] ?? 0;
-          const x0 = half + (starts[i] ?? 0);
+          const x0 = isVertical ? barLeft : half + (starts[i] ?? 0);
+          const y0 = isVertical ? half + (starts[i] ?? 0) : half;
+          const rw = isVertical ? barNarrow : Math.max(0, wi);
+          const rh = isVertical ? Math.max(0, wi) : barNarrow;
           const fs = seg.fillStyle ?? "solid";
           let fillPaint: string;
           if (fs === "none") {
@@ -405,9 +433,9 @@ export function TimelineBarShape({
             <rect
               key={seg.id || i}
               x={x0}
-              y={half}
-              width={Math.max(0, wi)}
-              height={barH}
+              y={y0}
+              width={rw}
+              height={rh}
               fill={fillPaint}
               stroke="none"
             />
@@ -418,20 +446,34 @@ export function TimelineBarShape({
       {sectionBorder && sections.length > 1 && secBorderW > 0
         ? (() => {
             const lines: React.ReactNode[] = [];
-            for (let k = 0; k < dividerInnerXs.length; k++) {
-              const xi = half + dividerInnerXs[k];
+            for (let k = 0; k < dividerInnerAlong.length; k++) {
+              const pos = half + dividerInnerAlong[k];
               lines.push(
-                <line
-                  key={`div-${k}`}
-                  x1={xi}
-                  y1={half}
-                  x2={xi}
-                  y2={half + barH}
-                  stroke={secBorderColor}
-                  strokeWidth={secBorderW}
-                  vectorEffect="non-scaling-stroke"
-                  pointerEvents="none"
-                />,
+                isVertical ? (
+                  <line
+                    key={`div-${k}`}
+                    x1={barLeft}
+                    y1={pos}
+                    x2={barLeft + barNarrow}
+                    y2={pos}
+                    stroke={secBorderColor}
+                    strokeWidth={secBorderW}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                ) : (
+                  <line
+                    key={`div-${k}`}
+                    x1={pos}
+                    y1={half}
+                    x2={pos}
+                    y2={half + barNarrow}
+                    stroke={secBorderColor}
+                    strokeWidth={secBorderW}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                ),
               );
             }
             return <g pointerEvents="none">{lines}</g>;
@@ -440,10 +482,10 @@ export function TimelineBarShape({
 
       {strokeWidth > 0 ? (
         <rect
-          x={half}
+          x={barLeft}
           y={half}
-          width={w}
-          height={barH}
+          width={clipW}
+          height={clipH}
           rx={rx}
           ry={rx}
           fill="none"
@@ -457,15 +499,17 @@ export function TimelineBarShape({
 
       {sections.map((seg: TimelineBarSectionData, i: number) => {
         const wi = widths[i] ?? 0;
-        const x0 = half + (starts[i] ?? 0);
+        const xAlong = half + (starts[i] ?? 0);
         const displayRuns = normalizeRuns(seg.richLabel ?? labelToRuns(seg.label ?? ""));
         const plainDisplay = getPlainTextFromRuns(displayRuns).trim();
         if (!plainDisplay) return null;
         const lc = seg.labelColor ? String(seg.labelColor) : textCol;
-        const padX = Math.max(2, Math.min(6, wi * 0.04));
-        const padY = Math.max(1, Math.min(4, barH * 0.08));
-        const foW = Math.max(2, wi - 2 * padX);
-        const foH = Math.max(2, barH - 2 * padY);
+        const padAlong = Math.max(2, Math.min(6, wi * 0.04));
+        const padNarrow = Math.max(1, Math.min(4, barNarrow * 0.08));
+        const foX = isVertical ? barLeft + padNarrow : xAlong + padAlong;
+        const foY = isVertical ? half + (starts[i] ?? 0) + padAlong : half + padNarrow;
+        const foW = Math.max(2, (isVertical ? barNarrow : wi) - 2 * (isVertical ? padNarrow : padAlong));
+        const foH = Math.max(2, (isVertical ? wi : barNarrow) - 2 * (isVertical ? padAlong : padNarrow));
         const isEditingSection = editingSectionIndex === i;
         const isEditing = Boolean(onPatch && !isReadOnly && isEditingSection);
         const labelPointer = canEditSectionLabel || isEditingSection ? "auto" : "none";
@@ -474,7 +518,8 @@ export function TimelineBarShape({
         const styleIdx = labelsFollowFirst && i > 0 ? 0 : i;
         const styleSeg = sections[styleIdx] ?? seg;
         const segFontSize = Math.min(
-          barH * 0.42,
+          barNarrow * 0.42,
+          wi * 0.42,
           timelineBarSectionResolvedFontSizePx(styleSeg, styleIdx, sections, node),
           22,
         );
@@ -519,8 +564,8 @@ export function TimelineBarShape({
         return (
           <g key={`tlab-${seg.id}-${i}`}>
             <foreignObject
-              x={x0 + padX}
-              y={half + padY}
+              x={foX}
+              y={foY}
               width={foW}
               height={foH}
               style={{ overflow: isEditing ? "visible" : "hidden", pointerEvents: labelPointer }}
@@ -585,18 +630,51 @@ export function TimelineBarShape({
       {showTicks
         ? useAxisTicks
           ? axisLabels.map((ax, i) => {
-              /** Same inner span as segments: `t ∈ [0,1]` → x from `half` to `half + w` (stroke inset only, not rounded-cap correction). */
-              const cx = half + clampTimelineBarT(ax.t) * w;
+              const t = clampTimelineBarT(ax.t);
               const tk = (ax.label ?? "").trim();
               if (!tk && !tickMarkers) return null;
+              if (!isVertical) {
+                const cx = half + t * segmentAlongLen;
+                return (
+                  <g key={`axis-${ax.id}-${i}`} pointerEvents="none">
+                    {tickMarkers ? (
+                      <line
+                        x1={cx}
+                        y1={half + barNarrow}
+                        x2={cx}
+                        y2={markerBelowBar}
+                        stroke={textCol}
+                        strokeWidth={1}
+                        opacity={0.45}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    ) : null}
+                    {tk ? (
+                      <text
+                        x={cx}
+                        y={tickRowTop + tickBand * 0.72}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={textCol}
+                        fontSize={tickFont}
+                        fontFamily={axisTickFontFamily}
+                        opacity={0.9}
+                      >
+                        {tk}
+                      </text>
+                    ) : null}
+                  </g>
+                );
+              }
+              const cy = half + t * segmentAlongLen;
               return (
                 <g key={`axis-${ax.id}-${i}`} pointerEvents="none">
                   {tickMarkers ? (
                     <line
-                      x1={cx}
-                      y1={half + barH}
-                      x2={cx}
-                      y2={markerBottom}
+                      x1={barLeft}
+                      y1={cy}
+                      x2={markerTailX}
+                      y2={cy}
                       stroke={textCol}
                       strokeWidth={1}
                       opacity={0.45}
@@ -605,9 +683,9 @@ export function TimelineBarShape({
                   ) : null}
                   {tk ? (
                     <text
-                      x={cx}
-                      y={tickTop + tickBand * 0.72}
-                      textAnchor="middle"
+                      x={verticalAxisLabelX}
+                      y={cy}
+                      textAnchor="start"
                       dominantBaseline="middle"
                       fill={textCol}
                       fontSize={tickFont}
@@ -622,40 +700,73 @@ export function TimelineBarShape({
             })
           : sections.map((seg: TimelineBarSectionData, i: number) => {
               const wi = widths[i] ?? 0;
-              const cx = half + (starts[i] ?? 0) + wi / 2;
-            const tk = (seg.tickLabel ?? "").trim();
-            if (!tk && !tickMarkers) return null;
-            return (
-              <g key={`tick-${seg.id}-${i}`} pointerEvents="none">
-                {tickMarkers ? (
-                  <line
-                    x1={cx}
-                    y1={half + barH}
-                    x2={cx}
-                    y2={markerBottom}
-                    stroke={textCol}
-                    strokeWidth={1}
-                    opacity={0.45}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ) : null}
-                {tk ? (
-                  <text
-                    x={cx}
-                    y={tickTop + tickBand * 0.72}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill={textCol}
-                    fontSize={tickFont}
-                    fontFamily={axisTickFontFamily}
-                    opacity={0.9}
-                  >
-                    {tk}
-                  </text>
-                ) : null}
-              </g>
-            );
-          })
+              const tk = (seg.tickLabel ?? "").trim();
+              if (!tk && !tickMarkers) return null;
+              if (!isVertical) {
+                const cx = half + (starts[i] ?? 0) + wi / 2;
+                return (
+                  <g key={`tick-${seg.id}-${i}`} pointerEvents="none">
+                    {tickMarkers ? (
+                      <line
+                        x1={cx}
+                        y1={half + barNarrow}
+                        x2={cx}
+                        y2={markerBelowBar}
+                        stroke={textCol}
+                        strokeWidth={1}
+                        opacity={0.45}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    ) : null}
+                    {tk ? (
+                      <text
+                        x={cx}
+                        y={tickRowTop + tickBand * 0.72}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={textCol}
+                        fontSize={tickFont}
+                        fontFamily={axisTickFontFamily}
+                        opacity={0.9}
+                      >
+                        {tk}
+                      </text>
+                    ) : null}
+                  </g>
+                );
+              }
+              const cy = half + (starts[i] ?? 0) + wi / 2;
+              return (
+                <g key={`tick-${seg.id}-${i}`} pointerEvents="none">
+                  {tickMarkers ? (
+                    <line
+                      x1={barLeft}
+                      y1={cy}
+                      x2={markerTailX}
+                      y2={cy}
+                      stroke={textCol}
+                      strokeWidth={1}
+                      opacity={0.45}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ) : null}
+                  {tk ? (
+                    <text
+                      x={verticalAxisLabelX}
+                      y={cy}
+                      textAnchor="start"
+                      dominantBaseline="middle"
+                      fill={textCol}
+                      fontSize={tickFont}
+                      fontFamily={axisTickFontFamily}
+                      opacity={0.9}
+                    >
+                      {tk}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })
         : null}
 
       {sectionBoundaryInteractionEnabled &&
@@ -664,22 +775,25 @@ export function TimelineBarShape({
       !isEditingLabel &&
       editingSectionIndex === null &&
       sections.length > 1
-        ? dividerInnerXs.map((innerX, k) => {
-            const hitW = Math.max(6, Math.min(24, w * 0.08));
-            const cx = half + innerX;
-            const hx = cx - hitW / 2;
+        ? dividerInnerAlong.map((innerAlong, k) => {
+            const hitAlong = Math.max(6, Math.min(24, segmentAlongLen * 0.08));
+            const centerAlong = half + innerAlong;
+            const originAlong = centerAlong - hitAlong / 2;
             return (
               <rect
                 key={`tb-bound-${k}`}
                 data-dw-timeline-boundary={k}
-                x={hx}
-                y={half}
-                width={hitW}
-                height={barH}
+                x={isVertical ? barLeft : originAlong}
+                y={isVertical ? originAlong : half}
+                width={isVertical ? barNarrow : hitAlong}
+                height={isVertical ? hitAlong : barNarrow}
                 fill="transparent"
                 stroke="none"
                 pointerEvents="auto"
-                style={{ cursor: "col-resize", touchAction: "none" }}
+                style={{
+                  cursor: isVertical ? "row-resize" : "col-resize",
+                  touchAction: "none",
+                }}
                 onPointerDown={onPointerDownBoundary(k)}
                 onPointerMove={onPointerMoveBoundary}
                 onPointerUp={onPointerUpBoundary}
@@ -702,7 +816,8 @@ export function TimelineBarShape({
       overrideWidth={overrideWidth}
       overrideHeight={overrideHeight}
       viewBox={`0 0 ${vbW} ${vbH}`}
-      frostedClipRectInViewBox={{ x: half, y: half, w, h: barH, rx, ry: rx }}
+      frostedClipRectInViewBox={{ x: barLeft, y: half, w: clipW, h: clipH, rx, ry: rx }}
+      svgOverflowVisible={isVertical}
       svgPointerEvents="none"
       svgContent={content}
     />

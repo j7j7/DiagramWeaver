@@ -10,6 +10,27 @@ export function isSegmentedRectangleNodeType(type: string | undefined): boolean 
   return type === SEGMENTED_RECTANGLE_NODE_TYPE || !!type?.endsWith(".segmented-rectangle");
 }
 
+/** When segmented-rectangle placement flips horizontal↔vertical, swap intrinsic `width`/`height` so axes match footprint. */
+export function augmentSegmentedRectangleStylingPlacementPatch(
+  nodeBefore: DiagramNodeData,
+  stylingPatch: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!isSegmentedRectangleNodeType(nodeBefore.type)) return stylingPatch;
+  if (stylingPatch.segmentedRectanglePlacementOrder === undefined) return stylingPatch;
+  const next =
+    stylingPatch.segmentedRectanglePlacementOrder === "vertical" ? ("vertical" as const) : ("horizontal" as const);
+  const prev =
+    nodeBefore.segmentedRectanglePlacementOrder === "vertical" ? ("vertical" as const) : ("horizontal" as const);
+  if (prev === next) return stylingPatch;
+
+  const w = nodeBefore.width;
+  const h = nodeBefore.height;
+  if (typeof w === "number" && typeof h === "number" && Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+    return { ...stylingPatch, width: h, height: w };
+  }
+  return stylingPatch;
+}
+
 export function normalizeSegmentedRectangleSections(node: DiagramNodeData): TimelineBarSectionData[] {
   const raw = (node as DiagramNodeData & { segmentedRectangleSections?: TimelineBarSectionData[] })
     .segmentedRectangleSections;
@@ -97,10 +118,10 @@ export function defaultPaletteSegmentedRectangleNodeProps(nodeId: string): Parti
   } as Partial<DiagramNodeData>;
 }
 
-/** Layout: `starts`/`widths` are in user units along inner width `innerWidth`; gaps between segments are `gapPx`. */
+/** Layout: `starts`/`widths` are in user units along the stacking-axis inner span `innerAlong` (typically inner width when horizontal, inner height when vertical); gaps between segments are `gapPx`. */
 export function segmentedRectangleSegmentLayout(
   sections: TimelineBarSectionData[],
-  innerWidth: number,
+  innerAlong: number,
   sizing: "equal" | "weighted",
   gapPx: number,
 ): { starts: number[]; widths: number[] } {
@@ -108,13 +129,13 @@ export function segmentedRectangleSegmentLayout(
   const n = sections.length;
   if (n === 0) return { starts: [], widths: [] };
   const gapsTotal = (n - 1) * gap;
-  const contentW = Math.max(0, innerWidth - gapsTotal);
+  const contentW = Math.max(0, innerAlong - gapsTotal);
   const { starts: s0, widths } = timelineBarSegmentLayout(sections, contentW, sizing);
   const starts = s0.map((s, i) => s + i * gap);
   return { starts, widths };
 }
 
-/** X positions (inner coords, 0–`innerWidth`) for vertical divider lines between segments. */
+/** Positions along the stacking axis (inner coords, 0–inner span) for divider lines centered in segment gaps. */
 export function segmentedRectangleDividerInnerXs(
   sections: TimelineBarSectionData[],
   starts: number[],
@@ -136,6 +157,7 @@ export function segmentedRectangleMemoPayload(n: DiagramNodeData): string {
   const x = n as DiagramNodeData & {
     segmentedRectangleSections?: TimelineBarSectionData[];
     segmentedRectangleSizing?: string;
+    segmentedRectanglePlacementOrder?: string;
     segmentedRectangleSegmentGap?: number;
     segmentedRectangleOutlineMode?: string;
     segmentedRectangleDividers?: boolean;
@@ -163,6 +185,7 @@ export function segmentedRectangleMemoPayload(n: DiagramNodeData): string {
   return JSON.stringify([
     x.segmentedRectangleSections,
     x.segmentedRectangleSizing,
+    x.segmentedRectanglePlacementOrder,
     x.segmentedRectangleSegmentGap,
     x.segmentedRectangleOutlineMode,
     x.segmentedRectangleDividers,

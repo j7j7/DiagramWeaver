@@ -3,7 +3,20 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
-### 2026-05-15 – **Rich text** inline format toolbar: **`document.body`** portal + high **z-index** (always above canvas)
+### 2026-05-15 – **Timeline bar** orientation toggle: **swap width/height** + **vertical axis labels** uncropped
+
+**`augmentTimelineBarOrientationPatch`** (`timeline-bar.ts`): when **`timelineBarOrientation`** flips horizontal↔vertical, patches **`width`/`height`** like segmented rectangles (**`context-toolbar`** **`handleVisualStylingChange`** chains segmented patch → timeline patch per node; **scratch pad** Visual tab same). **`TimelineBarShape`**: vertical axis uses **`textAnchor="start"`** at **`verticalAxisLabelX`** (inner-left tick band) and **`markerTailX`** ≥ stroke inset; **`svgOverflowVisible`** when vertical so rare glyph spill isn’t clipped. Patch bumped.
+
+
+### 2026-05-15 – **Timeline bar**: **horizontal / vertical** orientation (Visual styling)
+
+**`timelineBarOrientation`**: **`horizontal`** (default) vs **`vertical`** on **`DiagramNodeData`** / **`VisualStyling`** / **Zod** (already in **`schemas`**). **`TimelineBarShape`**: vertical stacks segments along height with axis labels in a **left** band and the colored bar **right**; boundary drag uses **`diagramSnapY`** + bar height extent; memo **`timelineBarMemoPayload`** includes orientation. **`snapTimelineBarBoundaryT`** / **`timelineBarMinSegmentT`** documented for either axis. **`visual-styling-panel`**: **Orientation** select above **Corner radius**. **`diagram-node`** passes **`diagramSnapY`**. Patch bumped.
+
+
+### 2026-05-15 – **Segmented rectangle**: **vertical** segment order (Visual styling toggle)
+
+**`segmentedRectanglePlacementOrder`**: **`horizontal`** (default) vs **`vertical`** on **`DiagramNodeData`**, Zod **`schemas`**, **`visual-styling`** extract/apply, **`segmentedRectangleMemoPayload`**, **`shape-type-swap`** strip. **`SegmentedRectangleShape`**: layout along width or height; dividers + boundary drag + labels + grid snap (**`diagramSnapX`** / **`diagramSnapY`** via **`diagram-node`**) follow the active axis. **`visual-styling-panel`**: **Vertical segments** switch under **Segmented rectangle**. Toggling orientation runs **`augmentSegmentedRectangleStylingPlacementPatch`** so **`width`/`height`** swap when horizontal ↔ vertical (**`context-toolbar`** + scratch pad Visual tab). Patch bumped.
+
 
 **Issue**: **`TextboxRichEditor`** defaulted to **`absolute z-[100]`** inside diagram nodes while **`CanvasConnectionText`** SVG uses **`z-index: 9999`**, so the bar could hide behind connections, handles, icons, or later-painted nodes. **Fix**: Toolbar is **`createPortal`**’d under **`document.body`** with **`position: fixed`** and **`TEXTBOX_RICH_TOOLBAR_Z_INDEX` (10050)** (anchored from the editor **`root`** or **`toolbarPortalHost`** for vertical heading). **`toolbarFixedToViewport`** remains on call sites but is redundant. **`text-box-heading`** pin host is **pointer-events-none** (geometry anchor only). Patch bumped.
 

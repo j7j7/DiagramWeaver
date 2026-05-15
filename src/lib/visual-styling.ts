@@ -45,6 +45,7 @@ export interface VisualStyling {
   progressFillGradientAngle?: number;
   /** Timeline bar (`generic.object.timeline-bar`) */
   timelineBarSizing?: "equal" | "weighted";
+  timelineBarOrientation?: "horizontal" | "vertical";
   timelineBarShowTicks?: boolean;
   timelineBarTickMarkers?: boolean;
   timelineBarSectionBorder?: boolean;
@@ -53,6 +54,7 @@ export interface VisualStyling {
   timelineBarHueStepDeg?: number; // Timeline bar segments only; pyramid theme-hue uses Themes menu step (`useThemeMenuHueStepDeg`).
   /** Segmented rectangle (`generic.object.segmented-rectangle`) */
   segmentedRectangleSizing?: "equal" | "weighted";
+  segmentedRectanglePlacementOrder?: "horizontal" | "vertical";
   segmentedRectangleSegmentGap?: number;
   segmentedRectangleOutlineMode?: "container" | "segments" | "none";
   segmentedRectangleDividers?: boolean;
@@ -282,6 +284,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     progressFillColors: (node as any).progressFillColors,
     progressFillGradientAngle: (node as any).progressFillGradientAngle,
     timelineBarSizing: (node as any).timelineBarSizing,
+    timelineBarOrientation: (node as any).timelineBarOrientation,
     timelineBarShowTicks: (node as any).timelineBarShowTicks,
     timelineBarTickMarkers: (node as any).timelineBarTickMarkers,
     timelineBarSectionBorder: (node as any).timelineBarSectionBorder,
@@ -289,6 +292,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     timelineBarSectionBorderColor: (node as any).timelineBarSectionBorderColor,
     timelineBarHueStepDeg: (node as any).timelineBarHueStepDeg,
     segmentedRectangleSizing: (node as any).segmentedRectangleSizing,
+    segmentedRectanglePlacementOrder: (node as any).segmentedRectanglePlacementOrder,
     segmentedRectangleSegmentGap: (node as any).segmentedRectangleSegmentGap,
     segmentedRectangleOutlineMode: (node as any).segmentedRectangleOutlineMode,
     segmentedRectangleDividers: (node as any).segmentedRectangleDividers,
@@ -417,6 +421,10 @@ export function applyVisualStylingToNode(
       styling.segmentedRectangleSizing !== undefined
         ? styling.segmentedRectangleSizing
         : (node as any).segmentedRectangleSizing,
+    segmentedRectanglePlacementOrder:
+      styling.segmentedRectanglePlacementOrder !== undefined
+        ? styling.segmentedRectanglePlacementOrder
+        : (node as any).segmentedRectanglePlacementOrder,
     segmentedRectangleSegmentGap:
       styling.segmentedRectangleSegmentGap !== undefined
         ? styling.segmentedRectangleSegmentGap

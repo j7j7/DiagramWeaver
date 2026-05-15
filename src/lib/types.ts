@@ -319,6 +319,8 @@ export interface DiagramNodeData {
   timelineBarSections?: TimelineBarSectionData[];
   /** `equal` = same width per section; `weighted` = width ∝ `weight` */
   timelineBarSizing?: "equal" | "weighted";
+  /** `'horizontal'` (default): segments along width; axis row below. `'vertical'`: segments along height; axis labels left of the bar. */
+  timelineBarOrientation?: "horizontal" | "vertical";
   /** Show optional date/tick row below the bar */
   timelineBarShowTicks?: boolean;
   /** Small vertical ticks at section boundaries on the tick row */
@@ -358,18 +360,20 @@ export interface DiagramNodeData {
   /** When true, segments after the first mirror the first tier’s segment-label typography (timeline-bar parity). */
   pyramidLabelsFollowFirstSection?: boolean;
 
-  /** Segmented rectangle (`generic.object.segmented-rectangle`): horizontal segments (same payload as timeline-bar sections). */
+  /** Segmented rectangle (`generic.object.segmented-rectangle`): sections along one axis (same payload as timeline-bar sections). */
   segmentedRectangleSections?: TimelineBarSectionData[];
   segmentedRectangleSizing?: "equal" | "weighted";
-  /** Horizontal gap between segments in shape units (0 = flush). */
+  /** Default `horizontal` — segments pack left→right; `vertical` — top→bottom. */
+  segmentedRectanglePlacementOrder?: "horizontal" | "vertical";
+  /** Gap between segments along the stacking axis in shape units (0 = flush). */
   segmentedRectangleSegmentGap?: number;
   /** `container` = one outer border; `segments` = stroke each segment; `none` = no strokes. */
   segmentedRectangleOutlineMode?: "container" | "segments" | "none";
-  /** Internal vertical dividers between segments (inset from top/bottom via `segmentedRectangleDividerInset`). */
+  /** Dividers between adjacent segments along the cross-axis (inset via `segmentedRectangleDividerInset`). */
   segmentedRectangleDividers?: boolean;
   segmentedRectangleDividerWidth?: number;
   segmentedRectangleDividerColor?: string;
-  /** Fraction of bar height inset from top (and symmetrically bottom) for divider endpoints; clamped ~0–0.45. */
+  /** Fraction inset along the cross-axis from each side at divider endpoints (horizontal layout: top/bottom; vertical: left/right); clamped ~0–0.45. */
   segmentedRectangleDividerInset?: number;
   /** Hue step between consecutive **theme-hue** segments (defaults like timeline bar). */
   segmentedRectangleHueStepDeg?: number;

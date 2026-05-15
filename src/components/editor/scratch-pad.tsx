@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Check, Edit2, Trash2, Download, Upload } from 'lucide-react';
 import { DraggableItem, ItemTypes } from './draggable-item';
-import type { DiagramData, ScratchPadItem } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, ScratchPadItem } from '@/lib/types';
 import { Dialog, DialogPortal, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,8 @@ import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
 import { isIconOrEmojiType } from '@/lib/utils';
+import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
+import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
 import { ResourceIcon } from '@/components/diagram/resource-icon';
 import { ShapePreview } from './shape-preview';
 import { Card, CardContent } from '@/components/ui/card';
@@ -803,10 +805,23 @@ const renderIcon = (item: ScratchPadItem) => {
                             <VisualStylingPanel
                                 styling={editingItem.data}
                                 selectedItemIds={new Set([editingItem.id])}
-                                onStylingChange={(changes) => setEditingItem({
+                                onStylingChange={(changes) => {
+                                  const prev = {
+                                    ...(editingItem.data as DiagramNodeData),
+                                    type: editingItem.type ?? "",
+                                  } as DiagramNodeData;
+                                  const patch = augmentTimelineBarOrientationPatch(
+                                    prev,
+                                    augmentSegmentedRectangleStylingPlacementPatch(
+                                      prev,
+                                      changes as Record<string, unknown>,
+                                    ),
+                                  );
+                                  setEditingItem({
                                     ...editingItem,
-                                    data: { ...editingItem.data, ...changes }
-                                })}
+                                    data: { ...editingItem.data, ...patch },
+                                  });
+                                }}
                                 isShape={(() => {
                                     const t = editingItem.type || '';
                                     return !isIconOrEmojiType(t) && (t.startsWith('generic.object.') ||

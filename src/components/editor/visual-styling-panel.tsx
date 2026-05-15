@@ -1028,6 +1028,31 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   dotClassName="bg-teal-500"
                   outerClassName="border-teal-200/50 bg-teal-50/50"
                 >
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Orientation</Label>
+                    <Select
+                      value={styling.timelineBarOrientation === "vertical" ? "vertical" : "horizontal"}
+                      onValueChange={(v) =>
+                        handlePropertyChange(
+                          "timelineBarOrientation",
+                          v === "vertical" ? "vertical" : "horizontal",
+                          true,
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-[160px] text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="horizontal" className="text-sm">
+                          Horizontal
+                        </SelectItem>
+                        <SelectItem value="vertical" className="text-sm">
+                          Vertical
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <Label className="text-sm text-muted-foreground">Corner radius</Label>
@@ -1198,6 +1223,19 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   outerClassName="border-cyan-200/50 bg-cyan-50/50"
                 >
                   <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm text-muted-foreground">Vertical segments</Label>
+                      <Switch
+                        checked={(styling.segmentedRectanglePlacementOrder ?? "horizontal") === "vertical"}
+                        onCheckedChange={(checked) =>
+                          handlePropertyChange(
+                            "segmentedRectanglePlacementOrder",
+                            checked ? "vertical" : "horizontal",
+                            true,
+                          )
+                        }
+                      />
+                    </div>
                     <div className="flex items-center justify-between gap-2">
                       <Label className="text-sm text-muted-foreground">Corner radius</Label>
                       <span className="w-12 text-right tabular-nums text-xs text-muted-foreground">

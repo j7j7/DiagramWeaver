@@ -915,11 +915,13 @@ function DiagramNodeInner({
       );
     } else if (nodeType === 'generic.object.timeline-bar' || nodeType?.endsWith('.timeline-bar')) {
       const timelineSnapX = resizePosition?.x ?? node.x;
+      const timelineSnapY = resizePosition?.y ?? node.y;
       return (
         <TimelineBarShape
           {...shapeProps}
           isReadOnly={isReadOnly}
           diagramSnapX={timelineSnapX}
+          diagramSnapY={timelineSnapY}
           onPatch={onUpdate && !isReadOnly ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
           sectionBoundaryInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
           sectionLabelInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
@@ -935,11 +937,13 @@ function DiagramNodeInner({
       );
     } else if (nodeType === 'generic.object.segmented-rectangle' || nodeType?.endsWith('.segmented-rectangle')) {
       const snapX = resizePosition?.x ?? node.x;
+      const snapY = resizePosition?.y ?? node.y;
       return (
         <SegmentedRectangleShape
           {...shapeProps}
           isReadOnly={isReadOnly}
           diagramSnapX={snapX}
+          diagramSnapY={snapY}
           presentationSectionSlideStagger={animationStyle?.sectionSlideStagger}
           onPatch={onUpdate && !isReadOnly ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
           sectionBoundaryInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
