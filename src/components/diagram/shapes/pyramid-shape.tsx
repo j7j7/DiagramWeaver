@@ -124,11 +124,18 @@ export function PyramidShape({
 
   const sections = normalizePyramidSections(node);
   const pyramidSectionBorderOn = pyramidTierStrokeAllowed && nodeAny.pyramidSectionBorder === true;
+  const rawOutline =
+    typeof nodeAny.pyramidSectionBorderWidth === "number" && Number.isFinite(nodeAny.pyramidSectionBorderWidth as number)
+      ? (nodeAny.pyramidSectionBorderWidth as number)
+      : nodeAny.pyramidSectionBorderWidth == null
+        ? 1
+        : NaN;
   const secBorderW =
     pyramidSectionBorderOn && sections.length > 0
-      ? Math.max(0.5, Math.min(4, Number(nodeAny.pyramidSectionBorderWidth) || 1))
+      ? Math.max(0, Math.min(4, Number.isFinite(rawOutline) ? rawOutline : 1))
       : 0;
-  const tierStrokeWidth = pyramidSectionBorderOn && secBorderW > 0 ? secBorderW : nodeStrokeW;
+  /** Tier outlines only when width &gt; 0; otherwise shape border (`nodeStrokeW`) still applies if any. */
+  const tierStrokeWidth = pyramidSectionBorderOn && sections.length > 0 ? secBorderW : nodeStrokeW;
   const secBorderColor = String(nodeAny.pyramidSectionBorderColor || "#ffffff");
   const half = Math.max(nodeStrokeW, tierStrokeWidth) / 2;
 

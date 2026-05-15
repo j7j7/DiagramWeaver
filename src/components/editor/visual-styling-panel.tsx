@@ -355,19 +355,39 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
+  const [pyramidTierOutlineFocused, setPyramidTierOutlineFocused] = useState(false);
+  const [pyramidTierOutlineDraft, setPyramidTierOutlineDraft] = useState("");
+  const [pyramidTierGapFocused, setPyramidTierGapFocused] = useState(false);
+  const [pyramidTierGapDraft, setPyramidTierGapDraft] = useState("");
+
+  useEffect(() => {
+    if (!pyramidTierOutlineFocused) {
+      const v = styling.pyramidSectionBorderWidth;
+      const shown = typeof v === "number" && Number.isFinite(v) ? v : 1;
+      setPyramidTierOutlineDraft(String(shown));
+    }
+  }, [styling.pyramidSectionBorderWidth, pyramidTierOutlineFocused]);
+
+  useEffect(() => {
+    if (!pyramidTierGapFocused) {
+      const v = styling.pyramidSegmentGap;
+      const shown = typeof v === "number" && Number.isFinite(v) ? v : 2;
+      setPyramidTierGapDraft(String(shown));
+    }
+  }, [styling.pyramidSegmentGap, pyramidTierGapFocused]);
 
   useEffect(() => {
     setIsMounted(true);
-    
+
     // Load position from localStorage
-    if (typeof window !== 'undefined') {
-      const savedPosition = localStorage.getItem('dw:visual-styling:position');
+    if (typeof window !== "undefined") {
+      const savedPosition = localStorage.getItem("dw:visual-styling:position");
       if (savedPosition) {
         try {
           const parsed = JSON.parse(savedPosition);
           setPosition(parsed);
         } catch (e) {
-          console.error('Failed to load visual styling panel position', e);
+          console.error("Failed to load visual styling panel position", e);
         }
       }
     }
@@ -1140,16 +1160,49 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-sm text-muted-foreground">Gap between tiers</Label>
                     <Input
-                      type="number"
-                      min={0}
-                      max={32}
-                      step={1}
-                      className={cn(NUMBER_INPUT_NO_SPINNER, "h-9 min-w-[4.75rem] w-[5rem] text-sm tabular-nums")}
-                      value={styling.pyramidSegmentGap ?? 2}
-                      onChange={(e) => {
-                        const n = parseFloat(e.target.value);
-                        if (!Number.isFinite(n)) return;
-                        handlePropertyChange("pyramidSegmentGap", Math.min(32, Math.max(0, n)), true);
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className="h-9 min-w-[4.75rem] w-[5rem] text-sm tabular-nums"
+                      value={
+                        pyramidTierGapFocused
+                          ? pyramidTierGapDraft
+                          : String(
+                              typeof styling.pyramidSegmentGap === "number" && Number.isFinite(styling.pyramidSegmentGap)
+                                ? styling.pyramidSegmentGap
+                                : 2,
+                            )
+                      }
+                      onFocus={() => {
+                        setPyramidTierGapFocused(true);
+                        const v = styling.pyramidSegmentGap;
+                        setPyramidTierGapDraft(
+                          String(typeof v === "number" && Number.isFinite(v) ? v : 2),
+                        );
+                      }}
+                      onChange={(e) => setPyramidTierGapDraft(e.target.value)}
+                      onBlur={() => {
+                        setPyramidTierGapFocused(false);
+                        const t = pyramidTierGapDraft.trim();
+                        const revert =
+                          typeof styling.pyramidSegmentGap === "number" && Number.isFinite(styling.pyramidSegmentGap)
+                            ? styling.pyramidSegmentGap
+                            : 2;
+                        if (t === "") {
+                          setPyramidTierGapDraft(String(revert));
+                          return;
+                        }
+                        const n = parseFloat(t.replace(",", "."));
+                        if (!Number.isFinite(n)) {
+                          setPyramidTierGapDraft(String(revert));
+                          return;
+                        }
+                        const clamped = Math.min(32, Math.max(0, n));
+                        handlePropertyChange("pyramidSegmentGap", clamped, true);
+                        setPyramidTierGapDraft(String(clamped));
+                      }}
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
                       }}
                     />
                   </div>
@@ -1207,18 +1260,56 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   {styling.pyramidSectionBorder === true ? (
                     <div className="space-y-2 pt-1">
                       <div className="flex items-center justify-between gap-2">
-                        <Label className="text-xs text-muted-foreground">Tier outline width</Label>
+                        <Label className="text-xs text-muted-foreground">
+                          Tier outline width (0 = none)
+                        </Label>
                         <Input
-                          type="number"
-                          min={0.5}
-                          max={4}
-                          step={0.5}
-                          value={styling.pyramidSectionBorderWidth ?? 1}
-                          onChange={(e) => {
-                            const n = parseFloat(e.target.value);
-                            if (!isNaN(n)) handlePropertyChange("pyramidSectionBorderWidth", n, true);
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          className="h-8 min-w-[4rem] w-16 tabular-nums text-xs"
+                          value={
+                            pyramidTierOutlineFocused
+                              ? pyramidTierOutlineDraft
+                              : String(
+                                  typeof styling.pyramidSectionBorderWidth === "number" &&
+                                    Number.isFinite(styling.pyramidSectionBorderWidth)
+                                    ? styling.pyramidSectionBorderWidth
+                                    : 1,
+                                )
+                          }
+                          onFocus={() => {
+                            setPyramidTierOutlineFocused(true);
+                            const v = styling.pyramidSectionBorderWidth;
+                            setPyramidTierOutlineDraft(
+                              String(typeof v === "number" && Number.isFinite(v) ? v : 1),
+                            );
                           }}
-                          className={cn(NUMBER_INPUT_NO_SPINNER, "h-8 min-w-[4rem] w-16 tabular-nums text-xs")}
+                          onChange={(e) => setPyramidTierOutlineDraft(e.target.value)}
+                          onBlur={() => {
+                            setPyramidTierOutlineFocused(false);
+                            const t = pyramidTierOutlineDraft.trim();
+                            const revert =
+                              typeof styling.pyramidSectionBorderWidth === "number" &&
+                              Number.isFinite(styling.pyramidSectionBorderWidth)
+                                ? styling.pyramidSectionBorderWidth
+                                : 1;
+                            if (t === "") {
+                              setPyramidTierOutlineDraft(String(revert));
+                              return;
+                            }
+                            const n = parseFloat(t.replace(",", "."));
+                            if (!Number.isFinite(n)) {
+                              setPyramidTierOutlineDraft(String(revert));
+                              return;
+                            }
+                            const clamped = Math.min(4, Math.max(0, n));
+                            handlePropertyChange("pyramidSectionBorderWidth", clamped, true);
+                            setPyramidTierOutlineDraft(String(clamped));
+                          }}
+                          onKeyDown={(ev) => {
+                            if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
+                          }}
                         />
                       </div>
                       <div className="space-y-1">

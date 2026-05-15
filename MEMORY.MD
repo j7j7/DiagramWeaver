@@ -3,6 +3,16 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – **Pie chart** palette drop: default **190×180** only
+
+**`canvas-operations`** grid-snapped width/height for **`generic.chart.pie`**; random built-in theme + **`applyThemeToItem`** unchanged (no fixed border/background/slice styling). Patch bumped.
+
+
+### 2026-05-15 – Pyramid **palette defaults** (drag / swap): warm gradient shell + line + shadow
+
+**`defaultPalettePyramidNodeProps`** (**`pyramid.ts`**): **390×310**, apex width ratio **0.06**, gradient border/background (**60°**), tier gap **2**, thin tier outline (**0.2**), shadow (**`#44403c`**, blur **5**, opacity **0.22**), line styling (**`#4d7c0f`**, width **2.5**), text **#7c2d12**; four **L1–L4** **theme-hue** sections. **`canvas-operations`** initial width/height snap matches. Same payload when swapping to pyramid (unless timeline sections are preserved). Patch bumped.
+
+
 ### 2026-05-15 – Pyramid **theme-hue step**: Themes menu only (explicit arity)
 
 **`timelineBarSectionThemeHueFill`**: when called with **four** arguments and a finite step, that step wins (pyramid passes **`useThemeMenuHueStepDeg()`**); three-argument calls still use **`timelineBarHueStepDeg`** on the node (timeline bar). **`PyramidEditorModal`** previews theme-hue tiers with the same menu step + copy that it is not the Timeline bar control. Patch bumped.

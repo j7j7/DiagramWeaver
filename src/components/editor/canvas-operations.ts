@@ -200,7 +200,7 @@ export function useCanvasOperations({
              itemType === MINDMAP_NODE_TYPE ? 80 :
              itemType === 'generic.object.progress-bar' ? 80 :
              itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(790, 40) :
-             itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(120, 40) :
+             itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(390, 40) :
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line'
@@ -208,6 +208,7 @@ export function useCanvasOperations({
              : itemType === TIMELINE_NODE_TYPE
                ? snapDimensionToGrid(TIMELINE_DEFAULT_SPINE_LENGTH_PX, 150)
              :
+             itemType === 'generic.chart.pie' ? snapDimensionToGrid(190, 40) :
              itemType === 'generic.chart.line' ? 470 :
              itemType === 'generic.chart.bar' ? 380 :
              itemType === 'generic.chart.ring' ? 410 :
@@ -221,10 +222,11 @@ export function useCanvasOperations({
              itemType === MINDMAP_NODE_TYPE ? 50 :
              itemType === 'generic.object.progress-bar' ? 50 :
              itemType === 'generic.object.timeline-bar' ? snapDimensionToGrid(150, 28) :
-             itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(140, 28) :
+             itemType === 'generic.object.pyramid' || itemType?.endsWith('.pyramid') ? snapDimensionToGrid(310, 28) :
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' || itemType === TIMELINE_NODE_TYPE ? 100 :
+             itemType === 'generic.chart.pie' ? snapDimensionToGrid(180, 28) :
              itemType === 'generic.chart.line' ? 320 :
              itemType === 'generic.chart.bar' ? 280 :
              itemType === 'generic.chart.ring' ? 320 :
