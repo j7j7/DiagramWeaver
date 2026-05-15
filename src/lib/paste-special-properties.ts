@@ -4,6 +4,7 @@ import type {
   NodeChartSpecBar,
   NodeChartSpecLine,
   NodeChartSpecPie,
+  NodeChartSpecRing,
 } from "@/lib/types";
 import { isChartNodeType } from "@/lib/chart-node";
 import {
@@ -32,7 +33,7 @@ export function getClipboardTemplateNode(c: PasteSpecialClipboardLike | null): D
 }
 
 export type PastePropertyFamily =
-  | { kind: "chart"; chartKind: "pie" | "bar" | "line" }
+  | { kind: "chart"; chartKind: "pie" | "bar" | "line" | "ring" }
   | { kind: "connectorLine" }
   | { kind: "timeline" }
   | { kind: "mindmap" }
@@ -41,10 +42,11 @@ export type PastePropertyFamily =
   | { kind: "icon" }
   | { kind: "resourceLabel" };
 
-function chartKindFromType(type: string): "pie" | "bar" | "line" | null {
+function chartKindFromType(type: string): "pie" | "bar" | "line" | "ring" | null {
   if (type === "generic.chart.pie" || type.endsWith(".chart.pie")) return "pie";
   if (type === "generic.chart.bar" || type.endsWith(".chart.bar")) return "bar";
   if (type === "generic.chart.line" || type.endsWith(".chart.line")) return "line";
+  if (type === "generic.chart.ring" || type.endsWith(".chart.ring")) return "ring";
   return null;
 }
 
@@ -87,19 +89,37 @@ function cloneRich(runs: DiagramNodeData["richLabel"]): DiagramNodeData["richLab
   return runs.map((run) => ({ ...run }));
 }
 
-function mergePieColour(t: NodeChartSpecPie, s: NodeChartSpecPie): void {
-  if (s.sliceBorderColor !== undefined) t.sliceBorderColor = s.sliceBorderColor;
-  if (s.shadow !== undefined) t.shadow = s.shadow;
-  const n = Math.min(t.series.length, s.series.length);
+function mergePieRingColourPieLike(
+  target: NodeChartSpecPie | NodeChartSpecRing,
+  source: NodeChartSpecPie | NodeChartSpecRing
+): void {
+  if (source.sliceBorderColor !== undefined) target.sliceBorderColor = source.sliceBorderColor;
+  if ("sliceBorderWidth" in source && "sliceBorderWidth" in target) {
+    const sw = source.sliceBorderWidth;
+    if (sw !== undefined) (target as NodeChartSpecRing).sliceBorderWidth = sw;
+  }
+  if (source.shadow !== undefined) target.shadow = source.shadow;
+  const n = Math.min(target.series.length, source.series.length);
   for (let i = 0; i < n; i++) {
-    const src = s.series[i];
-    const row = t.series[i];
+    const src = source.series[i];
+    const row = target.series[i];
     if (src.color !== undefined) row.color = src.color;
     if (src.labelColor !== undefined) row.labelColor = src.labelColor;
     if (src.fillStyle !== undefined) row.fillStyle = src.fillStyle;
-    if (src.gradientColors !== undefined) row.gradientColors = [...src.gradientColors] as [string, string];
+    if (src.gradientColors !== undefined)
+      row.gradientColors = [...src.gradientColors] as [string, string];
+    const srcRing = src as ChartRingSliceLike;
+    const rowRing = row as ChartRingSliceLike;
+    if (srcRing.sliceOutlineColor !== undefined) rowRing.sliceOutlineColor = srcRing.sliceOutlineColor;
+    if (srcRing.sliceOutlineWidth !== undefined) rowRing.sliceOutlineWidth = srcRing.sliceOutlineWidth;
   }
 }
+
+/** Narrow fields reused when merging paste colour onto pie or ring slices. */
+type ChartRingSliceLike = {
+  sliceOutlineColor?: string;
+  sliceOutlineWidth?: number;
+};
 
 function mergeBarLineSeriesColour<T extends { series: NodeChartSpecBar["series"] }>(t: T, s: T): void {
   const n = Math.min(t.series.length, s.series.length);
@@ -117,7 +137,11 @@ function mergeChartColour(target: NodeChartSpec, source: NodeChartSpec): NodeCha
   if (target.kind !== source.kind) return target;
   const t = structuredClone(target);
   if (t.kind === "pie" && source.kind === "pie") {
-    mergePieColour(t, source);
+    mergePieRingColourPieLike(t, source);
+    return t;
+  }
+  if (t.kind === "ring" && source.kind === "ring") {
+    mergePieRingColourPieLike(t, source);
     return t;
   }
   if (t.kind === "bar" && source.kind === "bar") {
@@ -143,6 +167,16 @@ function mergeChartText(target: NodeChartSpec, source: NodeChartSpec): NodeChart
   if (target.kind !== source.kind) return target;
   const t = structuredClone(target);
   if (t.kind === "pie" && source.kind === "pie") {
+    if (source.showSegmentLabels !== undefined) t.showSegmentLabels = source.showSegmentLabels;
+    const n = Math.min(t.series.length, source.series.length);
+    for (let i = 0; i < n; i++) {
+      const src = source.series[i];
+      const row = t.series[i];
+      if (src.labelFontSize !== undefined) row.labelFontSize = src.labelFontSize;
+    }
+    return t;
+  }
+  if (t.kind === "ring" && source.kind === "ring") {
     if (source.showSegmentLabels !== undefined) t.showSegmentLabels = source.showSegmentLabels;
     const n = Math.min(t.series.length, source.series.length);
     for (let i = 0; i < n; i++) {
@@ -196,6 +230,22 @@ function mergeChartProperties(target: NodeChartSpec, source: NodeChartSpec): Nod
       if (source.series[i].segmentPull !== undefined) {
         t.series[i].segmentPull = source.series[i].segmentPull;
       }
+    }
+    return t;
+  }
+  if (t.kind === "ring" && source.kind === "ring") {
+    if (source.valuesLocked !== undefined) t.valuesLocked = source.valuesLocked;
+    if (source.innerRadius !== undefined) t.innerRadius = source.innerRadius;
+    if (source.segmentAngularGapDeg !== undefined) t.segmentAngularGapDeg = source.segmentAngularGapDeg;
+    if (source.sliceBorderWidth !== undefined) t.sliceBorderWidth = source.sliceBorderWidth;
+    const n = Math.min(t.series.length, source.series.length);
+    for (let i = 0; i < n; i++) {
+      const sr = source.series[i];
+      const tr = t.series[i];
+      if (sr.ringThickness !== undefined) tr.ringThickness = sr.ringThickness;
+      if (sr.ringRadialOffset !== undefined) tr.ringRadialOffset = sr.ringRadialOffset;
+      if (sr.sliceOutlineColor !== undefined) tr.sliceOutlineColor = sr.sliceOutlineColor;
+      if (sr.sliceOutlineWidth !== undefined) tr.sliceOutlineWidth = sr.sliceOutlineWidth;
     }
     return t;
   }

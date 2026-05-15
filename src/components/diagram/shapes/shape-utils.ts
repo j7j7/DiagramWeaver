@@ -983,10 +983,10 @@ export function chartInlineForeignObjectWidth(opts: {
 
 export function svgForeignObjectInlineInputStyle(opts: {
   fontSize: number;
-  fontWeight: number;
+  fontWeight: number | string;
   color: string;
   caretColor: string;
-  textAlign: "left" | "center" | "right";
+  textAlign: "left" | "center" | "right" | "justify";
   textShadow?: string;
 }): CSSProperties {
   const fs = opts.fontSize;

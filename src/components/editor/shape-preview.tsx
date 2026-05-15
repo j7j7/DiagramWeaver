@@ -4,8 +4,8 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss } from '@/lib/text-styling';
-import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecLine } from '@/lib/types';
-import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultLineChartSpec } from '@/lib/chart-node';
+import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecLine, NodeChartSpecRing } from '@/lib/types';
+import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultLineChartSpec, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
 import {
   barChartWantsRoundedColumnEnds,
   barColumnAutoRoundRadius,
@@ -1027,7 +1027,158 @@ export function ShapePreview({
       );
     }
 
-    if (type === 'generic.chart.pie' || type?.startsWith('generic.chart.')) {
+    if (type === 'generic.chart.ring' || chart?.kind === 'ring') {
+      const spec: NodeChartSpecRing =
+        chart?.kind === 'ring' ? chart : defaultRingChartSpec();
+      const borderSw = borderStyle === 'none' ? 0 : strokeWidth;
+      const chartSpecifiedW = spec.sliceBorderWidth;
+      const defaultOutlineWidthVb =
+        typeof chartSpecifiedW === 'number' && Number.isFinite(chartSpecifiedW)
+          ? Math.max(0, Math.min(5, chartSpecifiedW))
+          : Math.max(0.25, Math.min(5, borderSw));
+      const { slices } = ringSlicesForSvg(30, 30, spec.series, spec, {
+        defaultOutlineWidthVb,
+      });
+      const chartStrokeFallback =
+        spec.sliceBorderColor?.trim() || effectiveBorderColor;
+      const ringGradBase = `sp-ring-${gradientId.replace(/:/g, '')}`;
+      const ringGradCoords = getGradientCoordinates(gradientAngle);
+      const previewRingPointerHandlers = (s: (typeof slices)[number]) => {
+        const showVal = s.tooltipValue != null && Number.isFinite(s.tooltipValue);
+        return {
+          onPointerEnter: (e: React.PointerEvent<SVGElement>) => {
+            cancelPieTooltipLeaveTimer();
+            if (showVal) {
+              setPieSliceTooltip({
+                x: e.clientX,
+                y: e.clientY,
+                text: s.tooltipValue!.toLocaleString(),
+              });
+            } else {
+              setPieSliceTooltip(null);
+            }
+          },
+          onPointerMove: (e: React.PointerEvent<SVGElement>) => {
+            if (!showVal) return;
+            setPieSliceTooltip((prev) =>
+              prev
+                ? { ...prev, x: e.clientX, y: e.clientY }
+                : {
+                    x: e.clientX,
+                    y: e.clientY,
+                    text: s.tooltipValue!.toLocaleString(),
+                  }
+            );
+          },
+          onPointerLeave: schedulePieTooltipLeave,
+        };
+      };
+      const RING_PREVIEW_LABEL_FALLBACK_R = 16;
+      const RING_PREVIEW_MIN_SPAN_FOR_LABEL = 0.11;
+      return (
+        <svg {...commonSvgProps} viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            {slices.map((s, i) =>
+              s.fillMode === 'gradient' ? (
+                <linearGradient
+                  key={`sp-ring-lg-${i}`}
+                  id={`${ringGradBase}-${i}`}
+                  x1={ringGradCoords.x1}
+                  y1={ringGradCoords.y1}
+                  x2={ringGradCoords.x2}
+                  y2={ringGradCoords.y2}
+                  gradientUnits="objectBoundingBox"
+                >
+                  <stop offset="0%" stopColor={s.gradientColor1} />
+                  <stop offset="100%" stopColor={s.gradientColor2} />
+                </linearGradient>
+              ) : null
+            )}
+          </defs>
+          {slices.map((s, i) => {
+            const outlineWResolved =
+              typeof s.sliceStrokeWidth === 'number' &&
+              Number.isFinite(s.sliceStrokeWidth)
+                ? s.sliceStrokeWidth
+                : defaultOutlineWidthVb;
+            const outlineColorEffective =
+              s.sliceStrokeColor?.trim() || chartStrokeFallback;
+            const hasBorder = outlineWResolved > 0;
+            const fill =
+              s.fillMode === 'none'
+                ? 'transparent'
+                : s.fillMode === 'gradient'
+                  ? `url(#${ringGradBase}-${i})`
+                  : s.solidFill;
+            return (
+              <g key={i} transform={`translate(${s.explodeX},${s.explodeY})`}>
+                <path
+                  d={s.d}
+                  fill="#000000"
+                  fillOpacity={0}
+                  stroke="rgba(0,0,0,0)"
+                  strokeWidth={PREVIEW_PIE_HIT_STROKE_PAD}
+                  vectorEffect="non-scaling-stroke"
+                  {...previewRingPointerHandlers(s)}
+                />
+                <path
+                  d={s.d}
+                  fill={fill}
+                  stroke={hasBorder ? outlineColorEffective : 'none'}
+                  strokeWidth={hasBorder ? outlineWResolved : 0}
+                  vectorEffect="non-scaling-stroke"
+                  style={{ pointerEvents: 'none' }}
+                />
+              </g>
+            );
+          })}
+          {spec.showSegmentLabels !== false
+            ? slices.map((s, i) => {
+                if (!s.name.trim() || (slices.length > 1 && s.span < RING_PREVIEW_MIN_SPAN_FOR_LABEL)) return null;
+                const lx = 30 + s.explodeX;
+                const ly = 30 + s.explodeY;
+                const radialDist =
+                  typeof s.segmentMidRadius === 'number' &&
+                  Number.isFinite(s.segmentMidRadius) &&
+                  s.segmentMidRadius > 0.05
+                    ? s.segmentMidRadius
+                    : RING_PREVIEW_LABEL_FALLBACK_R;
+                const isFull = s.span >= 2 * Math.PI - 1e-6;
+                const ta = isFull
+                  ? { x: lx, y: ly + Math.min(6, s.labelFontSize * 0.85) }
+                  : {
+                      x: lx + radialDist * Math.cos(s.midAngle),
+                      y: ly + radialDist * Math.sin(s.midAngle),
+                    };
+                const maxChars = isFull
+                  ? Math.max(4, Math.min(24, Math.round(18 * (5.5 / s.labelFontSize))))
+                  : Math.max(4, Math.min(20, Math.round(12 * (4.75 / s.labelFontSize))));
+                const showVal =
+                  s.tooltipValue != null && Number.isFinite(s.tooltipValue);
+                return (
+                  <text
+                    key={`t-ring-${i}`}
+                    x={ta.x}
+                    y={ta.y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill={s.labelColor}
+                    fontSize={s.labelFontSize}
+                    fontWeight={600}
+                    pointerEvents={showVal ? 'auto' : 'none'}
+                    style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
+                    {...previewRingPointerHandlers(s)}
+                  >
+                    {truncatePieSliceLabel(s.name, maxChars)}
+                  </text>
+                );
+              })
+            : null}
+        </svg>
+      );
+    }
+
+    if (type === 'generic.chart.pie' || chart?.kind === 'pie') {
       const pieOuterR = 28;
       const { slices, rDraw } = pieSlicesForSvg(30, 30, pieOuterR, chart?.series, {
         segmentGapDeg: chart?.segmentGapDeg,

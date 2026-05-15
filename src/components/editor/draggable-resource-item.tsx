@@ -69,6 +69,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
     const isPieChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'pie-chart';
     const isBarChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'bar-chart';
     const isLineChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'line-chart';
+    const isRingChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'ring-chart';
     return {
       type: isTextPaletteTextBoxHeading
         ? 'generic.object.text-box-heading'
@@ -78,7 +79,9 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
             ? 'generic.chart.bar'
             : isLineChartPalette
               ? 'generic.chart.line'
-              : `${provider}.${category}.${derivedSlug}`,
+              : isRingChartPalette
+                ? 'generic.chart.ring'
+                : `${provider}.${category}.${derivedSlug}`,
       label: resource.name,
       provider,
       category: isTextPaletteTextBoxHeading ? 'object' : category,
@@ -150,6 +153,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   const isPieChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'pie-chart';
   const isBarChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'bar-chart';
   const isLineChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'line-chart';
+  const isRingChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'ring-chart';
   const isCloudPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'cloud';
   const isProgressBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'progress-bar';
   const isTimelineBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'timeline-bar';
@@ -186,6 +190,8 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.chart.bar" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isLineChartPalette ? (
                     <ResourceIcon type="generic.chart.line" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
+                  ) : isRingChartPalette ? (
+                    <ResourceIcon type="generic.chart.ring" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isCloudPalette ? (
                     <ResourceIcon type="generic.object.cloud" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isProgressBarPalette ? (
@@ -231,6 +237,8 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.chart.bar" width={24} height={24} className="shrink-0" />
                   ) : isLineChartPalette ? (
                     <ResourceIcon type="generic.chart.line" width={24} height={24} className="shrink-0" />
+                  ) : isRingChartPalette ? (
+                    <ResourceIcon type="generic.chart.ring" width={24} height={24} className="shrink-0" />
                   ) : isCloudPalette ? (
                     <ResourceIcon type="generic.object.cloud" width={24} height={24} className="shrink-0" />
                   ) : isProgressBarPalette ? (

@@ -15,6 +15,13 @@ import {
   timelineBarInteriorDividerXs,
   timelineBarMinSegmentT,
   timelineBarMoveJointAtVisualBoundary,
+  timelineBarSectionResolvedFontFamily,
+  timelineBarSectionResolvedFontSizePx,
+  timelineBarSectionResolvedFontStyle,
+  timelineBarSectionResolvedFontWeight,
+  timelineBarSectionResolvedTextAlign,
+  timelineBarSectionResolvedTextDecoration,
+  timelineBarSectionResolvedVerticalJustify,
   timelineBarSectionThemeHueFill,
   timelineBarSegmentLayout,
   timelineBarUsesSpanLayout,
@@ -260,7 +267,6 @@ export function TimelineBarShape({
     rawAxisFf && rawAxisFf.length > 0
       ? rawAxisFf
       : String((nodeAny.fontFamily as string) || "").trim() || "inherit";
-  const barLabelFont = Math.min(barH * 0.42, Number(nodeAny.fontSize) || 12, 22);
 
   const canEditSectionLabel = Boolean(
     onPatch && sectionLabelInteractionEnabled && !isReadOnly && !isEditingLabel,
@@ -409,8 +415,35 @@ export function TimelineBarShape({
         const foH = Math.max(2, barH - 2 * padY);
         const isEditing = canEditSectionLabel && editingSectionIndex === i;
         const labelPointer = canEditSectionLabel ? "auto" : "none";
-        const fontFamily =
-          (nodeAny.fontFamily as string)?.trim() || "ui-sans-serif, system-ui, sans-serif";
+        const labelsFollowFirst =
+          (nodeAny.timelineBarLabelsFollowFirstSection as boolean | undefined) === true;
+        const styleIdx = labelsFollowFirst && i > 0 ? 0 : i;
+        const styleSeg = sections[styleIdx] ?? seg;
+        const segFontSize = Math.min(
+          barH * 0.42,
+          timelineBarSectionResolvedFontSizePx(styleSeg, styleIdx, sections, node),
+          22,
+        );
+        const textAlignResolved = timelineBarSectionResolvedTextAlign(styleSeg, styleIdx, sections, node);
+        const justifyContent = timelineBarSectionResolvedVerticalJustify(styleSeg, styleIdx, sections, node);
+        const fontWeightResolved = timelineBarSectionResolvedFontWeight(styleSeg, styleIdx, sections, node);
+        const fontFamily = timelineBarSectionResolvedFontFamily(styleSeg, styleIdx, sections, node);
+        const fontStyle = timelineBarSectionResolvedFontStyle(styleSeg, styleIdx, sections, node) as React.CSSProperties["fontStyle"];
+        const textDecoration = timelineBarSectionResolvedTextDecoration(
+          styleSeg,
+          styleIdx,
+          sections,
+          node,
+        ) as React.CSSProperties["textDecoration"];
+        const lineHeightMul =
+          typeof nodeAny.lineHeight === "number" && Number.isFinite(nodeAny.lineHeight)
+            ? nodeAny.lineHeight
+            : 1.2;
+        const letterSpacingPx =
+          typeof nodeAny.letterSpacing === "number" && Number.isFinite(nodeAny.letterSpacing)
+            ? nodeAny.letterSpacing
+            : undefined;
+        const textTransform = ((nodeAny.textTransform as string) || "none") as React.CSSProperties["textTransform"];
         const opacityStyle =
           Number(nodeAny.textOpacity) >= 0 && Number(nodeAny.textOpacity) !== 1
             ? { opacity: Number(nodeAny.textOpacity) }
@@ -425,75 +458,87 @@ export function TimelineBarShape({
               height={foH}
               style={{ overflow: "hidden", pointerEvents: labelPointer }}
             >
-              {isEditing ? (
-                <textarea
-                  value={sectionLabelDraft}
-                  autoFocus
-                  aria-label="Edit section label"
-                  className="m-0 box-border min-h-0 w-full resize-none bg-transparent shadow-none focus:outline-none focus:ring-0"
-                  style={{
-                    ...svgForeignObjectInlineInputStyle({
-                      fontSize: barLabelFont,
-                      fontWeight: 600,
+              <div
+                className={`flex h-full min-h-0 w-full flex-col ${
+                  canEditSectionLabel ? "cursor-text" : "cursor-default"
+                }`}
+                style={{ justifyContent }}
+                onPointerDown={(e) => canEditSectionLabel && !isEditing && e.stopPropagation()}
+                onDoubleClick={(e) => {
+                  if (!canEditSectionLabel || isEditing) return;
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setEditingSectionIndex(i);
+                  setSectionLabelDraft(seg.label ?? "");
+                }}
+              >
+                {isEditing ? (
+                  <textarea
+                    value={sectionLabelDraft}
+                    autoFocus
+                    aria-label="Edit section label"
+                    className="m-0 box-border min-h-0 w-full flex-1 resize-none bg-transparent shadow-none focus:outline-none focus:ring-0"
+                    style={{
+                      ...svgForeignObjectInlineInputStyle({
+                        fontSize: segFontSize,
+                        fontWeight: fontWeightResolved,
+                        color: lc,
+                        caretColor: lc,
+                        textAlign: textAlignResolved,
+                      }),
+                      minHeight: `${segFontSize * lineHeightMul}px`,
+                      lineHeight: lineHeightMul,
+                      overflow: "auto",
+                      fontFamily,
+                      fontStyle,
+                      textDecoration,
+                      ...(letterSpacingPx !== undefined ? { letterSpacing: `${letterSpacingPx}px` } : {}),
+                      textTransform,
+                      ...opacityStyle,
+                    }}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setSectionLabelDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        cancelSectionLabelEdit();
+                      } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        commitSectionLabelEdit();
+                      }
+                    }}
+                    onBlur={() => commitSectionLabelEdit()}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <div
+                    className="min-h-0 w-full overflow-auto"
+                    style={{
+                      ...opacityStyle,
+                      margin: 0,
+                      padding: 2,
+                      boxSizing: "border-box",
+                      fontFamily,
+                      fontSize: segFontSize,
+                      fontWeight: fontWeightResolved,
+                      fontStyle,
+                      textDecoration,
                       color: lc,
-                      caretColor: lc,
-                      textAlign: "center",
-                    }),
-                    height: "100%",
-                    maxHeight: "100%",
-                    minHeight: `${barLabelFont * 1.2}px`,
-                    lineHeight: 1.2,
-                    overflow: "auto",
-                    fontFamily,
-                    ...opacityStyle,
-                  }}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => setSectionLabelDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Escape") {
-                      e.preventDefault();
-                      cancelSectionLabelEdit();
-                    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault();
-                      commitSectionLabelEdit();
-                    }
-                  }}
-                  onBlur={() => commitSectionLabelEdit()}
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onDoubleClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <div
-                  className={`flex h-full min-h-0 w-full items-center justify-center text-center ${
-                    canEditSectionLabel ? "cursor-text" : "cursor-default"
-                  }`}
-                  style={{
-                    ...opacityStyle,
-                    margin: 0,
-                    padding: 2,
-                    boxSizing: "border-box",
-                    fontFamily,
-                    fontSize: barLabelFont,
-                    fontWeight: 600,
-                    color: lc,
-                    lineHeight: 1.2,
-                    wordBreak: "break-word",
-                    overflowWrap: "anywhere",
-                  }}
-                  onPointerDown={(e) => canEditSectionLabel && e.stopPropagation()}
-                  onDoubleClick={(e) => {
-                    if (!canEditSectionLabel) return;
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setEditingSectionIndex(i);
-                    setSectionLabelDraft(seg.label ?? "");
-                  }}
-                >
-                  {lab}
-                </div>
-              )}
+                      lineHeight: lineHeightMul,
+                      textAlign: textAlignResolved,
+                      wordBreak: "break-word",
+                      overflowWrap: "anywhere",
+                      ...(letterSpacingPx !== undefined ? { letterSpacing: `${letterSpacingPx}px` } : {}),
+                      textTransform,
+                    }}
+                  >
+                    {lab}
+                  </div>
+                )}
+              </div>
             </foreignObject>
           </g>
         );

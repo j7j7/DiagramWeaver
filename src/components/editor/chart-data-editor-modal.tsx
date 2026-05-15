@@ -13,6 +13,7 @@ import { ColorPicker } from "@/components/ui/color-picker";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type {
   ChartBarSegmentItem,
+  ChartRingSeriesItem,
   ChartSeriesItem,
   ChartSliceFillStyle,
   DiagramNodeData,
@@ -20,6 +21,7 @@ import type {
   NodeChartSpecBar,
   NodeChartSpecLine,
   NodeChartSpecPie,
+  NodeChartSpecRing,
 } from "@/lib/types";
 import {
   CHART_MAX_SEGMENT_PULL,
@@ -27,11 +29,14 @@ import {
   defaultBarChartSpec,
   defaultLineChartSpec,
   defaultPieChartSpec,
+  defaultRingChartSpec,
   randomLineChartSpec,
   newChartSliceId,
   DEFAULT_PIE_SLICE_COLORS,
   DEFAULT_PIE_SLICE_LABEL_COLOR,
   DEFAULT_PIE_WEDGE_LABEL_FONT,
+  DEFAULT_RING_INNER_RADIUS,
+  DEFAULT_RING_THICKNESS,
   formatChartValueForEdit,
   roundChartDataValue,
 } from "@/lib/chart-node";
@@ -152,6 +157,23 @@ interface EditRow {
   labelFontSizeStr: string;
   /** Empty = use chart "Segment separation" for this slice; otherwise 0–4 radial pull. */
   segmentPullStr: string;
+}
+
+/** Ring chart segment row in the modal (string fields mirror pie `EditRow` pattern). */
+interface RingModalEditRow {
+  id: string;
+  name: string;
+  valueStr: string;
+  fillStyle: ChartSliceFillStyle;
+  color: string;
+  gradientColor1: string;
+  gradientColor2: string;
+  labelColor: string;
+  labelFontSizeStr: string;
+  ringThicknessStr: string;
+  ringRadialOffsetStr: string;
+  sliceOutlineColorStr: string;
+  sliceOutlineWidthStr: string;
 }
 
 const CHART_SLICE_REORDER_TYPE = "dw-chart-slice-reorder";
@@ -356,11 +378,19 @@ export function ChartDataEditorModal({
   const [lineAreaOpacity, setLineAreaOpacity] = useState(0.42);
   const [valuesLocked, setValuesLocked] = useState(false);
 
+  const [ringRows, setRingRows] = useState<RingModalEditRow[]>([]);
+  const [collapsedRingIds, setCollapsedRingIds] = useState<Set<string>>(() => new Set());
+  const [ringInnerRadius, setRingInnerRadius] = useState(DEFAULT_RING_INNER_RADIUS);
+  const [ringAngularGapDeg, setRingAngularGapDeg] = useState(2);
+  /** Default segment outline width in SVG vb units when rows omit theirs. */
+  const [ringDefaultOutlineWidthVb, setRingDefaultOutlineWidthVb] = useState(1.75);
+
   useEffect(() => {
     if (visible && node) {
       const chart = (node as DiagramNodeData & { chart?: NodeChartSpec }).chart;
       const isBar = node.type === "generic.chart.bar" || chart?.kind === "bar";
       const isLine = node.type === "generic.chart.line" || chart?.kind === "line";
+      const isRing = node.type === "generic.chart.ring" || chart?.kind === "ring";
 
       if (isLine) {
         const spec: NodeChartSpecLine =
@@ -516,6 +546,75 @@ export function ChartDataEditorModal({
           setCollapsedBarIds(new Set(nextBar.map((r) => r.id)));
         } else {
           setCollapsedBarIds(new Set());
+        }
+        return;
+      }
+
+      if (isRing) {
+        const spec: NodeChartSpecRing =
+          chart?.kind === "ring" ? chart : defaultRingChartSpec();
+        const series: ChartRingSeriesItem[] =
+          spec.series?.length > 0 ? spec.series.map((s) => ({ ...s })) : defaultRingChartSpec().series;
+        const nextRows: RingModalEditRow[] = series.map((s) => {
+          const fs = sliceFillStyleFromSeries(s);
+          const gc = s.gradientColors;
+          return {
+            id: s.id || newChartSliceId(),
+            name: s.name,
+            valueStr: formatChartValueForEdit(typeof s.value === "number" ? s.value : Number(s.value)),
+            fillStyle: fs,
+            color: s.color ?? "",
+            gradientColor1: gc?.[0] ?? "",
+            gradientColor2: gc?.[1] ?? "",
+            labelColor: s.labelColor ?? "",
+            labelFontSizeStr:
+              s.labelFontSize != null && Number.isFinite(s.labelFontSize)
+                ? String(s.labelFontSize)
+                : "",
+            ringThicknessStr:
+              s.ringThickness != null && Number.isFinite(s.ringThickness)
+                ? String(s.ringThickness)
+                : "",
+            ringRadialOffsetStr:
+              s.ringRadialOffset != null && Number.isFinite(s.ringRadialOffset)
+                ? String(s.ringRadialOffset)
+                : "",
+            sliceOutlineColorStr: s.sliceOutlineColor ?? "",
+            sliceOutlineWidthStr:
+              s.sliceOutlineWidth != null && Number.isFinite(s.sliceOutlineWidth)
+                ? String(s.sliceOutlineWidth)
+                : "",
+          };
+        });
+        setRingRows(nextRows);
+        setSliceBorderColor(spec.sliceBorderColor ?? "");
+        setChartShadow(spec.shadow === true);
+        setShowSegmentLabels(spec.showSegmentLabels !== false);
+        setValuesLocked(spec.valuesLocked === true);
+        setRingInnerRadius(
+          typeof spec.innerRadius === "number" && Number.isFinite(spec.innerRadius)
+            ? Math.min(26, Math.max(2, spec.innerRadius))
+            : DEFAULT_RING_INNER_RADIUS
+        );
+        setRingAngularGapDeg(
+          typeof spec.segmentAngularGapDeg === "number" && Number.isFinite(spec.segmentAngularGapDeg)
+            ? Math.min(8, Math.max(0, spec.segmentAngularGapDeg))
+            : 2
+        );
+        {
+          const borderStyle = node.borderStyle ?? "solid";
+          const nw = borderStyle === "none" ? 0 : node.borderWidth ?? 2;
+          const specW = spec.sliceBorderWidth;
+          const baseW =
+            typeof specW === "number" && Number.isFinite(specW)
+              ? Math.max(0, Math.min(5, specW))
+              : Math.max(0.25, Math.min(5, nw));
+          setRingDefaultOutlineWidthVb(baseW);
+        }
+        if (nextRows.length > 2) {
+          setCollapsedRingIds(new Set(nextRows.map((r) => r.id)));
+        } else {
+          setCollapsedRingIds(new Set());
         }
         return;
       }
@@ -754,6 +853,7 @@ export function ChartDataEditorModal({
     if (!node || isReadOnly) return;
     const isBar = node.type === "generic.chart.bar" || node.chart?.kind === "bar";
     const isLine = node.type === "generic.chart.line" || node.chart?.kind === "line";
+    const isRing = node.type === "generic.chart.ring" || node.chart?.kind === "ring";
 
     if (isLine) {
       const labelParts = categoryLabelsStr
@@ -929,6 +1029,69 @@ export function ChartDataEditorModal({
       return;
     }
 
+    if (isRing) {
+      if (ringRows.length === 0) {
+        onSave(node.id, defaultRingChartSpec());
+        onClose();
+        return;
+      }
+      const series: ChartRingSeriesItem[] = ringRows.map((r, i) => {
+        const raw = Number(String(r.valueStr).replace(/,/g, "."));
+        const value = roundChartDataValue(Number.isFinite(raw) ? Math.max(0, raw) : 0);
+        const name = (r.name ?? "").trim() || `Segment ${i + 1}`;
+        const row: ChartRingSeriesItem = { id: r.id || newChartSliceId(), name, value };
+        if (r.labelColor.trim()) row.labelColor = r.labelColor.trim();
+        const lfsRaw = Number(String(r.labelFontSizeStr ?? "").trim().replace(/,/g, "."));
+        if (Number.isFinite(lfsRaw) && lfsRaw > 0) {
+          row.labelFontSize = Math.min(14, Math.max(2, lfsRaw));
+        }
+        const thRaw = Number(String(r.ringThicknessStr ?? "").trim().replace(/,/g, "."));
+        if (String(r.ringThicknessStr ?? "").trim() !== "" && Number.isFinite(thRaw)) {
+          row.ringThickness = Math.min(24, Math.max(2, thRaw));
+        }
+        const roRaw = Number(String(r.ringRadialOffsetStr ?? "").trim().replace(/,/g, "."));
+        if (String(r.ringRadialOffsetStr ?? "").trim() !== "" && Number.isFinite(roRaw)) {
+          row.ringRadialOffset = Math.min(14, Math.max(-8, roRaw));
+        }
+        if (r.sliceOutlineColorStr.trim()) {
+          row.sliceOutlineColor = r.sliceOutlineColorStr.trim();
+        }
+        const owRaw = Number(String(r.sliceOutlineWidthStr ?? "").trim().replace(/,/g, "."));
+        if (String(r.sliceOutlineWidthStr ?? "").trim() !== "" && Number.isFinite(owRaw)) {
+          row.sliceOutlineWidth = Math.max(0, Math.min(5, owRaw));
+        }
+        if (r.fillStyle === "none") {
+          row.fillStyle = "none";
+          return row;
+        }
+        if (r.fillStyle === "gradient") {
+          row.fillStyle = "gradient";
+          const g1 = r.gradientColor1.trim();
+          const g2 = r.gradientColor2.trim();
+          const fb = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
+          row.gradientColors = [g1 || fb, g2 || g1 || fb] as [string, string];
+          return row;
+        }
+        row.fillStyle = "solid";
+        if (r.color.trim()) row.color = r.color.trim();
+        return row;
+      });
+      const ringChartSaved: NodeChartSpecRing = {
+        kind: "ring",
+        series,
+        ...(valuesLocked ? { valuesLocked: true } : {}),
+        ...(sliceBorderColor.trim() ? { sliceBorderColor: sliceBorderColor.trim() } : {}),
+        sliceBorderWidth: Math.max(0, Math.min(5, ringDefaultOutlineWidthVb)),
+        ...(chartShadow ? { shadow: true } : {}),
+        ...(!showSegmentLabels ? { showSegmentLabels: false } : {}),
+        innerRadius: Math.min(26, Math.max(2, ringInnerRadius)),
+        segmentAngularGapDeg: Math.min(8, Math.max(0, ringAngularGapDeg)),
+      };
+      onSave(node.id, ringChartSaved);
+      onClose();
+      return;
+    }
+
     const cleaned: ChartSeriesItem[] = rows.map((r, i) => {
       const raw = Number(String(r.valueStr).replace(/,/g, "."));
       const value = roundChartDataValue(Number.isFinite(raw) ? Math.max(0, raw) : 0);
@@ -1010,12 +1173,67 @@ export function ChartDataEditorModal({
   const updateRow = (i: number, patch: Partial<EditRow>) =>
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
+  const toggleRingCollapsed = (id: string) => {
+    setCollapsedRingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const reorderRingRows = (fromIndex: number, toIndex: number) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= ringRows.length ||
+      toIndex >= ringRows.length
+    ) {
+      return;
+    }
+    setRingRows((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, item);
+      return next;
+    });
+  };
+
+  const updateRingRow = (i: number, patch: Partial<RingModalEditRow>) =>
+    setRingRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+
+  const addRingRow = () =>
+    setRingRows((prev) => [
+      ...prev,
+      {
+        id: newChartSliceId(),
+        name: `Segment ${prev.length + 1}`,
+        valueStr: "1",
+        fillStyle: "solid",
+        color: "",
+        gradientColor1: "",
+        gradientColor2: "",
+        labelColor: "",
+        labelFontSizeStr: "",
+        ringThicknessStr: "",
+        ringRadialOffsetStr: "",
+        sliceOutlineColorStr: "",
+        sliceOutlineWidthStr: "",
+      },
+    ]);
+
+  const removeRingRow = (i: number) =>
+    setRingRows((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
+
   if (!visible) return null;
 
   const isBarModal =
     !!node && (node.type === "generic.chart.bar" || node.chart?.kind === "bar");
   const isLineModal =
     !!node && (node.type === "generic.chart.line" || node.chart?.kind === "line");
+  const isRingModal =
+    !!node && (node.type === "generic.chart.ring" || node.chart?.kind === "ring");
   const isCartesianModal = isBarModal || isLineModal;
 
   return (
@@ -1782,7 +2000,432 @@ export function ChartDataEditorModal({
                   </div>
                 </ChartModalSection>
               </>
-            ) : (
+            ) : null}
+            {!isCartesianModal && isRingModal ? (
+              <>
+                <ChartModalSection title="Outline & defaults" tint="muted">
+                  <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-[10px] text-muted-foreground">Segment outline color</Label>
+                        {!isReadOnly && sliceBorderColor.trim() ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-1.5 text-[10px] text-muted-foreground"
+                            onClick={() => setSliceBorderColor("")}
+                          >
+                            Use node border
+                          </Button>
+                        ) : null}
+                      </div>
+                      <ColorPicker
+                        value={sliceBorderColor.trim() ? sliceBorderColor : "#6b7280"}
+                        onChange={(value) => setSliceBorderColor(value)}
+                        placeholder="#6b7280"
+                        showAlpha={true}
+                        allowTransparent={true}
+                      />
+                    </div>
+                    <div className="space-y-2 pt-3">
+                      <div className="flex justify-between gap-2">
+                        <Label className="text-xs">Default outline thickness</Label>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {ringDefaultOutlineWidthVb.toFixed(2)}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[ringDefaultOutlineWidthVb]}
+                        onValueChange={(v) => setRingDefaultOutlineWidthVb(v[0] ?? 0)}
+                        min={0}
+                        max={4}
+                        step={0.05}
+                        disabled={isReadOnly}
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        SVG chart units — individual segments may override thickness and color below.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="chart-data-ring-shadow" className="text-xs font-medium">
+                          Ring drop shadow
+                        </Label>
+                        <Switch
+                          id="chart-data-ring-shadow"
+                          checked={chartShadow}
+                          onCheckedChange={setChartShadow}
+                          disabled={isReadOnly}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="chart-data-ring-segment-labels" className="text-xs font-medium">
+                          Segment labels
+                        </Label>
+                        <Switch
+                          id="chart-data-ring-segment-labels"
+                          checked={showSegmentLabels}
+                          onCheckedChange={setShowSegmentLabels}
+                          disabled={isReadOnly}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="chart-data-ring-lock-values" className="text-xs font-medium">
+                          Lock segment values
+                        </Label>
+                        <Switch
+                          id="chart-data-ring-lock-values"
+                          checked={valuesLocked}
+                          onCheckedChange={setValuesLocked}
+                          disabled={isReadOnly}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </ChartModalSection>
+                <ChartModalSection title="Hole size & angular gaps" tint="teal">
+                  <div className={cn(isReadOnly && "pointer-events-none opacity-75 space-y-4")}>
+                    <div className="space-y-2">
+                      <div className="flex justify-between gap-2">
+                        <Label className="text-xs">Inner radius (hole baseline)</Label>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {ringInnerRadius.toFixed(1)}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[ringInnerRadius]}
+                        onValueChange={(v) =>
+                          setRingInnerRadius(Math.min(26, Math.max(2, v[0] ?? DEFAULT_RING_INNER_RADIUS)))
+                        }
+                        min={2}
+                        max={26}
+                        step={0.5}
+                        disabled={isReadOnly}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between gap-2">
+                        <Label className="text-xs">Gap between arcs (degrees)</Label>
+                        <span className="text-xs tabular-nums text-muted-foreground">{ringAngularGapDeg}</span>
+                      </div>
+                      <Slider
+                        value={[ringAngularGapDeg]}
+                        onValueChange={(v) => setRingAngularGapDeg(Math.min(8, Math.max(0, v[0] ?? 0)))}
+                        min={0}
+                        max={8}
+                        step={0.25}
+                        disabled={isReadOnly}
+                      />
+                    </div>
+                  </div>
+                </ChartModalSection>
+                <ChartModalSection
+                  title="Arc segments"
+                  tint="sky"
+                  headerRight={
+                    !isReadOnly ? (
+                      <Button variant="ghost" size="sm" className="h-6 px-2" onClick={addRingRow}>
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add
+                      </Button>
+                    ) : undefined
+                  }
+                >
+                  <div className="space-y-3">
+                    {ringRows.map((row, i) => {
+                      const fillFallback =
+                        DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
+                      const collapsed = collapsedRingIds.has(row.id);
+                      const summaryName = (row.name ?? "").trim() || `Segment ${i + 1}`;
+                      const { hasCustomLabelFontSize, labelSizeSliderValue } = pieChartRowLabelSizeState(
+                        row.labelFontSizeStr
+                      );
+                      return (
+                        <ChartSliceSortableRow
+                          key={row.id}
+                          index={i}
+                          isReadOnly={isReadOnly}
+                          reorderRows={reorderRingRows}
+                          className="rounded-md border border-border/60 bg-muted/20 dark:border-border dark:bg-background"
+                        >
+                          {(dragHandleRef) => (
+                            <>
+                              <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/40">
+                                <button
+                                  type="button"
+                                  className="shrink-0 p-1 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                                  onClick={() => toggleRingCollapsed(row.id)}
+                                  aria-expanded={!collapsed}
+                                  aria-label={collapsed ? "Expand segment" : "Collapse segment"}
+                                >
+                                  <ChevronDown
+                                    className={cn(
+                                      "h-4 w-4 transition-transform",
+                                      collapsed && "-rotate-90"
+                                    )}
+                                  />
+                                </button>
+                                <div
+                                  ref={dragHandleRef as unknown as React.Ref<HTMLDivElement>}
+                                  role="button"
+                                  tabIndex={isReadOnly ? -1 : 0}
+                                  className={cn(
+                                    "touch-none shrink-0 p-1 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground cursor-grab active:cursor-grabbing outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                    isReadOnly && "pointer-events-none opacity-40 cursor-default"
+                                  )}
+                                  aria-label="Drag to reorder segment"
+                                  onKeyDown={(e) => {
+                                    if (isReadOnly) return;
+                                    if (e.key === "ArrowUp" && i > 0) {
+                                      e.preventDefault();
+                                      reorderRingRows(i, i - 1);
+                                    }
+                                    if (e.key === "ArrowDown" && i < ringRows.length - 1) {
+                                      e.preventDefault();
+                                      reorderRingRows(i, i + 1);
+                                    }
+                                  }}
+                                >
+                                  <GripVertical className="h-4 w-4" />
+                                </div>
+                                {collapsed ? (
+                                  <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
+                                    {summaryName} · arc {row.valueStr || "0"}
+                                    {row.ringThicknessStr.trim() ? ` · thick ${row.ringThicknessStr}` : ""}
+                                    {row.ringRadialOffsetStr.trim()
+                                      ? ` · offset ${row.ringRadialOffsetStr}`
+                                      : ""}
+                                  </span>
+                                ) : (
+                                  <div className="flex-1 min-w-0" aria-hidden />
+                                )}
+                                {!isReadOnly && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                                    onClick={() => removeRingRow(i)}
+                                    disabled={ringRows.length <= 1}
+                                    aria-label="Remove segment"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                )}
+                              </div>
+                              {!collapsed ? (
+                                <div className="p-2 space-y-2">
+                                  <Input
+                                    value={row.name}
+                                    onChange={(e) => updateRingRow(i, { name: e.target.value })}
+                                    placeholder="Segment name"
+                                    className="h-8 text-xs"
+                                    disabled={isReadOnly}
+                                  />
+                                  <div
+                                    className={`grid grid-cols-2 gap-2 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                                  >
+                                    <div className="space-y-1">
+                                      <Label className="text-[10px] text-muted-foreground">Arc proportion</Label>
+                                      <Input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={row.valueStr}
+                                        onChange={(e) => updateRingRow(i, { valueStr: e.target.value })}
+                                        className="h-8 text-xs"
+                                        disabled={isReadOnly}
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-[10px] text-muted-foreground">Fill mode</Label>
+                                      <Select
+                                        value={row.fillStyle}
+                                        onValueChange={(v) =>
+                                          updateRingRow(i, { fillStyle: v as ChartSliceFillStyle })
+                                        }
+                                        disabled={isReadOnly}
+                                      >
+                                        <SelectTrigger className="h-8 text-xs">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[100] max-h-[min(280px,50vh)]">
+                                          <SelectItem value="none">None</SelectItem>
+                                          <SelectItem value="solid">Solid</SelectItem>
+                                          <SelectItem value="gradient">Gradient</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                  <div className={`grid grid-cols-2 gap-2 ${isReadOnly ? "opacity-75" : ""}`}>
+                                    <div className="space-y-1">
+                                      <Label className="text-[10px] text-muted-foreground">Band thickness</Label>
+                                      <Input
+                                        className="h-8 text-xs"
+                                        placeholder={`${DEFAULT_RING_THICKNESS}`}
+                                        value={row.ringThicknessStr}
+                                        onChange={(e) =>
+                                          updateRingRow(i, { ringThicknessStr: e.target.value })
+                                        }
+                                        disabled={isReadOnly}
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-[10px] text-muted-foreground">Radial offset</Label>
+                                      <Input
+                                        className="h-8 text-xs font-mono"
+                                        placeholder="0"
+                                        title="Adds to inner radius (+ outward)."
+                                        value={row.ringRadialOffsetStr}
+                                        onChange={(e) =>
+                                          updateRingRow(i, { ringRadialOffsetStr: e.target.value })
+                                        }
+                                        disabled={isReadOnly}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className={`space-y-1 ${isReadOnly ? "opacity-75" : ""}`}>
+                                    <Label className="text-[10px] text-muted-foreground">
+                                      Outline width override
+                                    </Label>
+                                    <Input
+                                      className="h-8 text-xs font-mono"
+                                      placeholder={`${ringDefaultOutlineWidthVb}`}
+                                      value={row.sliceOutlineWidthStr}
+                                      onChange={(e) =>
+                                        updateRingRow(i, { sliceOutlineWidthStr: e.target.value })
+                                      }
+                                      disabled={isReadOnly}
+                                    />
+                                  </div>
+                                  {row.fillStyle === "solid" ? (
+                                    <div className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}>
+                                      <Label className="text-[10px] text-muted-foreground">Fill color</Label>
+                                      <ColorPicker
+                                        value={row.color.trim() ? row.color : fillFallback}
+                                        onChange={(value) => updateRingRow(i, { color: value })}
+                                        placeholder={fillFallback}
+                                        showAlpha={true}
+                                        allowTransparent={true}
+                                      />
+                                    </div>
+                                  ) : null}
+                                  <div className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}>
+                                    <Label className="text-[10px] text-muted-foreground">
+                                      Outline color (segment)
+                                    </Label>
+                                    <ColorPicker
+                                      value={
+                                        row.sliceOutlineColorStr.trim()
+                                          ? row.sliceOutlineColorStr
+                                          : sliceBorderColor.trim()
+                                            ? sliceBorderColor
+                                            : "#6b7280"
+                                      }
+                                      onChange={(value) =>
+                                        updateRingRow(i, { sliceOutlineColorStr: value })
+                                      }
+                                      placeholder="#6b7280"
+                                      showAlpha={true}
+                                      allowTransparent={true}
+                                    />
+                                  </div>
+                                  {row.fillStyle === "gradient" ? (
+                                    <div className={`grid grid-cols-2 gap-2 ${isReadOnly ? "opacity-75" : ""}`}>
+                                      <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Gradient start</Label>
+                                        <ColorPicker
+                                          value={
+                                            row.gradientColor1.trim()
+                                              ? row.gradientColor1
+                                              : fillFallback
+                                          }
+                                          onChange={(v) => updateRingRow(i, { gradientColor1: v })}
+                                          placeholder={fillFallback}
+                                          showAlpha={true}
+                                          allowTransparent={true}
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Gradient end</Label>
+                                        <ColorPicker
+                                          value={
+                                            row.gradientColor2.trim()
+                                              ? row.gradientColor2
+                                              : DEFAULT_PIE_SLICE_COLORS[
+                                                  (i + 1) % DEFAULT_PIE_SLICE_COLORS.length
+                                                ]
+                                          }
+                                          onChange={(v) => updateRingRow(i, { gradientColor2: v })}
+                                          placeholder={
+                                            DEFAULT_PIE_SLICE_COLORS[
+                                              (i + 1) % DEFAULT_PIE_SLICE_COLORS.length
+                                            ]
+                                          }
+                                          showAlpha={true}
+                                          allowTransparent={true}
+                                        />
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                  <div
+                                    className={`space-y-2 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <Label className="text-[10px] text-muted-foreground">Label size</Label>
+                                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                                        {hasCustomLabelFontSize ? labelSizeSliderValue : "Default"}
+                                      </span>
+                                      {!isReadOnly && hasCustomLabelFontSize ? (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 px-1.5 text-[10px]"
+                                          onClick={() => updateRingRow(i, { labelFontSizeStr: "" })}
+                                        >
+                                          Reset
+                                        </Button>
+                                      ) : null}
+                                    </div>
+                                    <Slider
+                                      value={[labelSizeSliderValue]}
+                                      onValueChange={(v) => {
+                                        const n = v[0];
+                                        if (n != null)
+                                          updateRingRow(i, { labelFontSizeStr: String(n) });
+                                      }}
+                                      min={2}
+                                      max={14}
+                                      step={0.25}
+                                      disabled={isReadOnly}
+                                    />
+                                  </div>
+                                  <div className={`space-y-1 ${isReadOnly ? "opacity-75" : ""}`}>
+                                    <Label className="text-[10px] text-muted-foreground">Label text color</Label>
+                                    <ColorPicker
+                                      value={
+                                        row.labelColor.trim()
+                                          ? row.labelColor
+                                          : DEFAULT_PIE_SLICE_LABEL_COLOR
+                                      }
+                                      onChange={(v) => updateRingRow(i, { labelColor: v })}
+                                      placeholder={DEFAULT_PIE_SLICE_LABEL_COLOR}
+                                      showAlpha={true}
+                                      allowTransparent={true}
+                                    />
+                                  </div>
+                                </div>
+                              ) : null}
+                            </>
+                          )}
+                        </ChartSliceSortableRow>
+                      );
+                    })}
+                  </div>
+                </ChartModalSection>
+              </>
+            ) : null}
+            {!isCartesianModal && !isRingModal ? (
               <>
             <ChartModalSection title="Slice outline & options" tint="muted">
               <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>
@@ -2149,7 +2792,7 @@ export function ChartDataEditorModal({
             </div>
             </ChartModalSection>
               </>
-            )}
+            ) : null}
           </div>
           {!isReadOnly && (
             <div className="p-3 border-t flex justify-end gap-2">

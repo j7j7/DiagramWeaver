@@ -5,6 +5,7 @@ import type {
   NodeChartSpecBar,
   NodeChartSpecLine,
   NodeChartSpecPie,
+  NodeChartSpecRing,
 } from "@/lib/types";
 import { isChartNodeType } from "@/lib/chart-node";
 
@@ -32,6 +33,9 @@ export function chartSlideLerpCompatible(prev: DiagramNodeData, curr: DiagramNod
   if (!a || !b || a.kind !== b.kind) return false;
 
   if (a.kind === "pie" && b.kind === "pie") {
+    return Array.isArray(a.series) && Array.isArray(b.series) && a.series.length === b.series.length;
+  }
+  if (a.kind === "ring" && b.kind === "ring") {
     return Array.isArray(a.series) && Array.isArray(b.series) && a.series.length === b.series.length;
   }
   if (a.kind === "bar" && b.kind === "bar") {
@@ -80,6 +84,15 @@ export function lerpNodeChartForSlide(
       return { ...row, value: pv + (cv - pv) * u };
     });
     return { ...currSpec, series } as NodeChartSpecPie;
+  }
+  if (prevSpec.kind === "ring" && currSpec.kind === "ring") {
+    const series = currSpec.series.map((row, i) => {
+      const p = prevSpec.series[i];
+      const pv = typeof p?.value === "number" && Number.isFinite(p.value) ? p.value : 0;
+      const cv = typeof row.value === "number" && Number.isFinite(row.value) ? row.value : 0;
+      return { ...row, value: pv + (cv - pv) * u };
+    });
+    return { ...currSpec, series } as NodeChartSpecRing;
   }
   if (prevSpec.kind === "bar" && currSpec.kind === "bar") {
     return {

@@ -24,6 +24,7 @@ export { TimelineShape } from './timeline';
 export { LoopShape } from './loop';
 export { UmlClassShape } from './uml-class';
 export { PieChartShape } from './pie-chart-shape';
+export { RingChartShape } from './ring-chart-shape';
 export { BarChartShape } from './bar-chart-shape';
 export { LineChartShape } from './line-chart-shape';
 export { ShapeWrapper } from './shape-wrapper';

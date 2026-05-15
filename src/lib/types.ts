@@ -38,7 +38,7 @@ export interface CustomImageOptions {
 }
 
 /** Extensible chart kinds — add new renderers and editors per kind. */
-export type ChartKind = "pie" | "bar" | "line";
+export type ChartKind = "pie" | "bar" | "line" | "ring";
 
 /** Slice fill mode — mirrors shape `backgroundStyle` (none / solid / gradient). */
 export type ChartSliceFillStyle = "none" | "solid" | "gradient";
@@ -65,6 +65,31 @@ export interface ChartSeriesItem {
    * Optional radial pull for this slice only (SVG viewBox units, 0–4). When set, replaces chart `segmentGapDeg` for this slice.
    */
   segmentPull?: number;
+}
+
+/** One angular segment row for segmented ring charts (`kind: 'ring'`). */
+export interface ChartRingSeriesItem {
+  id?: string;
+  name: string;
+  /** Relative arc size vs other segments (same semantics as pie `value`). */
+  value: number;
+  color?: string;
+  labelColor?: string;
+  fillStyle?: ChartSliceFillStyle;
+  gradientColors?: [string, string];
+  labelFontSize?: number;
+  /**
+   * Radial band thickness in ring SVG viewBox units (inside→outside); default renderer ~9 when omitted.
+   */
+  ringThickness?: number;
+  /**
+   * Shifts the segment band outward (+) / inward (−) from chart `innerRadius` before thickness is applied.
+   */
+  ringRadialOffset?: number;
+  /** Per-segment outline color; omitted uses chart `sliceBorderColor` then node border. */
+  sliceOutlineColor?: string;
+  /** Per-segment outline width (SVG vb units); 0 hides stroke; omitted uses chart default. */
+  sliceOutlineWidth?: number;
 }
 
 /** One stacked segment row for bar charts (`kind: 'bar'`): parallel values per category column. */
@@ -99,6 +124,26 @@ export interface NodeChartSpecPie {
   showSegmentLabels?: boolean;
   /** When true, slice values cannot be changed by dragging on the canvas (modal still edits). */
   valuesLocked?: boolean;
+}
+
+/** Segmented ring / donut (`generic.chart.ring`). */
+export interface NodeChartSpecRing {
+  kind: "ring";
+  series: ChartRingSeriesItem[];
+  /** Default segment outline color; falls back to node `borderColor`, then `#6b7280`. */
+  sliceBorderColor?: string;
+  /** Default segment outline width in SVG viewBox units when rows omit `sliceOutlineWidth`; falls back like pie to node border. */
+  sliceBorderWidth?: number;
+  shadow?: boolean;
+  showSegmentLabels?: boolean;
+  valuesLocked?: boolean;
+  /**
+   * Inner radius baseline (hole edge distance from chart center); segment inner rim ≈ `innerRadius + ringRadialOffset`.
+   * When omitted renderer uses ~14 in a 60×60 viewBox chart.
+   */
+  innerRadius?: number;
+  /** Angular gap between segments in degrees (0 = flush arcs). Renderer clamps to stay within circumference. */
+  segmentAngularGapDeg?: number;
 }
 
 /** Bar / stacked bar chart data (`generic.chart.bar`). */
@@ -185,7 +230,7 @@ export interface NodeChartSpecLine {
 }
 
 /** Chart configuration on a node (`generic.chart.*`). */
-export type NodeChartSpec = NodeChartSpecPie | NodeChartSpecBar | NodeChartSpecLine;
+export type NodeChartSpec = NodeChartSpecPie | NodeChartSpecBar | NodeChartSpecLine | NodeChartSpecRing;
 
 /**
  * Card silhouette for `generic.object.timeline` / `generic.object.mind-map-node`; `type` stays timeline/mind-map.
@@ -290,6 +335,8 @@ export interface DiagramNodeData {
   timelineBarAxisLabelFontSize?: number;
   /** Optional axis/tick row font; omit to use the shape’s `fontFamily`. */
   timelineBarAxisLabelFontFamily?: string;
+  /** When true, segments after the first use the first segment’s bar-label alignment and typography (not per-segment overrides). */
+  timelineBarLabelsFollowFirstSection?: boolean;
 
   /** Progress bar (`generic.object.progress-bar`): completed amount 0–100 */
   progressPercent?: number;
@@ -472,6 +519,9 @@ export interface TimelineBarAxisLabelData {
   t: number;
 }
 
+/** When stored on sections after the first, bar-label fields resolve from section 0’s effective values for that property. */
+export const TIMELINE_BAR_LABEL_FIRST_SECTION = "first-section" as const;
+
 /** One segment of `generic.object.timeline-bar` (stacked horizontal bar). */
 export interface TimelineBarSectionData {
   id: string;
@@ -497,6 +547,24 @@ export interface TimelineBarSectionData {
   tickLabel?: string;
   /** Override for segment label color; falls back to node `textColor`. */
   labelColor?: string;
+  /** Segment bar-label horizontal alignment; inherits node `textJustify` when omitted (then defaults to center in the renderer). Use `first-section` on sections 1+ to mirror section 0. */
+  labelTextJustify?: "left" | "center" | "right" | "full" | typeof TIMELINE_BAR_LABEL_FIRST_SECTION;
+  /** Segment bar-label vertical placement inside the coloured band; inherits node `textVerticalPosition` when omitted (then defaults to middle). */
+  labelVerticalAlign?:
+    | "top"
+    | "middle"
+    | "bottom"
+    | typeof TIMELINE_BAR_LABEL_FIRST_SECTION;
+  /** Override font family for this segment’s bar label; inherits node `fontFamily`. Reserved string `first-section` mirrors section 0 (sections 1+ only). */
+  labelFontFamily?: string;
+  /** Override font size (px) for this segment’s bar label; `first-section` mirrors section 0. Inherits node `fontSize` when omitted (still capped by bar height in the renderer). */
+  labelFontSize?: number | typeof TIMELINE_BAR_LABEL_FIRST_SECTION;
+  /** Override font weight for this segment’s bar label; `first-section` mirrors section 0. Inherits node `fontWeight` (renderer defaults to 600 when both unset). */
+  labelFontWeight?: DiagramNodeData["fontWeight"] | typeof TIMELINE_BAR_LABEL_FIRST_SECTION;
+  /** Override font style for this segment’s bar label; `first-section` mirrors section 0. */
+  labelFontStyle?: DiagramNodeData["fontStyle"] | typeof TIMELINE_BAR_LABEL_FIRST_SECTION;
+  /** Override text decoration for this segment’s bar label; `first-section` mirrors section 0. */
+  labelTextDecoration?: DiagramNodeData["textDecoration"] | typeof TIMELINE_BAR_LABEL_FIRST_SECTION;
 }
 
 /** Timeline card row — optional visual overrides inherit from the parent timeline node when omitted. */

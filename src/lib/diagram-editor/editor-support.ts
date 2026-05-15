@@ -518,6 +518,8 @@ export function createPaletteItem(
   const isPieChartPalette = provider === "generic" && category === "object" && derivedSlug === "pie-chart";
   const isBarChartPalette = provider === "generic" && category === "object" && derivedSlug === "bar-chart";
   const isLineChartPalette = provider === "generic" && category === "object" && derivedSlug === "line-chart";
+  const isRingChartPalette =
+    provider === "generic" && category === "object" && derivedSlug === "ring-chart";
   return {
     type: isTextPaletteTextBoxHeading
       ? "generic.object.text-box-heading"
@@ -527,7 +529,9 @@ export function createPaletteItem(
           ? "generic.chart.bar"
           : isLineChartPalette
             ? "generic.chart.line"
-            : `${provider}.${category}.${derivedSlug}`,
+            : isRingChartPalette
+              ? "generic.chart.ring"
+              : `${provider}.${category}.${derivedSlug}`,
     label: (resource as PaletteResource).name,
     provider,
     category: isTextPaletteTextBoxHeading ? "object" : category,

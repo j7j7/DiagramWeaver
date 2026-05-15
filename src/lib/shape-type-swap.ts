@@ -186,6 +186,7 @@ function stripTimelineBarFields(n: DiagramNodeData): void {
   delete (n as DiagramNodeData & { timelineBarSectionBorderWidth?: unknown }).timelineBarSectionBorderWidth;
   delete (n as DiagramNodeData & { timelineBarSectionBorderColor?: unknown }).timelineBarSectionBorderColor;
   delete (n as DiagramNodeData & { timelineBarAxisLabels?: unknown }).timelineBarAxisLabels;
+  delete (n as DiagramNodeData & { timelineBarLabelsFollowFirstSection?: unknown }).timelineBarLabelsFollowFirstSection;
   delete (n as DiagramNodeData & { timelineBarHueStepDeg?: unknown }).timelineBarHueStepDeg;
 }
 

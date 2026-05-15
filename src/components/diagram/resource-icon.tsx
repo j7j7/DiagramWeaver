@@ -101,6 +101,34 @@ function ChartPaletteLineGlyph(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Segmented donut — reads at 24×24 next to pie / bar / line chart glyphs. */
+function ChartPaletteRingGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        fill="currentColor"
+        opacity={1}
+        d="M 12.1615 4.1267 A 7.875 7.875 0 0 1 19.8733 11.8385 L 16.9677 11.8981 A 4.96875 4.96875 0 0 0 12.1019 7.0323 Z"
+      />
+      <path
+        fill="currentColor"
+        opacity={0.62}
+        d="M 19.8733 12.1615 A 7.875 7.875 0 0 1 12.1615 19.8733 L 12.1019 16.9677 A 4.96875 4.96875 0 0 0 16.9677 12.1019 Z"
+      />
+      <path
+        fill="currentColor"
+        opacity={0.42}
+        d="M 11.8385 19.8733 A 7.875 7.875 0 0 1 4.1267 12.1615 L 7.0323 12.1019 A 4.96875 4.96875 0 0 0 11.8981 16.9677 Z"
+      />
+      <path
+        fill="currentColor"
+        opacity={0.28}
+        d="M 4.1267 11.8385 A 7.875 7.875 0 0 1 11.8385 4.1267 L 11.8981 7.0323 A 4.96875 4.96875 0 0 0 7.0323 11.8981 Z"
+      />
+    </svg>
+  );
+}
+
 /** Horizontal progress bar: muted track + saturated fill segment (resources palette). */
 function PaletteProgressBarGlyph(props: React.SVGProps<SVGSVGElement>) {
   const clipId = React.useId().replace(/:/g, "");
@@ -491,6 +519,9 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   }
   if (type === "generic.chart.line") {
     return <ChartPaletteLineGlyph {...props} />;
+  }
+  if (type === "generic.chart.ring") {
+    return <ChartPaletteRingGlyph {...props} />;
   }
 
   // Vector preview only: matches the on-canvas shape (rounded body + dark heading strip), not the flat PNG.

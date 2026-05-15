@@ -62,6 +62,21 @@ const ChartPieSeriesRowSchema = z.object({
   segmentPull: z.number().min(0).max(4).optional(),
 });
 
+const ChartRingSeriesRowSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  value: z.number(),
+  color: z.string().optional(),
+  labelColor: z.string().optional(),
+  fillStyle: z.enum(["none", "solid", "gradient"]).optional(),
+  gradientColors: z.tuple([z.string(), z.string()]).optional(),
+  labelFontSize: z.number().min(2).max(14).optional(),
+  ringThickness: z.number().min(2).max(24).optional(),
+  ringRadialOffset: z.number().min(-10).max(16).optional(),
+  sliceOutlineColor: z.string().optional(),
+  sliceOutlineWidth: z.number().min(0).max(5).optional(),
+});
+
 const ChartBarSeriesRowSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
@@ -81,6 +96,18 @@ const NodeChartPieSchema = z.object({
   segmentGapDeg: z.number().min(0).max(3).optional(),
   showSegmentLabels: z.boolean().optional(),
   valuesLocked: z.boolean().optional(),
+});
+
+const NodeChartRingSchema = z.object({
+  kind: z.literal("ring"),
+  series: z.array(ChartRingSeriesRowSchema),
+  sliceBorderColor: z.string().optional(),
+  sliceBorderWidth: z.number().min(0).max(5).optional(),
+  shadow: z.boolean().optional(),
+  showSegmentLabels: z.boolean().optional(),
+  valuesLocked: z.boolean().optional(),
+  innerRadius: z.number().min(2).max(26).optional(),
+  segmentAngularGapDeg: z.number().min(0).max(8).optional(),
 });
 
 const NodeChartBarSchema = z.object({
@@ -134,6 +161,7 @@ const NodeChartLineSchema = z.object({
 
 const NodeChartSpecSchema = z.discriminatedUnion("kind", [
   NodeChartPieSchema,
+  NodeChartRingSchema,
   NodeChartBarSchema,
   NodeChartLineSchema,
 ]);
@@ -152,6 +180,7 @@ function normalizeChartField(chart: unknown): unknown {
   }
   if (c.kind === "line") return chart;
   if (c.kind === "pie") return chart;
+  if (c.kind === "ring") return chart;
   const series = c.series;
   if (
     Array.isArray(series) &&
@@ -209,6 +238,28 @@ export const TimelineBarSectionDataSchema = z.object({
   spanEnd: z.number().min(0).max(1).optional(),
   tickLabel: z.string().optional(),
   labelColor: z.string().optional(),
+  labelTextJustify: z.enum(['left', 'center', 'right', 'full', 'first-section']).optional(),
+  labelVerticalAlign: z.enum(['top', 'middle', 'bottom', 'first-section']).optional(),
+  labelFontFamily: z.string().optional(),
+  labelFontSize: z.union([z.number().positive(), z.literal('first-section')]).optional(),
+  labelFontWeight: z
+    .enum([
+      'normal',
+      'bold',
+      '100',
+      '200',
+      '300',
+      '400',
+      '500',
+      '600',
+      '700',
+      '800',
+      '900',
+      'first-section',
+    ])
+    .optional(),
+  labelFontStyle: z.enum(['normal', 'italic', 'oblique', 'first-section']).optional(),
+  labelTextDecoration: z.enum(['none', 'underline', 'overline', 'line-through', 'first-section']).optional(),
 });
 
 const DiagramCompositeBodyShapeTuple = DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS as unknown as [
@@ -278,6 +329,7 @@ export const DiagramNodeDataSchema = z.object({
   timelineBarHueStepDeg: z.number().optional(),
   timelineBarAxisLabelFontSize: z.number().optional(),
   timelineBarAxisLabelFontFamily: z.string().optional(),
+  timelineBarLabelsFollowFirstSection: z.boolean().optional(),
   timelineBarAxisLabels: z.array(TimelineBarAxisLabelDataSchema).optional(),
   headingEdge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
   headingLabel: z.string().optional(),
@@ -694,6 +746,7 @@ export const DiagramNodeItemSchema = z.object({
   timelineBarHueStepDeg: z.number().optional(),
   timelineBarAxisLabelFontSize: z.number().optional(),
   timelineBarAxisLabelFontFamily: z.string().optional(),
+  timelineBarLabelsFollowFirstSection: z.boolean().optional(),
   timelineBarAxisLabels: z.array(TimelineBarAxisLabelDataSchema).optional(),
   headingEdge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
   headingLabel: z.string().optional(),

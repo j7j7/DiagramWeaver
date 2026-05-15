@@ -1,6 +1,11 @@
 import { shiftHueOfColor } from "@/lib/color-shift";
 import { GRID_STEP, snapToGrid } from "@/components/editor/canvas-constants";
-import type { DiagramNodeData, TimelineBarAxisLabelData, TimelineBarSectionData } from "@/lib/types";
+import {
+  TIMELINE_BAR_LABEL_FIRST_SECTION,
+  type DiagramNodeData,
+  type TimelineBarAxisLabelData,
+  type TimelineBarSectionData,
+} from "@/lib/types";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 
 export const TIMELINE_BAR_NODE_TYPE = "generic.object.timeline-bar" as const;
@@ -293,6 +298,201 @@ export function timelineBarSectionThemeHueFill(
 const DEFAULT_SECTION_COLORS = ["#3b82f6", "#8b5cf6", "#f97316", "#22c55e"];
 const DEFAULT_TICKS = ["Jan", "Feb", "Mar", "Apr"];
 
+function effectiveTimelineBarLabelTextJustify(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+): "left" | "center" | "right" | "full" | undefined {
+  let j = seg.labelTextJustify;
+  if (j === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    if (sectionIndex === 0) return undefined;
+    j = sections[0]?.labelTextJustify;
+    if (j === TIMELINE_BAR_LABEL_FIRST_SECTION) return undefined;
+  }
+  if (j === "left" || j === "center" || j === "right" || j === "full") return j;
+  return undefined;
+}
+
+function effectiveTimelineBarLabelVerticalAlign(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+): "top" | "middle" | "bottom" | undefined {
+  let v = seg.labelVerticalAlign;
+  if (v === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    if (sectionIndex === 0) return undefined;
+    v = sections[0]?.labelVerticalAlign;
+    if (v === TIMELINE_BAR_LABEL_FIRST_SECTION) return undefined;
+  }
+  if (v === "top" || v === "middle" || v === "bottom") return v;
+  return undefined;
+}
+
+function effectiveTimelineBarLabelFontFamily(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+): string | undefined {
+  let f = seg.labelFontFamily;
+  if (f === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    if (sectionIndex === 0) return undefined;
+    f = sections[0]?.labelFontFamily;
+    if (f === TIMELINE_BAR_LABEL_FIRST_SECTION) return undefined;
+  }
+  const t = f?.trim();
+  return t || undefined;
+}
+
+function effectiveTimelineBarLabelFontSize(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+): number | undefined {
+  let fs = seg.labelFontSize;
+  if (fs === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    if (sectionIndex === 0) return undefined;
+    fs = sections[0]?.labelFontSize;
+    if (fs === TIMELINE_BAR_LABEL_FIRST_SECTION) return undefined;
+  }
+  if (typeof fs === "number" && Number.isFinite(fs) && fs > 0) return fs;
+  return undefined;
+}
+
+function effectiveTimelineBarLabelFontWeight(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+): DiagramNodeData["fontWeight"] | undefined {
+  let w = seg.labelFontWeight;
+  if (w === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    if (sectionIndex === 0) return undefined;
+    w = sections[0]?.labelFontWeight;
+    if (w === TIMELINE_BAR_LABEL_FIRST_SECTION) return undefined;
+  }
+  if (
+    w === "normal" ||
+    w === "bold" ||
+    w === "100" ||
+    w === "200" ||
+    w === "300" ||
+    w === "400" ||
+    w === "500" ||
+    w === "600" ||
+    w === "700" ||
+    w === "800" ||
+    w === "900"
+  )
+    return w;
+  return undefined;
+}
+
+function effectiveTimelineBarLabelFontStyle(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+): DiagramNodeData["fontStyle"] | undefined {
+  let fst = seg.labelFontStyle;
+  if (fst === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    if (sectionIndex === 0) return undefined;
+    fst = sections[0]?.labelFontStyle;
+    if (fst === TIMELINE_BAR_LABEL_FIRST_SECTION) return undefined;
+  }
+  if (fst === "normal" || fst === "italic" || fst === "oblique") return fst;
+  return undefined;
+}
+
+function effectiveTimelineBarLabelTextDecoration(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+): DiagramNodeData["textDecoration"] | undefined {
+  let td = seg.labelTextDecoration;
+  if (td === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    if (sectionIndex === 0) return undefined;
+    td = sections[0]?.labelTextDecoration;
+    if (td === TIMELINE_BAR_LABEL_FIRST_SECTION) return undefined;
+  }
+  if (td === "none" || td === "underline" || td === "overline" || td === "line-through") return td;
+  return undefined;
+}
+
+/** Resolved horizontal text-align for SVG/HTML (`full` → `justify`). */
+export function timelineBarSectionResolvedTextAlign(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+  node: DiagramNodeData,
+): "left" | "center" | "right" | "justify" {
+  const eff = effectiveTimelineBarLabelTextJustify(seg, sectionIndex, sections);
+  const j = eff ?? node.textJustify ?? "center";
+  return j === "full" ? "justify" : j;
+}
+
+/** Vertical placement of the bar label inside the segment foreignObject. */
+export function timelineBarSectionResolvedVerticalJustify(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+  node: DiagramNodeData,
+): "flex-start" | "center" | "flex-end" {
+  const eff = effectiveTimelineBarLabelVerticalAlign(seg, sectionIndex, sections);
+  const v = eff ?? node.textVerticalPosition ?? "middle";
+  return v === "top" ? "flex-start" : v === "bottom" ? "flex-end" : "center";
+}
+
+export function timelineBarSectionResolvedFontWeight(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+  node: DiagramNodeData,
+): string | number {
+  const eff = effectiveTimelineBarLabelFontWeight(seg, sectionIndex, sections);
+  const w = eff ?? node.fontWeight;
+  if (w === undefined || w === null) return 600;
+  return w;
+}
+
+export function timelineBarSectionResolvedFontFamily(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+  node: DiagramNodeData,
+): string {
+  const eff = effectiveTimelineBarLabelFontFamily(seg, sectionIndex, sections);
+  const raw = eff ?? node.fontFamily;
+  return (typeof raw === "string" ? raw.trim() : "") || "ui-sans-serif, system-ui, sans-serif";
+}
+
+export function timelineBarSectionResolvedFontSizePx(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+  node: DiagramNodeData,
+): number {
+  const eff = effectiveTimelineBarLabelFontSize(seg, sectionIndex, sections);
+  return Number(eff ?? node.fontSize) || 12;
+}
+
+export function timelineBarSectionResolvedFontStyle(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+  node: DiagramNodeData,
+): DiagramNodeData["fontStyle"] {
+  return effectiveTimelineBarLabelFontStyle(seg, sectionIndex, sections) ?? node.fontStyle ?? "normal";
+}
+
+export function timelineBarSectionResolvedTextDecoration(
+  seg: TimelineBarSectionData,
+  sectionIndex: number,
+  sections: TimelineBarSectionData[],
+  node: DiagramNodeData,
+): DiagramNodeData["textDecoration"] {
+  return (
+    effectiveTimelineBarLabelTextDecoration(seg, sectionIndex, sections) ?? node.textDecoration ?? "none"
+  );
+}
+
 export function defaultTimelineBarSections(): TimelineBarSectionData[] {
   return DEFAULT_SECTION_COLORS.map((fill, i) => ({
     id: `tb-${i}`,
@@ -333,6 +533,86 @@ export function normalizeTimelineBarSections(node: DiagramNodeData): TimelineBar
         s.spanEnd > s.spanStart;
       const spanStart = hasSpan ? clampTimelineBarT(s.spanStart as number) : undefined;
       const spanEnd = hasSpan ? clampTimelineBarT(s.spanEnd as number) : undefined;
+      const jRaw = s.labelTextJustify;
+      let labelTextJustify: TimelineBarSectionData["labelTextJustify"] | undefined;
+      if (
+        jRaw === "left" ||
+        jRaw === "center" ||
+        jRaw === "right" ||
+        jRaw === "full" ||
+        jRaw === TIMELINE_BAR_LABEL_FIRST_SECTION
+      ) {
+        if (!(i === 0 && jRaw === TIMELINE_BAR_LABEL_FIRST_SECTION)) {
+          labelTextJustify = jRaw;
+        }
+      }
+      const vaRaw = s.labelVerticalAlign;
+      let labelVerticalAlign: TimelineBarSectionData["labelVerticalAlign"] | undefined;
+      if (
+        vaRaw === "top" ||
+        vaRaw === "middle" ||
+        vaRaw === "bottom" ||
+        vaRaw === TIMELINE_BAR_LABEL_FIRST_SECTION
+      ) {
+        if (!(i === 0 && vaRaw === TIMELINE_BAR_LABEL_FIRST_SECTION)) {
+          labelVerticalAlign = vaRaw;
+        }
+      }
+      const fwRaw = s.labelFontWeight;
+      let labelFontWeight: TimelineBarSectionData["labelFontWeight"] | undefined;
+      if (fwRaw === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+        if (i > 0) labelFontWeight = fwRaw;
+      } else if (
+        fwRaw === "normal" ||
+        fwRaw === "bold" ||
+        fwRaw === "100" ||
+        fwRaw === "200" ||
+        fwRaw === "300" ||
+        fwRaw === "400" ||
+        fwRaw === "500" ||
+        fwRaw === "600" ||
+        fwRaw === "700" ||
+        fwRaw === "800" ||
+        fwRaw === "900"
+      ) {
+        labelFontWeight = fwRaw;
+      }
+      const fstRaw = s.labelFontStyle;
+      let labelFontStyle: TimelineBarSectionData["labelFontStyle"] | undefined;
+      if (fstRaw === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+        if (i > 0) labelFontStyle = fstRaw;
+      } else if (fstRaw === "normal" || fstRaw === "italic" || fstRaw === "oblique") {
+        labelFontStyle = fstRaw;
+      }
+      const tdRaw = s.labelTextDecoration;
+      let labelTextDecoration: TimelineBarSectionData["labelTextDecoration"] | undefined;
+      if (tdRaw === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+        if (i > 0) labelTextDecoration = tdRaw;
+      } else if (
+        tdRaw === "none" ||
+        tdRaw === "underline" ||
+        tdRaw === "overline" ||
+        tdRaw === "line-through"
+      ) {
+        labelTextDecoration = tdRaw;
+      }
+
+      let labelFontFamily: string | undefined;
+      const famRaw = typeof s.labelFontFamily === "string" ? s.labelFontFamily.trim() : "";
+      if (famRaw === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+        if (i > 0) labelFontFamily = TIMELINE_BAR_LABEL_FIRST_SECTION;
+      } else if (famRaw) {
+        labelFontFamily = famRaw;
+      }
+
+      let labelFontSize: TimelineBarSectionData["labelFontSize"] | undefined;
+      const szRaw = s.labelFontSize;
+      if (szRaw === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+        if (i > 0) labelFontSize = TIMELINE_BAR_LABEL_FIRST_SECTION;
+      } else if (typeof szRaw === "number" && Number.isFinite(szRaw) && szRaw > 0) {
+        labelFontSize = szRaw;
+      }
+
       return {
         id: typeof s.id === "string" && s.id ? s.id : `tb-${i}`,
         label: s.label,
@@ -344,6 +624,13 @@ export function normalizeTimelineBarSections(node: DiagramNodeData): TimelineBar
         ...(hasSpan ? { spanStart, spanEnd } : {}),
         tickLabel: s.tickLabel,
         labelColor: s.labelColor,
+        ...(labelTextJustify ? { labelTextJustify } : {}),
+        ...(labelVerticalAlign ? { labelVerticalAlign } : {}),
+        ...(labelFontFamily ? { labelFontFamily } : {}),
+        ...(labelFontSize !== undefined ? { labelFontSize } : {}),
+        ...(labelFontWeight ? { labelFontWeight } : {}),
+        ...(labelFontStyle ? { labelFontStyle } : {}),
+        ...(labelTextDecoration ? { labelTextDecoration } : {}),
       };
     });
   }
@@ -382,8 +669,18 @@ export function timelineBarMemoPayload(n: DiagramNodeData): string {
     backgroundColors?: string[];
     timelineBarHueStepDeg?: number;
     timelineBarAxisLabels?: TimelineBarAxisLabelData[];
+    timelineBarLabelsFollowFirstSection?: boolean;
     fontSize?: number;
     fontFamily?: string;
+    textJustify?: string;
+    textVerticalPosition?: string;
+    fontWeight?: string;
+    fontStyle?: string;
+    textDecoration?: string;
+    textOpacity?: number;
+    lineHeight?: number;
+    letterSpacing?: number;
+    textTransform?: string;
   };
   return JSON.stringify([
     x.timelineBarSections,
@@ -401,8 +698,18 @@ export function timelineBarMemoPayload(n: DiagramNodeData): string {
     x.timelineBarAxisLabels,
     x.timelineBarAxisLabelFontSize,
     x.timelineBarAxisLabelFontFamily,
+    x.timelineBarLabelsFollowFirstSection,
     x.fontSize,
     x.fontFamily,
+    x.textJustify,
+    x.textVerticalPosition,
+    x.fontWeight,
+    x.fontStyle,
+    x.textDecoration,
+    x.textOpacity,
+    x.lineHeight,
+    x.letterSpacing,
+    x.textTransform,
   ]);
 }
 

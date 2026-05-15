@@ -51,6 +51,7 @@ import {
   UmlClassShape,
   MindmapNodeShape,
   PieChartShape,
+  RingChartShape,
   BarChartShape,
   LineChartShape,
   ProgressBarShape,
@@ -1073,7 +1074,57 @@ function DiagramNodeInner({
           }
         />
       );
-    } else if (nodeType === 'generic.chart.pie' || nodeType?.startsWith('generic.chart.')) {
+    } else if (nodeType === "generic.chart.ring" || nodeType?.endsWith(".chart.ring")) {
+      return (
+        <RingChartShape
+          {...shapeProps}
+          presentationChartStagger={animationStyle?.chartSlideStagger}
+          presentationChartLerpU={animationStyle?.chartLerpU}
+          presentationChartLerpFromJson={animationStyle?.chartLerpFromJson}
+          isReadOnly={isReadOnly}
+          onRingSliceNameChange={
+            onUpdate && !isReadOnly
+              ? (sliceIndex, name) => {
+                  const c = node.chart;
+                  if (c?.kind !== "ring" || !c.series || sliceIndex < 0 || sliceIndex >= c.series.length) return;
+                  const nextSeries = c.series.map((row, j) =>
+                    j === sliceIndex ? { ...row, name } : row
+                  );
+                  onUpdate({ ...node, chart: { ...c, series: nextSeries } });
+                }
+              : undefined
+          }
+          onRingSliceValueChange={
+            onUpdate && !isReadOnly && !chartValuesLocked
+              ? (sliceIndex, value) => {
+                  const c = node.chart;
+                  if (c?.kind !== "ring" || !c.series || sliceIndex < 0 || sliceIndex >= c.series.length) return;
+                  const v = roundChartDataValue(value);
+                  const nextSeries = c.series.map((row, j) =>
+                    j === sliceIndex ? { ...row, value: v } : row
+                  );
+                  onUpdate({ ...node, chart: { ...c, series: nextSeries } });
+                }
+              : undefined
+          }
+          onRingChartValueDragSessionChange={
+            !isReadOnly
+              ? (active) => {
+                  chartValueDragInteractionRef.current = active;
+                  onChartValueDragSessionChange?.(active);
+                }
+              : undefined
+          }
+        />
+      );
+    } else if (
+      nodeType === "generic.chart.pie" ||
+      nodeType?.endsWith(".chart.pie") ||
+      (nodeType?.startsWith("generic.chart.") &&
+        node.chart?.kind !== "bar" &&
+        node.chart?.kind !== "line" &&
+        node.chart?.kind !== "ring")
+    ) {
       return (
         <PieChartShape
           {...shapeProps}
@@ -2688,7 +2739,7 @@ function DiagramNodeInner({
     if (
       rawTarget instanceof Element &&
       rawTarget.closest(
-        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-line-vertex-handle], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
+        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-line-vertex-handle], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
       )
     ) {
       return;
@@ -2928,7 +2979,7 @@ function DiagramNodeInner({
         if (
           rawTarget instanceof Element &&
           rawTarget.closest(
-            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], [data-dw-progress-bar-drag]"
+            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag]"
           )
         ) {
           e.preventDefault();

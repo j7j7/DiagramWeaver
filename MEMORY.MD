@@ -3,6 +3,16 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-15 – Timeline bar: **per-segment bar label text** (inherit from shape)
+
+**`TimelineBarSectionData`**: optional **`labelTextJustify`**, **`labelVerticalAlign`**, **`labelFontFamily`**, **`labelFontSize`**, **`labelFontWeight`**, **`labelFontStyle`**, **`labelTextDecoration`** — unset fields use the node’s **`textJustify`**, **`textVerticalPosition`**, **`fontFamily`**, **`fontSize`**, etc.; weight falls back to **600** when both omit. Stored sentinel **`TIMELINE_BAR_LABEL_FIRST_SECTION`** (`first-section`) on sections **after the first** makes each property follow **section 0’s effective value** for that property (recursive unwrap); modal label **Section default**; section 0 cannot persist `first-section` (**`normalizeTimelineBarSections`** strips it). Resolvers take **`sectionIndex`** + **`sections[]`**. **`timeline-bar`** shape uses **`timelineBarSectionResolvedFontFamily`**, **`…FontSizePx`**, **`…FontStyle`**, **`…TextDecoration`** plus flex **`justifyContent`** / **`textAlign`** (**`full` → justify**). **`timelineBarLabelsFollowFirstSection`** on **`DiagramNodeData`**: when **true**, segments after the first mirror the first segment’s bar-label alignment and typography on the canvas without writing **`first-section`** on each field; **`timeline-bar-editor-modal`** uses a **Switch** under Section widths (**Section default (bar label)**); **`TimelineBarEditorSavePayload`** includes **`labelsFollowFirstSection`**; per-row bar-label controls hidden for sections 2+ when on. Shape swap strips the flag. **`timelineBarMemoPayload`** includes node text fields; **`svgForeignObjectInlineInputStyle`** supports **`justify`** and **`fontWeight`** string|number. Schemas updated. Patch bumped.
+
+
+### 2026-05-15 – Chart: **Ring chart** palette, preview, and modal segments
+
+**`generic.chart.ring`**: **`chart-data-editor-modal`** completes the **Arc segments** block (pie-parity collapsible rows) and fixes the pie-branch ternary **`) : null`**. **`shape-preview`** uses **`ringSlicesForSvg`** (not pie wedges) when **`chart.kind === 'ring'`**. **`resource-icon`** **`ChartPaletteRingGlyph`**; **`resource-browser`** / **`draggable-resource-item`** map **`ring-chart`**. Assets **`public/resources/generic/object/ring-chart.svg`** + **`.png`**, **`resource-generic.json`** entry and **`totalResources`**. Patch bumped.
+
+
 ### 2026-05-15 – Icon / resource nodes: **Icon opacity** in Visual Styling
 
 **`iconOpacity`** (`0`–`1`) on **`DiagramNodeData`**, Zod **`schemas`**, **`visual-styling`** extract/apply, **`slide-visual-color`** (transitions), paste **colour** aspect, and visual reset **`iconOpacity: undefined`**. **`visual-styling-panel`**: slider under icon color / remove-background (all **`showRemoveBackground`** targets: Lucide, emoji, provider resource icons). **`diagram-node`** + **`ResourceIcon`** / **`CustomIconImage`** apply opacity on the glyph. Connection memo keys include **`iconOpacity`** where **`iconColor`** already did. Patch bumped.

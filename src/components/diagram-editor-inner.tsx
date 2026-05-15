@@ -897,16 +897,21 @@ export function DiagramEditorInner({
               setDiagramData((prev: DiagramData) => ({
                 ...prev,
                 nodes:
-                  prev.nodes?.map((n: DiagramNodeData) =>
-                    n.id === nodeId
-                      ? {
-                          ...n,
-                          timelineBarSections: payload.sections,
-                          timelineBarSizing: payload.sizing,
-                          timelineBarAxisLabels: payload.axisLabels.length > 0 ? payload.axisLabels : undefined,
-                        }
-                      : n,
-                  ) ?? [],
+                  prev.nodes?.map((n: DiagramNodeData) => {
+                    if (n.id !== nodeId) return n;
+                    const next = {
+                      ...n,
+                      timelineBarSections: payload.sections,
+                      timelineBarSizing: payload.sizing,
+                      timelineBarAxisLabels: payload.axisLabels.length > 0 ? payload.axisLabels : undefined,
+                    } as DiagramNodeData & { timelineBarLabelsFollowFirstSection?: boolean };
+                    if (payload.labelsFollowFirstSection) {
+                      next.timelineBarLabelsFollowFirstSection = true;
+                    } else {
+                      delete next.timelineBarLabelsFollowFirstSection;
+                    }
+                    return next;
+                  }) ?? [],
               }));
               setTimelineBarEditorModal({ visible: false, x: 0, y: 0, itemId: "" });
             }}

@@ -25,7 +25,7 @@ export function chartPresentationSignature(node: DiagramNodeData): string | null
 export function chartSegmentCountForStagger(node: DiagramNodeData): number {
   const c = (node as { chart?: { kind?: string; series?: unknown[] } }).chart;
   if (!c || typeof c !== "object") return 0;
-  if (c.kind === "pie") {
+  if (c.kind === "pie" || c.kind === "ring") {
     return Array.isArray(c.series) ? c.series.length : 0;
   }
   if (c.kind === "bar") {

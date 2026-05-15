@@ -1,10 +1,12 @@
 import type {
+  ChartRingSeriesItem,
   ChartSeriesItem,
   ChartSliceFillStyle,
   NodeChartSpec,
   NodeChartSpecBar,
   NodeChartSpecLine,
   NodeChartSpecPie,
+  NodeChartSpecRing,
 } from "@/lib/types";
 
 export const DEFAULT_PIE_SLICE_COLORS = [
@@ -160,6 +162,47 @@ export function defaultPieChartSpec(): NodeChartSpecPie {
   };
 }
 
+/** Inner radius baseline distance from ring center (SVG viewBox chart). */
+export const DEFAULT_RING_INNER_RADIUS = 14;
+/** Default radial band thickness when `ringThickness` is omitted. */
+export const DEFAULT_RING_THICKNESS = 9;
+const RING_MIN_THICKNESS = 2;
+const RING_MAX_THICKNESS = 24;
+const RING_OUTER_RADIUS_BUDGET = 28;
+const RING_ABS_INNER_MIN = 3;
+const RING_MAX_ANGULAR_GAP_DEG = 8;
+
+export function defaultRingChartSpec(): NodeChartSpecRing {
+  return {
+    kind: "ring",
+    innerRadius: DEFAULT_RING_INNER_RADIUS,
+    segmentAngularGapDeg: 2,
+    series: [
+      {
+        id: newChartSliceId(),
+        name: "A",
+        value: 45,
+        ringThickness: DEFAULT_RING_THICKNESS,
+        ringRadialOffset: 0,
+      },
+      {
+        id: newChartSliceId(),
+        name: "B",
+        value: 30,
+        ringThickness: 7,
+        ringRadialOffset: 1.5,
+      },
+      {
+        id: newChartSliceId(),
+        name: "C",
+        value: 25,
+        ringThickness: 10,
+        ringRadialOffset: -0.5,
+      },
+    ],
+  };
+}
+
 const LINE_CHART_DEFAULT_CATEGORY_COUNT = 5;
 const LINE_CHART_RANDOM_MIN = 1;
 const LINE_CHART_RANDOM_MAX = 100;
@@ -269,6 +312,8 @@ export function randomLineChartSpec(): NodeChartSpecLine {
 export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeChartSpec {
   if (nodeType === "generic.chart.bar") return randomBarChartSpec();
   if (nodeType === "generic.chart.line") return randomLineChartSpec();
+  if (nodeType === "generic.chart.ring" || nodeType?.endsWith(".chart.ring"))
+    return defaultRingChartSpec();
   return defaultPieChartSpec();
 }
 
@@ -292,6 +337,12 @@ export interface PieSliceRender {
   gradientColor2: string;
   /** Resolved label font size (SVG viewBox units). */
   labelFontSize: number;
+  /** Segmented ring: radial midpoint for placing segment labels; pie ignores when unset. */
+  segmentMidRadius?: number;
+  /** Per-segment outline color (segmented ring); pie ignores when unset. */
+  sliceStrokeColor?: string;
+  /** Per-segment outline width in SVG vb units; pie ignores when unset. */
+  sliceStrokeWidth?: number;
   /**
    * When set, pie segment hover can show this value (native SVG `<title>` tooltip).
    * Omitted for empty-chart placeholder discs.
@@ -594,6 +645,248 @@ export function pieSlicesForSvg(
   }
 
   return { slices: paths, rDraw };
+}
+
+function clampRingRadialOffset(v: number | undefined): number {
+  if (v == null || !Number.isFinite(v)) return 0;
+  return Math.max(-8, Math.min(14, v));
+}
+
+function clampRingThickness(v: number | undefined): number {
+  const t =
+    v != null && Number.isFinite(v) ? v : DEFAULT_RING_THICKNESS;
+  return Math.min(RING_MAX_THICKNESS, Math.max(RING_MIN_THICKNESS, t));
+}
+
+function clampRingBaselineInner(chartInner: number | undefined): number {
+  const v =
+    chartInner != null && Number.isFinite(chartInner)
+      ? chartInner
+      : DEFAULT_RING_INNER_RADIUS;
+  return Math.min(
+    RING_OUTER_RADIUS_BUDGET - RING_MIN_THICKNESS - 1,
+    Math.max(RING_ABS_INNER_MIN, v)
+  );
+}
+
+/** Full donut (closed annulus): two semicircular arcs outer + complementary inner hole. */
+function fullAnnulusPath(
+  cx: number,
+  cy: number,
+  rOuter: number,
+  rInner: number
+): string {
+  return [
+    `M ${cx - rOuter} ${cy}`,
+    `A ${rOuter} ${rOuter} 0 1 1 ${cx + rOuter} ${cy}`,
+    `A ${rOuter} ${rOuter} 0 1 1 ${cx - rOuter} ${cy}`,
+    `M ${cx - rInner} ${cy}`,
+    `A ${rInner} ${rInner} 0 1 0 ${cx + rInner} ${cy}`,
+    `A ${rInner} ${rInner} 0 1 0 ${cx - rInner} ${cy}`,
+    "Z",
+  ].join(" ");
+}
+
+function donutWedgePath(
+  cx: number,
+  cy: number,
+  rInner: number,
+  rOuter: number,
+  startAngle: number,
+  endAngle: number
+): { d: string; span: number } {
+  const span = endAngle - startAngle;
+  if (span <= 1e-8) return { d: "", span: 0 };
+  if (span >= 2 * Math.PI - 1e-6 && rOuter - rInner > 1e-6) {
+    return { d: fullAnnulusPath(cx, cy, rOuter, rInner), span: 2 * Math.PI };
+  }
+  const sweep = 1;
+  const largeOuter = span > Math.PI ? 1 : 0;
+
+  const p1x = cx + rOuter * Math.cos(startAngle);
+  const p1y = cy + rOuter * Math.sin(startAngle);
+  const p2x = cx + rOuter * Math.cos(endAngle);
+  const p2y = cy + rOuter * Math.sin(endAngle);
+  const p3x = cx + rInner * Math.cos(endAngle);
+  const p3y = cy + rInner * Math.sin(endAngle);
+  const p4x = cx + rInner * Math.cos(startAngle);
+  const p4y = cy + rInner * Math.sin(startAngle);
+
+  return {
+    d: [
+      `M ${p1x} ${p1y}`,
+      `A ${rOuter} ${rOuter} 0 ${largeOuter} ${sweep} ${p2x} ${p2y}`,
+      `L ${p3x} ${p3y}`,
+      `A ${rInner} ${rInner} 0 ${largeOuter} 0 ${p4x} ${p4y}`,
+      "Z",
+    ].join(" "),
+    span,
+  };
+}
+
+function resolveRingOutlineWidth(
+  row: ChartRingSeriesItem,
+  chartFallback: number
+): number {
+  const ow = row.sliceOutlineWidth;
+  if (ow !== undefined && Number.isFinite(ow)) {
+    return Math.max(0, Math.min(5, ow));
+  }
+  return Math.max(0, Math.min(5, chartFallback));
+}
+
+/**
+ * Paths and styling metadata for segmented ring arcs (pie-compatible `PieSliceRender` slices).
+ */
+export function ringSlicesForSvg(
+  cx: number,
+  cy: number,
+  seriesInput: ChartRingSeriesItem[] | undefined,
+  chart: Pick<
+    NodeChartSpecRing,
+    "innerRadius" | "segmentAngularGapDeg"
+  > | undefined,
+  options: { defaultOutlineWidthVb: number }
+): { slices: PieSliceRender[] } {
+  const vbBudget = RING_OUTER_RADIUS_BUDGET;
+  const baselineInner = clampRingBaselineInner(chart?.innerRadius);
+  let gapDeg =
+    typeof chart?.segmentAngularGapDeg === "number" &&
+    Number.isFinite(chart.segmentAngularGapDeg)
+      ? chart.segmentAngularGapDeg
+      : 0;
+  gapDeg = Math.max(0, Math.min(RING_MAX_ANGULAR_GAP_DEG, gapDeg));
+
+  const listRaw = Array.isArray(seriesInput) ? seriesInput : [];
+  const placeholderSlice = (): PieSliceRender => ({
+    d: fullAnnulusPath(cx, cy, 22, Math.max(RING_ABS_INNER_MIN + 8, baselineInner)),
+    midAngle: -Math.PI / 2,
+    name: "",
+    labelColor: DEFAULT_PIE_SLICE_LABEL_COLOR,
+    span: 2 * Math.PI,
+    explodeX: 0,
+    explodeY: 0,
+    fillMode: "solid",
+    solidFill: "#e5e7eb",
+    gradientColor1: "",
+    gradientColor2: "",
+    labelFontSize: DEFAULT_PIE_FULL_SLICE_LABEL_FONT,
+    sliceStrokeWidth: options.defaultOutlineWidthVb,
+  });
+
+  if (listRaw.length === 0) {
+    return {
+      slices: [placeholderSlice()],
+    };
+  }
+
+  const safe = listRaw.map((s, i) => ({
+    raw: s,
+    name: (s.name ?? "").trim() || `Series ${i + 1}`,
+    value: Math.max(0, Number.isFinite(s.value) ? s.value : 0),
+    labelColor: s.labelColor?.trim() || DEFAULT_PIE_SLICE_LABEL_COLOR,
+    ...resolveSliceFill(s as unknown as ChartSeriesItem, i),
+  }));
+
+  const sum = safe.reduce((a, b) => a + b.value, 0);
+  if (sum <= 0) {
+    return { slices: [placeholderSlice()] };
+  }
+
+  const contributorsAll = safe
+    .map((s, sourceIndex) => ({ s, sourceIndex, frac: s.value / sum }))
+    .filter((x) => x.frac > 1e-10);
+  const k = contributorsAll.length;
+
+  if (k === 0) {
+    return { slices: [placeholderSlice()] };
+  }
+
+  /** Layout radii — scale uniformly if segments exceed outer budget. */
+  const layoutBands = contributorsAll.map(({ s }) => {
+    const thickness = clampRingThickness(s.raw.ringThickness);
+    const offset = clampRingRadialOffset(s.raw.ringRadialOffset);
+    const ri = Math.max(RING_ABS_INNER_MIN, baselineInner + offset);
+    const ro = ri + thickness;
+    return { ri, ro };
+  });
+  let maxRo = layoutBands.reduce((m, x) => Math.max(m, x.ro), 0);
+  const scaleFit = maxRo > vbBudget + 1e-6 ? vbBudget / maxRo : 1;
+  layoutBands.forEach((b, i) => {
+    layoutBands[i] = {
+      ri: Math.max(RING_ABS_INNER_MIN + 0.35, b.ri * scaleFit),
+      ro: Math.min(vbBudget, b.ro * scaleFit),
+    };
+  });
+  /** Re-shrink if rounding pushed outer edges */
+  maxRo = layoutBands.reduce((m, x) => Math.max(m, x.ro), 0);
+  if (maxRo > vbBudget + 1e-6) {
+    const sfb = vbBudget / maxRo;
+    for (let i = 0; i < layoutBands.length; i++) {
+      layoutBands[i] = {
+        ri: Math.max(RING_ABS_INNER_MIN + 0.35, layoutBands[i]!.ri * sfb),
+        ro: Math.min(vbBudget, layoutBands[i]!.ro * sfb),
+      };
+    }
+  }
+
+  let gapRad = gapDeg * (Math.PI / 180);
+  const twoPi = 2 * Math.PI;
+  while (gapRad > 1e-6 && twoPi - k * gapRad < 1e-3) {
+    gapRad *= 0.92;
+  }
+  const availableSweep = Math.max(twoPi - k * gapRad, 1e-4);
+
+  const paths: PieSliceRender[] = [];
+  let cursor = -Math.PI / 2 + gapRad / 2;
+
+  for (let i = 0; i < k; i++) {
+    const { s, frac, sourceIndex } = contributorsAll[i]!;
+    const band = layoutBands[i]!;
+    const spanArc = frac * availableSweep;
+    const startAngle = cursor;
+    const endAngle = cursor + spanArc;
+    const midAngle = startAngle + spanArc / 2;
+    const { d, span } = donutWedgePath(
+      cx,
+      cy,
+      band.ri,
+      band.ro,
+      startAngle,
+      endAngle
+    );
+    const outlineW = resolveRingOutlineWidth(s.raw, options.defaultOutlineWidthVb);
+    const outlineC = s.raw.sliceOutlineColor?.trim() || "";
+
+    paths.push({
+      d,
+      midAngle,
+      name: s.name,
+      labelColor: s.labelColor,
+      span,
+      explodeX: 0,
+      explodeY: 0,
+      fillMode: s.fillMode,
+      solidFill: s.solidFill,
+      gradientColor1: s.gradientColor1,
+      gradientColor2: s.gradientColor2,
+      labelFontSize: resolvePieSliceLabelFontSize(
+        s.raw as unknown as ChartSeriesItem,
+        span
+      ),
+      tooltipValue: s.value,
+      seriesIndex: sourceIndex,
+      segmentMidRadius: (band.ri + band.ro) / 2,
+      sliceStrokeWidth: outlineW,
+      ...(outlineC ? { sliceStrokeColor: outlineC } : {}),
+    });
+    cursor = endAngle + gapRad;
+  }
+
+  if (paths.length === 0) {
+    return { slices: [placeholderSlice()] };
+  }
+  return { slices: paths };
 }
 
 /** Shorten label for small pie viewBox (SVG units). */

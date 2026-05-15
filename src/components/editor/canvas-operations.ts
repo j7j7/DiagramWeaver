@@ -205,7 +205,7 @@ export function useCanvasOperations({
              :
              itemType === 'generic.chart.line' ? 470 :
              itemType === 'generic.chart.bar' ? 380 :
-             itemType === 'generic.chart.pie' ? 410 :
+             itemType === 'generic.chart.ring' ? 410 :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(240, 40) : undefined, // Initial width - 100% wider than before (was 120)
            height: isShapeResource ? snapDimensionToGrid(
@@ -221,7 +221,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.line' || itemType === TIMELINE_NODE_TYPE ? 100 :
              itemType === 'generic.chart.line' ? 320 :
              itemType === 'generic.chart.bar' ? 280 :
-             itemType === 'generic.chart.pie' ? 320 :
+             itemType === 'generic.chart.ring' ? 320 :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(80, 40) : undefined, // Initial height - same as textbox for plain text
           // Apply default text color for text resources
@@ -312,6 +312,7 @@ export function useCanvasOperations({
           ...((itemType === 'generic.chart.pie' ||
             itemType === 'generic.chart.bar' ||
             itemType === 'generic.chart.line' ||
+            itemType === 'generic.chart.ring' ||
             itemType?.startsWith('generic.chart.')) &&
             !isFromScratchPad && {
             chart: defaultChartSpecForNodeType(itemType),
@@ -336,7 +337,9 @@ export function useCanvasOperations({
         };
         if (
           randomBuiltInTheme &&
-          (itemType === "generic.chart.pie" || itemType === "generic.chart.bar")
+          (itemType === "generic.chart.pie" ||
+            itemType === "generic.chart.bar" ||
+            itemType === "generic.chart.ring")
         ) {
           newNode = themeManager.applyThemeToItem(newNode, randomBuiltInTheme) as DiagramNodeData;
         }

@@ -17,7 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { DiagramNodeData, TimelineBarAxisLabelData, TimelineBarSectionData } from "@/lib/types";
+import {
+  TIMELINE_BAR_LABEL_FIRST_SECTION,
+  type DiagramNodeData,
+  type TimelineBarAxisLabelData,
+  type TimelineBarSectionData,
+} from "@/lib/types";
 import {
   clampTimelineBarT,
   defaultTimelineBarSections,
@@ -67,10 +72,115 @@ function equalSegmentSpans(n: number): { spanStart: number; spanEnd: number }[] 
 type AxisRow = TimelineBarAxisLabelData;
 type Row = TimelineBarSectionData;
 
+/** Radix Select sentinel: cleared patch → inherit node text styling */
+const TB_LABEL_SHAPE_DEFAULT = "__inherit";
+/** Modal sentinel: font family from custom string input */
+const TB_LABEL_FONT_CUSTOM = "__custom_font__";
+/** Modal sentinel: font size from number input */
+const TB_LABEL_SIZE_CUSTOM = "__custom_size__";
+
+function timelineBarModalFontFamilySelectValue(row: Row, index: number): string {
+  if (index > 0 && row.labelFontFamily === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    return TIMELINE_BAR_LABEL_FIRST_SECTION;
+  }
+  if (row.labelFontFamily && row.labelFontFamily !== TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    return TB_LABEL_FONT_CUSTOM;
+  }
+  return TB_LABEL_SHAPE_DEFAULT;
+}
+
+function timelineBarModalFontSizeSelectValue(row: Row, index: number): string {
+  if (index > 0 && row.labelFontSize === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    return TIMELINE_BAR_LABEL_FIRST_SECTION;
+  }
+  if (typeof row.labelFontSize === "number") {
+    return TB_LABEL_SIZE_CUSTOM;
+  }
+  return TB_LABEL_SHAPE_DEFAULT;
+}
+
+function patchTimelineBarSectionLabelFields(
+  r: TimelineBarSectionData,
+  rowIndex: number,
+): Partial<
+  Pick<
+    TimelineBarSectionData,
+    | "labelTextJustify"
+    | "labelVerticalAlign"
+    | "labelFontFamily"
+    | "labelFontSize"
+    | "labelFontWeight"
+    | "labelFontStyle"
+    | "labelTextDecoration"
+  >
+> {
+  const extra: Partial<
+    Pick<
+      TimelineBarSectionData,
+      | "labelTextJustify"
+      | "labelVerticalAlign"
+      | "labelFontFamily"
+      | "labelFontSize"
+      | "labelFontWeight"
+      | "labelFontStyle"
+      | "labelTextDecoration"
+    >
+  > = {};
+  const allowFirstRef = rowIndex > 0;
+  const j = r.labelTextJustify;
+  if (allowFirstRef && j === TIMELINE_BAR_LABEL_FIRST_SECTION) extra.labelTextJustify = j;
+  else if (j === "left" || j === "center" || j === "right" || j === "full") extra.labelTextJustify = j;
+
+  const va = r.labelVerticalAlign;
+  if (allowFirstRef && va === TIMELINE_BAR_LABEL_FIRST_SECTION) extra.labelVerticalAlign = va;
+  else if (va === "top" || va === "middle" || va === "bottom") extra.labelVerticalAlign = va;
+
+  const fam = typeof r.labelFontFamily === "string" ? r.labelFontFamily.trim() : "";
+  if (allowFirstRef && fam === TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    extra.labelFontFamily = TIMELINE_BAR_LABEL_FIRST_SECTION;
+  } else if (fam && fam !== TIMELINE_BAR_LABEL_FIRST_SECTION) {
+    extra.labelFontFamily = fam;
+  }
+
+  const fs = r.labelFontSize;
+  if (allowFirstRef && fs === TIMELINE_BAR_LABEL_FIRST_SECTION) extra.labelFontSize = fs;
+  else if (typeof fs === "number" && Number.isFinite(fs) && fs > 0) extra.labelFontSize = fs;
+
+  const fw = r.labelFontWeight;
+  if (allowFirstRef && fw === TIMELINE_BAR_LABEL_FIRST_SECTION) extra.labelFontWeight = fw;
+  else if (
+    fw === "normal" ||
+    fw === "bold" ||
+    fw === "100" ||
+    fw === "200" ||
+    fw === "300" ||
+    fw === "400" ||
+    fw === "500" ||
+    fw === "600" ||
+    fw === "700" ||
+    fw === "800" ||
+    fw === "900"
+  )
+    extra.labelFontWeight = fw;
+
+  const fst = r.labelFontStyle;
+  if (allowFirstRef && fst === TIMELINE_BAR_LABEL_FIRST_SECTION) extra.labelFontStyle = fst;
+  else if (fst === "normal" || fst === "italic" || fst === "oblique") extra.labelFontStyle = fst;
+
+  const td = r.labelTextDecoration;
+  if (allowFirstRef && td === TIMELINE_BAR_LABEL_FIRST_SECTION) extra.labelTextDecoration = td;
+  else if (td === "none" || td === "underline" || td === "overline" || td === "line-through")
+    extra.labelTextDecoration = td;
+
+  return extra;
+}
+
 export interface TimelineBarEditorSavePayload {
   sections: TimelineBarSectionData[];
   sizing: "equal" | "weighted";
   axisLabels: TimelineBarAxisLabelData[];
+  /** When true, segments after the first mirror the first segment’s bar-label alignment and typography on the canvas. */
+  labelsFollowFirstSection: boolean;
 }
 
 interface TimelineBarEditorModalProps {
@@ -101,6 +211,7 @@ export function TimelineBarEditorModal({
   const [spanLayoutEnabled, setSpanLayoutEnabled] = useState(false);
   const [axisSectionOpen, setAxisSectionOpen] = useState(true);
   const [collapsedSegIds, setCollapsedSegIds] = useState<Set<string>>(() => new Set());
+  const [labelsFollowFirstSection, setLabelsFollowFirstSection] = useState(false);
 
   useEffect(() => {
     if (visible && node && isTimelineBarNodeType(node.type)) {
@@ -114,6 +225,10 @@ export function TimelineBarEditorModal({
       setCollapsedSegIds(
         sec.length > 2 ? new Set(sec.map((r, j) => timelineBarSectionRowId(r, j))) : new Set(),
       );
+      setLabelsFollowFirstSection(
+        (node as DiagramNodeData & { timelineBarLabelsFollowFirstSection?: boolean }).timelineBarLabelsFollowFirstSection ===
+          true,
+      );
     } else if (visible && node) {
       const def = defaultTimelineBarSections();
       setRows(def);
@@ -124,6 +239,7 @@ export function TimelineBarEditorModal({
       setCollapsedSegIds(
         def.length > 2 ? new Set(def.map((r, j) => timelineBarSectionRowId(r, j))) : new Set(),
       );
+      setLabelsFollowFirstSection(false);
     }
   }, [visible, node]);
 
@@ -214,6 +330,7 @@ export function TimelineBarEditorModal({
         tickLabel: r.tickLabel?.trim() || undefined,
         labelColor: r.labelColor?.trim() || undefined,
         fillStyle: fs,
+        ...patchTimelineBarSectionLabelFields(r, i),
       };
       if (fs === "gradient") {
         const g0 = r.fillGradientColors?.[0] ?? r.fill ?? "#6b7280";
@@ -241,9 +358,14 @@ export function TimelineBarEditorModal({
       .filter((a) => a.label.length > 0);
 
     if (cleaned.length === 0) {
-      onSave(node.id, { sections: defaultTimelineBarSections(), sizing, axisLabels: [] });
+      onSave(node.id, {
+        sections: defaultTimelineBarSections(),
+        sizing,
+        axisLabels: [],
+        labelsFollowFirstSection,
+      });
     } else {
-      onSave(node.id, { sections: cleaned, sizing, axisLabels });
+      onSave(node.id, { sections: cleaned, sizing, axisLabels, labelsFollowFirstSection });
     }
     onClose();
   };
@@ -333,7 +455,6 @@ export function TimelineBarEditorModal({
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   };
 
-  if (!visible) return null;
 
   return (
     <div className="fixed left-0 top-0 z-[60] h-screen w-screen" style={{ pointerEvents: "auto" }}>
@@ -528,6 +649,22 @@ export function TimelineBarEditorModal({
             ) : (
               <p className="text-xs text-muted-foreground">Every section gets the same width.</p>
             )}
+            <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2.5 dark:border-border dark:bg-background">
+              <div className="min-w-0 flex-1 space-y-1 pr-2">
+                <Label htmlFor="tb-labels-follow-first" className="text-xs font-medium text-foreground">
+                  Section default (bar label)
+                </Label>
+                <p className="text-[10px] leading-snug text-muted-foreground">
+                  On: every section matches the first section&apos;s in-bar label alignment and typography. Off: set each row below.
+                </p>
+              </div>
+              <Switch
+                id="tb-labels-follow-first"
+                checked={labelsFollowFirstSection}
+                disabled={isReadOnly || rows.length <= 1}
+                onCheckedChange={setLabelsFollowFirstSection}
+              />
+            </div>
             <div className="space-y-2">
               {rows.map((row, i) => {
                 const rowId = timelineBarSectionRowId(row, i);
@@ -597,6 +734,353 @@ export function TimelineBarEditorModal({
                               <div className="flex flex-1 items-center rounded border border-dashed border-border/60 bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground dark:bg-background">
                                 Timeline axis row active
                               </div>
+                            )}
+                          </div>
+                          <div className="rounded-md border border-border/40 bg-background/60 p-2 dark:bg-background">
+                            <Label className="text-[11px] font-semibold text-foreground">Bar label text</Label>
+                            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+                              <span className="font-medium text-foreground">Shape default</span>: node Text styling.{" "}
+                              <span className="font-medium text-foreground">Section default</span> (rows 2+): first section for that
+                              field. Rows after the first hide these when the toggle above is on.
+                            </p>
+                            {labelsFollowFirstSection && i > 0 ? (
+                              <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                                Matches first section — toggle above.
+                              </p>
+                            ) : (
+                            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                              <div className="flex min-w-0 flex-col gap-1">
+                                <Label className="text-[10px] text-muted-foreground">Horizontal</Label>
+                                <Select
+                                  value={row.labelTextJustify ?? TB_LABEL_SHAPE_DEFAULT}
+                                  onValueChange={(v) =>
+                                    patchRow(i, {
+                                      labelTextJustify:
+                                        v === TB_LABEL_SHAPE_DEFAULT
+                                          ? undefined
+                                          : (v as NonNullable<Row["labelTextJustify"]>),
+                                    })
+                                  }
+                                  disabled={isReadOnly}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-[80]">
+                                    <SelectItem value={TB_LABEL_SHAPE_DEFAULT} className="text-sm">
+                                      Shape default
+                                    </SelectItem>
+                                    {i > 0 ? (
+                                      <SelectItem value={TIMELINE_BAR_LABEL_FIRST_SECTION} className="text-sm">
+                                        Section default
+                                      </SelectItem>
+                                    ) : null}
+                                    <SelectItem value="left" className="text-sm">
+                                      Left
+                                    </SelectItem>
+                                    <SelectItem value="center" className="text-sm">
+                                      Center
+                                    </SelectItem>
+                                    <SelectItem value="right" className="text-sm">
+                                      Right
+                                    </SelectItem>
+                                    <SelectItem value="full" className="text-sm">
+                                      Full (justify)
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex min-w-0 flex-col gap-1">
+                                <Label className="text-[10px] text-muted-foreground">Vertical</Label>
+                                <Select
+                                  value={row.labelVerticalAlign ?? TB_LABEL_SHAPE_DEFAULT}
+                                  onValueChange={(v) =>
+                                    patchRow(i, {
+                                      labelVerticalAlign:
+                                        v === TB_LABEL_SHAPE_DEFAULT
+                                          ? undefined
+                                          : (v as NonNullable<Row["labelVerticalAlign"]>),
+                                    })
+                                  }
+                                  disabled={isReadOnly}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-[80]">
+                                    <SelectItem value={TB_LABEL_SHAPE_DEFAULT} className="text-sm">
+                                      Shape default
+                                    </SelectItem>
+                                    {i > 0 ? (
+                                      <SelectItem value={TIMELINE_BAR_LABEL_FIRST_SECTION} className="text-sm">
+                                        Section default
+                                      </SelectItem>
+                                    ) : null}
+                                    <SelectItem value="top" className="text-sm">
+                                      Top
+                                    </SelectItem>
+                                    <SelectItem value="middle" className="text-sm">
+                                      Middle
+                                    </SelectItem>
+                                    <SelectItem value="bottom" className="text-sm">
+                                      Bottom
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex min-w-0 flex-col gap-1 sm:col-span-2">
+                                <Label className="text-[10px] text-muted-foreground">Font family</Label>
+                                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+                                  <Select
+                                    value={timelineBarModalFontFamilySelectValue(row, i)}
+                                    onValueChange={(v) => {
+                                      if (v === TB_LABEL_SHAPE_DEFAULT) patchRow(i, { labelFontFamily: undefined });
+                                      else if (v === TIMELINE_BAR_LABEL_FIRST_SECTION && i > 0) {
+                                        patchRow(i, { labelFontFamily: TIMELINE_BAR_LABEL_FIRST_SECTION });
+                                      } else if (v === TB_LABEL_FONT_CUSTOM) {
+                                        const fallback =
+                                          row.labelFontFamily &&
+                                          row.labelFontFamily !== TIMELINE_BAR_LABEL_FIRST_SECTION &&
+                                          row.labelFontFamily.trim()
+                                            ? row.labelFontFamily
+                                            : (node?.fontFamily?.trim() ?? "");
+                                        patchRow(i, {
+                                          labelFontFamily: fallback || "sans-serif",
+                                        });
+                                      }
+                                    }}
+                                    disabled={isReadOnly}
+                                  >
+                                    <SelectTrigger className="h-8 min-w-[9rem] flex-1 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="z-[80]">
+                                      <SelectItem value={TB_LABEL_SHAPE_DEFAULT} className="text-sm">
+                                        Shape default
+                                      </SelectItem>
+                                      {i > 0 ? (
+                                        <SelectItem value={TIMELINE_BAR_LABEL_FIRST_SECTION} className="text-sm">
+                                          Section default
+                                        </SelectItem>
+                                      ) : null}
+                                      <SelectItem value={TB_LABEL_FONT_CUSTOM} className="text-sm">
+                                        Custom
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  {timelineBarModalFontFamilySelectValue(row, i) === TB_LABEL_FONT_CUSTOM ? (
+                                    <Input
+                                      value={
+                                        row.labelFontFamily &&
+                                        row.labelFontFamily !== TIMELINE_BAR_LABEL_FIRST_SECTION
+                                          ? row.labelFontFamily
+                                          : ""
+                                      }
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        patchRow(i, { labelFontFamily: v.trim() ? v : undefined });
+                                      }}
+                                      placeholder="e.g. Inter, system-ui"
+                                      className="h-8 min-w-0 flex-1 text-xs"
+                                      disabled={isReadOnly}
+                                    />
+                                  ) : null}
+                                </div>
+                              </div>
+                              <div className="flex min-w-0 flex-col gap-1 sm:col-span-2">
+                                <Label className="text-[10px] text-muted-foreground">Font size</Label>
+                                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+                                  <Select
+                                    value={timelineBarModalFontSizeSelectValue(row, i)}
+                                    onValueChange={(v) => {
+                                      if (v === TB_LABEL_SHAPE_DEFAULT) patchRow(i, { labelFontSize: undefined });
+                                      else if (v === TIMELINE_BAR_LABEL_FIRST_SECTION && i > 0) {
+                                        patchRow(i, { labelFontSize: TIMELINE_BAR_LABEL_FIRST_SECTION });
+                                      } else if (v === TB_LABEL_SIZE_CUSTOM) {
+                                        const fallback =
+                                          typeof row.labelFontSize === "number" && Number.isFinite(row.labelFontSize)
+                                            ? row.labelFontSize
+                                            : typeof node?.fontSize === "number" && node.fontSize > 0
+                                              ? node.fontSize
+                                              : 12;
+                                        patchRow(i, { labelFontSize: Math.min(96, Math.max(4, Math.round(fallback))) });
+                                      }
+                                    }}
+                                    disabled={isReadOnly}
+                                  >
+                                    <SelectTrigger className="h-8 min-w-[9rem] flex-1 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="z-[80]">
+                                      <SelectItem value={TB_LABEL_SHAPE_DEFAULT} className="text-sm">
+                                        Shape default
+                                      </SelectItem>
+                                      {i > 0 ? (
+                                        <SelectItem value={TIMELINE_BAR_LABEL_FIRST_SECTION} className="text-sm">
+                                          Section default
+                                        </SelectItem>
+                                      ) : null}
+                                      <SelectItem value={TB_LABEL_SIZE_CUSTOM} className="text-sm">
+                                        Custom (px)
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  {timelineBarModalFontSizeSelectValue(row, i) === TB_LABEL_SIZE_CUSTOM ? (
+                                    <Input
+                                      type="number"
+                                      min={4}
+                                      max={96}
+                                      step={1}
+                                      value={
+                                        typeof row.labelFontSize === "number" ? String(row.labelFontSize) : ""
+                                      }
+                                      onChange={(e) => {
+                                        const t = e.target.value.trim();
+                                        if (!t) {
+                                          patchRow(i, { labelFontSize: undefined });
+                                          return;
+                                        }
+                                        const n = parseFloat(t);
+                                        patchRow(i, {
+                                          labelFontSize:
+                                            Number.isFinite(n) && n > 0
+                                              ? Math.min(96, Math.max(4, n))
+                                              : undefined,
+                                        });
+                                      }}
+                                      className="h-8 w-full min-w-[5rem] flex-1 text-xs tabular-nums sm:max-w-[7rem]"
+                                      disabled={isReadOnly}
+                                    />
+                                  ) : null}
+                                </div>
+                              </div>
+                              <div className="flex min-w-0 flex-col gap-1">
+                                <Label className="text-[10px] text-muted-foreground">Weight</Label>
+                                <Select
+                                  value={row.labelFontWeight ?? TB_LABEL_SHAPE_DEFAULT}
+                                  onValueChange={(v) =>
+                                    patchRow(i, {
+                                      labelFontWeight:
+                                        v === TB_LABEL_SHAPE_DEFAULT
+                                          ? undefined
+                                          : (v as NonNullable<Row["labelFontWeight"]>),
+                                    })
+                                  }
+                                  disabled={isReadOnly}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-[80]">
+                                    <SelectItem value={TB_LABEL_SHAPE_DEFAULT} className="text-sm">
+                                      Shape default
+                                    </SelectItem>
+                                    {i > 0 ? (
+                                      <SelectItem value={TIMELINE_BAR_LABEL_FIRST_SECTION} className="text-sm">
+                                        Section default
+                                      </SelectItem>
+                                    ) : null}
+                                    <SelectItem value="normal" className="text-sm">
+                                      Normal
+                                    </SelectItem>
+                                    <SelectItem value="bold" className="text-sm">
+                                      Bold
+                                    </SelectItem>
+                                    <SelectItem value="400" className="text-sm">
+                                      400
+                                    </SelectItem>
+                                    <SelectItem value="500" className="text-sm">
+                                      500
+                                    </SelectItem>
+                                    <SelectItem value="600" className="text-sm">
+                                      600
+                                    </SelectItem>
+                                    <SelectItem value="700" className="text-sm">
+                                      700
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex min-w-0 flex-col gap-1">
+                                <Label className="text-[10px] text-muted-foreground">Style</Label>
+                                <Select
+                                  value={row.labelFontStyle ?? TB_LABEL_SHAPE_DEFAULT}
+                                  onValueChange={(v) =>
+                                    patchRow(i, {
+                                      labelFontStyle:
+                                        v === TB_LABEL_SHAPE_DEFAULT
+                                          ? undefined
+                                          : (v as NonNullable<Row["labelFontStyle"]>),
+                                    })
+                                  }
+                                  disabled={isReadOnly}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-[80]">
+                                    <SelectItem value={TB_LABEL_SHAPE_DEFAULT} className="text-sm">
+                                      Shape default
+                                    </SelectItem>
+                                    {i > 0 ? (
+                                      <SelectItem value={TIMELINE_BAR_LABEL_FIRST_SECTION} className="text-sm">
+                                        Section default
+                                      </SelectItem>
+                                    ) : null}
+                                    <SelectItem value="normal" className="text-sm">
+                                      Normal
+                                    </SelectItem>
+                                    <SelectItem value="italic" className="text-sm">
+                                      Italic
+                                    </SelectItem>
+                                    <SelectItem value="oblique" className="text-sm">
+                                      Oblique
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex min-w-0 flex-col gap-1">
+                                <Label className="text-[10px] text-muted-foreground">Decoration</Label>
+                                <Select
+                                  value={row.labelTextDecoration ?? TB_LABEL_SHAPE_DEFAULT}
+                                  onValueChange={(v) =>
+                                    patchRow(i, {
+                                      labelTextDecoration:
+                                        v === TB_LABEL_SHAPE_DEFAULT
+                                          ? undefined
+                                          : (v as NonNullable<Row["labelTextDecoration"]>),
+                                    })
+                                  }
+                                  disabled={isReadOnly}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-[80]">
+                                    <SelectItem value={TB_LABEL_SHAPE_DEFAULT} className="text-sm">
+                                      Shape default
+                                    </SelectItem>
+                                    {i > 0 ? (
+                                      <SelectItem value={TIMELINE_BAR_LABEL_FIRST_SECTION} className="text-sm">
+                                        Section default
+                                      </SelectItem>
+                                    ) : null}
+                                    <SelectItem value="none" className="text-sm">
+                                      None
+                                    </SelectItem>
+                                    <SelectItem value="underline" className="text-sm">
+                                      Underline
+                                    </SelectItem>
+                                    <SelectItem value="overline" className="text-sm">
+                                      Overline
+                                    </SelectItem>
+                                    <SelectItem value="line-through" className="text-sm">
+                                      Line-through
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
                             )}
                           </div>
                           {spanLayoutEnabled ? (
