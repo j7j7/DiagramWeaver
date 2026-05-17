@@ -5,7 +5,7 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 ### 2026-05-17 – **README** marketing screenshots (`public/marketing`)
 
-**`README.md`** includes a **Screenshots** section with repo-relative image paths (`public/marketing/*.png`) so GitHub renders **`marketing-editor-canvas`**, **`marketing-connections`**, **`marketing-presentations`**, **`marketing-share-viewer`**, **`marketing-teams-access`**.
+**`README.md`** includes a **Screenshots** section with repo-relative image paths (`public/marketing/*.png`) so GitHub renders **`marketing-editor-canvas`**, **`marketing-connections`**, **`marketing-presentations`**, **`marketing-share-viewer`**.
 
 
 ### 2026-05-15 – **Mesh gradient** on **simple closed shapes** (not charts / timeline / segmented / pyramid)

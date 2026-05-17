@@ -26,10 +26,6 @@ Assets live under [`public/marketing/`](public/marketing/) and render below on G
 
 ![Diagram Weaver share viewer](public/marketing/marketing-share-viewer.png)
 
-**Teams & access** — collaboration and access controls in the hosted product.
-
-![Diagram Weaver teams access](public/marketing/marketing-teams-access.png)
-
 ## Tech Stack
 
 - **Language**: TypeScript 5
