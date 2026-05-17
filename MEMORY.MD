@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-17 – **README** marketing screenshots (`public/marketing`)
+
+**`README.md`** includes a **Screenshots** section with repo-relative image paths (`public/marketing/*.png`) so GitHub renders **`marketing-editor-canvas`**, **`marketing-connections`**, **`marketing-presentations`**, **`marketing-share-viewer`**, **`marketing-teams-access`**.
+
+
 ### 2026-05-15 – **Mesh gradient** on **simple closed shapes** (not charts / timeline / segmented / pyramid)
 
 **`supportsDiagramMeshGradient`** (`diagram-mesh-gradient-support.ts`) allowlists suffixes like **square, rectangle, circle, triangle, star, hexagon/pentagon/octagon, cloud, parallelogram, trapezoid, kite, rounded-rectangle, mind-map-node**; excludes **`generic.chart.*`**, **pyramid**, **timeline**, **timeline-bar**, **segmented-rectangle**, **progress-bar**, **UML/point/line/jigsaw** affordances, etc. Shapes render mesh via **`clippedMeshGradientSvg`** or **`usePolygonMeshGradientLayers`**; **Visual styling** / **scratch pad** use the helper for **Mesh gradient** + hub controls. Patch bumped.

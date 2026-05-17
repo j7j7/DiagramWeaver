@@ -6,6 +6,29 @@
 
 Diagram Weaver: An easy-to-use studio for diagrams and presentations. Pull from a broad library of ready-made icons and shapes—including cloud and tech symbols—to sketch flows and architectures quickly, then step into slides with transitions and animations so decks stay lively without extra tooling. Diagrams stay **interactive**: zoom and pan to explore the canvas; add optional **metadata (“properties”) popups** to show **attributes** and information for whatever you select. When you **present**, combine **Effects** glow highlights with **slide transitions** and **connection animations** so playback can emphasize structure and flows step by step. Whether you’re mapping systems or presenting to an audience, you get polished visuals fast instead of rebuilding layouts by hand.
 
+## Screenshots
+
+Assets live under [`public/marketing/`](public/marketing/) and render below on GitHub.
+
+**Editor canvas** — shapes, resources, and layout on the interactive diagram surface.
+
+![Diagram Weaver editor canvas](public/marketing/marketing-editor-canvas.png)
+
+**Connections** — curved and orthogonal links with styling and routing.
+
+![Diagram Weaver connections](public/marketing/marketing-connections.png)
+
+**Presentations** — decks and slides built from diagram deltas.
+
+![Diagram Weaver presentations](public/marketing/marketing-presentations.png)
+
+**Viewer** — read-only shared view for audiences.
+
+![Diagram Weaver share viewer](public/marketing/marketing-share-viewer.png)
+
+**Teams & access** — collaboration and access controls in the hosted product.
+
+![Diagram Weaver teams access](public/marketing/marketing-teams-access.png)
 
 ## Tech Stack
 
