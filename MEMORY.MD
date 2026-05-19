@@ -3,6 +3,21 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-19 – Default: order-aware connection lines (stacking order)
+
+**Order-aware** connection layering is now the default (**`connectionsBehindNodesEnabled`** initial **`false`** in editor, viewer, **`EditorCanvas`** prop). New sessions without **`dw:connectionsBehindNodes:enabled`** in localStorage use stacking-order interleaving; **Lines Behind Nodes** remains in Options. Patch bumped.
+
+
+### 2026-05-19 – Connection labels follow stacking order
+
+**`CanvasConnectionText`** no longer uses a single **`z-index: 9999`** layer above the whole canvas. Labels interleave per **`computeConnectionSlots`** like **`CanvasConnections`**: **`getInterleavedStackZIndices`** uses **`3*i`** (line), **`3*i+1`** (text), **`3*i+2`** (node). **`connectionIndices`** + **`stackZIndex`** on **`CanvasConnectionText`**; editor/viewer render text in each slot (and last slot) beside lines. **Lines behind nodes** mode: all lines **`0`**, all labels **`1`**, nodes **`10+i`**. Patch bumped.
+
+
+### 2026-05-19 – Stacking order: icons + connections share one z ladder
+
+**Order-aware** mode no longer elevates icon/text nodes to **`NODE_LAYER_BASE`** (they always drew above shapes regardless of stacking list). **`getInterleavedStackZIndices`**: connections / labels / nodes at **`3*i`**, **`3*i+1`**, **`3*i+2`**. **`computeConnectionSlots`** sorts same-layer items by **`diagramData.nodes`** array index (Send to Back/Front / stacking list). Editor + viewer canvases use the helper; **`stackWithShapes`** is no longer required for icon overlap. Use **Options → Order-Aware Connection Lines** (Lines Behind Nodes off) so connectors interleave with nodes per stacking order. Patch bumped.
+
+
 ### 2026-05-19 – Resource icon metadata backfill on diagram load
 
 **`resource-catalog.ts`**: cached provider catalog fetch + type → `{ provider, category, file }` lookup (same rules as **`ResourceIcon`**). **`enrichDiagramResourceMetadata`** walks nodes + **`subDiagrams`** and fills missing fields on catalog-backed types (skips Lucide, emoji, shapes, charts, text). Wired through **`parseDiagramJson`** (**`diagram-json-import.ts`**) on file open, examples, tutorial, JSON panel apply, sub-diagram import; **`validateAndConvertJsonAsync`** / viewer file pick; **`use-diagram-tabs`** IndexedDB/localStorage hydrate. **`ResourceIcon`** uses shared catalog cache. Legacy diagrams (e.g. **`example2.json`**) get metadata on load so tab switches skip catalog JSON fetches. Patch bumped.

@@ -4,13 +4,17 @@ import { determineConnectionEdges } from "../diagram/bezier-connection";
 import type { DiagramConnectionData, DiagramData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup } from "./canvas-constants";
 
-interface CanvasConnectionTextProps {
+export interface CanvasConnectionTextProps {
   width: number;
   height: number;
   diagramData: DiagramData;
   nodesById: Record<string, PositionedNode>;
   zonesById: Record<string, PositionedGroup>;
   processedZones: PositionedGroup[];
+  /** When set, only render text for connections whose index is in this set (order-aware layering). */
+  connectionIndices?: Set<number>;
+  /** Z-index for this label layer (above its connection lines, per stacking slot). */
+  stackZIndex?: number;
   /** Slide / layer transition styles (same keys as CanvasConnections) */
   connectionAnimationStyles?: Map<string, {
     opacity: number;
@@ -28,47 +32,71 @@ function areCanvasConnectionTextPropsEqual(prev: CanvasConnectionTextProps, next
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
     prev.processedZones === next.processedZones &&
+    prev.connectionIndices === next.connectionIndices &&
+    prev.stackZIndex === next.stackZIndex &&
     prev.connectionAnimationStyles === next.connectionAnimationStyles &&
     prev.connectionKey === next.connectionKey;
 }
 
 function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
-  const { width, height, diagramData, nodesById, zonesById, processedZones, connectionAnimationStyles, connectionKey } = props;
+  const {
+    width,
+    height,
+    diagramData,
+    nodesById,
+    zonesById,
+    connectionIndices,
+    stackZIndex,
+    connectionAnimationStyles,
+    connectionKey,
+  } = props;
+
+  const connections = diagramData.connections || [];
+  const entries = connections
+    .map((edge, index) => ({ edge, index }))
+    .filter(({ index }) => !connectionIndices || connectionIndices.has(index));
+
+  if (entries.length === 0) return null;
+
   return (
     <svg
       width={width}
       height={height}
       className="absolute top-0 left-0 overflow-visible pointer-events-none"
-      style={{ zIndex: 9999 }}
+      style={{ zIndex: stackZIndex ?? 1 }}
     >
-      {(diagramData.connections || []).map((edge: any, index: any) => {
+      {entries.map(({ edge, index }) => {
         const fromItem = nodesById[edge.from] || zonesById[edge.from];
         const toItem = nodesById[edge.to] || zonesById[edge.to];
         if (!fromItem || !toItem || !edge.text) return null;
         // Orthogonal connections render text inline; skip here
-        if (edge.style === 'orthogonal') return null;
+        if (edge.style === "orthogonal") return null;
 
-        // Use measured dimensions for nodes to ensure proper connection alignment
-        const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
-        const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
-        
+        const fromItemDims = "type" in fromItem
+          ? measureNodeDims(fromItem as PositionedNode)
+          : { width: (fromItem as PositionedGroup).width, height: (fromItem as PositionedGroup).height };
+        const toItemDims = "type" in toItem
+          ? measureNodeDims(toItem as PositionedNode)
+          : { width: (toItem as PositionedGroup).width, height: (toItem as PositionedGroup).height };
+
         const fromPos: any = {
           ...fromItem,
-          width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
-          height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
+          width: "width" in fromItem ? (fromItem as PositionedNode).width : fromItemDims.width,
+          height: "height" in fromItem ? (fromItem as PositionedNode).height : fromItemDims.height,
         };
         const toPos: any = {
           ...toItem,
-          width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
-          height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
+          width: "width" in toItem ? (toItem as PositionedNode).width : toItemDims.width,
+          height: "height" in toItem ? (toItem as PositionedNode).height : toItemDims.height,
         };
 
-        // Explicitly set lineColor after spreading to ensure it's not overwritten
-        fromPos.lineColor = (fromItem as any).lineColor;
-        toPos.lineColor = (toItem as any).lineColor;
+        fromPos.lineColor = (fromItem as PositionedNode).lineColor;
+        toPos.lineColor = (toItem as PositionedNode).lineColor;
 
         const stableConnKey = connectionKey ? connectionKey(edge) : null;
-        const slideConnStyle = stableConnKey && connectionAnimationStyles ? connectionAnimationStyles.get(stableConnKey) : undefined;
+        const slideConnStyle = stableConnKey && connectionAnimationStyles
+          ? connectionAnimationStyles.get(stableConnKey)
+          : undefined;
         const slideOff = slideConnStyle?.slideEndpointOffset;
         const slideWpOff = slideConnStyle?.slideWaypointOffsets;
 
@@ -78,9 +106,16 @@ function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
         const geomTo = slideOff
           ? { ...toPos, x: (toPos.x ?? 0) + slideOff.toDx, y: (toPos.y ?? 0) + slideOff.toDy }
           : toPos;
-        
-        // Get edge information for this connection
-        const edges = determineConnectionEdges(geomFrom, geomTo, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+
+        const edges = determineConnectionEdges(
+          geomFrom,
+          geomTo,
+          edge,
+          fromItemDims.width,
+          fromItemDims.height,
+          toItemDims.width,
+          toItemDims.height,
+        );
 
         let edgeConnData: any = {
           ...edge,
@@ -113,4 +148,3 @@ function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
 }
 
 export const CanvasConnectionText = React.memo(CanvasConnectionTextInner, areCanvasConnectionTextPropsEqual);
-

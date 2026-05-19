@@ -10,9 +10,12 @@ import { CanvasConnections } from "../editor/canvas-connections";
 import { CanvasConnectionText } from "../editor/canvas-connection-text";
 import { type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
 import { CanvasRulers } from "../editor/canvas-rulers";
-import { computeConnectionSlots } from "@/lib/connection-order-utils";
-import { cn, isConnectorLineNodeType, isShapeNodeType } from "@/lib/utils";
-import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
+import {
+  computeConnectionSlots,
+  getInterleavedStackZIndices,
+  getLinesBehindNodesStackZIndices,
+} from "@/lib/connection-order-utils";
+import { cn } from "@/lib/utils";
 import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { MetadataPopup } from "../editor/metadata-popup";
@@ -96,7 +99,7 @@ interface ViewerCanvasProps {
 }
 
 export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision, showDotGrid = true }: ViewerCanvasProps) {
-  const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
+  const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(false);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
       setConnectionsBehindNodesEnabled(connectionsBehindNodesProp);
@@ -456,10 +459,22 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               viewportWidthPx={canvasDimensions.width}
               viewportHeightPx={canvasDimensions.height}
             />
+            <CanvasConnectionText
+              key="conn-text-all"
+              width={width}
+              height={height}
+              diagramData={diagramData}
+              nodesById={nodesById}
+              zonesById={zonesById}
+              processedZones={processedZones}
+              stackZIndex={getLinesBehindNodesStackZIndices(0).connectionTextZIndex}
+              connectionAnimationStyles={connectionTransitionStyles}
+              connectionKey={connKey}
+            />
             {connectionSlots.sortedItemIds.map((itemId, i) => {
               const node = nodesById[itemId];
               const zone = zonesById[itemId];
-              const nodeZIndex = 10 + i;
+              const nodeZIndex = getLinesBehindNodesStackZIndices(i).nodeZIndex;
               const nodeEl = node ? (
                 <DiagramNode
                   key={node.id}
@@ -491,17 +506,11 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               const connIndices = slotConnections?.length ? new Set(slotConnections) : undefined;
               const node = nodesById[itemId];
               const zone = zonesById[itemId];
-              const NODE_LAYER_BASE = 100;
-              const isShape = node && isShapeNodeType(node.type);
-              const isTextboxNode = node && node.type === 'generic.text.textbox';
-              const closedConnectorLoop =
-                node &&
-                isConnectorLineNodeType(node.type) &&
-                isConnectorLineGeometryClosed(node);
-              const useShapeStackTier =
-                isShape || isTextboxNode || closedConnectorLoop || Boolean(node?.stackWithShapes);
-              const connZIndex = 2 * i;
-              const nodeZIndex = useShapeStackTier ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
+              const {
+                connectionZIndex: connZIndex,
+                connectionTextZIndex: connTextZIndex,
+                nodeZIndex,
+              } = getInterleavedStackZIndices(i);
               const nodeEl = node ? (
                 <DiagramNode
                   key={node.id}
@@ -550,6 +559,21 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                     viewportHeightPx={canvasDimensions.height}
                   />
                 ) : null,
+                connIndices ? (
+                  <CanvasConnectionText
+                    key={`conn-text-slot-${i}`}
+                    width={width}
+                    height={height}
+                    diagramData={diagramData}
+                    nodesById={nodesById}
+                    zonesById={zonesById}
+                    processedZones={processedZones}
+                    connectionIndices={connIndices}
+                    stackZIndex={connTextZIndex}
+                    connectionAnimationStyles={connectionTransitionStyles}
+                    connectionKey={connKey}
+                  />
+                ) : null,
                 nodeEl,
               ].filter(Boolean);
             })}
@@ -557,47 +581,51 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               const n = connectionSlots.sortedItemIds.length;
               const lastSlot = connectionSlots.connectionsBySlot.get(n);
               if (!lastSlot?.length) return null;
+              const lastStack = getInterleavedStackZIndices(n);
               return (
-                <CanvasConnections
-                  key="conn-slot-last"
-                  width={width}
-                  height={height}
-                  diagramData={diagramData}
-                  nodesById={nodesById}
-                  zonesById={zonesById}
-                  selectedItemId={selectedItemId}
-                  onItemSelect={handleViewerItemSelect}
-                  closeContextMenu={() => {}}
-                  onConnectionDelete={undefined}
-                  connectionIndices={new Set(lastSlot)}
-                  stackZIndex={2 * n}
-                  animationConnectionsEnabled={animationConnectionsEnabled}
-                  animationFilterSourceIds={animationFilterSourceIds}
-                  animationDisabledSources={animationDisabledSources}
-                  connectionAnimationStyles={connectionTransitionStyles}
-                  connectionKey={connKey}
-                  isReadOnly
-                  connectionRenderRevision={connectionRenderRevision}
-                  transform={transform}
-                  viewportWidthPx={canvasDimensions.width}
-                  viewportHeightPx={canvasDimensions.height}
-                />
+                <>
+                  <CanvasConnections
+                    key="conn-slot-last"
+                    width={width}
+                    height={height}
+                    diagramData={diagramData}
+                    nodesById={nodesById}
+                    zonesById={zonesById}
+                    selectedItemId={selectedItemId}
+                    onItemSelect={handleViewerItemSelect}
+                    closeContextMenu={() => {}}
+                    onConnectionDelete={undefined}
+                    connectionIndices={new Set(lastSlot)}
+                    stackZIndex={lastStack.connectionZIndex}
+                    animationConnectionsEnabled={animationConnectionsEnabled}
+                    animationFilterSourceIds={animationFilterSourceIds}
+                    animationDisabledSources={animationDisabledSources}
+                    connectionAnimationStyles={connectionTransitionStyles}
+                    connectionKey={connKey}
+                    isReadOnly
+                    connectionRenderRevision={connectionRenderRevision}
+                    transform={transform}
+                    viewportWidthPx={canvasDimensions.width}
+                    viewportHeightPx={canvasDimensions.height}
+                  />
+                  <CanvasConnectionText
+                    key="conn-text-slot-last"
+                    width={width}
+                    height={height}
+                    diagramData={diagramData}
+                    nodesById={nodesById}
+                    zonesById={zonesById}
+                    processedZones={processedZones}
+                    connectionIndices={new Set(lastSlot)}
+                    stackZIndex={lastStack.connectionTextZIndex}
+                    connectionAnimationStyles={connectionTransitionStyles}
+                    connectionKey={connKey}
+                  />
+                </>
               );
             })()}
           </>
         )}
-
-        {/* Connection text labels (Bezier only; orthogonal renders inline) */}
-        <CanvasConnectionText
-          width={width}
-          height={height}
-          diagramData={diagramData}
-          nodesById={nodesById}
-          zonesById={zonesById}
-          processedZones={processedZones}
-          connectionAnimationStyles={connectionTransitionStyles}
-          connectionKey={connKey}
-        />
       </div>
     </div>
     </>

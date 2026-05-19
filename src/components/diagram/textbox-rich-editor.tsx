@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 const DEFAULT_JUSTIFY = DEFAULT_TEXT_STYLING.textJustify ?? "center";
 
-/** Above `CanvasConnectionText` SVG (`z-index: 9999`) and other canvas chrome so the format bar is never covered. */
+/** Above interleaved connection label layers and other canvas chrome so the format bar is never covered. */
 const TEXTBOX_RICH_TOOLBAR_Z_INDEX = 10_050;
 
 /** Vertical overhead: outer p-1 (8) + inner py-0.5 (4) + contentEditable border (2). scrollHeight includes contentEditable padding (py-0.5 = 4). */

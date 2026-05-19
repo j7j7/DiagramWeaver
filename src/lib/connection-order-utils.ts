@@ -80,6 +80,37 @@ export interface ConnectionSlotResult {
 }
 
 /**
+ * Z-indices for order-aware canvas interleaving per slot/item index `i`:
+ * connections at `3*i`, labels at `3*i+1`, nodes at `3*i+2`.
+ * All node types share the node tier so stacking order controls overlap.
+ */
+export function getInterleavedStackZIndices(itemIndex: number): {
+  connectionZIndex: number;
+  connectionTextZIndex: number;
+  nodeZIndex: number;
+} {
+  const base = 3 * itemIndex;
+  return {
+    connectionZIndex: base,
+    connectionTextZIndex: base + 1,
+    nodeZIndex: base + 2,
+  };
+}
+
+/** Lines-behind-nodes mode: all lines, then all labels, then nodes by stacking index. */
+export function getLinesBehindNodesStackZIndices(nodeIndex: number): {
+  connectionZIndex: number;
+  connectionTextZIndex: number;
+  nodeZIndex: number;
+} {
+  return {
+    connectionZIndex: 0,
+    connectionTextZIndex: 1,
+    nodeZIndex: 10 + nodeIndex,
+  };
+}
+
+/**
  * Computes connection rendering order based on item (node/zone) order.
  * A connection from A to B should render:
  * - Behind any item that is "in front of" both A and B (higher order than both endpoints)
@@ -103,10 +134,16 @@ export function computeConnectionSlots(
     });
   }
 
+  const nodeIndexById = new Map<string, number>();
+  diagramData.nodes.forEach((n, index) => {
+    nodeIndexById.set(n.id, index);
+  });
+
   const sortedNodes = [...processedNodes].sort((a, b) => {
     const layerA = layerOrder.get(a.layer || "background") ?? 0;
     const layerB = layerOrder.get(b.layer || "background") ?? 0;
-    return layerA - layerB;
+    if (layerA !== layerB) return layerA - layerB;
+    return (nodeIndexById.get(a.id) ?? 0) - (nodeIndexById.get(b.id) ?? 0);
   });
 
   // Combine nodes and zones; nodes first (zones are deprecated but may exist)

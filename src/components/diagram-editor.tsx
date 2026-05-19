@@ -272,7 +272,7 @@ export default function DiagramEditor() {
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
   const [defaultTextLabelsEnabled, setDefaultTextLabelsEnabled] = React.useState<boolean>(true);
   const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(true);
-  const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(true);
+  const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(false);
   const [animationConnectionsUserEnabled, setAnimationConnectionsUserEnabled] = React.useState<boolean>(true);
   const [animationConnectionsMenuPaused, setAnimationConnectionsMenuPaused] = React.useState(false);
   const {
