@@ -197,6 +197,37 @@ export function timelineBarInteriorDividerXs(
 }
 
 /**
+ * Weak magnet: snap axis `t` toward the nearest interior segment boundary when the bar has multiple segments.
+ * Threshold scales from diagram px extent so small shapes still feel responsive.
+ */
+export function snapTimelineBarAxisTToSegmentDividers(
+  t: number,
+  sections: TimelineBarSectionData[],
+  starts: number[],
+  innerAlongLen: number,
+  diagramBarExtentPx: number,
+): number {
+  const tClamped = clampTimelineBarT(t);
+  if (sections.length <= 1 || !(innerAlongLen > 0)) return tClamped;
+  const xs = timelineBarInteriorDividerXs(sections, starts, innerAlongLen);
+  const targets = xs.map((x) => clampTimelineBarT(x / innerAlongLen));
+  if (targets.length === 0) return tClamped;
+  const pxMagnet = 10;
+  const tMagnet = Math.min(0.055, pxMagnet / Math.max(8, diagramBarExtentPx));
+  let nearest = targets[0]!;
+  let best = Math.abs(nearest - tClamped);
+  for (let i = 1; i < targets.length; i++) {
+    const tg = targets[i]!;
+    const d = Math.abs(tg - tClamped);
+    if (d < best) {
+      best = d;
+      nearest = tg;
+    }
+  }
+  return best <= tMagnet ? nearest : tClamped;
+}
+
+/**
  * Normalised positions (0–1) for `count` axis labels spaced evenly along the bar:
  * centres of `count` equal slices, so the gap from the left edge to the first tick,
  * between consecutive ticks, and from the last tick to the right edge are all equal

@@ -12,6 +12,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -76,6 +82,31 @@ function equalSegmentSpans(n: number): { spanStart: number; spanEnd: number }[] 
     spanEnd: (i + 1) / n,
   }));
 }
+
+const TIMELINE_BAR_PRESET_MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** Week preset: axis row below the bar (sections use 1–7). */
+const TIMELINE_BAR_PRESET_WEEK_AXIS_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+const TIMELINE_BAR_PRESET_QUARTER_AXIS: readonly Pick<TimelineBarAxisLabelData, "label" | "t">[] = [
+  { label: "Q1", t: 0 },
+  { label: "Q2", t: 0.25 },
+  { label: "Q3", t: 0.5 },
+  { label: "Q4", t: 0.75 },
+];
 
 type AxisRow = TimelineBarAxisLabelData;
 type Row = TimelineBarSectionData;
@@ -337,6 +368,8 @@ export function TimelineBarEditorModal({
       if (target.closest("[data-radix-select-viewport]")) return;
       if (target.closest("[data-radix-select-item]")) return;
       if (target.closest("[data-radix-popover-content]")) return;
+      if (target.closest('[role="menu"]')) return;
+      if (target.closest("[data-radix-dropdown-menu-content]")) return;
       onClose();
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -344,6 +377,64 @@ export function TimelineBarEditorModal({
   }, [visible, onClose]);
 
   const editorIsSegmented = Boolean(visible && node && isSegmentedRectangleNodeType(node.type));
+
+  const applyPresetMonths = () => {
+    if (!node || isReadOnly || editorIsSegmented) return;
+    const sp = equalSegmentSpans(TIMELINE_BAR_PRESET_MONTH_LABELS.length);
+    const nextRows: Row[] = TIMELINE_BAR_PRESET_MONTH_LABELS.map((label, i) => ({
+      id: newTimelineBarSectionId(node.id),
+      label,
+      fill: "#94a3b8",
+      fillStyle: "theme-hue" as const,
+      weight: 1,
+      spanStart: sp[i]?.spanStart,
+      spanEnd: sp[i]?.spanEnd,
+    }));
+    setRows(nextRows);
+    setSizing("equal");
+    setSpanLayoutEnabled(true);
+    setAxisRows(
+      TIMELINE_BAR_PRESET_QUARTER_AXIS.map((a) => ({
+        id: newTimelineBarAxisLabelId(node.id),
+        label: a.label,
+        t: clampTimelineBarT(a.t),
+      })),
+    );
+    setAxisSectionOpen(true);
+    setCollapsedSegIds(
+      nextRows.length > 2 ? new Set(nextRows.map((r, j) => timelineBarSectionRowId(r, j))) : new Set(),
+    );
+  };
+
+  const applyPresetWeek = () => {
+    if (!node || isReadOnly || editorIsSegmented) return;
+    const n = TIMELINE_BAR_PRESET_WEEK_AXIS_LABELS.length;
+    const sp = equalSegmentSpans(n);
+    const ts = timelineBarEvenAxisPositions(n);
+    const nextRows: Row[] = Array.from({ length: n }, (_, i) => ({
+      id: newTimelineBarSectionId(node.id),
+      label: String(i + 1),
+      fill: "#94a3b8",
+      fillStyle: "theme-hue" as const,
+      weight: 1,
+      spanStart: sp[i]?.spanStart,
+      spanEnd: sp[i]?.spanEnd,
+    }));
+    setRows(nextRows);
+    setSizing("equal");
+    setSpanLayoutEnabled(true);
+    setAxisRows(
+      TIMELINE_BAR_PRESET_WEEK_AXIS_LABELS.map((label, i) => ({
+        id: newTimelineBarAxisLabelId(node.id),
+        label,
+        t: clampTimelineBarT(ts[i] ?? (i + 0.5) / n),
+      })),
+    );
+    setAxisSectionOpen(true);
+    setCollapsedSegIds(
+      nextRows.length > 2 ? new Set(nextRows.map((r, j) => timelineBarSectionRowId(r, j))) : new Set(),
+    );
+  };
 
   const handleSave = () => {
     if (!node || isReadOnly) return;
@@ -561,6 +652,32 @@ export function TimelineBarEditorModal({
           </div>
           <div className="max-h-[min(70vh,560px)] space-y-4 overflow-y-auto p-5">
             {!editorIsSegmented ? (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/25 px-3 py-2 dark:border-border dark:bg-background">
+                  <Label className="text-xs font-medium text-foreground">Presets</Label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0 gap-1 text-xs"
+                        disabled={isReadOnly}
+                      >
+                        Apply preset…
+                        <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="z-[80] max-w-[min(18rem,calc(100vw-3rem))]">
+                      <DropdownMenuItem className="cursor-pointer text-xs" onSelect={() => applyPresetMonths()}>
+                        12 months + axis Q1–Q4
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-xs" onSelect={() => applyPresetWeek()}>
+                        Week — sections 1–7 + axis Mon … Sun
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
             <Collapsible open={axisSectionOpen} onOpenChange={setAxisSectionOpen}>
               <div className="space-y-2 rounded-md border border-teal-200/60 bg-teal-50/35 p-3 dark:border-border dark:bg-background">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -677,6 +794,7 @@ export function TimelineBarEditorModal({
                 </CollapsibleContent>
               </div>
             </Collapsible>
+              </>
             ) : null}
 
             <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2 dark:border-border dark:bg-background">

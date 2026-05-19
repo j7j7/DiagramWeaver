@@ -232,6 +232,7 @@ export const TimelineEntryDataSchema = z.object({
 export const TimelineBarAxisLabelDataSchema = z.object({
   id: z.string(),
   label: z.string(),
+  richLabel: z.array(RichTextRunSchema).optional(),
   t: z.number().min(0).max(1),
 });
 

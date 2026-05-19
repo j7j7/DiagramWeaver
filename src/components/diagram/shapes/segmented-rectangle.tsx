@@ -382,6 +382,9 @@ export function SegmentedRectangleShape({
     }
   }, [editingSectionIndex, sections.length]);
 
+  /** Per-track clip uses full-node `rx`; segment capsules use smaller `segRx` when each `wi < w`. Intersecting was carving endpoint lunulas beside first/last pills. Segments-outline: omit group clip — each capsule fill is sufficient. */
+  const segmentFillsCompositeClipUrl = outlineMode === "segments" ? undefined : `url(#${clipId}-sr-clip)`;
+
   const content = (
     <>
       {bgDefs}
@@ -464,7 +467,10 @@ export function SegmentedRectangleShape({
           : null}
       </defs>
 
-      <g clipPath={`url(#${clipId}-sr-clip)`} pointerEvents="none">
+      <g
+        {...(segmentFillsCompositeClipUrl ? { clipPath: segmentFillsCompositeClipUrl } : {})}
+        pointerEvents="none"
+      >
         {sections.map((seg: TimelineBarSectionData, i: number) => {
           const wi = widths[i] ?? 0;
           const s0 = starts[i] ?? 0;
@@ -484,7 +490,11 @@ export function SegmentedRectangleShape({
           } else {
             fillPaint = String(seg.fill ?? "#6b7280");
           }
-          const segRx =
+          /**
+           * Segments-outline: per-capsule `segRx`; no composite group clip (`segRx_track ≠ segRx_segment` lunulas).
+           * Container / none: `rx=0` rects + `#sr-clip` (timeline-bar parity).
+           */
+          const segRxFill =
             outlineMode === "segments"
               ? placementVertical
                 ? Math.min(rx, wi / 2, w / 2)
@@ -505,8 +515,8 @@ export function SegmentedRectangleShape({
                 y={by}
                 width={bw}
                 height={bh}
-                rx={segRx}
-                ry={segRx}
+                rx={segRxFill}
+                ry={segRxFill}
                 fill={fillPaint}
                 stroke="none"
               />
@@ -761,7 +771,7 @@ export function SegmentedRectangleShape({
                     />
                   </div>
                 ) : (
-                  <div className="min-h-0 w-full overflow-auto" style={{ padding: 2, boxSizing: "border-box" }}>
+                  <div className="min-h-0 w-full overflow-hidden" style={{ padding: 2, boxSizing: "border-box" }}>
                     <TextboxRichDisplay
                       node={sectionTextNode}
                       runs={displayRuns}

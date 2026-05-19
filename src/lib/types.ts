@@ -567,6 +567,8 @@ export interface DiagramNodeData {
 export interface TimelineBarAxisLabelData {
   id: string;
   label: string;
+  /** Rich axis label (optional); plain `label` is kept for search / modal row text. */
+  richLabel?: RichTextRun[];
   /** 0 = left edge, 1 = right edge of the inner bar; label is centered here. */
   t: number;
 }

@@ -3,6 +3,23 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-19 – Segmented rectangle: no scrollbars on section labels
+
+**`segmented-rectangle.tsx`:** Per-segment **`TextboxRichDisplay`** wrapper uses **`overflow-hidden`** instead of **`overflow-auto`** so overflowing label text clips without scrollbar chrome in the **`foreignObject`** cell.
+
+
+### 2026-05-19 – Segmented rectangle: segment fills vs composite clip (endpoint lunulas)
+
+**`segmented-rectangle.tsx`:** **`outlineMode`** **`segments`**: segment **fills** **`g`** drops **`#sr-clip`** — each stroked capsule already has matching **`segRx`**; clipping fills to the **track-wide** rounded rect (**`rx` from whole-node **`min(w,h)`**) intersected narrower pills and emptied **lunulas** beside first/last segment outlines. **`container` / `none`**: keep **`#sr-clip`** with square segment rects (**`segRx`** **0**).
+
+
+### 2026-05-19 – Timeline bar: axis edge labels, draggable axis snap, presets
+
+**Canvas (`timeline-bar.tsx`):** Timeline axis labels near **t = 0 / 1** use inset horizontal anchors (or vertical **y** nudge) so text stays inside the SVG viewBox without resizing the node. With **timeline axis** rows active, selected-editor drag handles on the tick band update **`timelineBarAxisLabels`**; **`snapTimelineBarAxisTToSegmentDividers`** (`timeline-bar.ts`) weak-snaps toward interior segment boundaries plus existing diagram grid snap.
+
+**Modal (`timeline-bar-editor-modal.tsx`):** **Presets** dropdown — **12 months + axis 0/25/50/75**, **Week (7 sections + 7 axis labels)** — replaces sections + axis rows (save modal to persist). Outside-click ignores Radix dropdown menu. Patch bumped.
+
+
 ### 2026-05-19 – Default: order-aware connection lines (stacking order)
 
 **Order-aware** connection layering is now the default (**`connectionsBehindNodesEnabled`** initial **`false`** in editor, viewer, **`EditorCanvas`** prop). New sessions without **`dw:connectionsBehindNodes:enabled`** in localStorage use stacking-order interleaving; **Lines Behind Nodes** remains in Options. Patch bumped.

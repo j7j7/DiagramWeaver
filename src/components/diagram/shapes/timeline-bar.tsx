@@ -30,6 +30,7 @@ import {
   timelineBarSectionThemeHueFillGradient,
   timelineBarSegmentLayout,
   timelineBarUsesSpanLayout,
+  snapTimelineBarAxisTToSegmentDividers,
   snapTimelineBarBoundaryT,
 } from "@/lib/timeline-bar";
 
@@ -91,6 +92,8 @@ export function TimelineBarShape({
   const nodeAny = node as unknown as Record<string, unknown>;
   const clipId = useId().replace(/:/g, "");
   const dragActiveRef = useRef(false);
+  const axisDragActiveRef = useRef(false);
+  const axisDragIdRef = useRef<string | null>(null);
   const workingSectionsRef = useRef<TimelineBarSectionData[]>([]);
   const boundaryIndexRef = useRef(0);
   const inlineSectionLabelCancelledRef = useRef(false);
@@ -193,6 +196,13 @@ export function TimelineBarShape({
     onSectionBoundaryDragSessionChange?.(false);
   }, [onSectionBoundaryDragSessionChange]);
 
+  const endAxisDrag = useCallback(() => {
+    if (!axisDragActiveRef.current) return;
+    axisDragActiveRef.current = false;
+    axisDragIdRef.current = null;
+    onSectionBoundaryDragSessionChange?.(false);
+  }, [onSectionBoundaryDragSessionChange]);
+
   const applyClientToBoundary = useCallback(
     (clientX: number, clientY: number, boundaryIdx: number, svg: SVGSVGElement) => {
       if (!onPatch) return;
@@ -219,10 +229,30 @@ export function TimelineBarShape({
     [diagramSnapOrigin, half, isVertical, onPatch, segmentAlongLen, snapBarExtentPx],
   );
 
+  const applyClientToAxis = useCallback(
+    (clientX: number, clientY: number, axisId: string, svg: SVGSVGElement) => {
+      if (!onPatch) return;
+      const pt = svgUserPointFromClient(svg, clientX, clientY);
+      if (!pt) return;
+      let t = isVertical
+        ? (pt.y - half) / Math.max(1e-6, segmentAlongLen)
+        : (pt.x - half) / Math.max(1e-6, segmentAlongLen);
+      t = clampTimelineBarT(t);
+      if (diagramSnapOrigin != null) {
+        t = snapTimelineBarBoundaryT(diagramSnapOrigin, snapBarExtentPx, t);
+      }
+      t = snapTimelineBarAxisTToSegmentDividers(t, sections, starts, segmentAlongLen, snapBarExtentPx);
+      const next = axisLabels.map((a) => (a.id === axisId ? { ...a, t } : a));
+      onPatch({ timelineBarAxisLabels: next });
+    },
+    [axisLabels, diagramSnapOrigin, half, isVertical, onPatch, sections, segmentAlongLen, snapBarExtentPx, starts],
+  );
+
   const onPointerDownBoundary = useCallback(
     (boundaryIdx: number) => (e: React.PointerEvent<SVGRectElement>) => {
       if (!sectionBoundaryInteractionEnabled || !onPatch || isReadOnly || isEditingLabel || editingSectionIndex != null)
         return;
+      if (axisDragActiveRef.current) return;
       e.stopPropagation();
       e.preventDefault();
       const migrated = timelineBarEnsureSpanSections(sections, segmentAlongLen, sizing);
@@ -251,9 +281,60 @@ export function TimelineBarShape({
     ],
   );
 
+  const onPointerDownAxis = useCallback(
+    (axisId: string) => (e: React.PointerEvent<SVGRectElement>) => {
+      if (!sectionBoundaryInteractionEnabled || !onPatch || isReadOnly || isEditingLabel || editingSectionIndex != null)
+        return;
+      if (!useAxisTicks || axisLabels.length === 0) return;
+      if (dragActiveRef.current) return;
+      e.stopPropagation();
+      e.preventDefault();
+      axisDragIdRef.current = axisId;
+      axisDragActiveRef.current = true;
+      onSectionBoundaryDragSessionChange?.(true);
+      const svg = (e.currentTarget as SVGRectElement).ownerSVGElement;
+      if (svg) applyClientToAxis(e.clientX, e.clientY, axisId, svg);
+      (e.currentTarget as SVGRectElement).setPointerCapture(e.pointerId);
+    },
+    [
+      applyClientToAxis,
+      axisLabels.length,
+      editingSectionIndex,
+      isEditingLabel,
+      isReadOnly,
+      onPatch,
+      onSectionBoundaryDragSessionChange,
+      sectionBoundaryInteractionEnabled,
+      useAxisTicks,
+    ],
+  );
+
+  const onPointerMoveAxis = useCallback(
+    (e: React.PointerEvent<SVGRectElement>) => {
+      if (!axisDragActiveRef.current || !onPatch) return;
+      const id = axisDragIdRef.current;
+      const svg = (e.currentTarget as SVGRectElement).ownerSVGElement;
+      if (!id || !svg) return;
+      applyClientToAxis(e.clientX, e.clientY, id, svg);
+    },
+    [applyClientToAxis, onPatch],
+  );
+
+  const onPointerUpAxis = useCallback(
+    (e: React.PointerEvent<SVGRectElement>) => {
+      try {
+        (e.currentTarget as SVGRectElement).releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      endAxisDrag();
+    },
+    [endAxisDrag],
+  );
+
   const onPointerMoveBoundary = useCallback(
     (e: React.PointerEvent<SVGRectElement>) => {
-      if (!dragActiveRef.current || !onPatch) return;
+      if (!dragActiveRef.current || !onPatch || axisDragActiveRef.current) return;
       const svg = (e.currentTarget as SVGRectElement).ownerSVGElement;
       if (svg)
         applyClientToBoundary(e.clientX, e.clientY, boundaryIndexRef.current, svg);
@@ -355,10 +436,24 @@ export function TimelineBarShape({
 
   const tickRowTop = half + barNarrow + gapTick;
   const markerBelowBar = tickRowTop + tickBand * 0.35;
+  /** Horizontal bar: keep edge axis labels inside the SVG viewBox (avoids clipping at t=0 / t=1). */
+  const axisEdgeTol = Math.max(0.003, Math.min(0.04, (tickFont * 0.55) / Math.max(1e-6, segmentAlongLen)));
+  const axisInset = Math.max(1.2, tickFont * 0.42);
   /** Vertical axis: anchor labels at the inner-left of the tick band so text grows rightward (avoids left-edge clipping). */
   const verticalAxisLabelX = half + Math.max(2, tickBand * 0.06);
   /** Tick stubs extend left from the bar but stay inside the stroke inset. */
   const markerTailX = Math.max(half + 1.5, barLeft - tickBand * 0.35);
+
+  const axisDragEnabled =
+    Boolean(
+      sectionBoundaryInteractionEnabled &&
+        onPatch &&
+        !isReadOnly &&
+        !isEditingLabel &&
+        editingSectionIndex == null &&
+        useAxisTicks &&
+        axisLabels.length > 0,
+    );
 
   const content = (
     <>
@@ -630,19 +725,93 @@ export function TimelineBarShape({
       {showTicks
         ? useAxisTicks
           ? axisLabels.map((ax, i) => {
-              const t = clampTimelineBarT(ax.t);
+              const tVal = clampTimelineBarT(ax.t);
               const tk = (ax.label ?? "").trim();
               if (!tk && !tickMarkers) return null;
+              const cx = half + tVal * segmentAlongLen;
               if (!isVertical) {
-                const cx = half + t * segmentAlongLen;
+                let textAnchor: "start" | "middle" | "end" = "middle";
+                let lx = cx;
+                if (tVal <= axisEdgeTol) {
+                  textAnchor = "start";
+                  lx = half + axisInset;
+                } else if (tVal >= 1 - axisEdgeTol) {
+                  textAnchor = "end";
+                  lx = half + segmentAlongLen - axisInset;
+                }
+                const ty = tickRowTop + tickBand * 0.72;
+                const hitHalf = Math.max(10, Math.min(28, segmentAlongLen * 0.055));
                 return (
-                  <g key={`axis-${ax.id}-${i}`} pointerEvents="none">
+                  <g key={`axis-${ax.id}-${i}`}>
+                    <g pointerEvents="none">
+                      {tickMarkers ? (
+                        <line
+                          x1={cx}
+                          y1={half + barNarrow}
+                          x2={cx}
+                          y2={markerBelowBar}
+                          stroke={textCol}
+                          strokeWidth={1}
+                          opacity={0.45}
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      ) : null}
+                      {tk ? (
+                        <text
+                          x={lx}
+                          y={ty}
+                          textAnchor={textAnchor}
+                          dominantBaseline="middle"
+                          fill={textCol}
+                          fontSize={tickFont}
+                          fontFamily={axisTickFontFamily}
+                          opacity={0.9}
+                        >
+                          {tk}
+                        </text>
+                      ) : null}
+                    </g>
+                    {axisDragEnabled ? (
+                      <rect
+                        data-dw-timeline-axis={ax.id}
+                        x={cx - hitHalf / 2}
+                        y={tickRowTop}
+                        width={hitHalf}
+                        height={tickBand}
+                        fill="transparent"
+                        stroke="none"
+                        pointerEvents="auto"
+                        style={{
+                          cursor: "ew-resize",
+                          touchAction: "none",
+                        }}
+                        onPointerDown={onPointerDownAxis(ax.id)}
+                        onPointerMove={onPointerMoveAxis}
+                        onPointerUp={onPointerUpAxis}
+                        onPointerCancel={onPointerUpAxis}
+                      />
+                    ) : null}
+                  </g>
+                );
+              }
+              const cy = half + tVal * segmentAlongLen;
+              let ly = cy;
+              if (tVal <= axisEdgeTol) {
+                ly = half + axisInset + tickFont * 0.48;
+              } else if (tVal >= 1 - axisEdgeTol) {
+                ly = half + segmentAlongLen - axisInset - tickFont * 0.48;
+              }
+              const hitAlong = Math.max(10, Math.min(26, segmentAlongLen * 0.07));
+              const axisLaneRight = Math.max(barLeft - 1, verticalAxisLabelX + tickFont * 2.8);
+              return (
+                <g key={`axis-${ax.id}-${i}`}>
+                  <g pointerEvents="none">
                     {tickMarkers ? (
                       <line
-                        x1={cx}
-                        y1={half + barNarrow}
-                        x2={cx}
-                        y2={markerBelowBar}
+                        x1={barLeft}
+                        y1={cy}
+                        x2={markerTailX}
+                        y2={cy}
                         stroke={textCol}
                         strokeWidth={1}
                         opacity={0.45}
@@ -651,9 +820,9 @@ export function TimelineBarShape({
                     ) : null}
                     {tk ? (
                       <text
-                        x={cx}
-                        y={tickRowTop + tickBand * 0.72}
-                        textAnchor="middle"
+                        x={verticalAxisLabelX}
+                        y={ly}
+                        textAnchor="start"
                         dominantBaseline="middle"
                         fill={textCol}
                         fontSize={tickFont}
@@ -664,36 +833,25 @@ export function TimelineBarShape({
                       </text>
                     ) : null}
                   </g>
-                );
-              }
-              const cy = half + t * segmentAlongLen;
-              return (
-                <g key={`axis-${ax.id}-${i}`} pointerEvents="none">
-                  {tickMarkers ? (
-                    <line
-                      x1={barLeft}
-                      y1={cy}
-                      x2={markerTailX}
-                      y2={cy}
-                      stroke={textCol}
-                      strokeWidth={1}
-                      opacity={0.45}
-                      vectorEffect="non-scaling-stroke"
+                  {axisDragEnabled ? (
+                    <rect
+                      data-dw-timeline-axis={ax.id}
+                      x={half}
+                      y={cy - hitAlong / 2}
+                      width={Math.max(6, axisLaneRight - half)}
+                      height={hitAlong}
+                      fill="transparent"
+                      stroke="none"
+                      pointerEvents="auto"
+                      style={{
+                        cursor: "ns-resize",
+                        touchAction: "none",
+                      }}
+                      onPointerDown={onPointerDownAxis(ax.id)}
+                      onPointerMove={onPointerMoveAxis}
+                      onPointerUp={onPointerUpAxis}
+                      onPointerCancel={onPointerUpAxis}
                     />
-                  ) : null}
-                  {tk ? (
-                    <text
-                      x={verticalAxisLabelX}
-                      y={cy}
-                      textAnchor="start"
-                      dominantBaseline="middle"
-                      fill={textCol}
-                      fontSize={tickFont}
-                      fontFamily={axisTickFontFamily}
-                      opacity={0.9}
-                    >
-                      {tk}
-                    </text>
                   ) : null}
                 </g>
               );
