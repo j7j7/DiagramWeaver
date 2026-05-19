@@ -68,7 +68,7 @@ function parseMermaidFlowchart(text) {
 const examples = [
   'public/examples/simple.mmd',
   'public/examples/complex.mmd',
-  'public/examples/Incident Management-2026-02-24-003424.mmd',
+  'public/examples/Incident-Management-2026-02-24-003424.mmd',
 ];
 
 console.log('=== Mermaid Validation ===\n');

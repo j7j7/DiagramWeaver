@@ -1511,7 +1511,7 @@
         },
         {
           "name": "Location Service_map",
-          "file": "aws/Resource-Icons_01302026/Res_Front-End-Web-Mobile/Res_Amazon-Location-Service_Map _48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Front-End-Web-Mobile/Res_Amazon-Location-Service_Map_48.svg",
           "type": "resource"
         },
         {
@@ -1526,7 +1526,7 @@
         },
         {
           "name": "Location Service_track",
-          "file": "aws/Resource-Icons_01302026/Res_Front-End-Web-Mobile/Res_Amazon-Location-Service_Track _48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Front-End-Web-Mobile/Res_Amazon-Location-Service_Track_48.svg",
           "type": "resource"
         }
       ]
@@ -2387,7 +2387,7 @@
         },
         {
           "name": "Elemental Appliances & Software",
-          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-Appliances-&-Software_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-Appliances-and-Software_64.svg",
           "type": "architecture"
         },
         {

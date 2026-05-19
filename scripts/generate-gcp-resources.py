@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate resource-gcp.json from GCP google-cloud-legacy-icons and Unique Icons folder structure.
+Generate resource-gcp.json from GCP google-cloud-legacy-icons and Unique-Icons folder structure.
 
 This script processes all SVG files in:
 - public/resources/gcp/google-cloud-legacy-icons/
-- public/resources/gcp/Unique Icons/
+- public/resources/gcp/Unique-Icons/
 
 and generates a complete resource-gcp.json file with proper category paths.
 """
@@ -210,7 +210,7 @@ def process_gcp_icons():
     """Process GCP Legacy and Unique Icons and generate resource JSON."""
     gcp_base_path = 'public/resources/gcp'
     legacy_path = os.path.join(gcp_base_path, 'google-cloud-legacy-icons')
-    unique_path = os.path.join(gcp_base_path, 'Unique Icons')
+    unique_path = os.path.join(gcp_base_path, 'Unique-Icons')
     
     categories_data = defaultdict(list)
     
@@ -253,7 +253,7 @@ def process_gcp_icons():
                         category_key = get_category_for_folder(service_folder)
                         
                         # File path relative to resources/ folder (absolute from gcp/)
-                        file_path = f"gcp/Unique Icons/{service_folder}/SVG/{filename}"
+                        file_path = f"gcp/Unique-Icons/{service_folder}/SVG/{filename}"
                         
                         categories_data[category_key].append({
                             'name': name,

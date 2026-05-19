@@ -5,171 +5,171 @@
   "categories": {
     "aimachinelearning": {
       "name": "Ai + Machine Learning",
-      "path": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning",
+      "path": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning",
       "resources": [
         {
           "name": "Batch Ai",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00028-icon-service-Batch-AI.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00028-icon-service-Batch-AI.svg",
           "type": "service"
         },
         {
           "name": "Machine Learning Studio (classic) Web Services",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00030-icon-service-Machine-Learning-Studio-(Classic)-Web-Services.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00030-icon-service-Machine-Learning-Studio-Classic-Web-Services.svg",
           "type": "service"
         },
         {
           "name": "Genomics",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00031-icon-service-Genomics.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00031-icon-service-Genomics.svg",
           "type": "service"
         },
         {
           "name": "Computer Vision",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00792-icon-service-Computer-Vision.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00792-icon-service-Computer-Vision.svg",
           "type": "service"
         },
         {
           "name": "Custom Vision",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00793-icon-service-Custom-Vision.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00793-icon-service-Custom-Vision.svg",
           "type": "service"
         },
         {
           "name": "Face Apis",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00794-icon-service-Face-APIs.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00794-icon-service-Face-APIs.svg",
           "type": "service"
         },
         {
           "name": "Content Moderators",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00795-icon-service-Content-Moderators.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00795-icon-service-Content-Moderators.svg",
           "type": "service"
         },
         {
           "name": "Personalizers",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00796-icon-service-Personalizers.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00796-icon-service-Personalizers.svg",
           "type": "service"
         },
         {
           "name": "Speech Services",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00797-icon-service-Speech-Services.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00797-icon-service-Speech-Services.svg",
           "type": "service"
         },
         {
           "name": "Qna Makers",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00799-icon-service-QnA-Makers.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00799-icon-service-QnA-Makers.svg",
           "type": "service"
         },
         {
           "name": "Translator Text",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00800-icon-service-Translator-Text.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00800-icon-service-Translator-Text.svg",
           "type": "service"
         },
         {
           "name": "Language Understanding",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00801-icon-service-Language-Understanding.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00801-icon-service-Language-Understanding.svg",
           "type": "service"
         },
         {
           "name": "Immersive Readers",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00812-icon-service-Immersive-Readers.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00812-icon-service-Immersive-Readers.svg",
           "type": "service"
         },
         {
           "name": "Anomaly Detector",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00814-icon-service-Anomaly-Detector.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00814-icon-service-Anomaly-Detector.svg",
           "type": "service"
         },
         {
           "name": "Form Recognizers",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/00819-icon-service-Form-Recognizers.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/00819-icon-service-Form-Recognizers.svg",
           "type": "service"
         },
         {
           "name": "Azure Experimentation Studio",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/01239-icon-service-Azure-Experimentation-Studio.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/01239-icon-service-Azure-Experimentation-Studio.svg",
           "type": "service"
         },
         {
           "name": "Azure Object Understanding",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/01688-icon-service-Azure-Object-Understanding.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/01688-icon-service-Azure-Object-Understanding.svg",
           "type": "service"
         },
         {
           "name": "Metrics Advisor",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/02409-icon-service-Metrics-Advisor.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/02409-icon-service-Metrics-Advisor.svg",
           "type": "service"
         },
         {
           "name": "Azure Applied Ai Services",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/02749-icon-service-Azure-Applied-AI-Services.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/02749-icon-service-Azure-Applied-AI-Services.svg",
           "type": "service"
         },
         {
           "name": "Language",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/02876-icon-service-Language.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/02876-icon-service-Language.svg",
           "type": "service"
         },
         {
           "name": "Cognitive Services Decisions",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/03173-icon-service-Cognitive-Services-Decisions.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/03173-icon-service-Cognitive-Services-Decisions.svg",
           "type": "service"
         },
         {
           "name": "Serverless Search",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/03321-icon-service-Serverless-Search.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/03321-icon-service-Serverless-Search.svg",
           "type": "service"
         },
         {
           "name": "Bonsai",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/03337-icon-service-Bonsai.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/03337-icon-service-Bonsai.svg",
           "type": "service"
         },
         {
           "name": "Content Safety",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/03390-icon-service-Content-Safety.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/03390-icon-service-Content-Safety.svg",
           "type": "service"
         },
         {
           "name": "Azure Openai",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/03438-icon-service-Azure-OpenAI.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/03438-icon-service-Azure-OpenAI.svg",
           "type": "service"
         },
         {
           "name": "Ai Studio",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/03513-icon-service-AI-Studio.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/03513-icon-service-AI-Studio.svg",
           "type": "service"
         },
         {
           "name": "Cognitive Search",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/10044-icon-service-Cognitive-Search.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/10044-icon-service-Cognitive-Search.svg",
           "type": "service"
         },
         {
           "name": "Cognitive Services",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/10162-icon-service-Cognitive-Services.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/10162-icon-service-Cognitive-Services.svg",
           "type": "service"
         },
         {
           "name": "Genomics Accounts",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/10164-icon-service-Genomics-Accounts.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/10164-icon-service-Genomics-Accounts.svg",
           "type": "service"
         },
         {
           "name": "Bot Services",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/10165-icon-service-Bot-Services.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/10165-icon-service-Bot-Services.svg",
           "type": "service"
         },
         {
           "name": "Machine Learning",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/10166-icon-service-Machine-Learning.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/10166-icon-service-Machine-Learning.svg",
           "type": "service"
         },
         {
           "name": "Machine Learning Studio Workspaces",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/10167-icon-service-Machine-Learning-Studio-Workspaces.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/10167-icon-service-Machine-Learning-Studio-Workspaces.svg",
           "type": "service"
         },
         {
           "name": "Machine Learning Studio Web Service Plans",
-          "file": "azure/Azure_Public_Service_Icons/Icons/ai + machine learning/10168-icon-service-Machine-Learning-Studio-Web-Service-Plans.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/ai-and-machine-learning/10168-icon-service-Machine-Learning-Studio-Web-Service-Plans.svg",
           "type": "service"
         }
       ]
@@ -267,108 +267,108 @@
     },
     "appservices": {
       "name": "App Services",
-      "path": "azure/Azure_Public_Service_Icons/Icons/app services",
+      "path": "azure/Azure_Public_Service_Icons/Icons/app-services",
       "resources": [
         {
           "name": "App Service Plans",
-          "file": "azure/Azure_Public_Service_Icons/Icons/app services/00046-icon-service-App-Service-Plans.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/app-services/00046-icon-service-App-Service-Plans.svg",
           "type": "service"
         },
         {
           "name": "App Service Certificates",
-          "file": "azure/Azure_Public_Service_Icons/Icons/app services/00049-icon-service-App-Service-Certificates.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/app-services/00049-icon-service-App-Service-Certificates.svg",
           "type": "service"
         },
         {
           "name": "App Service Domains",
-          "file": "azure/Azure_Public_Service_Icons/Icons/app services/00050-icon-service-App-Service-Domains.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/app-services/00050-icon-service-App-Service-Domains.svg",
           "type": "service"
         },
         {
           "name": "Cdn Profiles",
-          "file": "azure/Azure_Public_Service_Icons/Icons/app services/00056-icon-service-CDN-Profiles.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/app-services/00056-icon-service-CDN-Profiles.svg",
           "type": "service"
         },
         {
           "name": "App Services",
-          "file": "azure/Azure_Public_Service_Icons/Icons/app services/10035-icon-service-App-Services.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/app-services/10035-icon-service-App-Services.svg",
           "type": "service"
         },
         {
           "name": "Cognitive Search",
-          "file": "azure/Azure_Public_Service_Icons/Icons/app services/10044-icon-service-Cognitive-Search.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/app-services/10044-icon-service-Cognitive-Search.svg",
           "type": "service"
         },
         {
           "name": "Notification Hubs",
-          "file": "azure/Azure_Public_Service_Icons/Icons/app services/10045-icon-service-Notification-Hubs.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/app-services/10045-icon-service-Notification-Hubs.svg",
           "type": "service"
         },
         {
           "name": "App Service Environments",
-          "file": "azure/Azure_Public_Service_Icons/Icons/app services/10047-icon-service-App-Service-Environments.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/app-services/10047-icon-service-App-Service-Environments.svg",
           "type": "service"
         }
       ]
     },
     "azureecosystem": {
       "name": "Azure Ecosystem",
-      "path": "azure/Azure_Public_Service_Icons/Icons/azure ecosystem",
+      "path": "azure/Azure_Public_Service_Icons/Icons/azure-ecosystem",
       "resources": [
         {
           "name": "Collaborative Service",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure ecosystem/01038-icon-service-Collaborative-Service.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-ecosystem/01038-icon-service-Collaborative-Service.svg",
           "type": "service"
         },
         {
           "name": "Applens",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure ecosystem/02354-icon-service-Applens.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-ecosystem/02354-icon-service-Applens.svg",
           "type": "service"
         },
         {
           "name": "Azure Hybrid Center",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure ecosystem/02573-icon-service-Azure-Hybrid-Center.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-ecosystem/02573-icon-service-Azure-Hybrid-Center.svg",
           "type": "service"
         }
       ]
     },
     "azurestack": {
       "name": "Azure Stack",
-      "path": "azure/Azure_Public_Service_Icons/Icons/azure stack",
+      "path": "azure/Azure_Public_Service_Icons/Icons/azure-stack",
       "resources": [
         {
           "name": "Multi Tenancy",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure stack/00965-icon-service-Multi-Tenancy.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-stack/00965-icon-service-Multi-Tenancy.svg",
           "type": "service"
         },
         {
           "name": "Infrastructure Backup",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure stack/10108-icon-service-Infrastructure-Backup.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-stack/10108-icon-service-Infrastructure-Backup.svg",
           "type": "service"
         },
         {
           "name": "Capacity",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure stack/10109-icon-service-Capacity.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-stack/10109-icon-service-Capacity.svg",
           "type": "service"
         },
         {
           "name": "Offers",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure stack/10110-icon-service-Offers.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-stack/10110-icon-service-Offers.svg",
           "type": "service"
         },
         {
           "name": "User Subscriptions",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure stack/10111-icon-service-User-Subscriptions.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-stack/10111-icon-service-User-Subscriptions.svg",
           "type": "service"
         },
         {
           "name": "Plans",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure stack/10113-icon-service-Plans.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-stack/10113-icon-service-Plans.svg",
           "type": "service"
         },
         {
           "name": "Updates",
-          "file": "azure/Azure_Public_Service_Icons/Icons/azure stack/10115-icon-service-Updates.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/azure-stack/10115-icon-service-Updates.svg",
           "type": "service"
         }
       ]
@@ -515,12 +515,12 @@
         },
         {
           "name": "Os Images (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10027-icon-service-OS-Images-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10027-icon-service-OS-Images-Classic.svg",
           "type": "service"
         },
         {
           "name": "Virtual Machines (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10028-icon-service-Virtual-Machines-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10028-icon-service-Virtual-Machines-Classic.svg",
           "type": "service"
         },
         {
@@ -530,7 +530,7 @@
         },
         {
           "name": "Cloud Services (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10030-icon-service-Cloud-Services-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10030-icon-service-Cloud-Services-Classic.svg",
           "type": "service"
         },
         {
@@ -580,17 +580,17 @@
         },
         {
           "name": "Vm Images (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10040-icon-service-VM-Images-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10040-icon-service-VM-Images-Classic.svg",
           "type": "service"
         },
         {
           "name": "Disks (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10041-icon-service-Disks-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10041-icon-service-Disks-Classic.svg",
           "type": "service"
         },
         {
           "name": "Container Services (deprecated)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10049-icon-service-Container-Services-(Deprecated).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/compute/10049-icon-service-Container-Services-Deprecated.svg",
           "type": "service"
         },
         {
@@ -1356,36 +1356,36 @@
     },
     "hybridmulticloud": {
       "name": "Hybrid + Multicloud",
-      "path": "azure/Azure_Public_Service_Icons/Icons/hybrid + multicloud",
+      "path": "azure/Azure_Public_Service_Icons/Icons/hybrid-and-multicloud",
       "resources": [
         {
           "name": "Azure Operator 5g Core",
-          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid + multicloud/03248-icon-service-Azure-Operator-5G-Core.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid-and-multicloud/03248-icon-service-Azure-Operator-5G-Core.svg",
           "type": "service"
         },
         {
           "name": "Azure Operator Nexus",
-          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid + multicloud/03324-icon-service-Azure-Operator-Nexus.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid-and-multicloud/03324-icon-service-Azure-Operator-Nexus.svg",
           "type": "service"
         },
         {
           "name": "Azure Operator Insights",
-          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid + multicloud/03333-icon-service-Azure-Operator-Insights.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid-and-multicloud/03333-icon-service-Azure-Operator-Insights.svg",
           "type": "service"
         },
         {
           "name": "Azure Operator Service Manager",
-          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid + multicloud/03334-icon-service-Azure-Operator-Service-Manager.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid-and-multicloud/03334-icon-service-Azure-Operator-Service-Manager.svg",
           "type": "service"
         },
         {
           "name": "Azure Programmable Connectivity",
-          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid + multicloud/03347-icon-service-Azure-Programmable-Connectivity.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid-and-multicloud/03347-icon-service-Azure-Programmable-Connectivity.svg",
           "type": "service"
         },
         {
           "name": "Azure Monitor Pipeline",
-          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid + multicloud/03585-icon-service-Azure-Monitor-Pipeline.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/hybrid-and-multicloud/03585-icon-service-Azure-Monitor-Pipeline.svg",
           "type": "service"
         }
       ]
@@ -1809,7 +1809,7 @@
       "resources": [
         {
           "name": "Machine Learning Studio (classic) Web Services",
-          "file": "azure/Azure_Public_Service_Icons/Icons/iot/00030-icon-service-Machine-Learning-Studio-(Classic)-Web-Services.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/iot/00030-icon-service-Machine-Learning-Studio-Classic-Web-Services.svg",
           "type": "service"
         },
         {
@@ -1956,171 +1956,171 @@
     },
     "managementgovernance": {
       "name": "Management + Governance",
-      "path": "azure/Azure_Public_Service_Icons/Icons/management + governance",
+      "path": "azure/Azure_Public_Service_Icons/Icons/management-and-governance",
       "resources": [
         {
           "name": "Monitor",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00001-icon-service-Monitor.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00001-icon-service-Monitor.svg",
           "type": "service"
         },
         {
           "name": "Alerts",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00002-icon-service-Alerts.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00002-icon-service-Alerts.svg",
           "type": "service"
         },
         {
           "name": "Advisor",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00003-icon-service-Advisor.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00003-icon-service-Advisor.svg",
           "type": "service"
         },
         {
           "name": "Cost Management And Billing",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00004-icon-service-Cost-Management-and-Billing.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00004-icon-service-Cost-Management-and-Billing.svg",
           "type": "service"
         },
         {
           "name": "Blueprints",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00006-icon-service-Blueprints.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00006-icon-service-Blueprints.svg",
           "type": "service"
         },
         {
           "name": "Activity Log",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00007-icon-service-Activity-Log.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00007-icon-service-Activity-Log.svg",
           "type": "service"
         },
         {
           "name": "Diagnostics Settings",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00008-icon-service-Diagnostics-Settings.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00008-icon-service-Diagnostics-Settings.svg",
           "type": "service"
         },
         {
           "name": "Log Analytics Workspaces",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00009-icon-service-Log-Analytics-Workspaces.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00009-icon-service-Log-Analytics-Workspaces.svg",
           "type": "service"
         },
         {
           "name": "Scheduler Job Collections",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00010-icon-service-Scheduler-Job-Collections.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00010-icon-service-Scheduler-Job-Collections.svg",
           "type": "service"
         },
         {
           "name": "Compliance",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00011-icon-service-Compliance.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00011-icon-service-Compliance.svg",
           "type": "service"
         },
         {
           "name": "Application Insights",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00012-icon-service-Application-Insights.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00012-icon-service-Application-Insights.svg",
           "type": "service"
         },
         {
           "name": "My Customers",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00014-icon-service-My-Customers.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00014-icon-service-My-Customers.svg",
           "type": "service"
         },
         {
           "name": "Recovery Services Vaults",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00017-icon-service-Recovery-Services-Vaults.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00017-icon-service-Recovery-Services-Vaults.svg",
           "type": "service"
         },
         {
           "name": "Metrics",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00020-icon-service-Metrics.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00020-icon-service-Metrics.svg",
           "type": "service"
         },
         {
           "name": "Solutions",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00021-icon-service-Solutions.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00021-icon-service-Solutions.svg",
           "type": "service"
         },
         {
           "name": "Automation Accounts",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00022-icon-service-Automation-Accounts.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00022-icon-service-Automation-Accounts.svg",
           "type": "service"
         },
         {
           "name": "Operation Log (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00024-icon-service-Operation-Log-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00024-icon-service-Operation-Log-Classic.svg",
           "type": "service"
         },
         {
           "name": "Service Providers",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00025-icon-service-Service-Providers.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00025-icon-service-Service-Providers.svg",
           "type": "service"
         },
         {
           "name": "Education",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00026-icon-service-Education.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00026-icon-service-Education.svg",
           "type": "service"
         },
         {
           "name": "Service Catalog Mad",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00027-icon-service-Service-Catalog-MAD.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00027-icon-service-Service-Catalog-MAD.svg",
           "type": "service"
         },
         {
           "name": "Intune Trends",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00408-icon-service-Intune-Trends.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00408-icon-service-Intune-Trends.svg",
           "type": "service"
         },
         {
           "name": "Azure Lighthouse",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00471-icon-service-Azure-Lighthouse.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00471-icon-service-Azure-Lighthouse.svg",
           "type": "service"
         },
         {
           "name": "Universal Print",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00571-icon-service-Universal-Print.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00571-icon-service-Universal-Print.svg",
           "type": "service"
         },
         {
           "name": "Azure Arc",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/00756-icon-service-Azure-Arc.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/00756-icon-service-Azure-Arc.svg",
           "type": "service"
         },
         {
           "name": "Arc Machines",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/01710-icon-service-Arc-Machines.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/01710-icon-service-Arc-Machines.svg",
           "type": "service"
         },
         {
           "name": "Resources Provider",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/03366-icon-service-Resources-Provider.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/03366-icon-service-Resources-Provider.svg",
           "type": "service"
         },
         {
           "name": "User Privacy",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/10303-icon-service-User-Privacy.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/10303-icon-service-User-Privacy.svg",
           "type": "service"
         },
         {
           "name": "Managed Desktop",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/10311-icon-service-Managed-Desktop.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/10311-icon-service-Managed-Desktop.svg",
           "type": "service"
         },
         {
           "name": "Managed Applications Center",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/10313-icon-service-Managed-Applications-Center.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/10313-icon-service-Managed-Applications-Center.svg",
           "type": "service"
         },
         {
           "name": "Customer Lockbox For Microsoft Azure",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/10314-icon-service-Customer-Lockbox-for-Microsoft-Azure.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/10314-icon-service-Customer-Lockbox-for-Microsoft-Azure.svg",
           "type": "service"
         },
         {
           "name": "Policy",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/10316-icon-service-Policy.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/10316-icon-service-Policy.svg",
           "type": "service"
         },
         {
           "name": "Resource Graph Explorer",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/10318-icon-service-Resource-Graph-Explorer.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/10318-icon-service-Resource-Graph-Explorer.svg",
           "type": "service"
         },
         {
           "name": "Machinesazurearc",
-          "file": "azure/Azure_Public_Service_Icons/Icons/management + governance/10450-icon-service-MachinesAzureArc.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/management-and-governance/10450-icon-service-MachinesAzureArc.svg",
           "type": "service"
         }
       ]
@@ -2185,16 +2185,16 @@
     },
     "mixedreality": {
       "name": "Mixed Reality",
-      "path": "azure/Azure_Public_Service_Icons/Icons/mixed reality",
+      "path": "azure/Azure_Public_Service_Icons/Icons/mixed-reality",
       "resources": [
         {
           "name": "Remote Rendering",
-          "file": "azure/Azure_Public_Service_Icons/Icons/mixed reality/00698-icon-service-Remote-Rendering.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/mixed-reality/00698-icon-service-Remote-Rendering.svg",
           "type": "service"
         },
         {
           "name": "Spatial Anchor Accounts",
-          "file": "azure/Azure_Public_Service_Icons/Icons/mixed reality/10352-icon-service-Spatial-Anchor-Accounts.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/mixed-reality/10352-icon-service-Spatial-Anchor-Accounts.svg",
           "type": "service"
         }
       ]
@@ -2437,7 +2437,7 @@
         },
         {
           "name": "Public Ip Addresses (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/networking/10068-icon-service-Public-IP-Addresses-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/networking/10068-icon-service-Public-IP-Addresses-Classic.svg",
           "type": "service"
         },
         {
@@ -2467,7 +2467,7 @@
         },
         {
           "name": "Virtual Networks (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/networking/10075-icon-service-Virtual-Networks-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/networking/10075-icon-service-Virtual-Networks-Classic.svg",
           "type": "service"
         },
         {
@@ -2522,7 +2522,7 @@
         },
         {
           "name": "Web Application Firewall Policies(waf)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/networking/10362-icon-service-Web-Application-Firewall-Policies(WAF).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/networking/10362-icon-service-Web-Application-Firewall-Policies-WAF.svg",
           "type": "service"
         },
         {
@@ -2532,7 +2532,7 @@
         },
         {
           "name": "Reserved Ip Addresses (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/networking/10371-icon-service-Reserved-IP-Addresses-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/networking/10371-icon-service-Reserved-IP-Addresses-Classic.svg",
           "type": "service"
         },
         {
@@ -2544,201 +2544,201 @@
     },
     "newicons": {
       "name": "New Icons",
-      "path": "azure/Azure_Public_Service_Icons/Icons/new icons",
+      "path": "azure/Azure_Public_Service_Icons/Icons/new-icons",
       "resources": [
         {
           "name": "Load Balancer Hub",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/029029174-icon-service-Load-Balancer-Hub.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/029029174-icon-service-Load-Balancer-Hub.svg",
           "type": "service"
         },
         {
           "name": "Toolchain Orchestrator",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/029109619-icon-service-Toolchain-Orchestrator.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/029109619-icon-service-Toolchain-Orchestrator.svg",
           "type": "service"
         },
         {
           "name": "Workload Orchestration",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/029109619-icon-service-Workload-Orchestration.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/029109619-icon-service-Workload-Orchestration.svg",
           "type": "service"
         },
         {
           "name": "Data Virtualization",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/029203566-icon-service-Data-Virtualization.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/029203566-icon-service-Data-Virtualization.svg",
           "type": "service"
         },
         {
           "name": "Edge Actions",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/029273094-icon-service-Edge-Actions.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/029273094-icon-service-Edge-Actions.svg",
           "type": "service"
         },
         {
           "name": "Frd Qa",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/029455661-icon-service-FRD-QA.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/029455661-icon-service-FRD-QA.svg",
           "type": "service"
         },
         {
           "name": "Landing Zone",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/029636048-icon-service-Landing-Zone.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/029636048-icon-service-Landing-Zone.svg",
           "type": "service"
         },
         {
           "name": "Service Groups",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/029637767-icon-service-Service-Groups.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/029637767-icon-service-Service-Groups.svg",
           "type": "service"
         },
         {
           "name": "Engage Center Connect",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/029797391-icon-service-Engage-Center-Connect.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/029797391-icon-service-Engage-Center-Connect.svg",
           "type": "service"
         },
         {
           "name": "Pubsub",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/02987-icon-service-pubsub.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/02987-icon-service-pubsub.svg",
           "type": "service"
         },
         {
           "name": "Storage Hubs",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/030486388-icon-service-Storage-Hubs.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/030486388-icon-service-Storage-Hubs.svg",
           "type": "service"
         },
         {
           "name": "030777508 Icon Service Service Group Relationships",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/030777508 -icon-service-Service-Group-Relationships.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/030777508-icon-service-Service-Group-Relationships.svg",
           "type": "service"
         },
         {
           "name": "Stage Maps",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/030868929-icon-service-Stage-Maps.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/030868929-icon-service-Stage-Maps.svg",
           "type": "service"
         },
         {
           "name": "Logic Apps Template",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/032130874-icon-service-Logic-Apps-Template.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/032130874-icon-service-Logic-Apps-Template.svg",
           "type": "service"
         },
         {
           "name": "Aks Network Policy",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/032487601-icon-service-AKS-Network-Policy.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/032487601-icon-service-AKS-Network-Policy.svg",
           "type": "service"
         },
         {
           "name": "Microsoft Discovery",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/032869111-icon-service-Microsoft-Discovery.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/032869111-icon-service-Microsoft-Discovery.svg",
           "type": "service"
         },
         {
           "name": "Scheduled Actions",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/033049334-icon-service-Scheduled-Actions.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/033049334-icon-service-Scheduled-Actions.svg",
           "type": "service"
         },
         {
           "name": "Promethus",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/033112809-icon-service-promethus.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/033112809-icon-service-promethus.svg",
           "type": "service"
         },
         {
           "name": "Kubernetes Hub",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/033545113-icon-service-Kubernetes-Hub.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/033545113-icon-service-Kubernetes-Hub.svg",
           "type": "service"
         },
         {
           "name": "Azure Local",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/033745116-icon-service-Azure-Local.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/033745116-icon-service-Azure-Local.svg",
           "type": "service"
         },
         {
           "name": "Azure App Testing",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/033805167-icon-service-Azure-App-Testing.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/033805167-icon-service-Azure-App-Testing.svg",
           "type": "service"
         },
         {
           "name": "Azure Container Storage",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03401-icon-service-Azure-Container-Storage.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03401-icon-service-Azure-Container-Storage.svg",
           "type": "service"
         },
         {
           "name": "External Id",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03425-icon-service-external-id.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03425-icon-service-external-id.svg",
           "type": "service"
         },
         {
           "name": "External Id Modified",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/034251-icon-service-external-id-modified.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/034251-icon-service-external-id-modified.svg",
           "type": "service"
         },
         {
           "name": "Vnet Appliance",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/034412066-icon-service-VNet-Appliance.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/034412066-icon-service-VNet-Appliance.svg",
           "type": "service"
         },
         {
           "name": "Monitor Issues",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/034855501-icon-service-Monitor-Issues.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/034855501-icon-service-Monitor-Issues.svg",
           "type": "service"
         },
         {
           "name": "Azure Consumption Commitment",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03495-icon-service-Azure-Consumption-Commitment.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03495-icon-service-Azure-Consumption-Commitment.svg",
           "type": "service"
         },
         {
           "name": "Edge Storage Accelerator",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03521-icon-service-Edge-Storage-Accelerator.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03521-icon-service-Edge-Storage-Accelerator.svg",
           "type": "service"
         },
         {
           "name": "Operation Center",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/035572279-icon-service-Operation-Center.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/035572279-icon-service-Operation-Center.svg",
           "type": "service"
         },
         {
           "name": "Sql Database Fleet Manager",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03565-icon-service-SQL-Database-Fleet-Manager.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03565-icon-service-SQL-Database-Fleet-Manager.svg",
           "type": "service"
         },
         {
           "name": "Breeze",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03633-icon-service-Breeze.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03633-icon-service-Breeze.svg",
           "type": "service"
         },
         {
           "name": "Network Foundation Hub",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03643-icon-service-Network-Foundation-Hub.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03643-icon-service-Network-Foundation-Hub.svg",
           "type": "service"
         },
         {
           "name": "Azure Linux",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03645-icon-service-Azure-Linux.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03645-icon-service-Azure-Linux.svg",
           "type": "service"
         },
         {
           "name": "Network Security Hub",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03650-icon-service-Network-Security-Hub.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03650-icon-service-Network-Security-Hub.svg",
           "type": "service"
         },
         {
           "name": "Hybrid Connectivity Hub",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03656-icon-service-Hybrid-Connectivity-Hub.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03656-icon-service-Hybrid-Connectivity-Hub.svg",
           "type": "service"
         },
         {
           "name": "Azure Managed Redis",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03675-icon-service-Azure-Managed-Redis.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03675-icon-service-Azure-Managed-Redis.svg",
           "type": "service"
         },
         {
           "name": "Ai At Edge",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03687-icon-service-AI-at-Edge.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03687-icon-service-AI-at-Edge.svg",
           "type": "service"
         },
         {
           "name": "Vpnclientwindows",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03694-icon-service-VPNClientWindows.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03694-icon-service-VPNClientWindows.svg",
           "type": "service"
         },
         {
           "name": "Planetary Computer Pro",
-          "file": "azure/Azure_Public_Service_Icons/Icons/new icons/03755-icon-service-Planetary-Computer-Pro.svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/new-icons/03755-icon-service-Planetary-Computer-Pro.svg",
           "type": "service"
         }
       ]
@@ -2834,7 +2834,7 @@
         },
         {
           "name": "Arc Postgresql",
-          "file": "azure/Azure_Public_Service_Icons/Icons/other/01848-icon-service-Arc-PostgreSQL .svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/other/01848-icon-service-Arc-PostgreSQL.svg",
           "type": "service"
         },
         {
@@ -2919,7 +2919,7 @@
         },
         {
           "name": "Cloud Services (extended Support)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/other/02505-icon-service-Cloud-Services-(extended-support).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/other/02505-icon-service-Cloud-Services-extended-support.svg",
           "type": "service"
         },
         {
@@ -3536,7 +3536,7 @@
         },
         {
           "name": "Storage Accounts (classic)",
-          "file": "azure/Azure_Public_Service_Icons/Icons/storage/10087-icon-service-Storage-Accounts-(Classic).svg",
+          "file": "azure/Azure_Public_Service_Icons/Icons/storage/10087-icon-service-Storage-Accounts-Classic.svg",
           "type": "service"
         },
         {

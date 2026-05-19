@@ -134,7 +134,7 @@
         },
         {
           "name": "Aihypercomputer",
-          "file": "gcp/Unique Icons/AI Hypercomputer/SVG/AIHypercomputer-512-color.svg",
+          "file": "gcp/Unique-Icons/AI-Hypercomputer/SVG/AIHypercomputer-512-color.svg",
           "type": "service"
         }
       ]
@@ -306,17 +306,17 @@
         },
         {
           "name": "Cloudrun",
-          "file": "gcp/Unique Icons/Cloud Run/SVG/CloudRun-512-color-rgb.svg",
+          "file": "gcp/Unique-Icons/Cloud-Run/SVG/CloudRun-512-color-rgb.svg",
           "type": "service"
         },
         {
           "name": "Computeengine",
-          "file": "gcp/Unique Icons/Compute Engine/SVG/ComputeEngine-512-color-rgb.svg",
+          "file": "gcp/Unique-Icons/Compute-Engine/SVG/ComputeEngine-512-color-rgb.svg",
           "type": "service"
         },
         {
           "name": "GKE",
-          "file": "gcp/Unique Icons/GKE/SVG/GKE-512-color.svg",
+          "file": "gcp/Unique-Icons/GKE/SVG/GKE-512-color.svg",
           "type": "service"
         }
       ]
@@ -399,17 +399,17 @@
         },
         {
           "name": "Alloydb",
-          "file": "gcp/Unique Icons/AlloyDB/SVG/AlloyDB-512-color.svg",
+          "file": "gcp/Unique-Icons/AlloyDB/SVG/AlloyDB-512-color.svg",
           "type": "service"
         },
         {
           "name": "Cloudsql",
-          "file": "gcp/Unique Icons/Cloud SQL/SVG/CloudSQL-512-color.svg",
+          "file": "gcp/Unique-Icons/Cloud-SQL/SVG/CloudSQL-512-color.svg",
           "type": "service"
         },
         {
           "name": "Cloudspanner",
-          "file": "gcp/Unique Icons/Cloud Spanner/SVG/CloudSpanner-512-color.svg",
+          "file": "gcp/Unique-Icons/Cloud-Spanner/SVG/CloudSpanner-512-color.svg",
           "type": "service"
         }
       ]
@@ -500,7 +500,7 @@
         },
         {
           "name": "Apigee",
-          "file": "gcp/Unique Icons/Apigee/SVG/Apigee-512-color-rgb.svg",
+          "file": "gcp/Unique-Icons/Apigee/SVG/Apigee-512-color-rgb.svg",
           "type": "service"
         }
       ]
@@ -511,7 +511,7 @@
       "resources": [
         {
           "name": "Distributedcloud",
-          "file": "gcp/Unique Icons/Distributed Cloud/SVG/DistributedCloud-512-color.svg",
+          "file": "gcp/Unique-Icons/Distributed-Cloud/SVG/DistributedCloud-512-color.svg",
           "type": "service"
         }
       ]
@@ -1181,22 +1181,22 @@
         },
         {
           "name": "Mandiant",
-          "file": "gcp/Unique Icons/Mandiant/SVG/Mandiant-512-color.svg",
+          "file": "gcp/Unique-Icons/Mandiant/SVG/Mandiant-512-color.svg",
           "type": "service"
         },
         {
           "name": "Securitycommandcenter",
-          "file": "gcp/Unique Icons/Security Command Center/SVG/SecurityCommandCenter-512-color.svg",
+          "file": "gcp/Unique-Icons/Security-Command-Center/SVG/SecurityCommandCenter-512-color.svg",
           "type": "service"
         },
         {
           "name": "Secops",
-          "file": "gcp/Unique Icons/Security Operations/SVG/SecOps-512-color-rgb.svg",
+          "file": "gcp/Unique-Icons/Security-Operations/SVG/SecOps-512-color-rgb.svg",
           "type": "service"
         },
         {
           "name": "Threatintelligence",
-          "file": "gcp/Unique Icons/Threat Intelligence/SVG/ThreatIntelligence-512-color.svg",
+          "file": "gcp/Unique-Icons/Threat-Intelligence/SVG/ThreatIntelligence-512-color.svg",
           "type": "service"
         }
       ]
@@ -1232,7 +1232,7 @@
         },
         {
           "name": "Hyperdisk",
-          "file": "gcp/Unique Icons/Hyperdisk/SVG/Hyperdisk-512-color.svg",
+          "file": "gcp/Unique-Icons/Hyperdisk/SVG/Hyperdisk-512-color.svg",
           "type": "service"
         }
       ]

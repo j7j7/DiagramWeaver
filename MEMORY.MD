@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-19 – Web-safe static asset paths (no spaces or parentheses)
+
+Renamed **43** files/directories under **`public/`** whose names contained spaces, parentheses, or stray spaces (Azure icon packs, GCP **`Unique-Icons`**, AWS Location Service icons, **`public/examples/*.mmd`**). Updated **`resource-azure.json`**, **`resource-gcp.json`**, **`resource-aws.json`**, **`scripts/validate-mermaid.mjs`**, **`scripts/generate-gcp-resources.py`**. Convention: spaces → hyphens, **` + `** → **`-and-`**, **`(Classic)`** etc. → **`-Classic`**, trailing spaces removed.
+
+
 ### 2026-05-19 – Full static export (`output: 'export'`)
 
 **`next.config.ts`**: **`output: 'export'`**, **`trailingSlash: true`**. Removed **`src/app/icon.tsx`** (dynamic OG icon) and **`src/app/actions.ts`**; favicon **`public/favicon.svg`**. **`npm run build`** → **`out/`**; **`npm run start`** / **`serve:static`** serve **`out/`** on port 9003. No API routes. Patch bumped.
