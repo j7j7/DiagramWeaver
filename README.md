@@ -149,7 +149,7 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 - **Class diagram**: UML-style classes (name, attributes, methods), inheritance (`Parent <|-- Child`)
 - **Sequence diagram**: Participants as rounded-rectangles, messages as lines, self-loops as loop shapes
 - **Examples**: File → Examples → Mermaid Simple / Mermaid Complex / Mermaid Class Diagram / Mermaid Sequence Diagram
-- **Validation**: `npm run validate-mermaid` or `GET /api/validate-mermaid` when dev server running
+- **Validation**: `npm run validate-mermaid` (CLI script over `public/examples/*.mmd`)
 
 See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
@@ -305,9 +305,12 @@ For detailed accessibility audit results, see [`docs/ACCESSIBILITY_AUDIT_REPORT.
 ### Build Commands
 
 - `npm run dev` – Start dev server (port 9003)
-- `npm run build` – Production build
+- `npm run build` – Static export to **`out/`** (suitable for GitHub Pages, S3, nginx, etc.)
+- `npm run start` – Serve **`out/`** locally on port 9003 (same as `serve:static`)
 - `npm run lint` – Run ESLint
 - `npm run typecheck` – TypeScript type check
+
+Deploy by uploading the **`out/`** directory to any static host. Routes use trailing slashes (`/viewer/`). There is no Node server or API in production.
 
 ### Resource Management
 
@@ -347,7 +350,7 @@ Repository layout (high level):
 
 ```
 src/
-├── app/                  # Routes: `/` (editor), `/viewer`; API handlers under `app/api/*`
+├── app/                  # Routes: `/` (editor), `/viewer` (static-friendly; no API routes)
 ├── components/
 │   ├── diagram-editor.tsx          # Editor shell / wiring (large orchestrator)
 │   ├── diagram-editor-inner.tsx    # Layout chrome around the canvas

@@ -246,28 +246,218 @@ export async function validateCustomImageUrl(
     return okResult;
   }
 
-  try {
-    const response = await fetch("/api/validate-image-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: normalized, maxBytes: CUSTOM_ICON_MAX_SIZE_BYTES }),
-    });
-    const payload = (await response.json()) as CustomImageValidationResult;
-    const result: CustomImageValidationResult = {
-      ok: Boolean(payload?.ok),
-      normalizedUrl: payload?.normalizedUrl ?? normalized,
-      contentType: payload?.contentType,
-      contentLength: payload?.contentLength,
-      error: payload?.error,
-    };
-    validationCache.set(normalized, result);
-    return result;
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Unable to validate image URL.",
-    };
+  const result = await validateRemoteHttpImageUrl(normalized, CUSTOM_ICON_MAX_SIZE_BYTES);
+  validationCache.set(normalized, result);
+  return result;
+}
+
+function getRemoteImageUrlValidationError(url: URL): string | null {
+  const hostname = url.hostname;
+  if (!hostname) return "Missing hostname.";
+  if (isForbiddenImageHostname(hostname)) {
+    return "Local or internal hostnames are not allowed.";
   }
+  if (url.username || url.password) {
+    return "URL credentials are not allowed.";
+  }
+
+  const ipVersion = detectIpVersion(hostname);
+  if (ipVersion !== 0 && isForbiddenIpAddress(hostname, ipVersion)) {
+    return "Private or reserved IP addresses are not allowed.";
+  }
+
+  return null;
+}
+
+function isForbiddenImageHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host.endsWith(".internal") ||
+    host === "0" ||
+    host === "[::1]"
+  );
+}
+
+function detectIpVersion(value: string): 0 | 4 | 6 {
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value)) return 4;
+  if (value.includes(":")) return 6;
+  return 0;
+}
+
+function ipv4ToInt(ip: string): number {
+  const parts = ip.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((v) => !Number.isInteger(v) || v < 0 || v > 255)) return -1;
+  return parts[0] * 16777216 + parts[1] * 65536 + parts[2] * 256 + parts[3];
+}
+
+function isIPv4InCidr(ip: string, base: string, prefix: number): boolean {
+  const ipInt = ipv4ToInt(ip);
+  const baseInt = ipv4ToInt(base);
+  if (ipInt < 0 || baseInt < 0) return false;
+  if (prefix <= 0) return true;
+  if (prefix >= 32) return ipInt === baseInt;
+  const mask = (0xffffffff << (32 - prefix)) >>> 0;
+  return (ipInt & mask) === (baseInt & mask);
+}
+
+function isPrivateOrReservedIPv4(ip: string): boolean {
+  const blockedCidrs: Array<[string, number]> = [
+    ["0.0.0.0", 8],
+    ["10.0.0.0", 8],
+    ["100.64.0.0", 10],
+    ["127.0.0.0", 8],
+    ["169.254.0.0", 16],
+    ["172.16.0.0", 12],
+    ["192.0.0.0", 24],
+    ["192.0.2.0", 24],
+    ["192.168.0.0", 16],
+    ["198.18.0.0", 15],
+    ["198.51.100.0", 24],
+    ["203.0.113.0", 24],
+    ["224.0.0.0", 4],
+    ["240.0.0.0", 4],
+  ];
+  return blockedCidrs.some(([base, prefix]) => isIPv4InCidr(ip, base, prefix));
+}
+
+function isPrivateOrReservedIPv6(ip: string): boolean {
+  const normalized = ip.toLowerCase();
+  return (
+    normalized === "::1" ||
+    normalized === "::" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    normalized.startsWith("fe8") ||
+    normalized.startsWith("fe9") ||
+    normalized.startsWith("fea") ||
+    normalized.startsWith("feb") ||
+    normalized.startsWith("ff") ||
+    normalized.startsWith("2001:db8")
+  );
+}
+
+function isForbiddenIpAddress(ip: string, version: 4 | 6): boolean {
+  if (version === 4) return isPrivateOrReservedIPv4(ip);
+  return isPrivateOrReservedIPv6(ip);
+}
+
+async function validateRemoteHttpImageUrl(
+  url: string,
+  maxBytes: number
+): Promise<CustomImageValidationResult> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { ok: false, error: "URL must be a valid http/https image URL." };
+  }
+
+  const hostError = getRemoteImageUrlValidationError(parsed);
+  if (hostError) {
+    return { ok: false, error: hostError };
+  }
+
+  const fetchResult = await probeRemoteImageWithFetch(url, maxBytes);
+  if (fetchResult) return fetchResult;
+
+  return probeRemoteImageWithImageElement(url);
+}
+
+async function probeRemoteImageWithFetch(
+  url: string,
+  maxBytes: number
+): Promise<CustomImageValidationResult | null> {
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      redirect: "follow",
+      headers: {
+        Accept:
+          "image/avif,image/webp,image/apng,image/svg+xml,image/png,image/jpeg,image/gif,image/bmp,image/x-icon,image/*;q=0.8,*/*;q=0.5",
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: `Image request failed with status ${response.status}.`,
+      };
+    }
+
+    const contentType = response.headers.get("content-type")?.toLowerCase();
+    if (!isAllowedImageMimeType(contentType)) {
+      return {
+        ok: false,
+        error: "Unsupported image format. Use PNG, JPG, SVG, WebP, GIF, AVIF, BMP, APNG, or ICO.",
+      };
+    }
+
+    const headerLength = parseContentLength(response.headers.get("content-length"));
+    if (headerLength !== undefined && headerLength > maxBytes) {
+      return {
+        ok: false,
+        error: `Image too large. Maximum allowed size is ${Math.floor(maxBytes / 1024)} KB.`,
+        contentType: contentType?.split(";")[0].trim(),
+        contentLength: headerLength,
+      };
+    }
+
+    const blob = await response.blob();
+    if (blob.size > maxBytes) {
+      return {
+        ok: false,
+        error: `Image too large. Maximum allowed size is ${Math.floor(maxBytes / 1024)} KB.`,
+        contentType: blob.type || contentType?.split(";")[0].trim(),
+        contentLength: blob.size,
+      };
+    }
+
+    return {
+      ok: true,
+      normalizedUrl: response.url || url,
+      contentType: blob.type || contentType?.split(";")[0].trim(),
+      contentLength: blob.size,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function probeRemoteImageWithImageElement(url: string): Promise<CustomImageValidationResult> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const timeoutId = window.setTimeout(() => {
+      img.onload = null;
+      img.onerror = null;
+      resolve({
+        ok: false,
+        error: "Timed out while loading image. Check the URL or try a data:image/... URL.",
+      });
+    }, 15000);
+
+    img.onload = () => {
+      window.clearTimeout(timeoutId);
+      resolve({ ok: true, normalizedUrl: url });
+    };
+    img.onerror = () => {
+      window.clearTimeout(timeoutId);
+      resolve({
+        ok: false,
+        error: "Unable to load image. The URL may be invalid, blocked, or not an image.",
+      });
+    };
+    img.src = url;
+  });
+}
+
+function parseContentLength(headerValue: string | null): number | undefined {
+  if (!headerValue) return undefined;
+  const parsed = Number(headerValue);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 export function sanitizeCustomIconNode(node: DiagramNodeData): DiagramNodeData {

@@ -39,7 +39,7 @@ export function ViewerUrlDialog({ open, onOpenChange, diagramData }: ViewerUrlDi
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
       
       // Create viewer URL
-      const url = `${origin}/viewer?json=${encodeURIComponent(base64Json)}`;
+      const url = `${origin}/viewer/?json=${encodeURIComponent(base64Json)}`;
       setViewerUrl(url);
     }
   }, [open, diagramData]);

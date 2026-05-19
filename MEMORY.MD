@@ -3,6 +3,16 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-19 – Full static export (`output: 'export'`)
+
+**`next.config.ts`**: **`output: 'export'`**, **`trailingSlash: true`**. Removed **`src/app/icon.tsx`** (dynamic OG icon) and **`src/app/actions.ts`**; favicon **`public/favicon.svg`**. **`npm run build`** → **`out/`**; **`npm run start`** / **`serve:static`** serve **`out/`** on port 9003. No API routes. Patch bumped.
+
+
+### 2026-05-19 – Static export: remove API routes; client-side image URL validation
+
+Removed **`src/app/api/*`** routes (**`validate-mermaid`**, **`export`**, **`validate-image-url`**) and unused **`server-export.ts`** so the app can be built as a static site. Mermaid validation remains via in-app parser + **`npm run validate-mermaid`**. Export is client-side (**`use-canvas-export`**, editor export handlers). Custom icon remote URLs are validated in **`custom-icon-utils.ts`**: block local/private hosts, then **`fetch`** (CORS) for MIME/size when allowed, else **`<img>`** load probe. Patch bumped.
+
+
 ### 2026-05-17 – **README** marketing screenshots (`public/marketing`)
 
 **`README.md`** includes a **Screenshots** section with repo-relative image paths (`public/marketing/*.png`) so GitHub renders **`marketing-editor-canvas`**, **`marketing-connections`**, **`marketing-presentations`**, **`marketing-share-viewer`**.

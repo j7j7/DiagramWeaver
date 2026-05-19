@@ -33,12 +33,8 @@ flowchart LR
 | **`page.tsx`** | Loads **`DiagramEditor`** — main authoring UI at **`/`**. |
 | **`layout.tsx`** | App shell (fonts, providers, etc.). |
 | **`viewer/page.tsx`** | **`/viewer`**: parses query params (**`viewer-utils`** `parseViewerParams`), **`loadViewerData`** or local file picker, **`ViewerCanvas`** + optional **`PresentationPlayer`**. |
-| **`api/export/route.ts`** | Server‑side diagram export (**`server-export`**, validates diagram JSON). |
-| **`api/validate-mermaid/route.ts`** | Validates Mermaid text for import flows. |
-| **`api/validate-image-url/route.ts`** | Validates remote image URLs (custom icons). |
-| **`icon.tsx`** | App icon metadata for Next.js. |
 
-**`actions.ts`** is a minimal server-actions stub (no diagram logic).
+**Static export**: **`next.config.ts`** sets **`output: 'export'`**; **`npm run build`** writes HTML/JS/CSS to **`out/`**. Favicon: **`public/favicon.svg`**.
 
 ---
 
@@ -155,9 +151,8 @@ Below, “**key exports**” are representative; open the file for the full surf
 |--------|-----------|
 | **`diagram-editor/diagram-editor-save-handler.ts`** | **`createDiagramSaveHandler`** — “Save as .json” with layers persistence. |
 | **`diagram-editor/diagram-editor-export-handlers.ts`** | **`createDiagramExportHandlers`** — PNG/GIF/etc. wiring from editor. |
-| **`server-export.ts`** | Server validation + raster settings for **`api/export`**. |
 | **`html-to-image-fit-png.ts`** | Raster capture sizing. |
-| **`custom-icon-utils.ts`**, **`resource-mapping.ts`**, **`icon-resources.ts`** | Icon URLs and catalog mapping. |
+| **`custom-icon-utils.ts`**, **`resource-mapping.ts`**, **`icon-resources.ts`** | Icon URLs, client-side remote image validation, and catalog mapping. |
 
 ### Rules engine (effects / validations)
 

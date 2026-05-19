@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'Diagram Weaver',
   description: 'Create interactive diagrams from JSON or natural language.',
   icons: {
-    icon: '/icon',
+    icon: '/favicon.svg',
   },
 };
 

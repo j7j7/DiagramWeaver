@@ -7,7 +7,8 @@
 
 # Build Commands
 - `npm run dev` - Start dev server (port 9003)
-- `npm run build` - Production build
+- `npm run build` - Static export to `out/` (`output: 'export'` in `next.config.ts`)
+- `npm run start` / `npm run serve:static` - Serve `out/` locally (port 9003)
 - `node scripts/bump-patch.mjs` - Increment `package.json` patch (`0.1.x` → `0.1.x+1`) after app code changes (see `.cursor/rules/semver-patch-on-app-edit.mdc`)
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - TypeScript type check

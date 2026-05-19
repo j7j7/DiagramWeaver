@@ -135,55 +135,14 @@
         <p>Generate a static PNG or SVG image of the diagram for embedding in emails, PDFs, or documentation.</p>
 
         <div class="info">
-            <strong>Usage:</strong> POST to <code>/api/export</code> with diagram JSON in the request body. Query parameters control format, quality, and background.
+            <strong>Usage:</strong> Export PNG/SVG/GIF from the editor (<strong>File → Export</strong>) or capture the viewer canvas client-side. There is no server export API in static deployments.
         </div>
 
-        <h3>API Endpoint</h3>
-        <div class="code-block">
-POST /api/export?format=png&quality=medium&bg=white
+        <h3>Editor export</h3>
+        <p>Open the diagram in the editor and use <strong>File → Export</strong> for PNG, SVG, or GIF (quality and background options in the export dialog).</p>
 
-Request Body:
-{
-  "diagram": {
-    "nodes": [...],
-    "connections": [...],
-    "zones": [...]
-  }
-}
-        </div>
-
-        <h3>Query Parameters</h3>
-        <ul>
-            <li><code>format</code>: 'png' | 'svg' (default: 'png')</li>
-            <li><code>quality</code>: 'low' | 'medium' | 'high' (default: 'medium')</li>
-            <li><code>bg</code>: 'transparent' | 'white' (default: 'white')</li>
-        </ul>
-
-        <h3>JavaScript Example</h3>
-        <div class="code-block">
-async function exportDiagram(diagramData) {
-  const response = await fetch('/api/export?format=png&quality=medium&bg=white', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ diagram: diagramData }),
-  });
-  
-  if (response.ok) {
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    // Use the image URL
-    const img = document.createElement('img');
-    img.src = url;
-    document.body.appendChild(img);
-  }
-}
-        </div>
-
-        <div class="warning">
-            <strong>Note:</strong> Server-side rendering requires Puppeteer/Playwright. Currently, the API returns a viewer URL that can be used with a headless browser for rendering.
-        </div>
+        <h3>Viewer + screenshot</h3>
+        <p>For embed-only workflows, load <code>/viewer?json=…</code> and use browser devtools or a headless browser screenshot if you need a raster from a shared link.</p>
     </div>
 
     <div class="section">
@@ -242,9 +201,9 @@ viewer_url = f"https://yourapp.com/viewer?json={quote(base64_json)}"
         style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
     &gt;&lt;/iframe&gt;
     
-    &lt;!-- Or use static image for email/PDF --&gt;
+    &lt;!-- Pre-rendered PNG for email/PDF: export from editor and host the file --&gt;
     &lt;img 
-        src="https://yourapp.com/api/export?format=png&quality=high&bg=white"
+        src="https://conference.example.com/diagrams/architecture.png"
         alt="Architecture Diagram"
         style="max-width: 100%; height: auto;"
     /&gt;
@@ -301,31 +260,6 @@ viewer_url = f"https://yourapp.com/viewer?json={quote(base64_json)}"
                 '<div class="info">Loaded custom diagram</div>';
         }
 
-        // Test export API
-        async function testExport() {
-            try {
-                const diagramData = {
-                    nodes: [
-                        { id: 'node1', type: 'Server', label: 'Test Server', x: 100, y: 100 },
-                    ],
-                    connections: [],
-                    zones: [],
-                };
-
-                const response = await fetch('/api/export?format=png&quality=medium&bg=white', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ diagram: diagramData }),
-                });
-
-                const result = await response.json();
-                console.log('Export API response:', result);
-            } catch (error) {
-                console.error('Export test failed:', error);
-            }
-        }
     </script>
 </body>
 </html>

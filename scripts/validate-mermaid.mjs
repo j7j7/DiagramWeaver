@@ -3,9 +3,7 @@
  * Validates Mermaid import - parses example .mmd files and reports results.
  * Run: npm run validate-mermaid
  *
- * For full fidelity (uses real mermaid-parser): start dev server and visit
- * GET http://localhost:9002/api/validate-mermaid
- * Or in browser console: fetch('/api/validate-mermaid').then(r=>r.json()).then(console.log)
+ * Uses the same flowchart parser as in-app Mermaid import (standalone Node script).
  */
 
 import { readFileSync, existsSync } from 'fs';

@@ -1,6 +1,6 @@
 {
   "name": "nextn",
-  "version": "0.1.657",
+  "version": "0.1.660",
   "private": true,
   "scripts": {
     "predev": "node scripts/bump-build.mjs",
@@ -8,7 +8,8 @@
     "dev": "next dev --turbopack -H 0.0.0.0 -p 9003",
     "dev:test": "next dev --turbopack -H 0.0.0.0 -p 9004",
     "build": "NODE_ENV=production next build",
-    "start": "next start",
+    "start": "npm run serve:static",
+    "serve:static": "npx --yes serve@14 out -l 9003",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "validate-mermaid": "node scripts/validate-mermaid.mjs"

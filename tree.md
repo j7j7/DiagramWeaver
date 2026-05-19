@@ -2,7 +2,7 @@
 
 Canonical narrative: **README → Development → Project Structure**. Update this file when top-level directories or major `src/` groupings change.
 
-**Last verified:** 2026-04-29
+**Last verified:** 2026-05-19
 
 ```
 .
@@ -15,7 +15,6 @@ Canonical narrative: **README → Development → Project Structure**. Update th
 ├── resources/               # Templates / tooling beside public (optional); live catalogs under public/resources/
 ├── src/
 │   ├── app/
-│   │   ├── api/             # export, validate-mermaid, validate-image-url
 │   │   ├── viewer/
 │   │   └── page.tsx         # editor route `/`
 │   ├── components/
