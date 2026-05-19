@@ -7,8 +7,14 @@ import { extractEmbeddedPresentations, type ExtractedEmbeddedPresentations } fro
 import { collapsePresentationDecksToOne } from './presentation-deck-merge';
 import { migratePresentationDecks } from './presentation-primary-slide';
 import { ensureDiagramLayersPersisted } from './layers-utils';
+import {
+  IMPORT_MAX_JSON_BYTES,
+  assertImportJsonTextWithinLimit,
+  assertSubDiagramDepthWithinLimit,
+} from './import-json-limits';
 
-export const VIEWER_MAX_JSON_SIZE = 5 * 1024 * 1024; // 5MB limit
+/** @deprecated Use {@link IMPORT_MAX_JSON_BYTES} from `import-json-limits`. */
+export const VIEWER_MAX_JSON_SIZE = IMPORT_MAX_JSON_BYTES;
 
 export type ParsedViewerParams =
   | { mode: 'inline'; json: string }
@@ -138,11 +144,10 @@ export function decodeJsonParam(encoded: string): unknown {
     const decoded = atob(base64);
     
     // Check size limit
-    if (decoded.length > VIEWER_MAX_JSON_SIZE) {
-      throw new Error(`JSON size exceeds maximum limit of ${VIEWER_MAX_JSON_SIZE / 1024 / 1024}MB`);
-    }
-
-    return JSON.parse(decoded);
+    assertImportJsonTextWithinLimit(decoded);
+    const parsed: unknown = JSON.parse(decoded);
+    assertSubDiagramDepthWithinLimit(parsed);
+    return parsed;
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(`Failed to decode JSON parameter: ${error.message}`);
@@ -183,13 +188,10 @@ export async function fetchRemoteJson(url: string): Promise<unknown> {
     }
 
     const text = await response.text();
-    
-    // Check size limit
-    if (text.length > VIEWER_MAX_JSON_SIZE) {
-      throw new Error(`JSON size exceeds maximum limit of ${VIEWER_MAX_JSON_SIZE / 1024 / 1024}MB`);
-    }
-
-    return JSON.parse(text);
+    assertImportJsonTextWithinLimit(text);
+    const parsed: unknown = JSON.parse(text);
+    assertSubDiagramDepthWithinLimit(parsed);
+    return parsed;
   } catch (error) {
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
@@ -206,6 +208,7 @@ export async function fetchRemoteJson(url: string): Promise<unknown> {
  * Handles both flat and hierarchical formats
  */
 export function validateAndConvertJson(json: unknown): DiagramData {
+  assertSubDiagramDepthWithinLimit(json);
   // Check if this is hierarchical format (has zones with nested children)
   const isHierarchical = typeof json === 'object' && json !== null &&
     'zones' in json && Array.isArray((json as any).zones) &&

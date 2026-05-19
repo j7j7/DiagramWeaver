@@ -1,8 +1,22 @@
 import type {NextConfig} from 'next';
+import {CONTENT_SECURITY_POLICY} from './src/lib/content-security-policy';
 
 const nextConfig: NextConfig = {
   output: 'export',
   trailingSlash: true,
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: CONTENT_SECURITY_POLICY,
+          },
+        ],
+      },
+    ];
+  },
   allowedDevOrigins: [
     '*.app.github.dev',
     'localhost:9003',

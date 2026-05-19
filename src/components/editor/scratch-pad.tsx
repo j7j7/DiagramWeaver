@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
+import { assertImportJsonTextWithinLimit } from '@/lib/import-json-limits';
 import { isIconOrEmojiType } from '@/lib/utils';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
@@ -291,7 +292,9 @@ export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCan
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const json = JSON.parse(event.target?.result as string);
+        const raw = event.target?.result as string;
+        assertImportJsonTextWithinLimit(raw);
+        const json = JSON.parse(raw);
         if (Array.isArray(json)) {
           const newImports = await processImportedItems(json);
           
@@ -385,7 +388,9 @@ export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCan
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(event.target?.result as string);
+        const raw = event.target?.result as string;
+        assertImportJsonTextWithinLimit(raw);
+        const json = JSON.parse(raw);
         if (Array.isArray(json)) {
           // Validate that the loaded items have the required structure
           const validFavorites = json.filter(item => 

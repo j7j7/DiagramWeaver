@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { flattenDiagramOnImport } from './flatten-on-import';
 import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from './custom-icon-utils';
 import { ensureDiagramLayersPersisted } from './layers-utils';
-import { DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS, type DiagramCompositeBodyShapeKind } from './types';
+import { DIAGRAM_COMPOSITE_BODY_SHAPE_KINDS, type DiagramCompositeBodyShapeKind, type DiagramData } from './types';
+import { assertSubDiagramDepthWithinLimit } from './import-json-limits';
 
 // Rich text run schema for textbox nodes
 const RichTextRunSchema = z.object({
@@ -684,9 +685,7 @@ const DiagramViewStateSchema = z.object({
   k: z.number(),
 }).optional();
 
-// Main DiagramData schema - zones stripped on parse via flattenDiagramOnImport
-// subDiagrams: recursive structure, validated loosely to avoid circular type
-export const DiagramDataSchema = z.object({
+const DiagramDataSchemaInner = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
   groupings: z.array(DiagramGroupingDataSchema).optional(),
@@ -694,15 +693,26 @@ export const DiagramDataSchema = z.object({
   recentColors: z.array(z.string()).optional(),
   /** Optional canvas viewport background (CSS colour string) */
   canvasBackgroundColor: z.string().optional(),
-  subDiagrams: z.record(z.string(), z.any()).optional(),
   viewState: DiagramViewStateSchema,
 });
 
-export type DiagramDataValidated = z.infer<typeof DiagramDataSchema>;
+export type DiagramDataValidated = z.infer<typeof DiagramDataSchemaInner> & {
+  subDiagrams?: Record<string, DiagramDataValidated>;
+};
+
+// Main DiagramData schema - zones stripped on parse via flattenDiagramOnImport
+// subDiagrams: validated recursively (same shape as root diagram)
+export const DiagramDataSchema: z.ZodType<DiagramDataValidated> = z.lazy(() =>
+  DiagramDataSchemaInner.extend({
+    subDiagrams: z.record(z.string(), DiagramDataSchema).optional(),
+  })
+) as z.ZodType<DiagramDataValidated>;
 
 /** Parse diagram JSON - if zones present, flattens automatically */
 export function parseDiagramJson(raw: unknown): DiagramDataValidated {
+  assertSubDiagramDepthWithinLimit(raw);
   const flattened = flattenDiagramOnImport((raw || {}) as Parameters<typeof flattenDiagramOnImport>[0]);
+  assertSubDiagramDepthWithinLimit(flattened);
   const preSanitized = {
     ...flattened,
     nodes: (flattened.nodes || []).map((node: any) => {
@@ -717,7 +727,7 @@ export function parseDiagramJson(raw: unknown): DiagramDataValidated {
   };
   const parsed = DiagramDataSchema.parse(preSanitized) as DiagramDataValidated;
   return ensureDiagramLayersPersisted(
-    sanitizeCustomIconsInDiagram(parsed) as DiagramDataValidated,
+    sanitizeCustomIconsInDiagram(parsed as DiagramData),
   ) as DiagramDataValidated;
 }
 

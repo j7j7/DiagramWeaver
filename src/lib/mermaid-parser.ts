@@ -258,7 +258,7 @@ function parseFrontmatterConfig(text: string): MermaidFlowchartConfig | undefine
   const yamlBlock = trimmed.slice(3, endIdx).trim();
   if (!yamlBlock) return undefined;
   try {
-    const parsed = yaml.load(yamlBlock) as Record<string, unknown>;
+    const parsed = yaml.load(yamlBlock, { schema: yaml.JSON_SCHEMA }) as Record<string, unknown>;
     const config = parsed?.config as Record<string, unknown> | undefined;
     if (!config || typeof config !== 'object') return undefined;
     const result: MermaidFlowchartConfig = {};

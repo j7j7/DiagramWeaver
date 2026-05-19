@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RecentColorsProvider } from "@/hooks/use-recent-colors";
 import { ThemeProvider } from "@/components/theme-provider";
+import { CONTENT_SECURITY_POLICY } from "@/lib/content-security-policy";
 
 export const metadata: Metadata = {
   title: 'Diagram Weaver',
@@ -28,6 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta httpEquiv="Content-Security-Policy" content={CONTENT_SECURITY_POLICY} />
         {/* External file avoids next/script innerHTML + __next_s wrapper (server/client mismatch). */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts -- small static boot script; next/script adds hydration wrapper */}
         <script src="/theme-init.js" suppressHydrationWarning />

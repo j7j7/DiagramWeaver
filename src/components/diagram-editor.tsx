@@ -13,6 +13,7 @@ import { useLayerAnimation } from '@/hooks/use-layer-animation';
 import { useConnectionAnimationIdlePause } from '@/hooks/use-connection-animation-idle';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { collectAllIdsInDiagram, sanitizeImportedDiagram } from '@/lib/import-sanitize';
+import { assertSubDiagramDepthWithinLimit, parseImportJsonText } from '@/lib/import-json-limits';
 import { getDiagramAtStack, updateDiagramAtStack, addSubDiagramAtStack, removeSubDiagramAtStack } from '@/lib/sub-diagram-utils';
 import { sanitizeViewState } from '@/lib/view-state-utils';
 import { DiagramDataSchema } from '@/lib/schemas';
@@ -2358,7 +2359,9 @@ export default function DiagramEditor() {
   };
 
   const parseUnknownJsonToDiagramData = React.useCallback((json: unknown): DiagramData => {
+    assertSubDiagramDepthWithinLimit(json);
     const flattened = flattenDiagramOnImport((json || {}) as RawDiagramData);
+    assertSubDiagramDepthWithinLimit(flattened);
 
     // Keep import resilient: invalid custom icon URLs are downgraded to fallback rendering
     // before strict Zod validation runs.
@@ -2449,7 +2452,7 @@ export default function DiagramEditor() {
             let mermaidData = await mermaidToDiagramData(parsed);
             completeData = mermaidData;
           } else {
-            const jsonData = JSON.parse(text);
+            const jsonData = parseImportJsonText(text);
             completeData = parseUnknownJsonToDiagramData(jsonData);
             loadedPresentations = extractPresentationsFromDiagramJson(jsonData);
           }
@@ -2522,7 +2525,7 @@ export default function DiagramEditor() {
           }
           completeData = await mermaidToDiagramData(parsed);
         } else {
-          const jsonData = JSON.parse(text);
+          const jsonData = parseImportJsonText(text);
           completeData = parseUnknownJsonToDiagramData(jsonData);
         }
         completeData.connections = ensureConnectionIds(completeData.connections || []);
@@ -3118,7 +3121,7 @@ export default function DiagramEditor() {
         }
         diagram = mermaidData;
       } else {
-        const json = JSON.parse(text);
+        const json = parseImportJsonText(text);
         diagram = parseUnknownJsonToDiagramData(json);
       }
 
@@ -3154,7 +3157,7 @@ export default function DiagramEditor() {
           throw new Error(`Failed to load tutorial example: ${res.statusText}`);
         }
         const text = await res.text();
-        const json = JSON.parse(text) as unknown;
+        const json = parseImportJsonText(text);
         const diagram = parseUnknownJsonToDiagramData(json);
         const serialized = JSON.stringify(diagram);
         const tabId = tabsRef.current.find(

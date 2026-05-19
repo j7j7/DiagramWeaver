@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-19 – Security hardening (rich-text CSS, import limits, YAML, CSP)
+
+**Rich text:** `safe-css-font.ts` sanitizes `font-family` / `font-weight` before `runsToHtml` inline styles (blocks CSS breakout into `contentEditable` innerHTML). **Imports:** `import-json-limits.ts` — 5MB UTF-8 cap + max **48** `subDiagrams` depth; `parseImportJsonText` wired through editor file open, sub-diagram import, JSON panel apply, viewer file pick, examples. **`DiagramDataSchema`:** recursive Zod (`z.lazy`) replaces `z.any()` for `subDiagrams`. **Mermaid:** frontmatter `yaml.load` uses `yaml.JSON_SCHEMA`. **CSP:** `content-security-policy.ts` meta in `layout.tsx` + `headers()` in `next.config.ts` (fonts, remote images, viewer fetch). Patch bumped.
+
+
 ### 2026-05-19 – Web-safe static asset paths (no spaces or parentheses)
 
 Renamed **43** files/directories under **`public/`** whose names contained spaces, parentheses, or stray spaces (Azure icon packs, GCP **`Unique-Icons`**, AWS Location Service icons, **`public/examples/*.mmd`**). Updated **`resource-azure.json`**, **`resource-gcp.json`**, **`resource-aws.json`**, **`scripts/validate-mermaid.mjs`**, **`scripts/generate-gcp-resources.py`**. Convention: spaces → hyphens, **` + `** → **`-and-`**, **`(Classic)`** etc. → **`-Classic`**, trailing spaces removed.

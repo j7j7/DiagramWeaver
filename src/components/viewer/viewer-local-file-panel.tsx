@@ -5,7 +5,8 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { viewerDataFromUnknownJson, VIEWER_MAX_JSON_SIZE, type ViewerData } from "@/lib/viewer-utils";
+import { parseImportJsonText } from "@/lib/import-json-limits";
+import { viewerDataFromUnknownJson, type ViewerData } from "@/lib/viewer-utils";
 
 export interface ViewerLocalFilePanelProps {
   onLoaded: (data: ViewerData) => void;
@@ -28,12 +29,7 @@ export function ViewerLocalFilePanel({ onLoaded, onError, errorMessage, classNam
             onError("Could not read file contents.");
             return;
           }
-          if (text.length > VIEWER_MAX_JSON_SIZE) {
-            onError(`File is too large (max ${VIEWER_MAX_JSON_SIZE / 1024 / 1024}MB).`);
-            return;
-          }
-          const json = JSON.parse(text) as unknown;
-          onLoaded(viewerDataFromUnknownJson(json));
+          onLoaded(viewerDataFromUnknownJson(parseImportJsonText(text)));
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Invalid JSON or diagram format.";
           onError(msg);

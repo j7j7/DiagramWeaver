@@ -9,6 +9,7 @@
 import type { RichTextRun } from "@/lib/types";
 import type { DiagramNodeData } from "@/lib/types";
 import { DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
+import { sanitizeCssFontFamily, sanitizeCssFontWeight } from "@/lib/safe-css-font";
 export type { RichTextRun };
 
 const DEFAULT_JUSTIFY = DEFAULT_TEXT_STYLING.textJustify ?? "center";
@@ -49,10 +50,10 @@ function lineStyleAttr(run: RichTextRun, defaults: LineDefaults): string {
   parts.push(`text-align:${align === "full" ? "justify" : align}`);
   if (run.lineFontSize != null) parts.push(`font-size:${run.lineFontSize}px`);
   else if (defaults.fontSize != null) parts.push(`font-size:${defaults.fontSize}px`);
-  if (run.lineFontWeight != null) parts.push(`font-weight:${run.lineFontWeight}`);
-  else if (defaults.fontWeight != null) parts.push(`font-weight:${defaults.fontWeight}`);
-  if (run.lineFontFamily != null) parts.push(`font-family:${escapeCssString(run.lineFontFamily)}`);
-  else if (defaults.fontFamily != null) parts.push(`font-family:${escapeCssString(defaults.fontFamily)}`);
+  const fw = sanitizeCssFontWeight(run.lineFontWeight) ?? sanitizeCssFontWeight(defaults.fontWeight);
+  if (fw != null) parts.push(`font-weight:${fw}`);
+  const ff = sanitizeCssFontFamily(run.lineFontFamily) ?? sanitizeCssFontFamily(defaults.fontFamily);
+  if (ff != null) parts.push(`font-family:${escapeCssString(ff)}`);
   return parts.length ? ` style="${parts.join(";")}"` : "";
 }
 
@@ -190,7 +191,10 @@ export function htmlToRuns(html: string, node?: DiagramNodeData | null): RichTex
     const fw = style?.fontWeight;
     if (fw && fw !== "inherit") format.lineFontWeight = fw;
     const ff = style?.fontFamily;
-    if (ff && ff !== "inherit") format.lineFontFamily = ff.replace(/^["']|["']$/g, "");
+    if (ff && ff !== "inherit") {
+      const sanitized = sanitizeCssFontFamily(ff.replace(/^["']|["']$/g, ""));
+      if (sanitized) format.lineFontFamily = sanitized;
+    }
     return format;
   }
 

@@ -11,6 +11,7 @@ import { stableStringify } from '@/lib/json-utils';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { ensureDiagramLayersPersisted } from '@/lib/layers-utils';
 import { DiagramDataSchema } from '@/lib/schemas';
+import { assertImportJsonTextWithinLimit, parseImportJsonText } from '@/lib/import-json-limits';
 import { ensureConnectionIds } from '@/lib/connection-order-utils';
 import { findJsonRangeForDiagramSelection, type JsonFocusTarget } from '@/lib/json-editor-focus';
 import { applyJsonSearchMatch, collectJsonSearchMatches } from '@/lib/json-text-search';
@@ -349,6 +350,7 @@ export function JsonEditorPanel({
     setText(newText);
 
     try {
+      assertImportJsonTextWithinLimit(newText);
       const parsed = JSON.parse(newText);
       const hasValidStructure = parsed && typeof parsed === 'object' && (parsed.nodes || parsed.zones || parsed.connections);
       setError(hasValidStructure ? null : 'Invalid diagram data structure');
@@ -360,22 +362,27 @@ export function JsonEditorPanel({
   const handleSubmit = React.useCallback(() => {
     setIsUpdating(true);
     try {
-      const parsed = JSON.parse(text);
+      const parsed = parseImportJsonText(text);
 
       let finalData: DiagramData | null = null;
       let validationError: any = null;
 
       // Flatten + schema parse (same as File → Open) so connection fields round-trip (e.g. edgeAttachmentConstraint)
-      if (parsed && typeof parsed === 'object' && (parsed.nodes || parsed.zones || parsed.connections)) {
+      const rawDiagram =
+        parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? (parsed as RawDiagramData)
+          : null;
+      if (rawDiagram && (rawDiagram.nodes || rawDiagram.zones || rawDiagram.connections)) {
         try {
-          const flattened = flattenDiagramOnImport(parsed as RawDiagramData);
+          const flattened = flattenDiagramOnImport(rawDiagram);
           const schemaResult = DiagramDataSchema.safeParse(flattened);
           if (!schemaResult.success) {
             validationError = schemaResult.error;
           } else {
+            const data = schemaResult.data;
             finalData = ensureDiagramLayersPersisted({
-              ...schemaResult.data,
-              connections: ensureConnectionIds(schemaResult.data.connections || []),
+              ...data,
+              connections: ensureConnectionIds(data.connections || []),
             } as DiagramData);
           }
         } catch (e) {
