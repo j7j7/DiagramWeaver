@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Server, User } from "lucide-react";
 import { buildResourceIconPath } from "@/lib/resource-mapping";
+import { loadProviderCatalog, lookupResourceInCatalog } from "@/lib/resource-catalog";
 import { getLucideIcon, getLucideIconFromTypeSlug } from "@/lib/icon-resources";
 import { CustomIconImage } from "@/components/diagram/custom-icon-image";
 import type { CustomImageOptions } from "@/lib/types";
@@ -434,56 +435,26 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
 
       setResourceFile(null);
 
-      fetch(`/resources/resource-${typeProvider}.json`, { signal })
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-          }
-          return res.json();
-        })
-        .then((data) => {
+      loadProviderCatalog(typeProvider)
+        .then((catalog) => {
           if (signal.aborted) return;
-
-          const findInResources = (resources: { name: string; file: string }[] | undefined) =>
-            resources?.find((r) => r.name.replace(/\s+/g, "-").toLowerCase() === resourceName);
-
-          let categoryData = data.categories?.[typeCategory];
-          let resource = findInResources(categoryData?.resources);
-
-          // text-box-heading is under generic.text in JSON but type string uses generic.object
-          if (!resource?.file && typeProvider === "generic" && typeCategory === "object" && resourceName === "text-box-heading") {
-            categoryData = data.categories?.text;
-            resource = findInResources(categoryData?.resources);
+          const mapping = lookupResourceInCatalog(catalog, type);
+          if (!mapping?.file) {
+            console.warn(`Resource not found: ${resourceName} in ${typeProvider}.${typeCategory}`);
+            return;
           }
-
-          if (categoryData?.resources) {
-            if (resource?.file) {
-              // Always use vector preview; catalog PNGs are placeholders vs on-canvas / palette glyphs
-              if (
-                resourceName === "text-box-heading" ||
-                resourceName === "progress-bar" ||
-                resourceName === "timeline-bar" ||
-                resourceName === "segmented-rectangle" ||
-                resourceName === "pyramid" ||
-                resourceName === "timeline" ||
-                resourceName === "mind-map-node"
-              ) {
-                setResourceFile(null);
-              } else {
-                setResourceFile(resource.file);
-              }
-            } else {
-              console.warn(`Resource not found: ${resourceName} in ${typeProvider}.${typeCategory}`, {
-                availableResources: categoryData.resources.map((r: { name: string }) => ({
-                  name: r.name,
-                  normalized: r.name.replace(/\s+/g, "-").toLowerCase(),
-                })),
-              });
-            }
+          if (
+            resourceName === "text-box-heading" ||
+            resourceName === "progress-bar" ||
+            resourceName === "timeline-bar" ||
+            resourceName === "segmented-rectangle" ||
+            resourceName === "pyramid" ||
+            resourceName === "timeline" ||
+            resourceName === "mind-map-node"
+          ) {
+            setResourceFile(null);
           } else {
-            console.warn(`Category not found: ${typeCategory} in ${typeProvider}`, {
-              availableCategories: Object.keys(data.categories || {}),
-            });
+            setResourceFile(mapping.file);
           }
         })
         .catch((err: Error) => {

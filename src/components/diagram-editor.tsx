@@ -11,13 +11,11 @@ import { useDiagramTabs, TUTORIAL_TAB_NAME } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
 import { useLayerAnimation } from '@/hooks/use-layer-animation';
 import { useConnectionAnimationIdlePause } from '@/hooks/use-connection-animation-idle';
-import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { collectAllIdsInDiagram, sanitizeImportedDiagram } from '@/lib/import-sanitize';
-import { assertSubDiagramDepthWithinLimit, parseImportJsonText } from '@/lib/import-json-limits';
+import { parseImportJsonText } from '@/lib/import-json-limits';
+import { parseDiagramJson, parseDiagramJsonSync } from '@/lib/diagram-json-import';
 import { getDiagramAtStack, updateDiagramAtStack, addSubDiagramAtStack, removeSubDiagramAtStack } from '@/lib/sub-diagram-utils';
 import { sanitizeViewState } from '@/lib/view-state-utils';
-import { DiagramDataSchema } from '@/lib/schemas';
-import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from '@/lib/custom-icon-utils';
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
 import { applyMindmapHueAnchorsAfterVisualChanges } from "@/lib/mindmap-layout";
@@ -2358,48 +2356,19 @@ export default function DiagramEditor() {
     if (event.target) event.target.value = '';
   };
 
-  const parseUnknownJsonToDiagramData = React.useCallback((json: unknown): DiagramData => {
-    assertSubDiagramDepthWithinLimit(json);
-    const flattened = flattenDiagramOnImport((json || {}) as RawDiagramData);
-    assertSubDiagramDepthWithinLimit(flattened);
-
-    // Keep import resilient: invalid custom icon URLs are downgraded to fallback rendering
-    // before strict Zod validation runs.
-    const preSanitized = {
-      ...flattened,
-      nodes: (flattened.nodes || []).map((node: any) => {
-        if (node?.type !== 'generic.icon.custom') return node;
-        const normalizedUrl = normalizeHttpImageUrl(node?.imageUrl);
-        if (!normalizedUrl) {
-          const { imageUrl: _discard, ...rest } = node;
-          return rest;
-        }
-        return { ...node, imageUrl: normalizedUrl };
-      }),
-    };
-
-    const result = DiagramDataSchema.safeParse(preSanitized);
-    if (!result.success) {
-      throw new Error(`Invalid diagram format: ${result.error.message}`);
-    }
-    const data = result.data as DiagramData;
-    const parsedData: DiagramData = ensureDiagramLayersPersisted(
-      sanitizeCustomIconsInDiagram({
-        ...data,
-        connections: ensureConnectionIds(data.connections || []),
-      }),
-    );
-    return parsedData;
-  }, []);
+  const parseUnknownJsonToDiagramData = React.useCallback(
+    (json: unknown) => parseDiagramJson(json),
+    []
+  );
 
   const extractPresentationsFromDiagramJson = React.useCallback((json: unknown): {
     decks: PresentationDeck[];
     activeDeckId: string | null;
   } => {
-    const base = parseUnknownJsonToDiagramData(json);
+    const base = parseDiagramJsonSync(json);
     const extracted = extractEmbeddedPresentations(json, base);
     return collapsePresentationDecksToOne(extracted.decks, extracted.activeDeckId);
-  }, [parseUnknownJsonToDiagramData]);
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -2453,7 +2422,7 @@ export default function DiagramEditor() {
             completeData = mermaidData;
           } else {
             const jsonData = parseImportJsonText(text);
-            completeData = parseUnknownJsonToDiagramData(jsonData);
+            completeData = await parseUnknownJsonToDiagramData(jsonData);
             loadedPresentations = extractPresentationsFromDiagramJson(jsonData);
           }
           completeData.connections = ensureConnectionIds(completeData.connections || []);
@@ -2526,7 +2495,7 @@ export default function DiagramEditor() {
           completeData = await mermaidToDiagramData(parsed);
         } else {
           const jsonData = parseImportJsonText(text);
-          completeData = parseUnknownJsonToDiagramData(jsonData);
+          completeData = await parseUnknownJsonToDiagramData(jsonData);
         }
         completeData.connections = ensureConnectionIds(completeData.connections || []);
         const existingIds = collectAllIdsInDiagram(diagramData);
@@ -3122,7 +3091,7 @@ export default function DiagramEditor() {
         diagram = mermaidData;
       } else {
         const json = parseImportJsonText(text);
-        diagram = parseUnknownJsonToDiagramData(json);
+        diagram = await parseUnknownJsonToDiagramData(json);
       }
 
       const exampleName = exampleId === 'example1' ? 'Example 1' : exampleId === 'example2' ? 'Example 2'
@@ -3158,7 +3127,7 @@ export default function DiagramEditor() {
         }
         const text = await res.text();
         const json = parseImportJsonText(text);
-        const diagram = parseUnknownJsonToDiagramData(json);
+        const diagram = await parseUnknownJsonToDiagramData(json);
         const serialized = JSON.stringify(diagram);
         const tabId = tabsRef.current.find(
           (t) => t.isTutorialTab === true || t.name === TUTORIAL_TAB_NAME

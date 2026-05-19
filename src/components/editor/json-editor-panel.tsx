@@ -8,11 +8,8 @@ import { Text } from '@codemirror/state';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { stableStringify } from '@/lib/json-utils';
-import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
-import { ensureDiagramLayersPersisted } from '@/lib/layers-utils';
-import { DiagramDataSchema } from '@/lib/schemas';
 import { assertImportJsonTextWithinLimit, parseImportJsonText } from '@/lib/import-json-limits';
-import { ensureConnectionIds } from '@/lib/connection-order-utils';
+import { parseDiagramJson } from '@/lib/diagram-json-import';
 import { findJsonRangeForDiagramSelection, type JsonFocusTarget } from '@/lib/json-editor-focus';
 import { applyJsonSearchMatch, collectJsonSearchMatches } from '@/lib/json-text-search';
 import type { DiagramData } from '@/lib/types';
@@ -361,64 +358,44 @@ export function JsonEditorPanel({
 
   const handleSubmit = React.useCallback(() => {
     setIsUpdating(true);
-    try {
-      const parsed = parseImportJsonText(text);
+    void (async () => {
+      try {
+        const parsed = parseImportJsonText(text);
 
-      let finalData: DiagramData | null = null;
-      let validationError: any = null;
+        let finalData: DiagramData | null = null;
+        let validationError: unknown = null;
 
-      // Flatten + schema parse (same as File → Open) so connection fields round-trip (e.g. edgeAttachmentConstraint)
-      const rawDiagram =
-        parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-          ? (parsed as RawDiagramData)
-          : null;
-      if (rawDiagram && (rawDiagram.nodes || rawDiagram.zones || rawDiagram.connections)) {
         try {
-          const flattened = flattenDiagramOnImport(rawDiagram);
-          const schemaResult = DiagramDataSchema.safeParse(flattened);
-          if (!schemaResult.success) {
-            validationError = schemaResult.error;
-          } else {
-            const data = schemaResult.data;
-            finalData = ensureDiagramLayersPersisted({
-              ...data,
-              connections: ensureConnectionIds(data.connections || []),
-            } as DiagramData);
-          }
+          finalData = await parseDiagramJson(parsed);
         } catch (e) {
           validationError = e;
         }
-      } else {
-        validationError = { message: 'Invalid diagram data structure' };
-      }
 
-      if (!validationError && finalData) {
-        setError(null);
-        onValidJsonChange(finalData);
+        if (!validationError && finalData) {
+          setError(null);
+          onValidJsonChange(finalData);
 
-        const displayText = stableStringify(finalData);
-        if (displayText !== text) {
-          // Try to capture scroll position
-          const scrollPos = captureScrollPosition();
-
-          setText(displayText);
-
-          // Restore scroll position after text update
-          setTimeout(() => {
-            restoreScrollPosition(scrollPos);
-          }, 0);
+          const displayText = stableStringify(finalData);
+          if (displayText !== text) {
+            const scrollPos = captureScrollPosition();
+            setText(displayText);
+            setTimeout(() => {
+              restoreScrollPosition(scrollPos);
+            }, 0);
+          }
+        } else {
+          const err = validationError as { issues?: { path: (string | number)[]; message: string }[]; message?: string };
+          const errorMessage = err?.issues
+            ? err.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join(', ')
+            : err?.message || 'Unknown validation error';
+          setError(`Schema validation failed: ${errorMessage}`);
         }
-      } else {
-        const errorMessage = validationError.issues
-          ? validationError.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ')
-          : validationError.message || 'Unknown validation error';
-        setError(`Schema validation failed: ${errorMessage}`);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'Invalid JSON');
+      } finally {
+        setIsUpdating(false);
       }
-    } catch (e: any) {
-      setError(e?.message || 'Invalid JSON');
-    } finally {
-      setIsUpdating(false);
-    }
+    })();
   }, [text, setIsUpdating, setError, onValidJsonChange, captureScrollPosition, restoreScrollPosition, setText]);
 
   return (

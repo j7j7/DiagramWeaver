@@ -10,6 +10,7 @@ import {
   loadTabsFromLocalStorage,
   clearTabsFromLocalStorage,
 } from '@/lib/tab-storage';
+import { enrichDiagramResourceMetadata } from '@/lib/resource-catalog';
 
 /** Reserved label for the interactive tutorial diagram tab (only one such tab exists). */
 export const TUTORIAL_TAB_NAME = 'tutorial';
@@ -67,6 +68,25 @@ function parseStoredTabs(
         (typeof rest.name === 'string' && rest.name === TUTORIAL_TAB_NAME),
     };
   });
+}
+
+async function enrichStoredTabs(
+  tabs: TabState[],
+  historyRefs: React.MutableRefObject<Record<string, { history: string[]; index: number }>>
+): Promise<TabState[]> {
+  return Promise.all(
+    tabs.map(async (tab) => {
+      const diagramData = await enrichDiagramResourceMetadata(tab.diagramData);
+      if (diagramData !== tab.diagramData) {
+        historyRefs.current[tab.id] = {
+          history: [JSON.stringify(diagramData)],
+          index: 0,
+        };
+        return { ...tab, diagramData };
+      }
+      return tab;
+    })
+  );
 }
 
 export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
@@ -147,10 +167,14 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
         if (cancelled) return;
 
         if (idbPayload && idbPayload.tabs.length > 0) {
-          const cleanedTabs = parseStoredTabs(
-            idbPayload.tabs as (TabState & { historyRef?: { history: string[]; index: number } })[],
+          const cleanedTabs = await enrichStoredTabs(
+            parseStoredTabs(
+              idbPayload.tabs as (TabState & { historyRef?: { history: string[]; index: number } })[],
+              historyRefs
+            ),
             historyRefs
           );
+          if (cancelled) return;
           setTabs(cleanedTabs);
           const active =
             idbPayload.activeTabId && cleanedTabs.some((t) => t.id === idbPayload.activeTabId)
@@ -166,10 +190,14 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
         if (cancelled) return;
 
         if (lsPayload && lsPayload.tabs.length > 0) {
-          const cleanedTabs = parseStoredTabs(
-            lsPayload.tabs as (TabState & { historyRef?: { history: string[]; index: number } })[],
+          const cleanedTabs = await enrichStoredTabs(
+            parseStoredTabs(
+              lsPayload.tabs as (TabState & { historyRef?: { history: string[]; index: number } })[],
+              historyRefs
+            ),
             historyRefs
           );
+          if (cancelled) return;
           setTabs(cleanedTabs);
           const active =
             lsPayload.activeTabId && cleanedTabs.some((t) => t.id === lsPayload.activeTabId)

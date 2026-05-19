@@ -23,17 +23,19 @@ export function ViewerLocalFilePanel({ onLoaded, onError, errorMessage, classNam
     (file: File) => {
       const reader = new FileReader();
       reader.onload = () => {
-        try {
-          const text = reader.result;
-          if (typeof text !== "string") {
-            onError("Could not read file contents.");
-            return;
+        void (async () => {
+          try {
+            const text = reader.result;
+            if (typeof text !== "string") {
+              onError("Could not read file contents.");
+              return;
+            }
+            onLoaded(await viewerDataFromUnknownJson(parseImportJsonText(text)));
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : "Invalid JSON or diagram format.";
+            onError(msg);
           }
-          onLoaded(viewerDataFromUnknownJson(parseImportJsonText(text)));
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : "Invalid JSON or diagram format.";
-          onError(msg);
-        }
+        })();
       };
       reader.onerror = () => onError("Failed to read file.");
       reader.readAsText(file);

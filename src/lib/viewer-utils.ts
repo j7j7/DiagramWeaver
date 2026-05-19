@@ -7,6 +7,7 @@ import { extractEmbeddedPresentations, type ExtractedEmbeddedPresentations } fro
 import { collapsePresentationDecksToOne } from './presentation-deck-merge';
 import { migratePresentationDecks } from './presentation-primary-slide';
 import { ensureDiagramLayersPersisted } from './layers-utils';
+import { enrichDiagramResourceMetadata } from './resource-catalog';
 import {
   IMPORT_MAX_JSON_BYTES,
   assertImportJsonTextWithinLimit,
@@ -208,6 +209,10 @@ export async function fetchRemoteJson(url: string): Promise<unknown> {
  * Handles both flat and hierarchical formats
  */
 export function validateAndConvertJson(json: unknown): DiagramData {
+  return validateAndConvertJsonSync(json);
+}
+
+function validateAndConvertJsonSync(json: unknown): DiagramData {
   assertSubDiagramDepthWithinLimit(json);
   // Check if this is hierarchical format (has zones with nested children)
   const isHierarchical = typeof json === 'object' && json !== null &&
@@ -246,11 +251,17 @@ export function validateAndConvertJson(json: unknown): DiagramData {
   });
 }
 
+/** Like {@link validateAndConvertJson} but backfills missing resource icon metadata. */
+export async function validateAndConvertJsonAsync(json: unknown): Promise<DiagramData> {
+  const data = validateAndConvertJsonSync(json);
+  return enrichDiagramResourceMetadata(data);
+}
+
 /**
  * Build viewer payload from parsed JSON (e.g. FileReader result)
  */
-export function viewerDataFromUnknownJson(json: unknown): ViewerData {
-  const diagramData = validateAndConvertJson(json);
+export async function viewerDataFromUnknownJson(json: unknown): Promise<ViewerData> {
+  const diagramData = await validateAndConvertJsonAsync(json);
   const extracted = extractEmbeddedPresentations(json, diagramData);
   return {
     diagramData,
@@ -271,7 +282,7 @@ export async function loadViewerData(params: ParsedViewerParams): Promise<Viewer
 
   if (params.mode === 'inline') {
     json = decodeJsonParam(params.json);
-    const diagramData = validateAndConvertJson(json);
+    const diagramData = await validateAndConvertJsonAsync(json);
     const extracted = extractEmbeddedPresentations(json, diagramData);
     return {
       diagramData,
@@ -281,7 +292,7 @@ export async function loadViewerData(params: ParsedViewerParams): Promise<Viewer
   }
 
   json = await fetchRemoteJson(params.url);
-  const diagramData = validateAndConvertJson(json);
+  const diagramData = await validateAndConvertJsonAsync(json);
   const extracted = extractEmbeddedPresentations(json, diagramData);
   return {
     diagramData,
