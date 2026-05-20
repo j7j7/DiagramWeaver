@@ -52,6 +52,7 @@ import { applyMindmapHueAnchorsAfterVisualChanges } from '@/lib/mindmap-layout';
 import { TextStylingPanel } from './text-styling-panel';
 import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
+import { resolveIconBevelSampleSrc } from '@/lib/icon-bevel';
 import { LineStylingPanel } from './line-styling-panel';
 import { ConnectionAnimationControls } from './connection-animation-controls';
 import { ConnectionLineStyleFields } from './connection-line-style-fields';
@@ -2280,6 +2281,7 @@ export function ContextToolbar({
                       !isDiagramEmojiTileNodeType(t, iconType)
                     );
                   })()}
+                  iconBevelSampleSrc={resolveIconBevelSampleSrc(selectedItem as any)}
                   showRemoveBackground={(() => {
                     const t = (selectedItem as any)?.type || '';
                     const isShape = isShapeNodeType(t);

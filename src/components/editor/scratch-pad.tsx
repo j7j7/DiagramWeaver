@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
+import { resolveIconBevelSampleSrc } from '@/lib/icon-bevel';
 import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
 import { assertImportJsonTextWithinLimit } from '@/lib/import-json-limits';
 import {
@@ -885,6 +886,9 @@ const renderIcon = (item: ScratchPadItem) => {
                                     !isDiagramEmojiTileNodeType(t, iconType)
                                   );
                                 })()}
+                                iconBevelSampleSrc={resolveIconBevelSampleSrc(
+                                  editingItem.data as DiagramNodeData,
+                                )}
                                 showRemoveBackground={isDiagramIconTileNodeType(
                                   editingItem.type,
                                   (editingItem.data as DiagramNodeData)?.iconType,

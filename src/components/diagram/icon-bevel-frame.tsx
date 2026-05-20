@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   buildIconBevelCornerStack,
@@ -8,9 +8,59 @@ import {
   getIconBevelGeometry,
   getIconBevelSceneTransform,
   getIconBevelTopFaceInset,
-  readIconTileBackgroundHex,
-  sampleIconBackgroundColorFromImageSource,
+  sampleIconPlateColorFromUrl,
 } from "@/lib/icon-bevel";
+
+/** Resolve plate colour from the source image before the bevel frame mounts. */
+export function useIconBevelPlateColor(enabled: boolean, sampleSrc?: string): string | undefined {
+  const [color, setColor] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!enabled || !sampleSrc) {
+      setColor(undefined);
+      return;
+    }
+    let cancelled = false;
+    void sampleIconPlateColorFromUrl(sampleSrc).then((hex) => {
+      if (!cancelled && hex) setColor(hex);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, sampleSrc]);
+
+  return enabled ? color : undefined;
+}
+
+export interface IconBevelTileProps extends Omit<IconBevelFrameProps, "blockColor" | "matchIconBackground"> {
+  matchIconBackground?: boolean;
+  iconBevelBlockColor?: string;
+  iconSampleSrc?: string;
+}
+
+/** Samples plate colour from `iconSampleSrc`, then renders the bevel frame. */
+export function IconBevelTile({
+  matchIconBackground = false,
+  iconBevelBlockColor,
+  iconSampleSrc,
+  children,
+  ...frameProps
+}: IconBevelTileProps) {
+  const plateColor = useIconBevelPlateColor(Boolean(matchIconBackground), iconSampleSrc);
+  const blockColor = matchIconBackground
+    ? iconBevelBlockColor ?? plateColor
+    : iconBevelBlockColor;
+
+  return (
+    <IconBevelFrame
+      {...frameProps}
+      blockColor={blockColor}
+      matchIconBackground={matchIconBackground}
+    >
+      {children}
+    </IconBevelFrame>
+  );
+}
 
 export interface IconBevelFrameProps {
   size: number;
@@ -18,7 +68,7 @@ export interface IconBevelFrameProps {
   gridOffsetDeg?: number;
   depthRatio?: number;
   blockColor?: string;
-  /** Sample icon edge / tile background for block + top face colour. */
+  /** When true, top face is transparent once `blockColor` is set (colour sampled upstream). */
   matchIconBackground?: boolean;
   transparentTop?: boolean;
   topFaceClassName?: string;
@@ -27,62 +77,6 @@ export interface IconBevelFrameProps {
   highlightAnimStyle?: React.CSSProperties;
   className?: string;
   children: React.ReactNode;
-}
-
-function loadImageFromUrl(url: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    const probe = new Image();
-    probe.onload = () => resolve(probe);
-    probe.onerror = () => resolve(null);
-    probe.src = url;
-  });
-}
-
-/** Decode the full icon bitmap (not the CSS-rounded view) and sample plate colour. */
-async function sampleBackgroundColorFromIconRoot(root: HTMLElement | null): Promise<string | null> {
-  if (!root || typeof document === "undefined") return null;
-
-  const img = root.querySelector("img");
-  if (img) {
-    const url = img.currentSrc || img.src;
-    if (url) {
-      const probe =
-        img.complete && img.naturalWidth > 0
-          ? img
-          : await loadImageFromUrl(url);
-      if (probe && probe.naturalWidth > 0) {
-        const hex = sampleIconBackgroundColorFromImageSource(
-          probe,
-          probe.naturalWidth,
-          probe.naturalHeight,
-        );
-        if (hex) return hex;
-      }
-    }
-  }
-
-  const svg = root.querySelector("svg");
-  if (svg) {
-    try {
-      const xml = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const probe = await loadImageFromUrl(url);
-      URL.revokeObjectURL(url);
-      if (probe && probe.naturalWidth > 0) {
-        const hex = sampleIconBackgroundColorFromImageSource(
-          probe,
-          probe.naturalWidth,
-          probe.naturalHeight,
-        );
-        if (hex) return hex;
-      }
-    } catch {
-      /* fall through */
-    }
-  }
-
-  return readIconTileBackgroundHex(root.closest(".dw-icon-container") ?? root);
 }
 
 /**
@@ -104,54 +98,19 @@ export function IconBevelFrame({
   className,
   children,
 }: IconBevelFrameProps) {
-  const iconRootRef = useRef<HTMLDivElement>(null);
-  const [matchedColor, setMatchedColor] = useState<string | null>(null);
-
-  const resampleMatchedColor = useCallback(() => {
-    if (!matchIconBackground) {
-      setMatchedColor(null);
-      return;
-    }
-    const root = iconRootRef.current;
-    if (!root) return;
-
-    const img = root.querySelector("img");
-    if (img && !img.complete) return;
-
-    void sampleBackgroundColorFromIconRoot(root).then((hex) => {
-      if (hex) setMatchedColor(hex);
-    });
-  }, [matchIconBackground]);
-
-  useEffect(() => {
-    resampleMatchedColor();
-  }, [resampleMatchedColor, children, size, blockColor]);
-
-  useEffect(() => {
-    if (!matchIconBackground) return;
-    const root = iconRootRef.current;
-    const img = root?.querySelector("img");
-    if (!img) return;
-    const onLoad = () => resampleMatchedColor();
-    img.addEventListener("load", onLoad);
-    return () => img.removeEventListener("load", onLoad);
-  }, [matchIconBackground, resampleMatchedColor]);
-
-  const effectiveBlockColor = matchIconBackground ? matchedColor ?? blockColor : blockColor;
-  const usesExplicitBlockColor = Boolean(effectiveBlockColor);
+  const usesExplicitBlockColor = Boolean(blockColor && String(blockColor).trim());
 
   const { rotateX, rotateZ } = getIconBevelSceneTransform(rotationDeg, gridOffsetDeg);
   const { depth, radius, iconClipRadius, pad, perspective } = getIconBevelGeometry(size, depthRatio);
-  const colors = getIconBevelFaceColors(effectiveBlockColor ?? undefined);
+  const colors = getIconBevelFaceColors(usesExplicitBlockColor ? blockColor : undefined);
   const viewport = size + pad * 2 + depth;
   const clipRound = `${iconClipRadius}px`;
 
-  const topBackground =
-    transparentTop || matchIconBackground
-      ? "transparent"
-      : usesExplicitBlockColor || !topFaceClassName
-        ? colors.topGradient
-        : undefined;
+  const topBackground = transparentTop
+    ? "transparent"
+    : usesExplicitBlockColor || !topFaceClassName
+      ? colors.topGradient
+      : undefined;
 
   const cornerStack = buildIconBevelCornerStack(depth, colors);
   const faceShadow = [cornerStack, transparentTop ? null : getIconBevelTopFaceInset()]
@@ -180,7 +139,7 @@ export function IconBevelFrame({
         <div
           className={cn(
             "flex items-center justify-center box-content overflow-hidden",
-            !usesExplicitBlockColor && !matchIconBackground && topFaceClassName,
+            !usesExplicitBlockColor && topFaceClassName,
           )}
           style={{
             width: size,
@@ -210,7 +169,6 @@ export function IconBevelFrame({
             }}
           >
             <div
-              ref={iconRootRef}
               className="dw-icon-bevel-clip flex h-full w-full items-center justify-center overflow-hidden [&_img]:block [&_img]:h-full [&_img]:w-full [&_img]:rounded-[inherit] [&_img]:object-cover [&_svg]:h-full [&_svg]:w-full [&_svg]:rounded-[inherit]"
               style={{
                 width: size,

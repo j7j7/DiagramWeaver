@@ -8,6 +8,31 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 **`nodeSize`:** added **`double`** (2× base: 160×160 container, 140×140 icon) alongside **`normal`**, **`half`**, **`quarter`**. **`NodeSize`** type in **`types.ts`**; **`getNodeSizeMultiplier`** / schema / Visual Styling **Size** dropdown updated. Patch bumped.
 
 
+### 2026-05-20 – Icon 3D bevel: match toggle can turn off
+
+**Fix:** stale async colour samples no longer re-enable **Match icon background** after the user turns it off (generation counter on toggle + preview). Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: match background applies to render
+
+**Fix:** match mode no longer forces a transparent top face (that left the block looking blank/grey); uses the same **top gradient + side colours** as manual block colour. Toggle-on samples and sets **`iconBevelBlockColor`** immediately. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: picked colour preview in styling panel
+
+**Match icon background:** Visual Styling shows icon thumbnail + **picked colour** swatch/hex, re-sample, and writes **`iconBevelBlockColor`**; **`resolveIconBevelSampleSrc`** uses **`getResourcePath`**. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: match colour before bevel
+
+**Match icon background:** `useIconBevelPlateColor` + **`IconBevelTile`** sample from **`iconSampleSrc`** (full PNG) before **`IconBevelFrame`**; silhouette-edge sampling restored on uncropped bitmap. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: match background plate colour fix
+
+**Match icon background:** dominant **plate** colour (border band, skips white glyph); sample from **`resolveIconBevelSampleSrc`** / full URL decode; transparent top only after colour is ready. Patch bumped.
+
+
 ### 2026-05-20 – Icon 3D bevel: match background samples center edge
 
 **Match icon background:** plate colour from **center of each side** (inset from corners), not outer silhouette — works with rounded clip. Full bitmap via `currentSrc` when needed. Patch bumped.

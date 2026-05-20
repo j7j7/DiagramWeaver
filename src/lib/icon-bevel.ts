@@ -1,3 +1,4 @@
+import { buildResourceIconPath, getResourcePath } from "@/lib/resource-mapping";
 import type { NodeSize } from "@/lib/types";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 
@@ -218,6 +219,94 @@ export function sampleEdgeColorFromRgba(
   return rgbToHex(rSum / count, gSum / count, bSum / count);
 }
 
+/** URL for raster sampling when matching bevel colour to a resource/custom icon. */
+export function resolveIconBevelSampleSrc(node: {
+  provider?: string;
+  category?: string;
+  file?: string;
+  imageUrl?: string;
+  resourceMapping?: { provider?: string; category?: string; file?: string };
+  data?: {
+    provider?: string;
+    category?: string;
+    file?: string;
+    imageUrl?: string;
+    resourceMapping?: { provider?: string; category?: string; file?: string };
+  };
+}): string | undefined {
+  const mapped = getResourcePath(node);
+  if (mapped) return mapped;
+  const custom = node.imageUrl?.trim() || node.data?.imageUrl?.trim();
+  if (custom) return custom;
+  if (node.provider && node.category && node.file) {
+    return buildResourceIconPath(node.provider, node.category, node.file) || undefined;
+  }
+  return undefined;
+}
+
+function pixelLuminance(r: number, g: number, b: number): number {
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+function isPlatePixel(r: number, g: number, b: number, a: number): boolean {
+  if (a < 80) return false;
+  const lum = pixelLuminance(r, g, b);
+  return lum > 0.06 && lum < 0.9;
+}
+
+/**
+ * Dominant opaque, non-glyph colour (teal plate etc.) — skips white/black line art.
+ */
+export function sampleDominantPlateColorFromRgba(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): string | null {
+  const buckets = new Map<number, { r: number; g: number; b: number; n: number }>();
+  const band = Math.max(2, Math.round(Math.min(width, height) * 0.18));
+
+  const consider = (x: number, y: number) => {
+    const i = (y * width + x) * 4;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const a = data[i + 3];
+    if (!isPlatePixel(r, g, b, a)) return;
+    const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+    const prev = buckets.get(key);
+    if (prev) {
+      prev.r += r;
+      prev.g += g;
+      prev.b += b;
+      prev.n += 1;
+    } else {
+      buckets.set(key, { r, g, b, n: 1 });
+    }
+  };
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const onBand =
+        x < band || y < band || x >= width - band || y >= height - band;
+      if (onBand) consider(x, y);
+    }
+  }
+
+  if (buckets.size === 0) {
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) consider(x, y);
+    }
+  }
+
+  if (buckets.size === 0) return sampleCenterEdgeColorFromRgba(data, width, height);
+
+  let best = { n: 0, r: 0, g: 0, b: 0 };
+  for (const entry of buckets.values()) {
+    if (entry.n > best.n) best = entry;
+  }
+  return rgbToHex(best.r / best.n, best.g / best.n, best.b / best.n);
+}
+
 /**
  * Sample the mid-section of each side (inset from corners) — the icon plate colour,
  * not outer silhouette corners (which break when the glyph is rounded/clipped).
@@ -278,15 +367,50 @@ function rasterizeImageSourceForSampling(
   return ctx.getImageData(0, 0, EDGE_SAMPLE_SIZE, EDGE_SAMPLE_SIZE).data;
 }
 
-/** Rasterize and pick plate colour from center of each edge (match icon background). */
-export function sampleIconBackgroundColorFromImageSource(
+/** Plate colour from full uncropped bitmap (silhouette edge, then dominant plate). */
+export function sampleIconPlateColorFromImageSource(
   source: CanvasImageSource,
   sourceWidth: number,
   sourceHeight: number,
 ): string | null {
   const data = rasterizeImageSourceForSampling(source, sourceWidth, sourceHeight);
   if (!data) return null;
-  return sampleCenterEdgeColorFromRgba(data, EDGE_SAMPLE_SIZE, EDGE_SAMPLE_SIZE);
+  const w = EDGE_SAMPLE_SIZE;
+  const h = EDGE_SAMPLE_SIZE;
+  return (
+    sampleEdgeColorFromRgba(data, w, h) ??
+    sampleDominantPlateColorFromRgba(data, w, h)
+  );
+}
+
+/** @alias {@link sampleIconPlateColorFromImageSource} */
+export function sampleIconBackgroundColorFromImageSource(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+): string | null {
+  return sampleIconPlateColorFromImageSource(source, sourceWidth, sourceHeight);
+}
+
+async function loadImageFromUrl(url: string): Promise<HTMLImageElement | null> {
+  if (typeof document === "undefined" || !url) return null;
+  return new Promise((resolve) => {
+    const probe = new Image();
+    probe.onload = () => {
+      void (probe.decode?.() ?? Promise.resolve())
+        .catch(() => undefined)
+        .then(() => resolve(probe));
+    };
+    probe.onerror = () => resolve(null);
+    probe.src = url;
+  });
+}
+
+/** Sample plate colour from icon URL before any bevel / CSS clip is applied. */
+export async function sampleIconPlateColorFromUrl(url: string): Promise<string | null> {
+  const img = await loadImageFromUrl(url);
+  if (!img || img.naturalWidth <= 0) return null;
+  return sampleIconPlateColorFromImageSource(img, img.naturalWidth, img.naturalHeight);
 }
 
 /** @deprecated Prefer {@link sampleIconBackgroundColorFromImageSource} for bevel match. */
