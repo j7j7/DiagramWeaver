@@ -21,6 +21,7 @@ import { AboutDialog } from './about-dialog';
 import { CanvasBackgroundDialog } from './canvas-background-dialog';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
 import { IconMaintenanceDialog } from './icon-maintenance-dialog';
+import { ICON_MAINTENANCE_MENU_ENABLED } from '@/lib/maintenance-config';
 import { ViewerUrlDialog } from './viewer-url-dialog';
 import { useTheme } from '@/components/theme-provider';
 import type { SelectedItem } from '../diagram-editor';
@@ -1376,10 +1377,12 @@ export function TopMenuBar({
                 Interactive tutorial
               </MenubarItem>
             )}
-            <MenubarItem onClick={() => setIconMaintenanceOpen(true)}>
-              <Wrench className="mr-2 h-4 w-4" />
-              Icon maintenance…
-            </MenubarItem>
+            {ICON_MAINTENANCE_MENU_ENABLED && (
+              <MenubarItem onClick={() => setIconMaintenanceOpen(true)}>
+                <Wrench className="mr-2 h-4 w-4" />
+                Icon maintenance…
+              </MenubarItem>
+            )}
             <MenubarItem onClick={() => setAboutOpen(true)}>
               <Info className="mr-2 h-4 w-4" />
               About
@@ -1425,10 +1428,12 @@ export function TopMenuBar({
         onOpenChange={setKeyboardShortcutsOpen}
       />
 
-      <IconMaintenanceDialog
-        open={iconMaintenanceOpen}
-        onOpenChange={setIconMaintenanceOpen}
-      />
+      {ICON_MAINTENANCE_MENU_ENABLED && (
+        <IconMaintenanceDialog
+          open={iconMaintenanceOpen}
+          onOpenChange={setIconMaintenanceOpen}
+        />
+      )}
       
       {/* Viewer URL Dialog */}
       {diagramData && (
