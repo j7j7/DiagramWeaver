@@ -3,6 +3,16 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-20 – Align: Distribute evenly uses real layout (icon tiles)
+
+**Distribute horizontally / vertically** (context menu, toolbar, menu bar) no longer assumes a fixed **80×50** box for catalog icons — it uses **`computeDistributeAlongAxisPositions`** with **`measureNodeDims`** geometry and equal gaps between successive **icon tile** edges when items are catalog/Lucide/emoji tiles (same basis as Alignment even-spacing). **`nodeToSpacingAlignItem`** now attaches tile offsets for **`isDiagramIconTileNodeType`** nodes (e.g. `aws.*`), not only `generic.icon` / `generic.emoji`. **`src/lib/uniform-spacing-align.ts`**, **`diagram-editor.tsx`**. Patch bumped.
+
+
+### 2026-05-20 – Root layout: themeColor on viewport export
+
+Next.js rejects **`themeColor`** on **`metadata`**; **`src/app/layout.tsx`** now sets light/dark **`themeColor`** on **`export const viewport`** (typed **`Viewport`**). Removes dev log warning. Patch bumped.
+
+
 ### 2026-05-20 – PWA install (Help → Install app…)
 
 Minimal installable PWA for static hosting: **`public/manifest.webmanifest`**, **`public/sw.js`** (network-only fetch handler), **`public/pwa-register.js`**, PNG icons under **`public/pwa/`**. **`Help → Install app…`** uses **`beforeinstallprompt`** when available; **`PwaInstallDialog`** covers Safari/iOS and browsers without a native prompt. Requires HTTPS (or localhost). Patch bumped.

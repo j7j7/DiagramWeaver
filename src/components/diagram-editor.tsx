@@ -90,6 +90,7 @@ import {
   parseTimelineEntryKey,
 } from '@/lib/timeline-layout';
 import {
+  computeDistributeAlongAxisPositions,
   computeUniformSpacingPositions,
   nodeToSpacingAlignItem,
 } from '@/lib/uniform-spacing-align';
@@ -3475,67 +3476,16 @@ export default function DiagramEditor() {
         break;
     }
 
-    // Handle distribute operations
+    // Handle distribute operations (icon-aware: catalog tiles use tile edges vs label-wide box)
     if (alignment === 'distribute-v' || alignment === 'distribute-h') {
-      // Get all selected items with their positions and dimensions
-      const selectedItems: Array<{id: string, x: number, y: number, width: number, height: number, itemType: 'node', index: number}> = [];
-      
-      selectedItemIds.forEach(id => {
-        const node = currentDiagramData.nodes.find(n => n.id === id);
-        if (node) {
-          const dims = getObjectDimensions({ ...node, itemType: 'node' } as SelectedItem);
-          selectedItems.push({
-            id,
-            x: node.x || 0,
-            y: node.y || 0,
-            width: dims.width,
-            height: dims.height,
-            itemType: 'node',
-            index: currentDiagramData.nodes.findIndex(n => n.id === id)
-          });
-        }
-      });
+      const newPositions =
+        computeDistributeAlongAxisPositions(
+          currentDiagramData.nodes,
+          selectedItemIds,
+          alignment === 'distribute-v' ? 'vertical' : 'horizontal',
+        ) ?? [];
 
-      if (selectedItems.length < 3) return; // Need at least 3 items to distribute
-
-      // Sort items by position
-      if (alignment === 'distribute-v') {
-        selectedItems.sort((a, b) => a.y - b.y);
-      } else {
-        selectedItems.sort((a, b) => a.x - b.x);
-      }
-
-      // Calculate distribution
-      const firstItem = selectedItems[0];
-      const lastItem = selectedItems[selectedItems.length - 1];
-      
-      let newPositions: Array<{id: string, x?: number, y?: number}> = [];
-
-      if (alignment === 'distribute-v') {
-        // Vertical distribution
-        const totalHeight = lastItem.y + lastItem.height - firstItem.y;
-        const totalItemHeight = selectedItems.reduce((sum, item) => sum + item.height, 0);
-        const totalSpacing = totalHeight - totalItemHeight;
-        const spacing = totalSpacing / (selectedItems.length - 1);
-        
-        let currentY = firstItem.y;
-        selectedItems.forEach(item => {
-          newPositions.push({ id: item.id, y: currentY });
-          currentY += item.height + spacing;
-        });
-      } else {
-        // Horizontal distribution
-        const totalWidth = lastItem.x + lastItem.width - firstItem.x;
-        const totalItemWidth = selectedItems.reduce((sum, item) => sum + item.width, 0);
-        const totalSpacing = totalWidth - totalItemWidth;
-        const spacing = totalSpacing / (selectedItems.length - 1);
-        
-        let currentX = firstItem.x;
-        selectedItems.forEach(item => {
-          newPositions.push({ id: item.id, x: currentX });
-          currentX += item.width + spacing;
-        });
-      }
+      if (newPositions.length < 3) return;
 
       // Apply the new positions (use current diagram for sub-diagram support)
       setCurrentDiagramData(prevData => {

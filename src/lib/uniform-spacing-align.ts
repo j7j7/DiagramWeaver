@@ -6,7 +6,7 @@ import {
 } from "@/components/editor/canvas-constants";
 import { getIconBevelStackHeight, getIconTileAnchorSize } from "@/lib/icon-bevel";
 import type { DiagramNodeData } from "@/lib/types";
-import { isIconOrEmojiType } from "@/lib/utils";
+import { isDiagramIconTileNodeType } from "@/lib/utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 
 export interface SpacingAlignItem {
@@ -100,7 +100,7 @@ export function nodeToSpacingAlignItem(node: DiagramNodeData): SpacingAlignItem 
     height,
   };
 
-  if (isIconOrEmojiType(node.type)) {
+  if (isDiagramIconTileNodeType(node.type, node.iconType)) {
     const iconTileSize = getIconTileAnchorSize(node);
     const { container } = getNodeSizeDimensions(node.nodeSize);
     const iconStackHeight = node.iconBevel ? getIconBevelStackHeight(container) : iconTileSize;
@@ -154,6 +154,61 @@ function sortItems(items: SpacingAlignItem[], axis: "horizontal" | "vertical"): 
     if (aStart !== bStart) return aStart - bStart;
     return a.id.localeCompare(b.id);
   });
+}
+
+function primaryMeasuredSize(item: SpacingAlignItem, axis: "horizontal" | "vertical"): number {
+  if (axis === "horizontal") {
+    return usesIconExtents(item) ? item.iconWidth! : item.width;
+  }
+  return usesIconExtents(item) ? item.iconHeight! : item.height;
+}
+
+/**
+ * Equal gaps between successive items along one axis between the current outermost extents
+ * (icon tile edges when {@link nodeToSpacingAlignItem} attaches icon geometry; otherwise full node box).
+ * First and last along the sorted axis stay fixed; intermediates move. Matches menu “Distribute …”.
+ */
+export function computeDistributeAlongAxisPositions(
+  nodes: DiagramNodeData[],
+  selectedIds: Iterable<string>,
+  axis: "horizontal" | "vertical",
+): Array<{ id: string; x?: number; y?: number }> | null {
+  const ids = Array.from(selectedIds);
+  if (ids.length < 3) return null;
+
+  const items: SpacingAlignItem[] = [];
+  for (const id of ids) {
+    const node = nodes.find((n) => n.id === id);
+    if (!node) return null;
+    const item = nodeToSpacingAlignItem(node);
+    if (!item) return null;
+    items.push(item);
+  }
+
+  const sorted = sortItems(items, axis);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+
+  const startFixed = primaryStart(first, itemPos(first), axis);
+  const endFixed = primaryEnd(last, itemPos(last), axis);
+  const sumSizes = sorted.reduce((s, it) => s + primaryMeasuredSize(it, axis), 0);
+  const totalSpan = endFixed - startFixed;
+  const gap = (totalSpan - sumSizes) / (sorted.length - 1);
+
+  const out: Array<{ id: string; x?: number; y?: number }> = [];
+  let cursor = startFixed;
+  for (const item of sorted) {
+    if (axis === "horizontal") {
+      const newX = containerCoordFromPrimaryStart(item, cursor, axis);
+      out.push({ id: item.id, x: newX, y: item.y });
+    } else {
+      const newY = containerCoordFromPrimaryStart(item, cursor, axis);
+      out.push({ id: item.id, x: item.x, y: newY });
+    }
+    cursor += primaryMeasuredSize(item, axis) + gap;
+  }
+
+  return out;
 }
 
 /** Snap a measured edge gap to the layout grid before clustering. */
