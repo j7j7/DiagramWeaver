@@ -14,6 +14,7 @@ import {
   type PositionedNode,
   type PositionedGroup,
 } from "./canvas-constants";
+import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 
@@ -178,8 +179,8 @@ function CanvasArrowTogglesInner(props: CanvasArrowTogglesProps) {
         
         const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
         const isToIconNode = !isToGroup && !isToShape && !isToTextType;
-        const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((fromItem as any).nodeSize).container : undefined;
-        const toIconContainer = isToIconNode ? getNodeSizeDimensions((toItem as any).nodeSize).container : undefined;
+        const fromIconContainer = isFromIconNode ? getIconTileAnchorSize(fromItem as any) : undefined;
+        const toIconContainer = isToIconNode ? getIconTileAnchorSize(toItem as any) : undefined;
 
         // Calculate icon heights and offsets (respect nodeSize: half=40, quarter=20)
         let fromIconHeight: number | undefined;

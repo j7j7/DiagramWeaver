@@ -9,6 +9,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ResourceIcon } from "./resource-icon";
+import { IconBevelFrame } from "./icon-bevel-frame";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
@@ -1440,52 +1441,90 @@ function DiagramNodeInner({
       typeof rawIconOpacity === "number" && Number.isFinite(rawIconOpacity)
         ? Math.min(1, Math.max(0, rawIconOpacity))
         : undefined;
+    const iconBevelEnabled = Boolean(nodeAny.iconBevel);
+    const colorTransition =
+      !animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
+        ? { transition: animationStyle.visualColorMergeTransition }
+        : {};
+
+    const resourceIcon = (
+      <ResourceIcon
+        type={node.type}
+        provider={node.provider}
+        category={node.category}
+        file={node.file}
+        iconType={node.iconType}
+        iconName={node.iconName}
+        emoji={node.emoji}
+        iconColor={nodeAny.iconColor}
+        imageUrl={nodeAny.imageUrl}
+        imageOptions={nodeAny.imageOptions}
+        width={icon}
+        height={icon}
+        style={{
+          width: icon,
+          height: icon,
+          ...(iconGlyphOpacity !== undefined ? { opacity: iconGlyphOpacity } : {}),
+          ...colorTransition,
+        }}
+      />
+    );
+
+    const flatIconContainerClass = cn(
+      "flex items-center justify-center flex-shrink-0",
+      animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
+      nodeAny.noIconBackground ? "" : "rounded-lg shadow-md bg-card dw-icon-container",
+      useDefaultIconBorderClass && "border",
+      isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchCanvasDrag) ? "" : !showCustomIconOutline && "group-hover:border-accent",
+      isTargetable && "border-dashed border-primary",
+    );
+
+    const bevelTopFaceClass = cn(
+      animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
+      !nodeAny.noIconBackground && "dw-icon-container",
+      useDefaultIconBorderClass && "border",
+      isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchCanvasDrag) ? "" : !showCustomIconOutline && "group-hover:border-accent",
+      isTargetable && "border-dashed border-primary",
+      !nodeAny.noIconBackground && "bg-card",
+    );
 
     return (
       <div className={cn(
         "flex flex-col items-center w-full h-full",
         isMiddle ? "relative justify-center" : "justify-start"
       )}>
-        <div className={cn(
-          "flex items-center justify-center flex-shrink-0",
-          animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
-          nodeAny.noIconBackground ? "" : "rounded-lg shadow-md bg-card dw-icon-container",
-          useDefaultIconBorderClass && "border",
-          isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchCanvasDrag) ? "" : !showCustomIconOutline && "group-hover:border-accent",
-          isTargetable && "border-dashed border-primary",
-          isTop && "order-2",
-          isBottom && "order-1"
-        )}
-        style={{
-          width: container,
-          height: container,
-          ...iconOutlineCss,
-          ...(!animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
-            ? { transition: animationStyle.visualColorMergeTransition }
-            : {}),
-        }}>
-          <ResourceIcon
-            type={node.type}
-            provider={node.provider}
-            category={node.category}
-            file={node.file}
-            iconType={node.iconType}
-            iconName={node.iconName}
-            emoji={node.emoji}
-            iconColor={nodeAny.iconColor}
-            imageUrl={nodeAny.imageUrl}
-            imageOptions={nodeAny.imageOptions}
-            width={icon}
-            height={icon}
-            style={{
-              width: icon,
-              height: icon,
-              ...(iconGlyphOpacity !== undefined ? { opacity: iconGlyphOpacity } : {}),
-              ...(!animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
-                ? { transition: animationStyle.visualColorMergeTransition }
-                : {}),
-            }}
-          />
+        <div className={cn("flex-shrink-0 overflow-visible", isTop && "order-2", isBottom && "order-1")}>
+          {iconBevelEnabled ? (
+            <IconBevelFrame
+              size={container}
+              rotationDeg={nodeAny.iconBevelRotation}
+              gridOffsetDeg={nodeAny.iconBevelGridOffset}
+              depthRatio={nodeAny.iconBevelDepth}
+              blockColor={nodeAny.iconBevelBlockColor}
+              transparentTop={Boolean(nodeAny.noIconBackground)}
+              topFaceClassName={nodeAny.iconBevelBlockColor ? undefined : bevelTopFaceClass}
+              topFaceStyle={{ ...iconOutlineCss, ...colorTransition }}
+              highlightAnimStyle={
+                highlightAnimStyle && highlightPulseUsesShapeSilhouette
+                  ? highlightAnimStyle
+                  : undefined
+              }
+            >
+              {resourceIcon}
+            </IconBevelFrame>
+          ) : (
+            <div
+              className={flatIconContainerClass}
+              style={{
+                width: container,
+                height: container,
+                ...iconOutlineCss,
+                ...colorTransition,
+              }}
+            >
+              {resourceIcon}
+            </div>
+          )}
         </div>
         {isEditingLabel ? (
           <input
@@ -1639,9 +1678,6 @@ function DiagramNodeInner({
   const isLoopNode = node.type === 'generic.object.loop' || node.type?.endsWith('.loop');
   const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode || isTimelineNode);
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
-  /** Highlight pulse uses drop-shadow on the shape subtree for non-rect `generic.object.*` types (star, kite, charts excluded on outer frame path). */
-  const highlightPulseUsesShapeSilhouette =
-    !isLineNode && !isTimelineNode && isHighlightPulseShapeSilhouetteType(node.type);
    const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
    const isMindmapCardNode = isMindmapNodeType(node.type);
@@ -1651,6 +1687,12 @@ function DiagramNodeInner({
    const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode || mindmapBodyRounded;
   const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode && !isTimelineNode;
   const isIconNode = !isTextNode && !isTextboxNode && !isShapeNode && !isLineNode;
+  /** 3D icon bevel: glow follows the tilted tile, not the rectangular node frame. */
+  const iconBevelHighlightSilhouette = isIconNode && Boolean((node as DiagramNodeData).iconBevel);
+  /** Highlight pulse uses drop-shadow on the shape subtree for non-rect `generic.object.*` types (star, kite, charts excluded on outer frame path). */
+  const highlightPulseUsesShapeSilhouette =
+    iconBevelHighlightSilhouette ||
+    (!isLineNode && !isTimelineNode && isHighlightPulseShapeSilhouetteType(node.type));
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const iconNodeDims = isIconNode ? measureNodeDims(node as any) : null;
 

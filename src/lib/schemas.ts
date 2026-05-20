@@ -379,7 +379,7 @@ export const DiagramNodeDataSchema = z.object({
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
   sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
-  nodeSize: z.enum(['normal', 'half', 'quarter']).optional(), // Size mode for nodes and icons
+  nodeSize: z.enum(['normal', 'half', 'quarter', 'double']).optional(), // Size mode for nodes and icons
   labelWidth: z.number().optional(), // Label width for icon nodes - allows label wider than icon
   // Text justification for text resources
   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/textbox nodes
@@ -435,6 +435,11 @@ export const DiagramNodeDataSchema = z.object({
   emoji: z.string().optional(),
   iconColor: z.string().optional(), // Color for Lucide icons (hex)
   iconOpacity: z.number().min(0).max(1).optional(),
+  iconBevel: z.boolean().optional(),
+  iconBevelRotation: z.number().min(0).max(360).optional(),
+  iconBevelDepth: z.number().min(0.01).max(0.42).optional(),
+  iconBevelBlockColor: z.string().optional(),
+  iconBevelGridOffset: z.number().min(-20).max(20).optional(),
   imageUrl: HttpImageUrlSchema.optional(),
   imageOptions: CustomImageOptionsSchema.optional(),
 
@@ -828,7 +833,7 @@ export const DiagramNodeItemSchema = z.object({
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
   sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
-  nodeSize: z.enum(['normal', 'half', 'quarter']).optional(), // Size mode for nodes and icons
+  nodeSize: z.enum(['normal', 'half', 'quarter', 'double']).optional(), // Size mode for nodes and icons
   labelWidth: z.number().optional(), // Label width for icon nodes - allows label wider than icon
   // Text justification for text resources
   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/textbox nodes

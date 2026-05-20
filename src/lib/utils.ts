@@ -27,6 +27,30 @@ export function isIconOrEmojiType(type: string | undefined): boolean {
   return !!(type?.startsWith('generic.icon.') || type?.startsWith('generic.emoji.'))
 }
 
+/**
+ * Nodes that use the icon/resource tile on canvas (`diagram-node` icon branch).
+ * Matches `isIconNode` there — Lucide, emoji, and provider catalog icons (e.g. `aws.*`).
+ */
+export function isDiagramIconTileNodeType(
+  type: string | undefined,
+  iconType?: string,
+): boolean {
+  if (!type) return false
+  if (iconType === "lucide" || iconType === "emoji") return true
+  if (type === "generic.text.text" || type === "generic.text.textbox") return false
+  if (isConnectorLineNodeType(type)) return false
+  const isLoopNode = type === "generic.object.loop" || type.endsWith(".loop")
+  const isShapeNode =
+    !isIconOrEmojiType(type) &&
+    (isShapeNodeType(type) || isConnectorLineNodeType(type) || isLoopNode || isTimelineNodeType(type))
+  return !isShapeNode
+}
+
+/** Emoji tiles — no Lucide colour or 3D bevel controls. */
+export function isDiagramEmojiTileNodeType(type: string | undefined, iconType?: string): boolean {
+  return !!(type?.startsWith("generic.emoji.") || iconType === "emoji")
+}
+
 /** Diagram object + chart nodes: use shape bounding / connection geometry, not icon-in-box layout. */
 export function isGenericObjectOrChartShapeType(type: string | undefined): boolean {
   return !!(type?.startsWith('generic.object.') || type?.startsWith('generic.chart.'))

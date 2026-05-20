@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import type { DiagramNodeData, RichTextRun, TimelineBarSectionData } from "@/lib/types";
+import type { DiagramNodeData, NodeSize, RichTextRun, TimelineBarSectionData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getGradientCoordinates, getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
@@ -178,7 +178,7 @@ export function TimelineBarShape({
   const maxRadius = rxBasisMin / 2;
   const rx = Math.min(cornerRadius * maxRadius, maxRadius);
 
-  const scale = getNodeSizeMultiplier(nodeAny.nodeSize as "normal" | "half" | "quarter" | undefined);
+  const scale = getNodeSizeMultiplier(nodeAny.nodeSize as NodeSize | undefined);
   const baseW = node.width ?? defaultWidth;
   const baseH = node.height ?? defaultHeight;
   const snapBarWidthPx =

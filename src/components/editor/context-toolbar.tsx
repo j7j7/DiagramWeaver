@@ -61,7 +61,16 @@ import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
 import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEFAULT_UML_CLASS_TEXT_STYLING } from '@/lib/uml-text-styling';
-import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType, isTimelineNodeType } from '@/lib/utils';
+import {
+  cn,
+  isConnectorLikeSpineNodeType,
+  isConnectorLineNodeType,
+  isShapeNodeType,
+  isIconOrEmojiType,
+  isTimelineNodeType,
+  isDiagramIconTileNodeType,
+  isDiagramEmojiTileNodeType,
+} from '@/lib/utils';
 import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
@@ -1252,6 +1261,11 @@ export function ContextToolbar({
       borderWidth: undefined,
       iconColor: undefined,
       iconOpacity: undefined,
+      iconBevel: undefined,
+      iconBevelRotation: undefined,
+      iconBevelDepth: undefined,
+      iconBevelBlockColor: undefined,
+      iconBevelGridOffset: undefined,
       nodeSize: undefined,
       headingBackgroundColor: undefined,
       headingBackgroundStyle: undefined,
@@ -2249,7 +2263,22 @@ export function ContextToolbar({
                     }
                   }}
                   onTagPositionChange={(tagPosition) => onItemUpdate?.({ ...selectedItem, tagPosition } as SelectedItem)}
-                  isLucideIcon={(selectedItem as any)?.type?.startsWith?.('generic.icon.') || (selectedItem as any)?.iconType === 'lucide'}
+                  isLucideIcon={(() => {
+                    const t = (selectedItem as any)?.type || '';
+                    return t.startsWith('generic.icon.') || (selectedItem as any)?.iconType === 'lucide';
+                  })()}
+                  showIconTileStyling={(() => {
+                    const t = (selectedItem as any)?.type || '';
+                    return isDiagramIconTileNodeType(t, (selectedItem as any)?.iconType);
+                  })()}
+                  showIconBevel={(() => {
+                    const t = (selectedItem as any)?.type || '';
+                    const iconType = (selectedItem as any)?.iconType;
+                    return (
+                      isDiagramIconTileNodeType(t, iconType) &&
+                      !isDiagramEmojiTileNodeType(t, iconType)
+                    );
+                  })()}
                   showRemoveBackground={(() => {
                     const t = (selectedItem as any)?.type || '';
                     const isShape = isShapeNodeType(t);

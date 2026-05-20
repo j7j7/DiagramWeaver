@@ -21,6 +21,7 @@ import {
   isDiagramConnectionInCanvasSelection,
 } from "@/lib/connection-order-utils";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT, CONNECTION_HELPER_Z_INDEX, snapToGrid } from "./canvas-constants";
+import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { transitionShorthandWithDelay } from "@/lib/css-transition-with-delay";
 import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
@@ -541,8 +542,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
     const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
     const isToIconNode = !isToGroup && !isToShape && !isToTextType;
-    const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((fromPos as any).nodeSize).container : undefined;
-    const toIconContainer = isToIconNode ? getNodeSizeDimensions((toPos as any).nodeSize).container : undefined;
+    const fromIconContainer = isFromIconNode ? getIconTileAnchorSize(fromPos as any) : undefined;
+    const toIconContainer = isToIconNode ? getIconTileAnchorSize(toPos as any) : undefined;
 
     if (!isFromGroup) {
       if (isFromShape) {
@@ -985,8 +986,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         
         const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
         const isToIconNode = !isToGroup && !isToShape && !isToTextType;
-        const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((fromPos as any).nodeSize).container : undefined;
-        const toIconContainer = isToIconNode ? getNodeSizeDimensions((toPos as any).nodeSize).container : undefined;
+        const fromIconContainer = isFromIconNode ? getIconTileAnchorSize(fromPos as any) : undefined;
+        const toIconContainer = isToIconNode ? getIconTileAnchorSize(toPos as any) : undefined;
 
         if (!isFromGroup) {
           if (isFromShape) {
@@ -1401,8 +1402,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       
       const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
       const isToIconNode = !isToGroup && !isToShape && !isToTextType;
-      const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((fromPos as any).nodeSize).container : undefined;
-      const toIconContainer = isToIconNode ? getNodeSizeDimensions((toPos as any).nodeSize).container : undefined;
+      const fromIconContainer = isFromIconNode ? getIconTileAnchorSize(fromPos as any) : undefined;
+      const toIconContainer = isToIconNode ? getIconTileAnchorSize(toPos as any) : undefined;
 
       let fromIconHeight: number | undefined;
       let toIconHeight: number | undefined;

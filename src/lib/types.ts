@@ -37,6 +37,9 @@ export interface CustomImageOptions {
   orientation: CustomImageOrientation;
 }
 
+/** Icon/shape size preset: normal=1×, half=0.5×, quarter=0.25×, double=2× (base container 80px). */
+export type NodeSize = "normal" | "half" | "quarter" | "double";
+
 /** Extensible chart kinds — add new renderers and editors per kind. */
 export type ChartKind = "pie" | "bar" | "line" | "ring";
 
@@ -422,7 +425,7 @@ export interface DiagramNodeData {
   height?: number; // Custom height - when set, overrides auto-calculated height
   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
-  nodeSize?: 'normal' | 'half' | 'quarter'; // Size mode for nodes and icons
+  nodeSize?: NodeSize; // Size mode for nodes and icons
   labelWidth?: number; // Label width for icon/resource nodes - allows label wider than 80px icon
   // Text justification for text resources
   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes
@@ -490,6 +493,16 @@ export interface DiagramNodeData {
   iconColor?: string; // Color for Lucide icons (hex, e.g. '#3b82f6')
   /** Opacity for the icon glyph only (0–1); omit for fully opaque. */
   iconOpacity?: number;
+  /** Lucide/generic icon nodes: extruded 3D square behind the glyph. */
+  iconBevel?: boolean;
+  /** Bevel light direction / extrusion bearing in degrees (0–360). */
+  iconBevelRotation?: number;
+  /** Block thickness as fraction of icon size (0.01–0.42; default 0.1). */
+  iconBevelDepth?: number;
+  /** Fill colour for the 3D block (top + sides). */
+  iconBevelBlockColor?: string;
+  /** Fine Z rotation (degrees) added to `iconBevelRotation` for grid tessellation (-20–20). */
+  iconBevelGridOffset?: number;
   imageUrl?: string; // External image URL for generic.icon.custom nodes (http/https only)
   imageOptions?: CustomImageOptions; // Crop/scale/orientation options for custom icon images
 
@@ -827,7 +840,7 @@ export interface DiagramNodeItem {
   height?: number; // Custom height - when set, overrides auto-calculated height
   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
-  nodeSize?: 'normal' | 'half' | 'quarter'; // Size mode for nodes and icons
+  nodeSize?: NodeSize; // Size mode for nodes and icons
   labelWidth?: number; // Label width for icon/resource nodes - allows label wider than 80px icon
   // Text justification for text resources
   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes

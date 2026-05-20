@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ColorPicker } from "@/components/ui/color-picker";
+import type { NodeSize } from "@/lib/types";
 import { VisualStyling, VISUAL_STYLES, getPredefinedVisualStyle, findClosestPredefinedStyle } from "@/lib/visual-styling";
 import {
   createRandomMeshGradientPoints,
@@ -22,6 +23,18 @@ import {
 } from "@/lib/highlight-anim";
 import { ChevronDown, Palette, RotateCcw, Shuffle, X } from "lucide-react";
 import { GradientAnglePicker } from "./gradient-angle-picker";
+import {
+  ICON_BEVEL_DEFAULT_DEPTH,
+  ICON_BEVEL_DEFAULT_GRID_OFFSET,
+  ICON_BEVEL_DEFAULT_ROTATION,
+  ICON_BEVEL_MAX_DEPTH,
+  ICON_BEVEL_MAX_GRID_OFFSET,
+  ICON_BEVEL_MIN_DEPTH,
+  ICON_BEVEL_MIN_GRID_OFFSET,
+  normalizeIconBevelDepth,
+  normalizeIconBevelGridOffset,
+  normalizeIconBevelRotation,
+} from "@/lib/icon-bevel";
 import { Slider } from "@/components/ui/slider";
 import Draggable from "react-draggable";
 import { cn } from "@/lib/utils";
@@ -337,6 +350,10 @@ interface VisualStylingPanelProps {
   onTagPositionChange?: (position: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right') => void;
   /** When true, shows Icon Color control (Lucide icons only) */
   isLucideIcon?: boolean;
+  /** Icon/resource/emoji tile — opacity, size, remove background (see `isDiagramIconTileNodeType`). */
+  showIconTileStyling?: boolean;
+  /** When true, shows 3D bevel + rotation (icon tiles except emoji). */
+  showIconBevel?: boolean;
   /** When true, shows Remove background toggle (resource items and Lucide icons) */
   showRemoveBackground?: boolean;
   noIconBackground?: boolean;
@@ -360,7 +377,7 @@ interface VisualStylingPanelProps {
   isTextBoxHeading?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showIconBevel = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -550,7 +567,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           <div className="dw-visual-styling-drag-handle flex min-w-0 flex-1 cursor-move items-center gap-2 select-none">
             <Palette className="h-4 w-4 shrink-0 text-primary" />
             <h3 className="truncate text-sm font-semibold text-foreground">
-              {isLucideIcon ? "Icon Styling" : "Visual Styling"}
+              {showIconTileStyling || isLucideIcon ? "Icon Styling" : "Visual Styling"}
             </h3>
           </div>
           {onClose && (
@@ -561,7 +578,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-5">
           <div className="space-y-4">
-          {(isLucideIcon || showRemoveBackground) && (
+          {(showIconTileStyling || showRemoveBackground) && (
             <>
             <div className={`grid gap-4 ${isLucideIcon && showRemoveBackground ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {isLucideIcon && (
@@ -616,6 +633,96 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 className="mt-2 w-full"
               />
             </div>
+            {showIconBevel && (
+              <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-sm font-semibold text-foreground">3D bevel</Label>
+                  <Switch
+                    checked={Boolean(styling.iconBevel)}
+                    onCheckedChange={(checked) =>
+                      onStylingChange({
+                        iconBevel: checked,
+                        ...(checked && styling.iconBevelRotation == null
+                          ? { iconBevelRotation: ICON_BEVEL_DEFAULT_ROTATION }
+                          : {}),
+                        ...(checked && styling.iconBevelDepth == null
+                          ? { iconBevelDepth: ICON_BEVEL_DEFAULT_DEPTH }
+                          : {}),
+                        ...(checked && styling.iconBevelGridOffset == null
+                          ? { iconBevelGridOffset: ICON_BEVEL_DEFAULT_GRID_OFFSET }
+                          : {}),
+                      })
+                    }
+                  />
+                </div>
+                {styling.iconBevel && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Block color</Label>
+                      <ColorPicker
+                        value={styling.iconBevelBlockColor || "#9aa3ab"}
+                        onChange={(value) => handlePropertyChange("iconBevelBlockColor", value, true)}
+                        placeholder="#9aa3ab"
+                        showAlpha={false}
+                        allowTransparent={false}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs text-muted-foreground">Block thickness</Label>
+                        <span className="tabular-nums text-xs text-muted-foreground">
+                          {(normalizeIconBevelDepth(styling.iconBevelDepth) * 100).toFixed(1)}
+                          %
+                        </span>
+                      </div>
+                      <Slider
+                        min={ICON_BEVEL_MIN_DEPTH}
+                        max={ICON_BEVEL_MAX_DEPTH}
+                        step={0.005}
+                        value={[normalizeIconBevelDepth(styling.iconBevelDepth)]}
+                        onValueChange={([v]) => handlePropertyChange("iconBevelDepth", v, true)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs text-muted-foreground">Bevel angle</Label>
+                        <span className="tabular-nums text-xs text-muted-foreground">
+                          {Math.round(normalizeIconBevelRotation(styling.iconBevelRotation))}°
+                        </span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={359}
+                        step={1}
+                        value={[normalizeIconBevelRotation(styling.iconBevelRotation)]}
+                        onValueChange={([v]) => handlePropertyChange("iconBevelRotation", v, true)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-xs text-muted-foreground">Grid alignment</Label>
+                        <span className="tabular-nums text-xs text-muted-foreground">
+                          {Math.round(normalizeIconBevelGridOffset(styling.iconBevelGridOffset))}°
+                        </span>
+                      </div>
+                      <Slider
+                        min={ICON_BEVEL_MIN_GRID_OFFSET}
+                        max={ICON_BEVEL_MAX_GRID_OFFSET}
+                        step={1}
+                        value={[normalizeIconBevelGridOffset(styling.iconBevelGridOffset)]}
+                        onValueChange={([v]) => handlePropertyChange("iconBevelGridOffset", v, true)}
+                        className="w-full"
+                      />
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        Fine-tune so neighbouring icons line up. Use 0° for a square-on view; try 8–12° when tiling icons in a row.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             </>
           )}
 
@@ -641,7 +748,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               </div>
               <Select
                 value={styling.nodeSize || 'normal'}
-                onValueChange={(value) => onStylingChange({ nodeSize: value as 'normal' | 'half' | 'quarter' })}
+                onValueChange={(value) => onStylingChange({ nodeSize: value as NodeSize })}
               >
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue placeholder="Normal" />
@@ -650,6 +757,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   <SelectItem value="normal" className="text-sm">Normal</SelectItem>
                   <SelectItem value="half" className="text-sm">Half</SelectItem>
                   <SelectItem value="quarter" className="text-sm">Quarter</SelectItem>
+                  <SelectItem value="double" className="text-sm">Double</SelectItem>
                 </SelectContent>
               </Select>
             </div>

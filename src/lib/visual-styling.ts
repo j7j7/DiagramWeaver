@@ -4,6 +4,7 @@ import type {
   DiagramGroupData,
   DiagramGroupItem,
   MeshGradientPoint,
+  NodeSize,
   PyramidDirection,
   PyramidSizing,
 } from "./types";
@@ -82,8 +83,16 @@ export interface VisualStyling {
   iconColor?: string; // Color for Lucide icons (context-aware, icons only)
   /** Icon glyph opacity 0–1 (icons / resource tiles only). */
   iconOpacity?: number;
+  /** Lucide icon nodes: 3D bevelled square tile. */
+  iconBevel?: boolean;
+  /** Bevel extrusion / lighting rotation in degrees (0–360). */
+  iconBevelRotation?: number;
+  /** Block thickness as fraction of icon size (0.01–0.42). */
+  iconBevelDepth?: number;
+  iconBevelBlockColor?: string;
+  iconBevelGridOffset?: number;
   noIconBackground?: boolean; // Remove background from icon/resource nodes
-  nodeSize?: 'normal' | 'half' | 'quarter'; // Size mode for nodes and icons
+  nodeSize?: NodeSize; // Size mode for nodes and icons
   /** When true, orthogonal connectors do not route around this shape or zone. */
   ignoreConnectionAvoidance?: boolean;
 }
@@ -323,6 +332,11 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     frostedPerlinNoise: (node as any).frostedPerlinNoise,
     iconColor: (node as DiagramNodeData).iconColor,
     iconOpacity: (node as DiagramNodeData).iconOpacity,
+    iconBevel: (node as DiagramNodeData).iconBevel,
+    iconBevelRotation: (node as DiagramNodeData).iconBevelRotation,
+    iconBevelDepth: (node as DiagramNodeData).iconBevelDepth,
+    iconBevelBlockColor: (node as DiagramNodeData).iconBevelBlockColor,
+    iconBevelGridOffset: (node as DiagramNodeData).iconBevelGridOffset,
     noIconBackground: (node as any).noIconBackground,
     nodeSize: (node as any).nodeSize,
     highlightAnim: (node as any).highlightAnim,
@@ -335,17 +349,18 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
   };
 }
 
-/** Size multiplier for nodeSize: normal=1, half=0.5, quarter=0.25 */
-export function getNodeSizeMultiplier(nodeSize?: 'normal' | 'half' | 'quarter'): number {
+/** Size multiplier for nodeSize: normal=1, half=0.5, quarter=0.25, double=2 */
+export function getNodeSizeMultiplier(nodeSize?: NodeSize): number {
   switch (nodeSize) {
     case 'half': return 0.5;
     case 'quarter': return 0.25;
+    case 'double': return 2;
     default: return 1;
   }
 }
 
 /** Icon/container dimensions in px for a given nodeSize */
-export function getNodeSizeDimensions(nodeSize?: 'normal' | 'half' | 'quarter'): { container: number; icon: number } {
+export function getNodeSizeDimensions(nodeSize?: NodeSize): { container: number; icon: number } {
   const m = getNodeSizeMultiplier(nodeSize);
   return { container: Math.round(80 * m), icon: Math.round(70 * m) };
 }
@@ -495,6 +510,23 @@ export function applyVisualStylingToNode(
     frostedPerlinNoise: styling.frostedPerlinNoise !== undefined ? styling.frostedPerlinNoise : (node as any).frostedPerlinNoise,
     iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor,
     iconOpacity: styling.iconOpacity !== undefined ? styling.iconOpacity : (node as DiagramNodeData).iconOpacity,
+    iconBevel: styling.iconBevel !== undefined ? styling.iconBevel : (node as DiagramNodeData).iconBevel,
+    iconBevelRotation:
+      styling.iconBevelRotation !== undefined
+        ? styling.iconBevelRotation
+        : (node as DiagramNodeData).iconBevelRotation,
+    iconBevelDepth:
+      styling.iconBevelDepth !== undefined
+        ? styling.iconBevelDepth
+        : (node as DiagramNodeData).iconBevelDepth,
+    iconBevelBlockColor:
+      styling.iconBevelBlockColor !== undefined
+        ? styling.iconBevelBlockColor
+        : (node as DiagramNodeData).iconBevelBlockColor,
+    iconBevelGridOffset:
+      styling.iconBevelGridOffset !== undefined
+        ? styling.iconBevelGridOffset
+        : (node as DiagramNodeData).iconBevelGridOffset,
     noIconBackground: styling.noIconBackground !== undefined ? styling.noIconBackground : (node as any).noIconBackground,
     nodeSize: styling.nodeSize !== undefined ? styling.nodeSize : (node as any).nodeSize,
     highlightAnim: styling.highlightAnim !== undefined ? styling.highlightAnim : (node as any).highlightAnim,

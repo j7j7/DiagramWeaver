@@ -262,6 +262,11 @@ function clearIconResourceFields(n: DiagramNodeData): void {
   delete n.emoji;
   delete n.iconColor;
   delete (n as DiagramNodeData & { iconOpacity?: unknown }).iconOpacity;
+  delete (n as DiagramNodeData & { iconBevel?: unknown }).iconBevel;
+  delete (n as DiagramNodeData & { iconBevelRotation?: unknown }).iconBevelRotation;
+  delete (n as DiagramNodeData & { iconBevelDepth?: unknown }).iconBevelDepth;
+  delete (n as DiagramNodeData & { iconBevelBlockColor?: unknown }).iconBevelBlockColor;
+  delete (n as DiagramNodeData & { iconBevelGridOffset?: unknown }).iconBevelGridOffset;
   delete n.imageUrl;
   delete n.imageOptions;
   delete n.noIconBackground;

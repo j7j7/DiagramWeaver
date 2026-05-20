@@ -3,6 +3,7 @@ import { isConnectorLineNodeType, isIconOrEmojiType, isShapeNodeType, isTimeline
 import { connectorLinePointBounds, getConnectorLineVertices } from "@/lib/line-curve-path";
 import { computeTimelineOuterBounds } from "@/lib/timeline-layout";
 import { getPlainTextFromRuns } from "@/lib/rich-text";
+import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
 
@@ -175,7 +176,8 @@ export const measureNodeDims = (n: PositionedNode) => {
   } else {
     // Icon/resource nodes: width can include wider label via labelWidth; nodeSize scales base
     const { container: iconContainer } = getNodeSizeDimensions((n as any).nodeSize);
-    const iconWidth = iconContainer;
+    const iconTileSize = getIconTileAnchorSize(n as DiagramNodeData);
+    const iconWidth = iconTileSize;
     let effectiveLabelWidth: number | undefined = (n as any).labelWidth ? snapDimensionToGrid(Math.max(iconWidth, (n as any).labelWidth), iconWidth) : undefined;
     // When no labelWidth persisted, derive width from label so text doesn't fragment in viewer
     if (!effectiveLabelWidth && label.trim().length > 0) {
@@ -202,7 +204,7 @@ export const measureNodeDims = (n: PositionedNode) => {
     const hasLabel = label.trim().length > 0;
     const maxCharsPerLine = effectiveLabelWidth ? Math.floor(effectiveLabelWidth / 8) : 12;
     const labelLines = hasLabel ? Math.max(1, Math.ceil(label.length / maxCharsPerLine)) : 1;
-    const nodeHeight = iconContainer + (labelLines - 1) * EXTRA_LINE_HEIGHT;
+    const nodeHeight = iconTileSize + (labelLines - 1) * EXTRA_LINE_HEIGHT;
     return { width: nodeWidth, height: snapDimensionToGrid(nodeHeight, 40) };
   }
 };

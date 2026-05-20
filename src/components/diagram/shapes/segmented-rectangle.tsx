@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import type { DiagramNodeData, RichTextRun, TimelineBarSectionData } from "@/lib/types";
+import type { DiagramNodeData, NodeSize, RichTextRun, TimelineBarSectionData } from "@/lib/types";
 import type { ChartSlideStagger } from "@/lib/chart-presentation-stagger";
 import {
   chartSegmentPopAnimationStyle,
@@ -167,7 +167,7 @@ export function SegmentedRectangleShape({
   const boundaryResizeLayout =
     gapPx === 0 || sizing === "weighted";
 
-  const scale = getNodeSizeMultiplier(nodeAny.nodeSize as "normal" | "half" | "quarter" | undefined);
+  const scale = getNodeSizeMultiplier(nodeAny.nodeSize as NodeSize | undefined);
   const baseW = node.width ?? defaultWidth;
   const baseH = node.height ?? defaultHeight;
   const snapBarWidthPx = overrideWidth ?? (node.width != null ? node.width : Math.round(baseW * scale));

@@ -17,7 +17,11 @@ import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
 import { assertImportJsonTextWithinLimit } from '@/lib/import-json-limits';
-import { isIconOrEmojiType } from '@/lib/utils';
+import {
+  isIconOrEmojiType,
+  isDiagramIconTileNodeType,
+  isDiagramEmojiTileNodeType,
+} from '@/lib/utils';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
 import { supportsDiagramMeshGradient } from '@/lib/diagram-mesh-gradient-support';
@@ -864,6 +868,44 @@ const renderIcon = (item: ScratchPadItem) => {
                                   editingItem.type === 'generic.object.segmented-rectangle' ||
                                   editingItem.type?.endsWith?.('.segmented-rectangle')
                                 }
+                                isLucideIcon={(() => {
+                                  const t = editingItem.type || '';
+                                  const iconType = (editingItem.data as DiagramNodeData)?.iconType;
+                                  return t.startsWith('generic.icon.') || iconType === 'lucide';
+                                })()}
+                                showIconTileStyling={isDiagramIconTileNodeType(
+                                  editingItem.type,
+                                  (editingItem.data as DiagramNodeData)?.iconType,
+                                )}
+                                showIconBevel={(() => {
+                                  const t = editingItem.type;
+                                  const iconType = (editingItem.data as DiagramNodeData)?.iconType;
+                                  return (
+                                    isDiagramIconTileNodeType(t, iconType) &&
+                                    !isDiagramEmojiTileNodeType(t, iconType)
+                                  );
+                                })()}
+                                showRemoveBackground={isDiagramIconTileNodeType(
+                                  editingItem.type,
+                                  (editingItem.data as DiagramNodeData)?.iconType,
+                                )}
+                                showFullStyling={(() => {
+                                  const t = editingItem.type || '';
+                                  const iconType = (editingItem.data as DiagramNodeData)?.iconType;
+                                  if (isDiagramIconTileNodeType(t, iconType)) return false;
+                                  return !isIconOrEmojiType(t) && (t.startsWith('generic.object.') ||
+                                    t.startsWith('generic.chart.') ||
+                                    t?.endsWith('.square') || t?.endsWith('.circle') ||
+                                    t?.endsWith('.point') || t?.endsWith('.rectangle') ||
+                                    t?.endsWith('.rounded-rectangle') || t?.endsWith('.mind-map-node') || t?.endsWith('.progress-bar') || t?.endsWith('.timeline-bar') || t?.endsWith('.segmented-rectangle') || t?.endsWith('.text-box-heading') ||
+                                    t?.endsWith('.triangle') || t?.endsWith('.star') ||
+                                    t?.endsWith('.cloud') || t?.endsWith('.parallelogram') ||
+                                    t?.endsWith('.trapezoid') || t?.endsWith('.kite') ||
+                                    t?.endsWith('.hexagon') || t?.endsWith('.pentagon') ||
+                                    t?.endsWith('.octagon') || t?.endsWith('.jigsaw') ||
+                                    t?.endsWith('.arrowhead') || t?.endsWith('.chevron'));
+                                })()}
+                                noIconBackground={Boolean((editingItem.data as DiagramNodeData)?.noIconBackground)}
                             />
                         </TabsContent>
                     </Tabs>

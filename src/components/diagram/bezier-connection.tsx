@@ -5,6 +5,7 @@ import React from "react";
 import { useTheme } from "@/components/theme-provider";
 import { measureNodeDims } from "@/components/editor/canvas-constants";
 import { isIconOrEmojiType, isShapeNodeType, isGenericObjectOrChartShapeType } from "@/lib/utils";
+import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { getShapeEdgeBounds, shapeEdgeToPoint, isKiteShapeType, getKiteConnectionPoint } from "@/lib/shape-connection-bounds";
 import { clampConnectionAnimation } from "@/lib/connection-animation";
@@ -289,7 +290,7 @@ export function getConnectionPoint(obj: any, width: number, height: number, poin
   const isTextNode = obj.type === 'generic.text.text' || obj.type === 'generic.text.textbox';
   const isObjectNode = isGenericObjectOrChartShapeType(obj.type);
   const isIconLikeNode = !isGroup && !isTextNode && !isObjectNode;
-  const inferredIconContainer = isIconLikeNode ? getNodeSizeDimensions((obj as any).nodeSize).container : undefined;
+  const inferredIconContainer = isIconLikeNode ? getIconTileAnchorSize(obj as any) : undefined;
 
   // For icon-like nodes with labels, use icon-only dimensions so text doesn't affect anchors.
   const resolvedIconWidth = isIconLikeNode
@@ -498,8 +499,8 @@ export function computeAxisDeltasForConnectionNodes(
   const fromIsIconLike = !fromIsGroup && !fromIsText && !fromIsObjectNode;
   const toIsIconLike = !toIsGroup && !toIsText && !toIsObjectNode;
 
-  const fromIconContainer = fromIsIconLike ? getNodeSizeDimensions((from as any).nodeSize).container : undefined;
-  const toIconContainer = toIsIconLike ? getNodeSizeDimensions((to as any).nodeSize).container : undefined;
+  const fromIconContainer = fromIsIconLike ? getIconTileAnchorSize(from as any) : undefined;
+  const toIconContainer = toIsIconLike ? getIconTileAnchorSize(to as any) : undefined;
   const fromIconOffsetX = fromIconContainer && resolvedFromWidth > fromIconContainer ? (resolvedFromWidth - fromIconContainer) / 2 : 0;
   const toIconOffsetX = toIconContainer && resolvedToWidth > toIconContainer ? (resolvedToWidth - toIconContainer) / 2 : 0;
   const fromIconOffsetY = fromIsIconLike && (from as any).textVerticalPosition === 'top' && fromIconContainer && resolvedFromHeight > fromIconContainer
@@ -666,8 +667,8 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
   const fromIsIconLike = !fromIsGroup && !fromIsText && !fromIsObjectNode;
   const toIsIconLike = !toIsGroup && !toIsText && !toIsObjectNode;
 
-  const inferredFromIconContainer = fromIsIconLike ? getNodeSizeDimensions((from as any).nodeSize).container : undefined;
-  const inferredToIconContainer = toIsIconLike ? getNodeSizeDimensions((to as any).nodeSize).container : undefined;
+  const inferredFromIconContainer = fromIsIconLike ? getIconTileAnchorSize(from as any) : undefined;
+  const inferredToIconContainer = toIsIconLike ? getIconTileAnchorSize(to as any) : undefined;
   const resolvedFromIconWidth = fromIsIconLike
     ? (fromIconWidth ?? inferredFromIconContainer ?? fromIconHeight)
     : fromIconWidth;
@@ -1096,8 +1097,8 @@ function BezierConnectionInner({
   const isToIconNode = !isToGroup && !isToShape && !isToTextType;
   const fromDims = isFromIconNode ? measureNodeDims(from as any) : null;
   const toDims = isToIconNode ? measureNodeDims(to as any) : null;
-  const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((from as any).nodeSize).container : undefined;
-  const toIconContainer = isToIconNode ? getNodeSizeDimensions((to as any).nodeSize).container : undefined;
+  const fromIconContainer = isFromIconNode ? getIconTileAnchorSize(from as any) : undefined;
+  const toIconContainer = isToIconNode ? getIconTileAnchorSize(to as any) : undefined;
   const fromWidth = isFromGroup 
     ? (from.width || 300)
     : (isFromShape && from.width ? from.width : (fromDims?.width ?? from.width ?? NODE_WIDTH));
@@ -1617,8 +1618,8 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     
     const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
     const isToIconNode = !isToGroup && !isToShape && !isToTextType;
-    const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((from as any).nodeSize).container : undefined;
-    const toIconContainer = isToIconNode ? getNodeSizeDimensions((to as any).nodeSize).container : undefined;
+    const fromIconContainer = isFromIconNode ? getIconTileAnchorSize(from as any) : undefined;
+    const toIconContainer = isToIconNode ? getIconTileAnchorSize(to as any) : undefined;
 
     let fromIconHeight: number | undefined;
     let toIconHeight: number | undefined;

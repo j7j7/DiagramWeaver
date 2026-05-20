@@ -42,7 +42,7 @@ Use this document as the **single prompt attachment** when asking an LLM to outp
 
 - **Fewer, bolder elements:** 5–25 nodes is usually clearer than 50 tiny icons; group related items with **`groupings`** + **`label`** or use a **title node** (**`generic.text.text`**) above a row.
 - **Icons vs boxes:** Cloud **resources** (**`aws.*`**, **`azure.*`**, …) for concrete services; **`generic.object.rectangle`** (or rounded via **`cornerRadius`**) for “App”, “VPC”, logical groupings when no icon fits.
-- **`nodeSize`:** **`half`** / **`quarter`** for dense rows; **`normal`** for hero nodes.
+- **`nodeSize`:** **`half`** / **`quarter`** for dense rows; **`normal`** for default; **`double`** for hero/large icons.
 - **`textPosition`:** For shapes, **`above`** keeps labels readable; **`center`** inside solid boxes with short labels.
 - **`label`:** Short (2–5 words); put longer explanations in **`info`** (hover/popover in app).
 
@@ -162,7 +162,7 @@ Common optional fields (see Zod **`DiagramNodeDataSchema`** for the full list):
 - **UML:** `umlClass`, `umlClassStyle`
 - **Mind map** (`generic.object.mind-map-node`): `mindmapParentId`, `mindmapChildIds`, `mindmapAngleDeg`, `mindmapRadiusPx`, `mindmapStartAngleDeg`, `mindmapFillMode` (`solid` \| `theme-hues`), `mindmapHueStepDeg`, `mindmapHueLocked`, `mindmapHueAnchor`, `mindmapRootId`, `mindmapTreeDepth`, `mindmapSiblingHueIndex`
 - **Navigation:** `subDiagramId` (key into **`subDiagrams`**)
-- **Other:** `metaData` (string map), `noIconBackground`, `nodeSize` (`normal` \| `half` \| `quarter`), `labelWidth`, `width`, `height`, `sizeMode` (`auto` \| `custom`), `rotation`, `metaData`
+- **Other:** `metaData` (string map), `noIconBackground`, `nodeSize` (`normal` \| `half` \| `quarter` \| `double`), `labelWidth`, `width`, `height`, `sizeMode` (`auto` \| `custom`), `rotation`, `metaData`
 
 ---
 

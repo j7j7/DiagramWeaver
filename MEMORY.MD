@@ -3,6 +3,26 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-20 – Icon/node size: double preset
+
+**`nodeSize`:** added **`double`** (2× base: 160×160 container, 140×140 icon) alongside **`normal`**, **`half`**, **`quarter`**. **`NodeSize`** type in **`types.ts`**; **`getNodeSizeMultiplier`** / schema / Visual Styling **Size** dropdown updated. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: glow, connections, defaults
+
+**Glow:** highlight pulse uses silhouette **`filter`** on the tilted **`IconBevelFrame`** tile (ground shadow on perspective wrapper). **Connections / layout:** **`getIconTileAnchorSize`** / **`getIconBevelViewportSize`** expand icon node bounds and connection anchors when bevel is on. **Defaults:** thickness **3%**, bevel angle **23°**, grid alignment **0°**. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: thinner minimum block
+
+**Block thickness:** slider **1–42%** (was 6% floor); default **10%** on enable (was 22%). Pixel depth follows icon size with **2px** minimum (was forced **6px**). Corner shadow stack scales with depth (~45% of side px, max 8 steps) so minimum thickness no longer looks doubled. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel (visual styling)
+
+**Icon tiles:** **Icon Styling** — **3D bevel**, **Block color** (`iconBevelBlockColor`), **Block thickness**, **Bevel angle** (0–359°), **Grid alignment** (`iconBevelGridOffset` −20–20°, default +10° for tessellation; bevel angle default 0°). **`IconBevelFrame`**: border extrusion tile. Patch bumped.
+
+
 ### 2026-05-19 – Segmented rectangle: no scrollbars on section labels
 
 **`segmented-rectangle.tsx`:** Per-segment **`TextboxRichDisplay`** wrapper uses **`overflow-hidden`** instead of **`overflow-auto`** so overflowing label text clips without scrollbar chrome in the **`foreignObject`** cell.
