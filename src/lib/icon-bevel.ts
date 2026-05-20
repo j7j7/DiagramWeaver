@@ -104,17 +104,22 @@ export function getIconTileAnchorSize(node: {
 export function getIconBevelGeometry(size: number, depthRatio?: number): {
   depth: number;
   radius: number;
+  /** Clip radius for the icon glyph so corners align with the bevelled top face. */
+  iconClipRadius: number;
   pad: number;
   perspective: number;
 } {
   const ratio = normalizeIconBevelDepth(depthRatio);
   const depth = Math.max(2, Math.round(size * ratio));
-  const radius = Math.round(size * 0.24);
+  const radius = Math.max(4, Math.round(size * 0.24));
+  /** Same as top-face radius so the glyph follows the bevelled plate. */
+  const iconClipRadius = radius;
   const pad = Math.round(size * (0.28 + ratio * 0.45) + depth);
   const viewport = size + pad * 2;
   return {
     depth,
     radius,
+    iconClipRadius,
     pad,
     perspective: Math.round(viewport * 2.5),
   };
@@ -160,4 +165,148 @@ export function buildIconBevelCornerStack(
     parts.push(`${i}px ${i}px 0 0 ${c}`);
   }
   return parts.join(", ");
+}
+
+const EDGE_SAMPLE_SIZE = 72;
+const EDGE_ALPHA_MIN = 20;
+
+/** Average RGB of silhouette edge pixels (opaque meets transparent / canvas border). */
+export function sampleEdgeColorFromRgba(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): string | null {
+  let rSum = 0;
+  let gSum = 0;
+  let bSum = 0;
+  let count = 0;
+
+  const alphaAt = (x: number, y: number) => data[(y * width + x) * 4 + 3];
+  const addPixel = (x: number, y: number) => {
+    const i = (y * width + x) * 4;
+    rSum += data[i];
+    gSum += data[i + 1];
+    bSum += data[i + 2];
+    count += 1;
+  };
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (alphaAt(x, y) < EDGE_ALPHA_MIN) continue;
+      const onBorder = x === 0 || y === 0 || x === width - 1 || y === height - 1;
+      const touchesClear =
+        (x > 0 && alphaAt(x - 1, y) < EDGE_ALPHA_MIN) ||
+        (x < width - 1 && alphaAt(x + 1, y) < EDGE_ALPHA_MIN) ||
+        (y > 0 && alphaAt(x, y - 1) < EDGE_ALPHA_MIN) ||
+        (y < height - 1 && alphaAt(x, y + 1) < EDGE_ALPHA_MIN);
+      if (onBorder || touchesClear) addPixel(x, y);
+    }
+  }
+
+  if (count === 0) {
+    const ring = Math.max(1, Math.round(Math.min(width, height) * 0.06));
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const nearEdge =
+          x < ring || y < ring || x >= width - ring || y >= height - ring;
+        if (nearEdge && alphaAt(x, y) >= EDGE_ALPHA_MIN) addPixel(x, y);
+      }
+    }
+  }
+
+  if (count === 0) return null;
+  return rgbToHex(rSum / count, gSum / count, bSum / count);
+}
+
+/**
+ * Sample the mid-section of each side (inset from corners) — the icon plate colour,
+ * not outer silhouette corners (which break when the glyph is rounded/clipped).
+ */
+export function sampleCenterEdgeColorFromRgba(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): string | null {
+  const alphaAt = (x: number, y: number) => data[(y * width + x) * 4 + 3];
+  const inset = Math.max(2, Math.round(Math.min(width, height) * 0.1));
+  const spanStartX = Math.round(width * 0.22);
+  const spanEndX = Math.round(width * 0.78);
+  const spanStartY = Math.round(height * 0.22);
+  const spanEndY = Math.round(height * 0.78);
+
+  let rSum = 0;
+  let gSum = 0;
+  let bSum = 0;
+  let count = 0;
+
+  const addPixel = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    if (alphaAt(x, y) < EDGE_ALPHA_MIN) return;
+    const i = (y * width + x) * 4;
+    rSum += data[i];
+    gSum += data[i + 1];
+    bSum += data[i + 2];
+    count += 1;
+  };
+
+  for (let x = spanStartX; x <= spanEndX; x++) {
+    addPixel(x, inset);
+    addPixel(x, height - 1 - inset);
+  }
+  for (let y = spanStartY; y <= spanEndY; y++) {
+    addPixel(inset, y);
+    addPixel(width - 1 - inset, y);
+  }
+
+  if (count === 0) return sampleEdgeColorFromRgba(data, width, height);
+  return rgbToHex(rSum / count, gSum / count, bSum / count);
+}
+
+function rasterizeImageSourceForSampling(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+): Uint8ClampedArray | null {
+  if (typeof document === "undefined" || sourceWidth <= 0 || sourceHeight <= 0) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = EDGE_SAMPLE_SIZE;
+  canvas.height = EDGE_SAMPLE_SIZE;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.clearRect(0, 0, EDGE_SAMPLE_SIZE, EDGE_SAMPLE_SIZE);
+  ctx.drawImage(source, 0, 0, EDGE_SAMPLE_SIZE, EDGE_SAMPLE_SIZE);
+  return ctx.getImageData(0, 0, EDGE_SAMPLE_SIZE, EDGE_SAMPLE_SIZE).data;
+}
+
+/** Rasterize and pick plate colour from center of each edge (match icon background). */
+export function sampleIconBackgroundColorFromImageSource(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+): string | null {
+  const data = rasterizeImageSourceForSampling(source, sourceWidth, sourceHeight);
+  if (!data) return null;
+  return sampleCenterEdgeColorFromRgba(data, EDGE_SAMPLE_SIZE, EDGE_SAMPLE_SIZE);
+}
+
+/** @deprecated Prefer {@link sampleIconBackgroundColorFromImageSource} for bevel match. */
+export function sampleIconEdgeColorFromImageSource(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+): string | null {
+  const data = rasterizeImageSourceForSampling(source, sourceWidth, sourceHeight);
+  if (!data) return null;
+  return sampleEdgeColorFromRgba(data, EDGE_SAMPLE_SIZE, EDGE_SAMPLE_SIZE);
+}
+
+/** Read `background-color` from a themed icon tile (e.g. `bg-card`). */
+export function readIconTileBackgroundHex(element: Element | null | undefined): string | null {
+  if (!element || typeof window === "undefined") return null;
+  const bg = getComputedStyle(element).backgroundColor;
+  const m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(bg);
+  if (!m) return null;
+  const aMatch = /^rgba\([^)]+,\s*([\d.]+)\s*\)/i.exec(bg);
+  if (aMatch && parseFloat(aMatch[1]) < 0.05) return null;
+  return rgbToHex(Number(m[1]), Number(m[2]), Number(m[3]));
 }

@@ -266,6 +266,7 @@ function clearIconResourceFields(n: DiagramNodeData): void {
   delete (n as DiagramNodeData & { iconBevelRotation?: unknown }).iconBevelRotation;
   delete (n as DiagramNodeData & { iconBevelDepth?: unknown }).iconBevelDepth;
   delete (n as DiagramNodeData & { iconBevelBlockColor?: unknown }).iconBevelBlockColor;
+  delete (n as DiagramNodeData & { iconBevelMatchIconBackground?: unknown }).iconBevelMatchIconBackground;
   delete (n as DiagramNodeData & { iconBevelGridOffset?: unknown }).iconBevelGridOffset;
   delete n.imageUrl;
   delete n.imageOptions;

@@ -90,6 +90,7 @@ export interface VisualStyling {
   /** Block thickness as fraction of icon size (0.01–0.42). */
   iconBevelDepth?: number;
   iconBevelBlockColor?: string;
+  iconBevelMatchIconBackground?: boolean;
   iconBevelGridOffset?: number;
   noIconBackground?: boolean; // Remove background from icon/resource nodes
   nodeSize?: NodeSize; // Size mode for nodes and icons
@@ -336,6 +337,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     iconBevelRotation: (node as DiagramNodeData).iconBevelRotation,
     iconBevelDepth: (node as DiagramNodeData).iconBevelDepth,
     iconBevelBlockColor: (node as DiagramNodeData).iconBevelBlockColor,
+    iconBevelMatchIconBackground: (node as DiagramNodeData).iconBevelMatchIconBackground,
     iconBevelGridOffset: (node as DiagramNodeData).iconBevelGridOffset,
     noIconBackground: (node as any).noIconBackground,
     nodeSize: (node as any).nodeSize,
@@ -523,6 +525,10 @@ export function applyVisualStylingToNode(
       styling.iconBevelBlockColor !== undefined
         ? styling.iconBevelBlockColor
         : (node as DiagramNodeData).iconBevelBlockColor,
+    iconBevelMatchIconBackground:
+      styling.iconBevelMatchIconBackground !== undefined
+        ? styling.iconBevelMatchIconBackground
+        : (node as DiagramNodeData).iconBevelMatchIconBackground,
     iconBevelGridOffset:
       styling.iconBevelGridOffset !== undefined
         ? styling.iconBevelGridOffset

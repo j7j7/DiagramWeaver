@@ -320,6 +320,7 @@ function applyColourAspect(source: DiagramNodeData, target: DiagramNodeData): Di
     "iconBevelRotation",
     "iconBevelDepth",
     "iconBevelBlockColor",
+    "iconBevelMatchIconBackground",
     "iconBevelGridOffset",
     "lineColor",
     "lineColors",

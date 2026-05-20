@@ -657,6 +657,16 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </div>
                 {styling.iconBevel && (
                   <>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs text-muted-foreground">Match icon background</Label>
+                      <Switch
+                        checked={Boolean(styling.iconBevelMatchIconBackground)}
+                        onCheckedChange={(checked) =>
+                          onStylingChange({ iconBevelMatchIconBackground: checked })
+                        }
+                      />
+                    </div>
+                    {!styling.iconBevelMatchIconBackground && (
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Block color</Label>
                       <ColorPicker
@@ -667,6 +677,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                         allowTransparent={false}
                       />
                     </div>
+                    )}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <Label className="text-xs text-muted-foreground">Block thickness</Label>

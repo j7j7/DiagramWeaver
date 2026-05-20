@@ -501,6 +501,8 @@ export interface DiagramNodeData {
   iconBevelDepth?: number;
   /** Fill colour for the 3D block (top + sides). */
   iconBevelBlockColor?: string;
+  /** When true, block + top face colour follows the icon (edge-sampled for rasters; tile bg for vectors). */
+  iconBevelMatchIconBackground?: boolean;
   /** Fine Z rotation (degrees) added to `iconBevelRotation` for grid tessellation (-20–20). */
   iconBevelGridOffset?: number;
   imageUrl?: string; // External image URL for generic.icon.custom nodes (http/https only)

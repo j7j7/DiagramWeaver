@@ -1265,6 +1265,7 @@ export function ContextToolbar({
       iconBevelRotation: undefined,
       iconBevelDepth: undefined,
       iconBevelBlockColor: undefined,
+      iconBevelMatchIconBackground: undefined,
       iconBevelGridOffset: undefined,
       nodeSize: undefined,
       headingBackgroundColor: undefined,

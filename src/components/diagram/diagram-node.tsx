@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { ResourceIcon } from "./resource-icon";
 import { IconBevelFrame } from "./icon-bevel-frame";
+import { getIconBevelGeometry } from "@/lib/icon-bevel";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
@@ -1442,6 +1443,9 @@ function DiagramNodeInner({
         ? Math.min(1, Math.max(0, rawIconOpacity))
         : undefined;
     const iconBevelEnabled = Boolean(nodeAny.iconBevel);
+    const iconBevelClipRadius = iconBevelEnabled
+      ? getIconBevelGeometry(container, nodeAny.iconBevelDepth).iconClipRadius
+      : undefined;
     const colorTransition =
       !animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
         ? { transition: animationStyle.visualColorMergeTransition }
@@ -1464,6 +1468,13 @@ function DiagramNodeInner({
         style={{
           width: icon,
           height: icon,
+          ...(iconBevelClipRadius != null
+            ? {
+                borderRadius: iconBevelClipRadius,
+                overflow: "hidden",
+                objectFit: "cover",
+              }
+            : {}),
           ...(iconGlyphOpacity !== undefined ? { opacity: iconGlyphOpacity } : {}),
           ...colorTransition,
         }}
@@ -1501,8 +1512,13 @@ function DiagramNodeInner({
               gridOffsetDeg={nodeAny.iconBevelGridOffset}
               depthRatio={nodeAny.iconBevelDepth}
               blockColor={nodeAny.iconBevelBlockColor}
+              matchIconBackground={Boolean(nodeAny.iconBevelMatchIconBackground)}
               transparentTop={Boolean(nodeAny.noIconBackground)}
-              topFaceClassName={nodeAny.iconBevelBlockColor ? undefined : bevelTopFaceClass}
+              topFaceClassName={
+                nodeAny.iconBevelBlockColor || nodeAny.iconBevelMatchIconBackground
+                  ? undefined
+                  : bevelTopFaceClass
+              }
               topFaceStyle={{ ...iconOutlineCss, ...colorTransition }}
               highlightAnimStyle={
                 highlightAnimStyle && highlightPulseUsesShapeSilhouette

@@ -439,6 +439,7 @@ export const DiagramNodeDataSchema = z.object({
   iconBevelRotation: z.number().min(0).max(360).optional(),
   iconBevelDepth: z.number().min(0.01).max(0.42).optional(),
   iconBevelBlockColor: z.string().optional(),
+  iconBevelMatchIconBackground: z.boolean().optional(),
   iconBevelGridOffset: z.number().min(-20).max(20).optional(),
   imageUrl: HttpImageUrlSchema.optional(),
   imageOptions: CustomImageOptionsSchema.optional(),

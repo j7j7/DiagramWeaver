@@ -8,6 +8,26 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 **`nodeSize`:** added **`double`** (2× base: 160×160 container, 140×140 icon) alongside **`normal`**, **`half`**, **`quarter`**. **`NodeSize`** type in **`types.ts`**; **`getNodeSizeMultiplier`** / schema / Visual Styling **Size** dropdown updated. Patch bumped.
 
 
+### 2026-05-20 – Icon 3D bevel: match background samples center edge
+
+**Match icon background:** plate colour from **center of each side** (inset from corners), not outer silhouette — works with rounded clip. Full bitmap via `currentSrc` when needed. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: rounded icon clip (fix)
+
+**Rounded glyph:** **`clip-path` + `border-radius`** on **`.dw-icon-bevel-clip`** (filter moved outside clip); **`border-radius` on `<img>`** from diagram-node; **`object-fit: cover`**; transparent top face when **match icon background** so square plate doesn’t show under the icon. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: rounded icon clip
+
+**`IconBevelFrame`:** icon glyph clipped with **`iconClipRadius`** (~82% of top-face radius) + **`overflow-hidden`** so raster/Lucide tiles follow the bevelled platform corners. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: match icon background
+
+**3D bevel:** **Match icon background** toggle (`iconBevelMatchIconBackground`) — block + top face colour from edge-sampled raster/SVG icon (falls back to tile `bg-card` for vectors). Hides manual **Block color** while on. Patch bumped.
+
+
 ### 2026-05-20 – Icon 3D bevel: glow, connections, defaults
 
 **Glow:** highlight pulse uses silhouette **`filter`** on the tilted **`IconBevelFrame`** tile (ground shadow on perspective wrapper). **Connections / layout:** **`getIconTileAnchorSize`** / **`getIconBevelViewportSize`** expand icon node bounds and connection anchors when bevel is on. **Defaults:** thickness **3%**, bevel angle **23°**, grid alignment **0°**. Patch bumped.
