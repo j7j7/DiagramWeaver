@@ -44,6 +44,20 @@ export const snapDimensionToGrid = (v: number, minVal = 20): number => {
 };
 
 /**
+ * Icon label containers widen symmetrically around the tile. Step by 2×GRID so when `x` is on-grid,
+ * the centered icon (`iconOffsetX = (labelWidth - iconSize) / 2`) stays on-grid too.
+ */
+export const ICON_LABEL_WIDTH_GRID_MULTIPLIER = 2;
+
+export function snapIconLabelWidthToGrid(width: number, iconTileSize: number): number {
+  const minWidth = iconTileSize;
+  const step = GRID_STEP * ICON_LABEL_WIDTH_GRID_MULTIPLIER;
+  const excess = Math.max(0, width - iconTileSize);
+  const snappedExcess = Math.round(excess / step) * step;
+  return Math.max(minWidth, iconTileSize + snappedExcess);
+}
+
+/**
  * Diagram-space axis-aligned bounds for pan/zoom “fit” and export union — must match painted extent.
  * Timeline cards/spine extend outside the node’s `(x,y)+measureNodeDims` box because the inner wrapper
  * is offset (`TimelineShape` `svgMinX`/`svgMinY`); use {@link computeTimelineOuterBounds} for those.
@@ -181,7 +195,9 @@ export const measureNodeDims = (n: PositionedNode) => {
       ? getIconBevelStackHeight(iconContainer)
       : iconTileSize;
     const iconWidth = iconTileSize;
-    let effectiveLabelWidth: number | undefined = (n as any).labelWidth ? snapDimensionToGrid(Math.max(iconWidth, (n as any).labelWidth), iconWidth) : undefined;
+    let effectiveLabelWidth: number | undefined = (n as any).labelWidth
+      ? snapIconLabelWidthToGrid(Math.max(iconWidth, (n as any).labelWidth), iconWidth)
+      : undefined;
     // When no labelWidth persisted, derive width from label so text doesn't fragment in viewer
     if (!effectiveLabelWidth && label.trim().length > 0) {
       const avgCharWidth = 8;
@@ -201,7 +217,7 @@ export const measureNodeDims = (n: PositionedNode) => {
       if (currentLine) lines.push(currentLine);
       const maxLineLength = Math.max(...lines.map((l) => l.length), 1);
       const labelBasedWidth = Math.max(iconWidth, Math.min(400, maxLineLength * avgCharWidth + padding));
-      effectiveLabelWidth = snapDimensionToGrid(labelBasedWidth, iconWidth);
+      effectiveLabelWidth = snapIconLabelWidthToGrid(labelBasedWidth, iconWidth);
     }
     const nodeWidth = effectiveLabelWidth ?? iconWidth;
     const hasLabel = label.trim().length > 0;

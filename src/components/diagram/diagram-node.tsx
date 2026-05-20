@@ -22,7 +22,8 @@ import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
-import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
+import { snapToGrid, snapDimensionToGrid, snapIconLabelWidthToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
+import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { diagramNodeVisualStylingSignature } from "@/lib/slide-visual-color";
@@ -2029,6 +2030,10 @@ function DiagramNodeInner({
 
     newWidth = snapDimensionToGrid(newWidth, minWidth);
     newHeight = snapDimensionToGrid(newHeight, minHeight);
+    if (isIconNode) {
+      const iconTileSize = getIconTileAnchorSize(node as DiagramNodeData);
+      newWidth = snapIconLabelWidthToGrid(newWidth, iconTileSize);
+    }
     if (isKiteNode) newHeight = newWidth; // ensure square after snap
 
     // Recompute position for top/left after snapping (keep anchor edge fixed)

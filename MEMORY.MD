@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-20 – Icon label resize: 2× grid width steps
+
+Icon **labelWidth** resize snaps in **20px** steps (2× `GRID_STEP`) so symmetric label widening keeps the centered icon tile on-grid for **Alignment** spacing. **`snapIconLabelWidthToGrid`** in **`canvas-constants.ts`**; used in resize drag + **`measureNodeDims`**. Patch bumped.
+
+
 ### 2026-05-20 – Context menu: Alignment (even spacing along row/column)
 
 Multi-select **3+ nodes** in a horizontal row or vertical column → right-click → **Alignment** (under Group). Detects dominant axis, finds the most common **grid-aligned** edge gap, repositions trailing nodes only (anchor leftmost/topmost unchanged). Icon/resource nodes use **icon tile** edges (not label-widened container) for gap measure and placement. **`src/lib/uniform-spacing-align.ts`**. Patch bumped.

@@ -9,12 +9,14 @@ import {
   NODE_WIDTH, 
   NODE_HEIGHT,
   snapDimensionToGrid,
+  snapIconLabelWidthToGrid,
   ZONE_PADDING,
   snapToGrid, 
   measureNodeDims,
   type PositionedNode,
   type PositionedGroup,
 } from "./canvas-constants";
+import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import {
   isConnectorLikeSpineNodeType,
   isConnectorLineNodeType,
@@ -393,8 +395,8 @@ export function useCanvasOperations({
             !isShapeNode && !isTextboxNode && !isTextNode && !isConnectorLineNodeType(node.type);
 
           if (isIconNode) {
-            const minLabelWidth = 80;
-            const labelWidth = snapDimensionToGrid(Math.max(minLabelWidth, newWidth), minLabelWidth);
+            const iconTileSize = getIconTileAnchorSize(node);
+            const labelWidth = snapIconLabelWidthToGrid(Math.max(iconTileSize, newWidth), iconTileSize);
             return { ...node, labelWidth };
           }
 
