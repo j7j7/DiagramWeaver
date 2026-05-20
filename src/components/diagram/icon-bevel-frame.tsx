@@ -135,7 +135,7 @@ export function IconBevelFrame({
 
   return (
     <div
-      className={cn("relative flex items-center justify-center", className)}
+      className={cn("relative flex items-end justify-center", className)}
       style={{
         width: viewport,
         height: viewport,

@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-20 – Icon 3D bevel: label spacing (layout shell)
+
+**Labels:** fixed-height shell (**`container`** px) with bevel viewport **absolutely** anchored to bottom (overflow upward); removed negative-margin pull-up that overlapped labels. **`measureNodeDims`** still uses **`getIconBevelStackHeight`**; label **`z-index: 10`**. Patch bumped.
+
+
 ### 2026-05-20 – Icon 3D bevel on emoji tiles
 
 **Emoji** icon tiles now show **3D bevel** in Visual Styling (same as resource/Lucide tiles); **Match icon background** stays hidden for emoji/Lucide — use **Block color**. Patch bumped.

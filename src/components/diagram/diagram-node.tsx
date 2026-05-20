@@ -10,7 +10,12 @@ import {
 } from "@/components/ui/popover";
 import { ResourceIcon } from "./resource-icon";
 import { IconBevelTile } from "./icon-bevel-frame";
-import { buildIconBevelSampleNode, getIconBevelGeometry, type IconBevelSampleNode } from "@/lib/icon-bevel";
+import {
+  buildIconBevelSampleNode,
+  getIconBevelGeometry,
+  getIconBevelViewportSize,
+  type IconBevelSampleNode,
+} from "@/lib/icon-bevel";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
@@ -1443,6 +1448,9 @@ function DiagramNodeInner({
         ? Math.min(1, Math.max(0, rawIconOpacity))
         : undefined;
     const iconBevelEnabled = Boolean(nodeAny.iconBevel);
+    const bevelViewport = iconBevelEnabled
+      ? getIconBevelViewportSize(container, nodeAny.iconBevelDepth)
+      : container;
     const iconBevelClipRadius = iconBevelEnabled
       ? getIconBevelGeometry(container, nodeAny.iconBevelDepth).iconClipRadius
       : undefined;
@@ -1517,29 +1525,44 @@ function DiagramNodeInner({
       )}>
         <div className={cn("flex-shrink-0 overflow-visible", isTop && "order-2", isBottom && "order-1")}>
           {iconBevelEnabled ? (
-            <IconBevelTile
-              size={container}
-              rotationDeg={nodeAny.iconBevelRotation}
-              gridOffsetDeg={nodeAny.iconBevelGridOffset}
-              depthRatio={nodeAny.iconBevelDepth}
-              iconBevelBlockColor={nodeAny.iconBevelBlockColor}
-              matchIconBackground={Boolean(nodeAny.iconBevelMatchIconBackground)}
-              iconSampleNode={iconBevelSampleNode}
-              transparentTop={Boolean(nodeAny.noIconBackground)}
-              topFaceClassName={
-                nodeAny.iconBevelBlockColor || nodeAny.iconBevelMatchIconBackground
-                  ? undefined
-                  : bevelTopFaceClass
-              }
-              topFaceStyle={{ ...iconOutlineCss, ...colorTransition }}
-              highlightAnimStyle={
-                highlightAnimStyle && highlightPulseUsesShapeSilhouette
-                  ? highlightAnimStyle
-                  : undefined
-              }
-            >
-              {resourceIcon}
-            </IconBevelTile>
+            <div
+                  className="relative mx-auto overflow-visible"
+                  style={{ width: bevelViewport, height: container }}
+                >
+                  <div
+                    className="absolute left-1/2 overflow-visible"
+                    style={{
+                      width: bevelViewport,
+                      height: bevelViewport,
+                      transform: "translateX(-50%)",
+                      ...(isTop ? { top: 0 } : { bottom: 0 }),
+                    }}
+                  >
+                    <IconBevelTile
+                      size={container}
+                      rotationDeg={nodeAny.iconBevelRotation}
+                      gridOffsetDeg={nodeAny.iconBevelGridOffset}
+                      depthRatio={nodeAny.iconBevelDepth}
+                      iconBevelBlockColor={nodeAny.iconBevelBlockColor}
+                      matchIconBackground={Boolean(nodeAny.iconBevelMatchIconBackground)}
+                      iconSampleNode={iconBevelSampleNode}
+                      transparentTop={Boolean(nodeAny.noIconBackground)}
+                      topFaceClassName={
+                        nodeAny.iconBevelBlockColor || nodeAny.iconBevelMatchIconBackground
+                          ? undefined
+                          : bevelTopFaceClass
+                      }
+                      topFaceStyle={{ ...iconOutlineCss, ...colorTransition }}
+                      highlightAnimStyle={
+                        highlightAnimStyle && highlightPulseUsesShapeSilhouette
+                          ? highlightAnimStyle
+                          : undefined
+                      }
+                    >
+                  {resourceIcon}
+                </IconBevelTile>
+              </div>
+            </div>
           ) : (
             <div
               className={flatIconContainerClass}
@@ -1601,7 +1624,8 @@ function DiagramNodeInner({
               height: container
             } : {
               ...getTextStylingForNode(node),
-              display: 'block'
+              display: 'block',
+              ...(iconBevelEnabled && !isMiddle ? { position: 'relative' as const, zIndex: 10 } : {}),
             }}
             onDoubleClick={handleLabelDoubleClick}
           >
@@ -2994,7 +3018,9 @@ function DiagramNodeInner({
       }}
       className={cn(
         "absolute group duration-200 ease-in-out",
-        spineLikeNode ? "overflow-visible" : "rounded-lg",
+        spineLikeNode || (isIconNode && Boolean((node as DiagramNodeData).iconBevel))
+          ? "overflow-visible"
+          : "rounded-lg",
         // Highlight pulse animates box-shadow; transitioning `filter` here can fight keyframes on some browsers (e.g. Chrome/Win).
         node.highlightAnim && !isDuplicateDragPreview && !spineLikeNode && !highlightPulseUsesShapeSilhouette
           ? "transition-transform"

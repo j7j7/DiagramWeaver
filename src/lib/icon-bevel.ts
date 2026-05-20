@@ -90,6 +90,14 @@ export function getIconBevelViewportSize(containerSize: number, depthRatio?: num
   return containerSize + pad * 2 + depth;
 }
 
+/**
+ * Vertical space reserved in the icon+label flex stack (matches flat icon tile height).
+ * The bevel viewport is taller and overflows above the node box.
+ */
+export function getIconBevelStackHeight(containerSize: number): number {
+  return containerSize;
+}
+
 /** Icon tile size for connection anchors and node measurement (includes bevel padding when enabled). */
 export function getIconTileAnchorSize(node: {
   nodeSize?: NodeSize;
