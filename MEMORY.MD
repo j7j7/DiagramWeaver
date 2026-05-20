@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-20 – Multi-select copy from context menu
+
+Right-click **Copy** with multiple items selected now copies the full selection (same as **Cmd/Ctrl+C**), not only the item under the cursor. **`use-canvas-clipboard`** skips single-`itemId` copy when **`selectedItemIds.size > 1`**; context menu uses **`copyHandler`**. Patch bumped.
+
+
 ### 2026-05-20 – Icon label resize: 2× grid width steps
 
 Icon **labelWidth** resize snaps in **20px** steps (2× `GRID_STEP`) so symmetric label widening keeps the centered icon tile on-grid for **Alignment** spacing. **`snapIconLabelWidthToGrid`** in **`canvas-constants.ts`**; used in resize drag + **`measureNodeDims`**. Patch bumped.

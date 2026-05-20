@@ -3313,7 +3313,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             onCopy={() => {
-              handleCopy(contextMenu.itemId);
+              copyHandler();
               closeContextMenu();
             }}
             pasteSpecialEnabled={pasteSpecialMenuEnabled}

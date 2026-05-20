@@ -103,8 +103,9 @@ export function useCanvasClipboard({
   const [clipboard, setClipboard] = useState<ClipboardData | null>(null);
 
   const handleCopy = useCallback((itemId?: string) => {
-    // If a specific itemId is provided, handle single item copy (including group logic)
-    if (itemId) {
+    // If a specific itemId is provided, handle single item copy (including group logic).
+    // When multiple items are selected, copy the full selection (e.g. context menu on one of them).
+    if (itemId && (!selectedItemIds || selectedItemIds.size <= 1)) {
       // Fallback to single item copy for backward compatibility
       const node = diagramData.nodes.find(n => n.id === itemId);
       const zone = diagramData.zones?.find(zone => zone.id === itemId);
