@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 43,
+  "totalResources": 41,
   "categories": {
     "text": {
       "name": "Text",
@@ -301,22 +301,6 @@
           "name": "Email",
           "file": "email.png",
           "type": "office"
-        }
-      ]
-    },
-    "llm": {
-      "name": "LLM Generated",
-      "path": "generic/llm",
-      "resources": [
-        {
-          "name": "Recycle",
-          "file": "recycle.svg",
-          "type": "shape"
-        },
-        {
-          "name": "Recycle Bih",
-          "file": "recycle-bih.svg",
-          "type": "shape"
         }
       ]
     }
