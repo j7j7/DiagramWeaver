@@ -3,6 +3,21 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-20 – Context menu: Alignment (even spacing along row/column)
+
+Multi-select **3+ nodes** in a horizontal row or vertical column → right-click → **Alignment** (under Group). Detects dominant axis, finds the most common **grid-aligned** edge gap, repositions trailing nodes only (anchor leftmost/topmost unchanged). Icon/resource nodes use **icon tile** edges (not label-widened container) for gap measure and placement. **`src/lib/uniform-spacing-align.ts`**. Patch bumped.
+
+
+### 2026-05-20 – Icon maintenance: saved icon library (list / delete / recreate)
+
+**Help → Icon maintenance** lists saved **LLM Generated** icons with thumbnail, **Delete**, and **Recreate** (replace flow). Server: **`GET/DELETE /api/maintenance/icons`**, confirm/generate **`replace`** mode. Patch bumped.
+
+
+### 2026-05-20 – Icon maintenance (Ollama + password-gated Help menu)
+
+**Help → Icon maintenance…** opens a password-gated modal (password in `.env.local` **`MAINTENANCE_PASSWORD`**). Local **`scripts/maintenance-server.mjs`** (`npm run maintenance:server`) proxies **Ollama** (`OLLAMA_URL`, **`OLLAMA_MODEL`**), writes SVGs to **`public/resources/generic/llm/`**, and registers entries in **`resource-generic.json`** (Generic → LLM Generated). Client uses **`NEXT_PUBLIC_MAINTENANCE_API_URL`**. See **`.env.example`**. Patch bumped.
+
+
 ### 2026-05-20 – Icon 3D bevel: label spacing (layout shell)
 
 **Labels:** fixed-height shell (**`container`** px) with bevel viewport **absolutely** anchored to bottom (overflow upward); removed negative-margin pull-up that overlapped labels. **`measureNodeDims`** still uses **`getIconBevelStackHeight`**; label **`z-index: 10`**. Patch bumped.

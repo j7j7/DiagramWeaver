@@ -46,6 +46,9 @@ interface ContextMenuProps {
   isGrouped?: boolean;
   canGroup?: boolean;
   canAddToGroup?: boolean;
+  /** 3+ nodes in a row/column with uneven edge gaps */
+  canUniformSpacingAlign?: boolean;
+  onUniformSpacingAlign?: () => void;
   onMoveToBack?: () => void;
   onMoveToFront?: () => void;
   onMoveOneBack?: () => void;
@@ -156,6 +159,8 @@ export function ContextMenu({
   isGrouped = false,
   canGroup = false,
   canAddToGroup = false,
+  canUniformSpacingAlign = false,
+  onUniformSpacingAlign,
   itemId,
   onMoveToBack,
   onMoveToFront,
@@ -1142,9 +1147,22 @@ export function ContextMenu({
         </button>
       )}
 
+      {canUniformSpacingAlign && onUniformSpacingAlign && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onUniformSpacingAlign();
+            onClose();
+          }}
+        >
+          <AlignHorizontalSpaceAround className="w-4 h-4" />
+          Alignment
+        </button>
+      )}
 
 
-      {(canGroup || isGrouped) && <div className="border-t border-border my-1" />}
+
+      {(canGroup || isGrouped || canUniformSpacingAlign) && <div className="border-t border-border my-1" />}
       
       {onToggleLock && (
         <button

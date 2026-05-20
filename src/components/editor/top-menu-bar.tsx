@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -20,6 +20,7 @@ import { ThemeMenuSelector } from './theme-menu-selector';
 import { AboutDialog } from './about-dialog';
 import { CanvasBackgroundDialog } from './canvas-background-dialog';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
+import { IconMaintenanceDialog } from './icon-maintenance-dialog';
 import { ViewerUrlDialog } from './viewer-url-dialog';
 import { useTheme } from '@/components/theme-provider';
 import type { SelectedItem } from '../diagram-editor';
@@ -433,6 +434,7 @@ export function TopMenuBar({
   const [canvasBackgroundDialogOpen, setCanvasBackgroundDialogOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = React.useState(false);
+  const [iconMaintenanceOpen, setIconMaintenanceOpen] = React.useState(false);
   const [viewerUrlDialogOpen, setViewerUrlDialogOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
@@ -1374,6 +1376,10 @@ export function TopMenuBar({
                 Interactive tutorial
               </MenubarItem>
             )}
+            <MenubarItem onClick={() => setIconMaintenanceOpen(true)}>
+              <Wrench className="mr-2 h-4 w-4" />
+              Icon maintenance…
+            </MenubarItem>
             <MenubarItem onClick={() => setAboutOpen(true)}>
               <Info className="mr-2 h-4 w-4" />
               About
@@ -1417,6 +1423,11 @@ export function TopMenuBar({
       <KeyboardShortcutsDialog
         open={keyboardShortcutsOpen}
         onOpenChange={setKeyboardShortcutsOpen}
+      />
+
+      <IconMaintenanceDialog
+        open={iconMaintenanceOpen}
+        onOpenChange={setIconMaintenanceOpen}
       />
       
       {/* Viewer URL Dialog */}

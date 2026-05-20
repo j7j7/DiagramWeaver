@@ -1,6 +1,6 @@
 {
   "name": "nextn",
-  "version": "0.1.696",
+  "version": "0.1.704",
   "private": true,
   "scripts": {
     "predev": "node scripts/bump-build.mjs",
@@ -12,7 +12,8 @@
     "serve:static": "npx --yes serve@14 out -l 9003",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "validate-mermaid": "node scripts/validate-mermaid.mjs"
+    "validate-mermaid": "node scripts/validate-mermaid.mjs",
+    "maintenance:server": "node scripts/maintenance-server.mjs"
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",

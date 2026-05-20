@@ -212,6 +212,7 @@ export function DiagramEditorInner({
   isReadOnly,
   setIsReadOnly,
   handleAlignObjects,
+  handleUniformSpacingAlign,
   handleLayoutGridStep,
   handleAutoLayout,
   handleThemeApplyToSelected,
@@ -739,6 +740,7 @@ export function DiagramEditorInner({
                     onUngroupItems={handleUngroupItems}
                     onRemoveFromGroup={handleRemoveFromGroup}
                     onAddToGroupItems={handleAddToGroup}
+                    onUniformSpacingAlign={handleUniformSpacingAlign}
                     onMoveToBack={handleMoveToBack}
                     onMoveToFront={handleMoveToFront}
                     onMoveOneBack={handleMoveOneBack}

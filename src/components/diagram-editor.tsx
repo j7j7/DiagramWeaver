@@ -89,6 +89,10 @@ import {
   makeTimelineEntryKey,
   parseTimelineEntryKey,
 } from '@/lib/timeline-layout';
+import {
+  computeUniformSpacingPositions,
+  nodeToSpacingAlignItem,
+} from '@/lib/uniform-spacing-align';
 
 import type { SelectedItem, PaletteResource, PaletteSelection } from '@/components/editor/diagram-editor-types';
 export type { SelectedItem } from '@/components/editor/diagram-editor-types';
@@ -3634,6 +3638,60 @@ export default function DiagramEditor() {
     }
   };
 
+  const handleUniformSpacingAlign = useCallback(() => {
+    if (isReadOnly || selectedItemIds.size < 3) return;
+
+    const items = Array.from(selectedItemIds)
+      .map((id) => {
+        const node = currentDiagramData.nodes.find((n) => n.id === id);
+        if (!node) return null;
+        return nodeToSpacingAlignItem(node);
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (items.length < 3) return;
+
+    const result = computeUniformSpacingPositions(items);
+    if (!result || !result.changed) return;
+
+    setCurrentDiagramData((prevData) => {
+      const newNodes = [...prevData.nodes];
+      result.positions.forEach((pos, id) => {
+        if (id === result.anchorId) return;
+        const nodeIndex = newNodes.findIndex((n) => n.id === id);
+        if (nodeIndex === -1) return;
+        const prev = newNodes[nodeIndex];
+        newNodes[nodeIndex] = positionNodeWithSpineTranslate(prev, pos.x, pos.y);
+      });
+      return { ...prevData, nodes: newNodes };
+    });
+
+    if (
+      selectedItem?.itemType === 'node' &&
+      selectedItemIds.has(selectedItem.id) &&
+      selectedItem.id !== result.anchorId
+    ) {
+      const updatedNode = currentDiagramData.nodes.find((n) => n.id === selectedItem.id);
+      const pos = result.positions.get(selectedItem.id);
+      if (updatedNode && pos) {
+        setSelectedItem({ ...updatedNode, x: pos.x, y: pos.y, itemType: 'node' } as SelectedItem);
+      }
+    }
+
+    toast({
+      title: 'Spacing aligned',
+      description: `Even ${result.axis === 'horizontal' ? 'horizontal' : 'vertical'} spacing applied.`,
+    });
+  }, [
+    isReadOnly,
+    selectedItemIds,
+    currentDiagramData.nodes,
+    setCurrentDiagramData,
+    selectedItem,
+    setSelectedItem,
+    toast,
+  ]);
+
   /**
    * Linear steps (menu): **Horizontal step** sorts **leftmost** first (**`x`** then **`y`**), steps **y** only (matches
    * horizontal curve’s **y** bulge axis; negative **step** → **up**). **Vertical step** sorts **topmost** first (**`y`**
@@ -4926,6 +4984,7 @@ export default function DiagramEditor() {
         isReadOnly={isReadOnly}
         setIsReadOnly={setIsReadOnly}
         handleAlignObjects={handleAlignObjects}
+        handleUniformSpacingAlign={handleUniformSpacingAlign}
         handleLayoutGridStep={handleLayoutGridStep}
         handleAutoLayout={handleAutoLayout}
         handleThemeApplyToSelected={handleThemeApplyToSelected}
