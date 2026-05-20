@@ -52,12 +52,12 @@ import { applyMindmapHueAnchorsAfterVisualChanges } from '@/lib/mindmap-layout';
 import { TextStylingPanel } from './text-styling-panel';
 import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
-import { resolveIconBevelSampleSrc } from '@/lib/icon-bevel';
 import { LineStylingPanel } from './line-styling-panel';
 import { ConnectionAnimationControls } from './connection-animation-controls';
 import { ConnectionLineStyleFields } from './connection-line-style-fields';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from '@/lib/types';
+import { buildIconBevelSampleNode } from '@/lib/icon-bevel';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
@@ -70,7 +70,6 @@ import {
   isIconOrEmojiType,
   isTimelineNodeType,
   isDiagramIconTileNodeType,
-  isDiagramEmojiTileNodeType,
 } from '@/lib/utils';
 import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
@@ -2273,15 +2272,24 @@ export function ContextToolbar({
                     const t = (selectedItem as any)?.type || '';
                     return isDiagramIconTileNodeType(t, (selectedItem as any)?.iconType);
                   })()}
-                  showIconBevel={(() => {
-                    const t = (selectedItem as any)?.type || '';
-                    const iconType = (selectedItem as any)?.iconType;
-                    return (
-                      isDiagramIconTileNodeType(t, iconType) &&
-                      !isDiagramEmojiTileNodeType(t, iconType)
-                    );
+                  showIconBevel={isDiagramIconTileNodeType(
+                    (selectedItem as any)?.type,
+                    (selectedItem as any)?.iconType,
+                  )}
+                  iconBevelSampleNode={(() => {
+                    if (!isNode || !diagramData) return undefined;
+                    const found = diagramData.nodes.find((n) => n.id === selectedItem.id);
+                    const node = found ?? (selectedItem as DiagramNodeData);
+                    return buildIconBevelSampleNode({
+                      type: node.type,
+                      provider: node.provider,
+                      category: node.category,
+                      file: node.file,
+                      imageUrl: (node as { imageUrl?: string }).imageUrl,
+                      imagePath: (node as { imagePath?: string }).imagePath,
+                      resourceMapping: (node as { resourceMapping?: { provider?: string; category?: string; file?: string } }).resourceMapping,
+                    });
                   })()}
-                  iconBevelSampleSrc={resolveIconBevelSampleSrc(selectedItem as any)}
                   showRemoveBackground={(() => {
                     const t = (selectedItem as any)?.type || '';
                     const isShape = isShapeNodeType(t);

@@ -9,25 +9,41 @@ import {
   getIconBevelSceneTransform,
   getIconBevelTopFaceInset,
   sampleIconPlateColorFromUrl,
+  buildIconBevelSampleNode,
+  resolveIconBevelSampleSrcAsync,
+  type IconBevelSampleNode,
 } from "@/lib/icon-bevel";
 
 /** Resolve plate colour from the source image before the bevel frame mounts. */
-export function useIconBevelPlateColor(enabled: boolean, sampleSrc?: string): string | undefined {
+export function useIconBevelPlateColor(
+  enabled: boolean,
+  sampleNode?: IconBevelSampleNode,
+): string | undefined {
   const [color, setColor] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!enabled || !sampleSrc) {
+    if (!enabled) {
       setColor(undefined);
       return;
     }
     let cancelled = false;
-    void sampleIconPlateColorFromUrl(sampleSrc).then((hex) => {
+    void resolveIconBevelSampleSrcAsync(buildIconBevelSampleNode(sampleNode)).then((url) => {
+      if (cancelled || !url) return undefined;
+      return sampleIconPlateColorFromUrl(url);
+    }).then((hex) => {
       if (!cancelled && hex) setColor(hex);
     });
     return () => {
       cancelled = true;
     };
-  }, [enabled, sampleSrc]);
+  }, [
+    enabled,
+    sampleNode?.type,
+    sampleNode?.provider,
+    sampleNode?.category,
+    sampleNode?.file,
+    sampleNode?.imageUrl,
+  ]);
 
   return enabled ? color : undefined;
 }
@@ -35,18 +51,18 @@ export function useIconBevelPlateColor(enabled: boolean, sampleSrc?: string): st
 export interface IconBevelTileProps extends Omit<IconBevelFrameProps, "blockColor" | "matchIconBackground"> {
   matchIconBackground?: boolean;
   iconBevelBlockColor?: string;
-  iconSampleSrc?: string;
+  iconSampleNode?: IconBevelSampleNode;
 }
 
-/** Samples plate colour from `iconSampleSrc`, then renders the bevel frame. */
+/** Samples plate colour from the icon source, then renders the bevel frame. */
 export function IconBevelTile({
   matchIconBackground = false,
   iconBevelBlockColor,
-  iconSampleSrc,
+  iconSampleNode,
   children,
   ...frameProps
 }: IconBevelTileProps) {
-  const plateColor = useIconBevelPlateColor(Boolean(matchIconBackground), iconSampleSrc);
+  const plateColor = useIconBevelPlateColor(Boolean(matchIconBackground), iconSampleNode);
   const blockColor = matchIconBackground
     ? iconBevelBlockColor ?? plateColor
     : iconBevelBlockColor;

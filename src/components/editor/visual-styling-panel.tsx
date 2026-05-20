@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useRef, useEffect, useState } from "react";
+import React, { useCallback, useMemo, useRef, useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,7 +34,10 @@ import {
   normalizeIconBevelDepth,
   normalizeIconBevelGridOffset,
   normalizeIconBevelRotation,
+  buildIconBevelSampleNode,
+  resolveIconBevelSampleSrcAsync,
   sampleIconPlateColorFromUrl,
+  type IconBevelSampleNode,
 } from "@/lib/icon-bevel";
 import { Slider } from "@/components/ui/slider";
 import Draggable from "react-draggable";
@@ -353,10 +356,10 @@ interface VisualStylingPanelProps {
   isLucideIcon?: boolean;
   /** Icon/resource/emoji tile — opacity, size, remove background (see `isDiagramIconTileNodeType`). */
   showIconTileStyling?: boolean;
-  /** When true, shows 3D bevel + rotation (icon tiles except emoji). */
+  /** When true, shows 3D bevel + rotation (icon/resource/emoji tiles). */
   showIconBevel?: boolean;
-  /** Raster icon URL used to sample plate colour (match icon background). */
-  iconBevelSampleSrc?: string;
+  /** Node fields for raster plate-colour sampling (catalog lookup by type when needed). */
+  iconBevelSampleNode?: IconBevelSampleNode;
   /** When true, shows Remove background toggle (resource items and Lucide icons) */
   showRemoveBackground?: boolean;
   noIconBackground?: boolean;
@@ -382,17 +385,18 @@ interface VisualStylingPanelProps {
 
 function IconBevelMatchColorPreview({
   enabled,
-  sampleSrc,
+  sampleNode,
   blockColor,
   onPickedColor,
 }: {
   enabled: boolean;
-  sampleSrc?: string;
+  sampleNode?: IconBevelSampleNode;
   blockColor?: string;
   onPickedColor: (hex: string) => void;
 }) {
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "fail">("idle");
   const [picked, setPicked] = useState<string | undefined>(blockColor);
+  const [resolvedSrc, setResolvedSrc] = useState<string | undefined>(undefined);
   const enabledRef = useRef(enabled);
   const sampleGenRef = useRef(0);
 
@@ -401,14 +405,18 @@ function IconBevelMatchColorPreview({
       setStatus("idle");
       return;
     }
-    if (!sampleSrc) {
-      setStatus("fail");
-      setPicked(undefined);
-      return;
-    }
     const gen = ++sampleGenRef.current;
     setStatus("loading");
-    void sampleIconPlateColorFromUrl(sampleSrc).then((hex) => {
+    void resolveIconBevelSampleSrcAsync(buildIconBevelSampleNode(sampleNode)).then((url) => {
+      if (gen !== sampleGenRef.current || !enabledRef.current) return;
+      setResolvedSrc(url);
+      if (!url) {
+        setStatus("fail");
+        setPicked(undefined);
+        return;
+      }
+      return sampleIconPlateColorFromUrl(url);
+    }).then((hex) => {
       if (gen !== sampleGenRef.current || !enabledRef.current) return;
       if (hex) {
         setPicked(hex);
@@ -418,17 +426,18 @@ function IconBevelMatchColorPreview({
         setStatus("fail");
       }
     });
-  }, [sampleSrc, onPickedColor]);
+  }, [sampleNode, onPickedColor]);
 
   useEffect(() => {
     enabledRef.current = enabled;
     if (!enabled) {
       sampleGenRef.current += 1;
       setStatus("idle");
+      setResolvedSrc(undefined);
       return;
     }
     runSample();
-  }, [enabled, sampleSrc, runSample]);
+  }, [enabled, sampleNode?.type, sampleNode?.provider, sampleNode?.category, sampleNode?.file, sampleNode?.imageUrl, runSample]);
 
   useEffect(() => {
     setPicked(blockColor);
@@ -442,15 +451,15 @@ function IconBevelMatchColorPreview({
     <div className="space-y-2 rounded-md border border-border bg-background/90 p-2.5">
       <Label className="text-xs font-medium text-foreground">Picked icon colour</Label>
       <div className="flex items-center gap-3">
-        {sampleSrc ? (
+        {resolvedSrc ? (
           <img
-            src={sampleSrc}
+            src={resolvedSrc}
             alt=""
             className="h-14 w-14 shrink-0 rounded-md border border-border bg-muted/40 object-contain"
           />
         ) : (
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-1 text-center text-[10px] leading-tight text-muted-foreground">
-            No icon path
+            {status === "loading" ? "…" : "No icon path"}
           </div>
         )}
         <div
@@ -464,10 +473,14 @@ function IconBevelMatchColorPreview({
             {status === "loading" && "Sampling from icon image…"}
             {status === "ok" && "Saved to bevel block colour"}
             {status === "fail" &&
-              (sampleSrc
+              (resolvedSrc
                 ? "Could not read a plate colour — try Re-sample"
-                : "No icon file on node (provider/category/file)")}
-            {status === "idle" && sampleSrc && "Waiting…"}
+                : sampleNode?.type
+                  ? sampleNode.type.startsWith("generic.icon.") || sampleNode.type.startsWith("generic.emoji.")
+                    ? "Lucide/emoji icons have no raster plate to sample — use Block color"
+                    : "Could not resolve icon file from type (catalog)"
+                  : "No icon path — missing type or provider/category/file")}
+            {status === "idle" && resolvedSrc && "Waiting…"}
           </p>
           <Button
             type="button"
@@ -475,22 +488,26 @@ function IconBevelMatchColorPreview({
             size="sm"
             className="h-7 text-xs"
             onClick={runSample}
-            disabled={!sampleSrc || status === "loading"}
+            disabled={status === "loading"}
           >
             Re-sample
           </Button>
         </div>
       </div>
-      {sampleSrc ? (
-        <p className="truncate text-[10px] text-muted-foreground" title={sampleSrc}>
-          {sampleSrc}
+      {resolvedSrc ? (
+        <p className="truncate text-[10px] text-muted-foreground" title={resolvedSrc}>
+          {resolvedSrc}
+        </p>
+      ) : sampleNode?.type ? (
+        <p className="truncate text-[10px] text-muted-foreground" title={sampleNode.type}>
+          {sampleNode.type}
         </p>
       ) : null}
     </div>
   );
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showIconBevel = false, iconBevelSampleSrc, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -600,6 +617,10 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   }, [onStylingChange, selectedItemIds]);
 
   const iconBevelMatchSampleGenRef = useRef(0);
+  const iconBevelSupportsRasterMatch = useMemo(() => {
+    const t = iconBevelSampleNode?.type?.trim() ?? "";
+    return !t.startsWith("generic.emoji.") && !t.startsWith("generic.icon.");
+  }, [iconBevelSampleNode?.type]);
   const handleIconBevelPickedColor = useCallback(
     (hex: string) => handlePropertyChange("iconBevelBlockColor", hex, true),
     [handlePropertyChange],
@@ -776,6 +797,8 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </div>
                 {styling.iconBevel && (
                   <>
+                    {iconBevelSupportsRasterMatch && (
+                      <>
                     <div className="flex items-center justify-between gap-2">
                       <Label className="text-xs text-muted-foreground">Match icon background</Label>
                       <Switch
@@ -784,8 +807,11 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                           iconBevelMatchSampleGenRef.current += 1;
                           const gen = iconBevelMatchSampleGenRef.current;
                           onStylingChange({ iconBevelMatchIconBackground: checked });
-                          if (!checked || !iconBevelSampleSrc) return;
-                          void sampleIconPlateColorFromUrl(iconBevelSampleSrc).then((hex) => {
+                          if (!checked) return;
+                          void resolveIconBevelSampleSrcAsync(buildIconBevelSampleNode(iconBevelSampleNode)).then((url) => {
+                            if (gen !== iconBevelMatchSampleGenRef.current || !url) return;
+                            return sampleIconPlateColorFromUrl(url);
+                          }).then((hex) => {
                             if (gen !== iconBevelMatchSampleGenRef.current || !hex) return;
                             onStylingChange({
                               iconBevelMatchIconBackground: true,
@@ -797,11 +823,13 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     </div>
                     <IconBevelMatchColorPreview
                       enabled={Boolean(styling.iconBevelMatchIconBackground)}
-                      sampleSrc={iconBevelSampleSrc}
+                      sampleNode={iconBevelSampleNode}
                       blockColor={styling.iconBevelBlockColor}
                       onPickedColor={handleIconBevelPickedColor}
                     />
-                    {!styling.iconBevelMatchIconBackground && (
+                      </>
+                    )}
+                    {(!iconBevelSupportsRasterMatch || !styling.iconBevelMatchIconBackground) && (
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Block color</Label>
                       <ColorPicker

@@ -3,6 +3,16 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-20 – Icon 3D bevel on emoji tiles
+
+**Emoji** icon tiles now show **3D bevel** in Visual Styling (same as resource/Lucide tiles); **Match icon background** stays hidden for emoji/Lucide — use **Block color**. Patch bumped.
+
+
+### 2026-05-20 – Icon 3D bevel: sample path via catalog (type-only nodes)
+
+**Match icon background:** **`resolveIconBevelSampleSrcAsync`** + **`buildIconBevelSampleNode`** resolve raster URLs the same way as canvas **`ResourceIcon`** (catalog by **`type`** when provider/category/file are absent; **`imagePath`**, **`resourceMapping`**). Visual styling panel uses diagram node from **`diagramData`** for sampling. Patch bumped.
+
+
 ### 2026-05-20 – Icon/node size: double preset
 
 **`nodeSize`:** added **`double`** (2× base: 160×160 container, 140×140 icon) alongside **`normal`**, **`half`**, **`quarter`**. **`NodeSize`** type in **`types.ts`**; **`getNodeSizeMultiplier`** / schema / Visual Styling **Size** dropdown updated. Patch bumped.

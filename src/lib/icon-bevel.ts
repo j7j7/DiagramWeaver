@@ -1,4 +1,5 @@
 import { buildResourceIconPath, getResourcePath } from "@/lib/resource-mapping";
+import { resolveResourceMetadataForType, typeNeedsCatalogMetadata } from "@/lib/resource-catalog";
 import type { NodeSize } from "@/lib/types";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 
@@ -219,29 +220,70 @@ export function sampleEdgeColorFromRgba(
   return rgbToHex(rSum / count, gSum / count, bSum / count);
 }
 
-/** URL for raster sampling when matching bevel colour to a resource/custom icon. */
-export function resolveIconBevelSampleSrc(node: {
+/** Node fields used to locate the raster icon for plate-colour sampling. */
+export type IconBevelSampleNode = {
+  type?: string;
   provider?: string;
   category?: string;
   file?: string;
   imageUrl?: string;
+  imagePath?: string;
   resourceMapping?: { provider?: string; category?: string; file?: string };
   data?: {
+    type?: string;
     provider?: string;
     category?: string;
     file?: string;
     imageUrl?: string;
+    imagePath?: string;
     resourceMapping?: { provider?: string; category?: string; file?: string };
   };
-}): string | undefined {
-  const mapped = getResourcePath(node);
+};
+
+/** Flatten node / scratch-pad / selection into fields `getResourcePath` and catalog async expect. */
+export function buildIconBevelSampleNode(
+  source: IconBevelSampleNode | null | undefined,
+): IconBevelSampleNode {
+  if (!source) return {};
+  const data = source.data;
+  return {
+    type: source.type?.trim() || data?.type?.trim() || undefined,
+    provider: source.provider ?? data?.provider,
+    category: source.category ?? data?.category,
+    file: source.file ?? data?.file,
+    imageUrl: source.imageUrl ?? data?.imageUrl,
+    imagePath: source.imagePath ?? data?.imagePath,
+    resourceMapping: source.resourceMapping ?? data?.resourceMapping,
+  };
+}
+
+/** Sync path: provider/category/file, resourceMapping, or custom imageUrl only. */
+export function resolveIconBevelSampleSrc(node: IconBevelSampleNode): string | undefined {
+  const flat = buildIconBevelSampleNode(node);
+  const mapped = getResourcePath(flat);
   if (mapped) return mapped;
-  const custom = node.imageUrl?.trim() || node.data?.imageUrl?.trim();
+  const pathOverride = flat.imagePath?.trim();
+  if (pathOverride) return pathOverride;
+  const custom = flat.imageUrl?.trim();
   if (custom) return custom;
-  if (node.provider && node.category && node.file) {
-    return buildResourceIconPath(node.provider, node.category, node.file) || undefined;
+  if (flat.provider && flat.category && flat.file) {
+    return buildResourceIconPath(flat.provider, flat.category, flat.file) || undefined;
   }
   return undefined;
+}
+
+/** Same as canvas ResourceIcon: catalog lookup by `type` when metadata is missing on the node. */
+export async function resolveIconBevelSampleSrcAsync(
+  node: IconBevelSampleNode,
+): Promise<string | undefined> {
+  const flat = buildIconBevelSampleNode(node);
+  const sync = resolveIconBevelSampleSrc(flat);
+  if (sync) return sync;
+  const type = flat.type?.trim();
+  if (!type || !typeNeedsCatalogMetadata(type)) return undefined;
+  const mapping = await resolveResourceMetadataForType(type);
+  if (!mapping?.file) return undefined;
+  return buildResourceIconPath(mapping.provider, mapping.category, mapping.file) || undefined;
 }
 
 function pixelLuminance(r: number, g: number, b: number): number {

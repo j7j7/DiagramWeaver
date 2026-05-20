@@ -46,7 +46,7 @@ export function isDiagramIconTileNodeType(
   return !isShapeNode
 }
 
-/** Emoji tiles — no Lucide colour or 3D bevel controls. */
+/** Emoji tiles — no Lucide icon colour control (3D bevel uses manual block colour). */
 export function isDiagramEmojiTileNodeType(type: string | undefined, iconType?: string): boolean {
   return !!(type?.startsWith("generic.emoji.") || iconType === "emoji")
 }

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { ResourceIcon } from "./resource-icon";
 import { IconBevelTile } from "./icon-bevel-frame";
-import { getIconBevelGeometry, resolveIconBevelSampleSrc } from "@/lib/icon-bevel";
+import { buildIconBevelSampleNode, getIconBevelGeometry, type IconBevelSampleNode } from "@/lib/icon-bevel";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
@@ -1446,8 +1446,16 @@ function DiagramNodeInner({
     const iconBevelClipRadius = iconBevelEnabled
       ? getIconBevelGeometry(container, nodeAny.iconBevelDepth).iconClipRadius
       : undefined;
-    const iconBevelSampleSrc = iconBevelEnabled
-      ? resolveIconBevelSampleSrc(nodeAny)
+    const iconBevelSampleNode: IconBevelSampleNode | undefined = iconBevelEnabled
+      ? buildIconBevelSampleNode({
+          type: node.type,
+          provider: node.provider,
+          category: node.category,
+          file: node.file,
+          imageUrl: nodeAny.imageUrl,
+          imagePath: nodeAny.imagePath,
+          resourceMapping: nodeAny.resourceMapping,
+        })
       : undefined;
     const colorTransition =
       !animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
@@ -1516,7 +1524,7 @@ function DiagramNodeInner({
               depthRatio={nodeAny.iconBevelDepth}
               iconBevelBlockColor={nodeAny.iconBevelBlockColor}
               matchIconBackground={Boolean(nodeAny.iconBevelMatchIconBackground)}
-              iconSampleSrc={iconBevelSampleSrc}
+              iconSampleNode={iconBevelSampleNode}
               transparentTop={Boolean(nodeAny.noIconBackground)}
               topFaceClassName={
                 nodeAny.iconBevelBlockColor || nodeAny.iconBevelMatchIconBackground

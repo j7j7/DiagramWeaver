@@ -15,17 +15,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
-import { resolveIconBevelSampleSrc } from '@/lib/icon-bevel';
 import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
 import { assertImportJsonTextWithinLimit } from '@/lib/import-json-limits';
 import {
   isIconOrEmojiType,
   isDiagramIconTileNodeType,
-  isDiagramEmojiTileNodeType,
 } from '@/lib/utils';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
 import { supportsDiagramMeshGradient } from '@/lib/diagram-mesh-gradient-support';
+import { buildIconBevelSampleNode } from '@/lib/icon-bevel';
 import { ResourceIcon } from '@/components/diagram/resource-icon';
 import { ShapePreview } from './shape-preview';
 import { Card, CardContent } from '@/components/ui/card';
@@ -878,17 +877,14 @@ const renderIcon = (item: ScratchPadItem) => {
                                   editingItem.type,
                                   (editingItem.data as DiagramNodeData)?.iconType,
                                 )}
-                                showIconBevel={(() => {
-                                  const t = editingItem.type;
-                                  const iconType = (editingItem.data as DiagramNodeData)?.iconType;
-                                  return (
-                                    isDiagramIconTileNodeType(t, iconType) &&
-                                    !isDiagramEmojiTileNodeType(t, iconType)
-                                  );
-                                })()}
-                                iconBevelSampleSrc={resolveIconBevelSampleSrc(
-                                  editingItem.data as DiagramNodeData,
+                                showIconBevel={isDiagramIconTileNodeType(
+                                  editingItem.type,
+                                  (editingItem.data as DiagramNodeData)?.iconType,
                                 )}
+                                iconBevelSampleNode={buildIconBevelSampleNode({
+                                  ...(editingItem.data as DiagramNodeData),
+                                  type: editingItem.type,
+                                })}
                                 showRemoveBackground={isDiagramIconTileNodeType(
                                   editingItem.type,
                                   (editingItem.data as DiagramNodeData)?.iconType,
