@@ -9,9 +9,20 @@ import { CONTENT_SECURITY_POLICY } from "@/lib/content-security-policy";
 export const metadata: Metadata = {
   title: 'Diagram Weaver',
   description: 'Create interactive diagrams from JSON or natural language.',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: '/favicon.svg',
+    apple: '/pwa/icon-192.png',
   },
+  appleWebApp: {
+    capable: true,
+    title: 'Diagram Weaver',
+    statusBarStyle: 'default',
+  },
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
 };
 
 export const viewport = {
@@ -33,6 +44,8 @@ export default function RootLayout({
         {/* External file avoids next/script innerHTML + __next_s wrapper (server/client mismatch). */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts -- small static boot script; next/script adds hydration wrapper */}
         <script src="/theme-init.js" suppressHydrationWarning />
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- PWA registration; same pattern as theme-init */}
+        <script src="/pwa-register.js" suppressHydrationWarning />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />

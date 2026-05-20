@@ -31,10 +31,10 @@ flowchart LR
 | Route / file | Role |
 |--------------|------|
 | **`page.tsx`** | Loads **`DiagramEditor`** — main authoring UI at **`/`**. |
-| **`layout.tsx`** | App shell (fonts, providers, etc.). |
+| **`layout.tsx`** | App shell (fonts, providers, PWA manifest link, `pwa-register.js` service worker registration). |
 | **`viewer/page.tsx`** | **`/viewer`**: parses query params (**`viewer-utils`** `parseViewerParams`), **`loadViewerData`** or local file picker, **`ViewerCanvas`** + optional **`PresentationPlayer`**. |
 
-**Static export**: **`next.config.ts`** sets **`output: 'export'`**; **`npm run build`** writes HTML/JS/CSS to **`out/`**. Favicon: **`public/favicon.svg`**.
+**Static export**: **`next.config.ts`** sets **`output: 'export'`**; **`npm run build`** writes HTML/JS/CSS to **`out/`**. Favicon: **`public/favicon.svg`**. **PWA** (minimal install): **`public/manifest.webmanifest`**, **`public/sw.js`**, **`public/pwa-register.js`**, icons **`public/pwa/`**; editor **Help → Install app…** (`use-pwa-install`, `pwa-install-dialog`). Install needs **HTTPS** (or localhost) on the static host.
 
 ---
 

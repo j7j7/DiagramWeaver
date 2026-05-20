@@ -70,7 +70,7 @@ export function getTutorialSteps(): TutorialStep[] {
     {
       id: 'j-done',
       title: 'You are set',
-      body: 'Use Help for Keyboard shortcuts, About, or run this Interactive tutorial again when you need a refresher.',
+      body: 'Use Help for Keyboard shortcuts, Install app (PWA), About, or run this Interactive tutorial again when you need a refresher.',
       target: 'canvas',
       mode: 'message',
     },

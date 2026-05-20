@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-20 – PWA install (Help → Install app…)
+
+Minimal installable PWA for static hosting: **`public/manifest.webmanifest`**, **`public/sw.js`** (network-only fetch handler), **`public/pwa-register.js`**, PNG icons under **`public/pwa/`**. **`Help → Install app…`** uses **`beforeinstallprompt`** when available; **`PwaInstallDialog`** covers Safari/iOS and browsers without a native prompt. Requires HTTPS (or localhost). Patch bumped.
+
+
 ### 2026-05-20 – Multi-select copy from context menu
 
 Right-click **Copy** with multiple items selected now copies the full selection (same as **Cmd/Ctrl+C**), not only the item under the cursor. **`use-canvas-clipboard`** skips single-`itemId` copy when **`selectedItemIds.size > 1`**; context menu uses **`copyHandler`**. Patch bumped.
