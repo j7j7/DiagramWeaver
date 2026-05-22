@@ -3,6 +3,41 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-22 – Cards: editable header tag + detail post CTA border
+
+Card **tag** regions are double-click editable (same inline editor as text); empty tag text hides the chip. **Detail Post** CTA no longer has a dashed inner border (template + **`resolveDetailPostCtaStyle`** for legacy cards). Patch bumped.
+
+
+### 2026-05-22 – Cards: detail post body line 2 flex filler
+
+**Detail Post** **body line 2** matches line 1 width (**95%**) and uses **`flex: 1`** + **`fillRemaining`** to grow vertically between line 1 and the footer CTA; text stays top-aligned inside the chip. Legacy cards get the layout at render via **`resolveDetailPostBodyLine2Layout`**. Patch bumped.
+
+
+### 2026-05-22 – Cards: detail post visual styling panel
+
+**Detail Post** (`generic.card.detail-post`) is wired like the other card templates: Visual styling **Background** applies to the **root** fill; **Card properties** accordion adds header icon size, icon border/shadow toggles, and fill controls for header icon, tag, headline, body lines, footer, and CTA. Helpers in **`card-detail-post.ts`**; template defaults **`iconFillSlot`** + **`matchCardBorder`** on the header icon slot. Patch bumped.
+
+
+### 2026-05-22 – Cards: list item row visual styling panel
+
+**List Item Row** (`generic.card.list-item-row`) is wired like Profile Feature and Compact Horizontal: Visual styling **Background** applies to the **root** fill; **Card properties** accordion adds indicator size slider, circle border/shadow toggles, indicator fill, and label segment fill. Helpers in **`card-list-item.ts`**; template defaults **`iconFillSlot`** + **`matchCardBorder`** on the indicator circle. Patch bumped.
+
+
+### 2026-05-22 – Cards: hide empty text elements
+
+Card **text** regions with no content (plain or rich) no longer render their wrapper div — padding, chip background, and flex slot collapse so remaining text blocks reflow in the column/row. The editor still mounts while inline edit is active so cleared text can be saved. Patch bumped.
+
+
+### 2026-05-22 – Cards: circle border width sync + circle shadow toggle
+
+Circle **match-card** border now reads **`node.borderWidth`** directly and applies via explicit **`border: Npx …`** shorthand so width matches the card shell. New **`iconSlotShadow`** toggle in **Card properties** applies **`var(--shape-shadow-drop)`** on the icon circle (independent of card shadow). Patch bumped.
+
+
+### 2026-05-22 – Cards: compact horizontal circle fill + match-card border
+
+Circle avatar slots support **`iconFillSlot`** (icon glyph fills the circle at 100%, **`object-cover`**, no tile background). Optional **`matchCardBorder`** on the slot mirrors the card shell border (colour, width, solid/dotted). Toggle in **Card properties → Circle border (match card)**; new compact horizontal cards default both on. Patch bumped.
+
+
 ### 2026-05-22 – Cards: compact horizontal icon slot + text layout fix
 
 **`flex: 0`** on fixed-size card regions (avatar, list indicator) was passed through as CSS **`flex: 0`**, which sets **`flex-basis: 0%`** and collapses the icon circle to zero width. **`cardLayoutToCss`** now maps layout **`flex: 0`** → **`0 0 auto`** and sets **`flexShrink: 0`** on fixed-width slots. Compact horizontal template padding/line-height tightened and default size **220×80**. Patch bumped.

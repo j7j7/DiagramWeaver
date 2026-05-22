@@ -103,7 +103,11 @@ export function cardIconSlotContainerStyle(sizeMode?: CardIconSizeMode): CSSProp
 export function cardIconGlyphSizeStyle(
   nodeSize?: NodeSize,
   sizeMode?: CardIconSizeMode,
+  fillSlot?: boolean,
 ): CSSProperties {
+  if (fillSlot) {
+    return { width: "100%", height: "100%" };
+  }
   const mode = sizeMode ?? "scaled";
   if (mode === "fixed") {
     const { icon } = getNodeSizeDimensions(nodeSize);

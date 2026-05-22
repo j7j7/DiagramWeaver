@@ -98,6 +98,7 @@ const CardElementDataSchema: z.ZodType<import('./card-types').CardElementData> =
       alignSelf: z.enum(['start', 'center', 'end', 'stretch']).optional(),
       borderRadius: z.number().optional(),
       overflow: z.enum(['hidden', 'visible']).optional(),
+      fillRemaining: z.boolean().optional(),
     }).optional(),
     style: z.object({
       backgroundColor: z.string().optional(),
@@ -134,6 +135,9 @@ const CardElementDataSchema: z.ZodType<import('./card-types').CardElementData> =
       ])
       .optional(),
     placeholder: z.enum(['circle', 'rect', 'dots']).optional(),
+    iconFillSlot: z.boolean().optional(),
+    matchCardBorder: z.boolean().optional(),
+    iconSlotShadow: z.boolean().optional(),
     editable: z.boolean().optional(),
     fontSize: z.number().optional(),
     fontWeight: z.string().optional(),

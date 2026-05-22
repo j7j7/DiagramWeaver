@@ -82,6 +82,8 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
           layout: { width: 44, height: 44, flex: 0, overflow: "hidden" },
           style: { borderRadius: 999, backgroundColor: BLUE, backgroundStyle: "solid" },
           placeholder: "circle",
+          iconFillSlot: true,
+          matchCardBorder: true,
         },
         {
           id: "text-col",
@@ -141,13 +143,16 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
         gap: 10,
         alignItems: "center",
       },
+      style: { backgroundColor: "#f8fafc", backgroundStyle: "solid" },
       children: [
         {
           id: "indicator",
           kind: "icon-slot",
-          layout: { width: 20, height: 20, flex: 0 },
-          style: { borderRadius: 999, backgroundColor: BLUE },
+          layout: { width: 20, height: 20, flex: 0, overflow: "hidden" },
+          style: { borderRadius: 999, backgroundColor: BLUE, backgroundStyle: "solid" },
           placeholder: "circle",
+          iconFillSlot: true,
+          matchCardBorder: true,
         },
         {
           id: "label",
@@ -179,6 +184,7 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
       id: "root",
       kind: "section",
       layout: { flexDirection: "column", width: "100%", height: "100%", padding: 12, gap: 10 },
+      style: { backgroundColor: "#f8fafc", backgroundStyle: "solid" },
       children: [
         {
           id: "header",
@@ -188,16 +194,19 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
             {
               id: "header-icon",
               kind: "icon-slot",
-              layout: { width: 28, height: 28, flex: 0 },
-              style: { borderRadius: 6, backgroundColor: BLUE },
+              layout: { width: 28, height: 28, flex: 0, overflow: "hidden" },
+              style: { borderRadius: 6, backgroundColor: BLUE, backgroundStyle: "solid" },
               placeholder: "rect",
+              iconFillSlot: true,
+              matchCardBorder: true,
             },
             {
               id: "header-tag",
               kind: "tag",
               tag: "Tag",
+              editable: true,
               layout: { flex: 0 },
-              style: { backgroundColor: BLUE_LIGHT, borderRadius: 4 },
+              style: { backgroundColor: BLUE_LIGHT, backgroundStyle: "solid", borderRadius: 4 },
               fontSize: 9,
               textColor: "#1e40af",
             },
@@ -206,7 +215,7 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
         {
           id: "body",
           kind: "section",
-          layout: { flexDirection: "column", flex: 1, gap: 8, width: "100%" },
+          layout: { flexDirection: "column", flex: 1, gap: 8, width: "100%", minHeight: 0 },
           children: [
             {
               id: "headline",
@@ -217,7 +226,7 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
               fontWeight: "700",
               textColor: "#0f172a",
               layout: { width: "85%", padding: [8, 12] },
-              style: { backgroundColor: BLUE, borderRadius: 4 },
+              style: { backgroundColor: BLUE, backgroundStyle: "solid", borderRadius: 4 },
             },
             {
               id: "body-line-1",
@@ -227,7 +236,7 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
               fontSize: 10,
               textColor: "#334155",
               layout: { width: "95%", padding: [8, 12] },
-              style: { backgroundColor: BLUE_MUTED, borderRadius: 4 },
+              style: { backgroundColor: BLUE_MUTED, backgroundStyle: "solid", borderRadius: 4 },
             },
             {
               id: "body-line-2",
@@ -236,8 +245,17 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
               editable: true,
               fontSize: 10,
               textColor: "#334155",
-              layout: { width: "70%", padding: [8, 12] },
-              style: { backgroundColor: BLUE_LIGHT, borderRadius: 4 },
+              layout: {
+                width: "95%",
+                flex: 1,
+                minHeight: 0,
+                flexDirection: "column",
+                justifyContent: "start",
+                alignSelf: "start",
+                fillRemaining: true,
+                padding: [8, 12],
+              },
+              style: { backgroundColor: BLUE_LIGHT, backgroundStyle: "solid", borderRadius: 4 },
             },
           ],
         },
@@ -247,6 +265,7 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
           layout: { width: "100%", padding: 8, flex: 0 },
           style: {
             backgroundColor: BLUE_LIGHT,
+            backgroundStyle: "solid",
             borderColor: "#0f172a",
             borderWidth: 1,
             borderStyle: "solid",
@@ -263,11 +282,9 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
               textColor: BLUE,
               layout: { width: "100%", alignItems: "center", justifyContent: "center", padding: [8, 12] },
               style: {
-                borderStyle: "dashed",
-                borderColor: BLUE,
-                borderWidth: 1,
                 borderRadius: 4,
                 backgroundColor: "transparent",
+                backgroundStyle: "none",
               },
             },
           ],

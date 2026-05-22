@@ -1871,7 +1871,9 @@ function DiagramNodeInner({
   const cardElementEditRuns = useMemo(() => {
     if (!cardEditElementId || !node.card?.elements) return [] as RichTextRun[];
     const el = findCardElement(node.card.elements, cardEditElementId);
-    return el ? el.richText ?? labelToRuns(el.text ?? "") : [];
+    if (!el) return [];
+    if (el.kind === "tag") return labelToRuns(el.tag ?? "");
+    return el.richText ?? labelToRuns(el.text ?? "");
   }, [cardEditElementId, node.card?.elements]);
 
   const handleCardElementDoubleClick = useCallback(
@@ -1882,7 +1884,8 @@ function DiagramNodeInner({
       setIsEditingLabel(false);
       setIsOpen(false);
       const el = findCardElement(node.card.elements, elementId);
-      if (!el || el.kind !== "text" || el.editable === false) return;
+      if (!el || el.editable === false) return;
+      if (el.kind !== "text" && el.kind !== "tag") return;
       setCardEditElementId(elementId);
       setIsEditingCardElement(true);
     },
@@ -1897,16 +1900,23 @@ function DiagramNodeInner({
         return;
       }
       const nextPlain = plainText.trim();
-      const normNew = normalizeRuns(runs);
       const el = findCardElement(node.card.elements, elementId);
-      const normPrev = el ? normalizeRuns(el.richText ?? labelToRuns(el.text ?? "")) : [];
-      const elements =
-        !isMultiSelected && el && JSON.stringify(normNew) === JSON.stringify(normPrev)
-          ? node.card.elements
-          : updateCardElementTree(node.card.elements, elementId, {
-              text: nextPlain,
-              richText: normNew,
-            });
+      const isTag = el?.kind === "tag";
+      const normNew = normalizeRuns(runs);
+      const normPrev = el
+        ? isTag
+          ? labelToRuns(el.tag ?? "")
+          : normalizeRuns(el.richText ?? labelToRuns(el.text ?? ""))
+        : [];
+      const unchanged =
+        !isMultiSelected &&
+        el &&
+        (isTag ? nextPlain === (el.tag ?? "").trim() : JSON.stringify(normNew) === JSON.stringify(normPrev));
+      const elements = unchanged
+        ? node.card.elements
+        : updateCardElementTree(node.card.elements, elementId, isTag
+            ? { tag: nextPlain }
+            : { text: nextPlain, richText: normNew });
       onUpdate({
         ...node,
         card: { ...node.card, elements },

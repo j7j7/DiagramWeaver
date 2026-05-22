@@ -3,7 +3,9 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import type { CardElementData, CardElementStyle } from "@/lib/card-types";
+import { updateCardElementTree } from "@/lib/card-utils";
 import {
   getProfileCardRegions,
   parseProfileHeroHeightPct,
@@ -23,6 +25,29 @@ import {
   COMPACT_NAME_ID,
   COMPACT_STATUS_ID,
 } from "@/lib/card-compact-horizontal";
+import {
+  getListItemRowRegions,
+  parseListItemIndicatorSize,
+  applyListItemIndicatorSize,
+  updateListItemElementStyle,
+  LIST_ITEM_INDICATOR_ID,
+  LIST_ITEM_LABEL_ID,
+  isListItemRowCard,
+} from "@/lib/card-list-item";
+import {
+  getDetailPostRegions,
+  parseDetailPostHeaderIconSize,
+  applyDetailPostHeaderIconSize,
+  updateDetailPostElementStyle,
+  DETAIL_POST_HEADER_ICON_ID,
+  DETAIL_POST_HEADER_TAG_ID,
+  DETAIL_POST_HEADLINE_ID,
+  DETAIL_POST_BODY_LINE_1_ID,
+  DETAIL_POST_BODY_LINE_2_ID,
+  DETAIL_POST_FOOTER_ID,
+  DETAIL_POST_CTA_ID,
+  isDetailPostCard,
+} from "@/lib/card-detail-post";
 import { CardFillStyleControls } from "./card-fill-style-controls";
 
 export interface CardPropertiesPanelProps {
@@ -115,8 +140,32 @@ function CompactHorizontalCardProperties({
       <p className="text-xs text-muted-foreground">
         Compact horizontal layout — icon on the left, text on the right. Use{" "}
         <span className="font-medium">Background</span> above for the card fill. Drop an icon onto the
-        circle on the canvas, or click it to style the icon tile.
+        circle on the canvas; it fills the circle by default.
       </p>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Circle border (match card)</Label>
+        <Switch
+          checked={avatar?.matchCardBorder ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, COMPACT_AVATAR_ID, { matchCardBorder: checked }),
+            )
+          }
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Circle shadow</Label>
+        <Switch
+          checked={avatar?.iconSlotShadow ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, COMPACT_AVATAR_ID, { iconSlotShadow: checked }),
+            )
+          }
+        />
+      </div>
 
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
@@ -162,6 +211,214 @@ function CompactHorizontalCardProperties({
   );
 }
 
+function ListItemRowCardProperties({
+  elements,
+  onElementsChange,
+}: {
+  elements: CardElementData;
+  onElementsChange: (elements: CardElementData) => void;
+}) {
+  const { indicator, label } = getListItemRowRegions(elements);
+  const indicatorSize = parseListItemIndicatorSize(indicator);
+
+  const setRegionStyle = (elementId: string, style: CardElementStyle) => {
+    onElementsChange(updateListItemElementStyle(elements, elementId, style));
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        List item row — indicator on the left, label in the middle, drag handle on the right. Use{" "}
+        <span className="font-medium">Background</span> above for the row fill. Drop an icon onto the
+        circle on the canvas; it fills the circle by default.
+      </p>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Circle border (match card)</Label>
+        <Switch
+          checked={indicator?.matchCardBorder ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, LIST_ITEM_INDICATOR_ID, { matchCardBorder: checked }),
+            )
+          }
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Circle shadow</Label>
+        <Switch
+          checked={indicator?.iconSlotShadow ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, LIST_ITEM_INDICATOR_ID, { iconSlotShadow: checked }),
+            )
+          }
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Indicator size</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{indicatorSize}px</span>
+        </div>
+        <Slider
+          min={12}
+          max={40}
+          step={1}
+          value={[indicatorSize]}
+          onValueChange={([v]) => onElementsChange(applyListItemIndicatorSize(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      {indicator ? (
+        <CardFillStyleControls
+          label="Indicator fill"
+          style={indicator.style}
+          onChange={(style) => setRegionStyle(LIST_ITEM_INDICATOR_ID, style)}
+        />
+      ) : null}
+
+      {label ? (
+        <CardFillStyleControls
+          label="Label segment"
+          style={label.style}
+          onChange={(style) => setRegionStyle(LIST_ITEM_LABEL_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function DetailPostCardProperties({
+  elements,
+  onElementsChange,
+}: {
+  elements: CardElementData;
+  onElementsChange: (elements: CardElementData) => void;
+}) {
+  const { headerIcon, headerTag, headline, bodyLine1, bodyLine2, footer, cta } =
+    getDetailPostRegions(elements);
+  const iconSize = parseDetailPostHeaderIconSize(headerIcon);
+
+  const setRegionStyle = (elementId: string, style: CardElementStyle) => {
+    onElementsChange(updateDetailPostElementStyle(elements, elementId, style));
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Detail post layout — header icon and tag, headline and body lines, footer with call to action. Use{" "}
+        <span className="font-medium">Background</span> above for the card fill and{" "}
+        <span className="font-medium">Border</span> for the outline. Drop an icon onto the header slot on
+        the canvas; it fills the slot by default.
+      </p>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Icon border (match card)</Label>
+        <Switch
+          checked={headerIcon?.matchCardBorder ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, DETAIL_POST_HEADER_ICON_ID, { matchCardBorder: checked }),
+            )
+          }
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Icon shadow</Label>
+        <Switch
+          checked={headerIcon?.iconSlotShadow ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, DETAIL_POST_HEADER_ICON_ID, { iconSlotShadow: checked }),
+            )
+          }
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Header icon size</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{iconSize}px</span>
+        </div>
+        <Slider
+          min={20}
+          max={48}
+          step={1}
+          value={[iconSize]}
+          onValueChange={([v]) => onElementsChange(applyDetailPostHeaderIconSize(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      {headerIcon ? (
+        <CardFillStyleControls
+          label="Header icon fill"
+          style={headerIcon.style}
+          onChange={(style) => setRegionStyle(DETAIL_POST_HEADER_ICON_ID, style)}
+        />
+      ) : null}
+
+      {headerTag ? (
+        <CardFillStyleControls
+          label="Header tag fill"
+          style={headerTag.style}
+          onChange={(style) => setRegionStyle(DETAIL_POST_HEADER_TAG_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+
+      {headline ? (
+        <CardFillStyleControls
+          label="Headline segment"
+          style={headline.style}
+          onChange={(style) => setRegionStyle(DETAIL_POST_HEADLINE_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+
+      {bodyLine1 ? (
+        <CardFillStyleControls
+          label="Body line 1 segment"
+          style={bodyLine1.style}
+          onChange={(style) => setRegionStyle(DETAIL_POST_BODY_LINE_1_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+
+      {bodyLine2 ? (
+        <CardFillStyleControls
+          label="Body line 2 segment"
+          style={bodyLine2.style}
+          onChange={(style) => setRegionStyle(DETAIL_POST_BODY_LINE_2_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+
+      {footer ? (
+        <CardFillStyleControls
+          label="Footer fill"
+          style={footer.style}
+          onChange={(style) => setRegionStyle(DETAIL_POST_FOOTER_ID, style)}
+        />
+      ) : null}
+
+      {cta ? (
+        <CardFillStyleControls
+          label="Call to action segment"
+          style={cta.style}
+          onChange={(style) => setRegionStyle(DETAIL_POST_CTA_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function CardPropertiesPanel({
   cardTemplateId,
   elements,
@@ -172,6 +429,12 @@ export function CardPropertiesPanel({
   }
   if (cardTemplateId === "compact-horizontal") {
     return <CompactHorizontalCardProperties elements={elements} onElementsChange={onElementsChange} />;
+  }
+  if (isListItemRowCard(cardTemplateId)) {
+    return <ListItemRowCardProperties elements={elements} onElementsChange={onElementsChange} />;
+  }
+  if (isDetailPostCard(cardTemplateId)) {
+    return <DetailPostCardProperties elements={elements} onElementsChange={onElementsChange} />;
   }
   return null;
 }

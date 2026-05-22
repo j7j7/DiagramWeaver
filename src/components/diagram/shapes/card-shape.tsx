@@ -23,7 +23,8 @@ import {
   parseProfileHeroHeightPct,
   PROFILE_HERO_ID,
 } from "@/lib/card-profile";
-import { labelToRuns } from "@/lib/rich-text";
+import { resolveDetailPostBodyLine2Layout, resolveDetailPostBodySectionLayout, resolveDetailPostCtaStyle } from "@/lib/card-detail-post";
+import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "../textbox-rich-editor";
 import { TextboxRichDisplay } from "../textbox-rich-display";
 import { ResourceIcon } from "../resource-icon";
@@ -238,6 +239,7 @@ interface CardElementRendererProps {
   onHeroBoundaryDragSessionChange?: (active: boolean) => void;
   cardRootRef?: React.RefObject<HTMLDivElement | null>;
   cardRootElements?: CardElementData;
+  cardShellBorder?: CardShellBorder;
 }
 
 function cardElementTextNode(base: DiagramNodeData, el: CardElementData): DiagramNodeData {
@@ -259,6 +261,12 @@ function elementPopStyle(
   return chartSegmentPopAnimationStyle(staggerIndex, popAnimIn, popAnimOut, 0, 0, cfg);
 }
 
+interface CardShellBorder {
+  width: number;
+  color: string;
+  style: "solid" | "dotted" | "dashed";
+}
+
 function CardIconSlot({
   element,
   nodeId,
@@ -272,6 +280,7 @@ function CardIconSlot({
   cardSelectedElementId,
   onCardElementSelect,
   cardNodeSelected,
+  cardShellBorder,
 }: {
   element: CardElementData;
   nodeId: string;
@@ -285,12 +294,31 @@ function CardIconSlot({
   cardSelectedElementId?: string | null;
   onCardElementSelect?: (elementId: string, e: React.MouseEvent) => void;
   cardNodeSelected?: boolean;
+  cardShellBorder?: CardShellBorder;
 }) {
   const layoutCss = cardLayoutToCss(element.layout);
   const rawStyleCss = cardElementStyleToCss(element.style);
   const { styleCss, meshLayer } = cardElementBackgroundLayers(element, rawStyleCss);
   const isCircle = element.placeholder === "circle" || element.style?.borderRadius === 999;
   const isSelected = cardSelectedElementId === element.id;
+  const fillSlot = element.iconFillSlot ?? element.placeholder === "circle";
+  const useShellBorder =
+    !!element.matchCardBorder && !!cardShellBorder && cardShellBorder.width > 0;
+  const slotStyleCss = useShellBorder
+    ? {
+        ...styleCss,
+        borderWidth: undefined,
+        borderStyle: undefined,
+        borderColor: undefined,
+      }
+    : styleCss;
+  const shellBorderCss: React.CSSProperties = useShellBorder
+    ? {
+        border: `${cardShellBorder!.width}px ${cardShellBorder!.style} ${cardShellBorder!.color}`,
+      }
+    : {};
+  const slotShadowCss: React.CSSProperties =
+    element.iconSlotShadow ? { filter: "var(--shape-shadow-drop)" } : {};
 
   type IconDropItem = {
     type?: string;
@@ -314,7 +342,11 @@ function CardIconSlot({
       canDrop: (item) => !isReadOnly && isIconPaletteDragItem(item),
       drop: (item) => {
         if (!item.type) return;
-        onCardIconDrop?.(element.id, iconDragItemToCardIconRef({ ...item, type: item.type }));
+        let iconRef = iconDragItemToCardIconRef({ ...item, type: item.type });
+        if (element.iconFillSlot ?? element.placeholder === "circle") {
+          iconRef = { ...iconRef, noIconBackground: true };
+        }
+        onCardIconDrop?.(element.id, iconRef);
       },
       collect: (monitor) => ({
         isOver: monitor.isOver({ shallow: true }),
@@ -337,6 +369,7 @@ function CardIconSlot({
   const { style: placementStyle } = cardIconPlacementToAbsoluteStyle(placement);
   const iconSizeMode = iconRef?.iconSizeMode;
   const noIconBackground = iconRef?.noIconBackground ?? false;
+  const hideIconTile = noIconBackground || fillSlot;
   const rawIconOpacity = iconRef?.iconOpacity;
   const iconGlyphOpacity =
     typeof rawIconOpacity === "number" && Number.isFinite(rawIconOpacity)
@@ -358,10 +391,12 @@ function CardIconSlot({
       )}
       style={{
         ...layoutCss,
-        ...styleCss,
+        ...slotStyleCss,
+        ...shellBorderCss,
+        ...slotShadowCss,
         ...popStyle,
         ...cardIconSlotContainerStyle(iconSizeMode),
-        borderRadius: isCircle ? "50%" : styleCss.borderRadius,
+        borderRadius: isCircle ? "50%" : slotStyleCss.borderRadius,
         boxSizing: "border-box",
       }}
       onClick={(e) =>
@@ -372,14 +407,16 @@ function CardIconSlot({
       {iconRef ? (
         <div
           className={cn(
-            "absolute shrink-0 flex items-center justify-center overflow-hidden",
-            !noIconBackground && "rounded-lg shadow-md bg-card dw-icon-container border",
-            !noIconBackground && isSelected && !isReadOnly && "border-primary",
+            fillSlot ? "absolute inset-0" : "absolute shrink-0",
+            "flex items-center justify-center overflow-hidden",
+            fillSlot && isCircle && "rounded-full",
+            !hideIconTile && "rounded-lg shadow-md bg-card dw-icon-container border",
+            !hideIconTile && isSelected && !isReadOnly && "border-primary",
           )}
           data-dw-card-icon-glyph
           style={{
-            ...placementStyle,
-            ...cardIconGlyphSizeStyle(iconRef.nodeSize, iconSizeMode),
+            ...(fillSlot ? {} : placementStyle),
+            ...cardIconGlyphSizeStyle(iconRef.nodeSize, iconSizeMode, fillSlot),
             containerType: "size",
             opacity: iconGlyphOpacity,
           }}
@@ -397,7 +434,7 @@ function CardIconSlot({
               imageOptions={iconRef.imageOptions}
               width="100%"
               height="100%"
-              className="h-full w-full object-contain"
+              className={cn("h-full w-full", fillSlot ? "object-cover" : "object-contain")}
             />
         </div>
       ) : element.placeholder === "rect" || element.placeholder === "circle" ? null : (
@@ -436,9 +473,20 @@ function CardElementRenderer({
   onHeroBoundaryDragSessionChange,
   cardRootRef,
   cardRootElements,
+  cardShellBorder,
 }: CardElementRendererProps) {
-  const layoutCss = cardLayoutToCss(element.layout, element.kind === "section");
-  const rawStyleCss = cardElementStyleToCss(element.style);
+  const effectiveLayout =
+    element.kind === "text"
+      ? resolveDetailPostBodyLine2Layout(element.id, cardTemplateId, element.layout)
+      : element.kind === "section"
+        ? resolveDetailPostBodySectionLayout(element.id, cardTemplateId, element.layout)
+        : element.layout;
+  const effectiveStyle =
+    element.kind === "text"
+      ? resolveDetailPostCtaStyle(element.id, cardTemplateId, element.style)
+      : element.style;
+  const layoutCss = cardLayoutToCss(effectiveLayout, element.kind === "section");
+  const rawStyleCss = cardElementStyleToCss(effectiveStyle);
   const { styleCss, meshLayer } = cardElementBackgroundLayers(element, rawStyleCss);
   const isSelected = cardSelectedElementId === element.id;
   const needsRelative = !!meshLayer;
@@ -505,6 +553,7 @@ function CardElementRenderer({
             onHeroBoundaryDragSessionChange={onHeroBoundaryDragSessionChange}
             cardRootRef={cardRootRef}
             cardRootElements={cardRootElements}
+            cardShellBorder={cardShellBorder}
           />
         ))}
         {showHeroHandle ? (
@@ -538,6 +587,7 @@ function CardElementRenderer({
         cardSelectedElementId={cardSelectedElementId}
         onCardElementSelect={onCardElementSelect}
         cardNodeSelected={cardNodeSelected}
+        cardShellBorder={cardShellBorder}
       />
     );
   }
@@ -555,6 +605,14 @@ function CardElementRenderer({
   }
 
   if (element.kind === "tag") {
+    const isEditing = isEditingCardElement && cardEditElementId === element.id;
+    const runs = labelToRuns(element.tag ?? "");
+    const hasText = getPlainTextFromRuns(runs).trim().length > 0;
+    if (!hasText && !isEditing) {
+      return null;
+    }
+    const tagNode = cardElementTextNode(node, element);
+
     return (
       <div
         data-dw-card-element-id={element.id}
@@ -570,7 +628,7 @@ function CardElementRenderer({
           position: needsRelative ? "relative" : undefined,
         }}
         className={cn(
-          "inline-flex items-center font-medium",
+          "inline-flex min-w-0 items-center font-medium",
           isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
         )}
         onClick={(e) =>
@@ -578,7 +636,27 @@ function CardElementRenderer({
         }
       >
         {meshLayer}
-        <span className="relative z-[1]">{element.tag ?? "Tag"}</span>
+        <div className="relative z-[1] min-w-0">
+          {isEditing ? (
+            <TextboxRichEditor
+              node={tagNode}
+              runs={cardEditRuns ?? runs}
+              onSubmit={(plain, nextRuns) => onCardElementRichSubmit?.(element.id, plain, nextRuns)}
+              onKeyDown={onCardElementKeyDown ?? (() => {})}
+            />
+          ) : (
+            <TextboxRichDisplay
+              node={tagNode}
+              runs={runs}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (element.editable !== false && !isReadOnly) {
+                  onCardElementDoubleClick?.(element.id, e);
+                }
+              }}
+            />
+          )}
+        </div>
       </div>
     );
   }
@@ -586,8 +664,13 @@ function CardElementRenderer({
   if (element.kind === "text") {
     const isEditing = isEditingCardElement && cardEditElementId === element.id;
     const runs = element.richText ?? labelToRuns(element.text ?? "");
+    const hasText = getPlainTextFromRuns(runs).trim().length > 0;
+    const fillRemaining = effectiveLayout?.fillRemaining === true;
+    if (!hasText && !isEditing && !fillRemaining) {
+      return null;
+    }
     const textNode = cardElementTextNode(node, element);
-    const textPad = element.layout?.padding ?? [8, 12];
+    const textPad = effectiveLayout?.padding ?? [8, 12];
     const textStyle: React.CSSProperties = {
       ...layoutCss,
       ...styleCss,
@@ -677,7 +760,11 @@ export function CardShape(props: CardShapeProps) {
   const styles = getShapeStyles(nodeAny);
   const nodeBorderStyle = (nodeAny.borderStyle as string | undefined) ?? "solid";
   const borderWidthNum =
-    nodeBorderStyle === "none" ? 0 : parseInt(String(styles.borderWidth || "2"), 10) || 2;
+    nodeBorderStyle === "none"
+      ? 0
+      : typeof nodeAny.borderWidth === "number" && Number.isFinite(nodeAny.borderWidth)
+        ? Math.max(0, nodeAny.borderWidth)
+        : parseInt(String(styles.borderWidth ?? "2"), 10) || 2;
   const cornerRadius = Math.max(0, Math.min(1, nodeAny.cornerRadius ?? 0.12));
   const w = nodeAny.width ?? 160;
   const h = nodeAny.height ?? 120;
@@ -692,6 +779,20 @@ export function CardShape(props: CardShapeProps) {
     : undefined;
   const isDottedBorder = nodeBorderStyle === "dotted" && borderWidthNum > 0;
   const isSolidBorder = nodeBorderStyle === "solid" && borderWidthNum > 0;
+  const borderColor = styles.borderColor ?? "#0f172a";
+  const cardShellBorder = useMemo((): CardShellBorder | undefined => {
+    if (nodeBorderStyle === "none" || borderWidthNum <= 0) return undefined;
+    const color = needsGradientBorder
+      ? (styles.borderColors?.[0] ?? borderColor)
+      : borderColor;
+    const shellStyle: CardShellBorder["style"] =
+      nodeBorderStyle === "dotted"
+        ? "dotted"
+        : nodeBorderStyle === "dashed"
+          ? "dashed"
+          : "solid";
+    return { width: borderWidthNum, color, style: shellStyle };
+  }, [nodeBorderStyle, borderWidthNum, borderColor, needsGradientBorder, styles.borderColors]);
 
   const cardRoot = nodeAny.card?.elements;
   const staggerMap = useMemo(() => {
@@ -764,6 +865,7 @@ export function CardShape(props: CardShapeProps) {
         onHeroBoundaryDragSessionChange={onHeroBoundaryDragSessionChange}
         cardRootRef={cardRootRef}
         cardRootElements={cardRoot}
+        cardShellBorder={cardShellBorder}
       />
     );
   }, [
@@ -789,13 +891,13 @@ export function CardShape(props: CardShapeProps) {
     onCardElementsPatch,
     onHeroBoundaryDragSessionChange,
     staggerMap,
+    cardShellBorder,
   ]);
 
   const shellBg =
     nodeAny.backgroundStyle === "none"
       ? "transparent"
       : styles.background ?? styles.backgroundColor ?? "#ffffff";
-  const borderColor = styles.borderColor ?? "#0f172a";
 
   const shellTransition = slideColorTransition ? { transition: slideColorTransition } : {};
 

@@ -27,6 +27,8 @@ export interface CardLayoutBox {
   alignSelf?: CardFlexAlign;
   borderRadius?: number;
   overflow?: "hidden" | "visible";
+  /** When true, text region keeps its flex slot even with no visible content. */
+  fillRemaining?: boolean;
 }
 
 export type CardBackgroundStyle = "solid" | "gradient" | "none" | "mesh_gradient";
@@ -93,6 +95,12 @@ export interface CardElementData {
   iconPlacement?: CardIconPlacement;
   /** Visual hint when icon-slot is empty. */
   placeholder?: "circle" | "rect" | "dots";
+  /** When true, dropped icon fills the slot (typical for circle avatars). */
+  iconFillSlot?: boolean;
+  /** When true, icon-slot outline uses the card shell border. */
+  matchCardBorder?: boolean;
+  /** When true, icon-slot uses the same drop shadow as the card shell. */
+  iconSlotShadow?: boolean;
   editable?: boolean;
   fontSize?: number;
   fontWeight?: string;
