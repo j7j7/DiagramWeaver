@@ -3,6 +3,34 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-22 – Cards: palette SVG/PNG resource glyphs
+
+Added **`public/resources/generic/cards/`** wireframe **SVG** + **48px PNG** for all ten card templates (profile, compact, list row, detail post, dashboard stats), matching template colors/layout. **`resource-generic.json`** already pointed at these files; palette **`DraggableResourceItem`** loads them via **`buildResourceIconPath`**. Removed dark-mode **invert** on card thumbnails (multi-color glyphs). **`CardPaletteGlyph`** / list row / detail post footer aligned with assets. Patch bumped.
+
+### 2026-05-22 – Cards: Profile Diagonal Split — fill-only split (no stroke)
+
+Removed the **split line** stroke overlay and **split line color** control. **Body** and **accent** each use a matching SVG **clip-path** (`diagonalSplitBodyPathD` / `diagonalSplitAccentPathD`) that shares the same cubic edge so fills meet cleanly at all curve settings. Legacy `split-line` element ignored. Patch bumped.
+
+### 2026-05-22 – Cards: Profile Diagonal Split — border ring + split start/end sliders
+
+**Border:** diagonal split cards draw a single **border ring** overlay (shell CSS border omitted) so accent/body fills no longer mask top/right edges unevenly; inner layers use **inner border radius**. **Split geometry:** **Split start (left edge)** slider 5–92% (was 28–78); new **Split end (bottom edge)** slider 50–100% (`hero.layout.height`); curve unchanged. Path uses start on left + end on bottom with cubic curve; stroke draws curve only. Patch bumped.
+
+### 2026-05-22 – Cards: Profile Diagonal Split — fix avatar icon drop target
+
+Avatar **icon-slot** moved to **root** overlay (same pattern as dashboard action icon) with explicit **`pointerEvents: auto`** and **z-index 4**. Removed **`pointer-events: none`** from the content layer — it was blocking hit-testing for the nested slot. Legacy cards still resolve avatar under **content**. Patch bumped.
+
+### 2026-05-22 – Cards: Profile Diagonal Split — fix content layer visibility
+
+Body/hero/content overlay sections were forced to `position: relative`, collapsing the content stack off-canvas. **`profileDiagonalSectionPosition`** preserves `absolute` layering; content layer gets explicit flex + min-size; text-stack and avatar layout resolvers added. **Card properties**: icon position (in slot) for avatar. Patch bumped.
+
+### 2026-05-22 – Cards: Profile Diagonal Split template
+
+New **Profile Diagonal Split** card (`generic.card.profile-diagonal-split`) based on **Profile Feature**: square layout with **curved diagonal** accent panel (top-right gradient), body fill lower-left, circular **avatar** top-right, centered **title** / **subtitle** chips, and styled **split line**. Helpers in **`card-profile-diagonal-split.ts`**; SVG **clipPath** + stroke overlay in **`card-shape.tsx`**. **Card properties**: split position, split curve, accent fill, split line color, avatar size/border/shadow/fill, title/subtitle segments; Visual styling **Background** → **body** (same as profile-feature). **Theme apply**: body from theme background; accent gradient from accent stops; avatar + split line from theme accent/border. Palette glyph + resource catalog entry. Patch bumped.
+
+### 2026-05-22 – Cards: flex layout longhand (rescale console warning)
+
+**`cardLayoutToCss`** now emits **`flexGrow` / `flexShrink` / `flexBasis`** instead of mixing the **`flex`** shorthand with **`flexShrink`**, fixing React’s “conflicting property” console error when rescaling cards (notably icon slots). Patch bumped.
+
 ### 2026-05-22 – Cards: Profile Social template
 
 New **Profile Social** card (`generic.card.profile-social`) based on **Profile Feature** hero/body split: teal header strip, overlapping circular **avatar** (drop icon target), centered name/age/location, multiline **description** (`fillRemaining`) between location and a **footer** section (divider + three-column stats pinned to the bottom on vertical resize). Helpers in **`card-profile-social.ts`**; **Card properties** adds header height, header fill, avatar size/border/shadow/fill, and text segment fills; Visual styling **Background** applies to **body** (same as profile-feature). Hero split drag handle shared via **`isProfileHeroSplitCard`**. **Theme apply**: body uses the theme’s light gradient stop (lightness +10%); header/avatar use the bold stop darkened (~22%); divider is a lighter tint of the accent — same hue family as the theme, no arbitrary hue rotation. Palette glyph in **`resource-icon.tsx`**. Patch bumped.

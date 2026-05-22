@@ -4,7 +4,9 @@ import React from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import type { CardElementData, CardElementStyle } from "@/lib/card-types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { CardElementData, CardElementStyle, CardIconPlacement } from "@/lib/card-types";
+import { CARD_ICON_PLACEMENTS } from "@/lib/card-icon-layout";
 import { updateCardElementTree } from "@/lib/card-utils";
 import {
   getProfileCardRegions,
@@ -61,6 +63,26 @@ import {
   DETAIL_POST_CTA_ID,
   isDetailPostCard,
 } from "@/lib/card-detail-post";
+import {
+  getProfileDiagonalSplitRegions,
+  parseDiagonalSplitStartPct,
+  parseDiagonalSplitEndPct,
+  parseDiagonalSplitCurvePct,
+  applyDiagonalSplitStartPct,
+  applyDiagonalSplitEndPct,
+  applyDiagonalSplitCurvePct,
+  parseProfileDiagonalAvatarSize,
+  applyProfileDiagonalAvatarSize,
+  updateProfileDiagonalElementStyle,
+  PROFILE_DIAGONAL_AVATAR_ID,
+  isProfileDiagonalSplitCard,
+  DIAGONAL_SPLIT_START_MIN,
+  DIAGONAL_SPLIT_START_MAX,
+  DIAGONAL_SPLIT_END_MIN,
+  DIAGONAL_SPLIT_END_MAX,
+  DIAGONAL_SPLIT_CURVE_MIN,
+  DIAGONAL_SPLIT_CURVE_MAX,
+} from "@/lib/card-profile-diagonal-split";
 import {
   applyDashboardActionSize,
   applyDashboardDecorIconOpacity,
@@ -286,6 +308,177 @@ function ProfileSocialCardProperties({
           label="Divider"
           style={divider.style}
           onChange={(style) => setRegionStyle(PROFILE_SOCIAL_DIVIDER_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ProfileDiagonalSplitCardProperties({
+  elements,
+  onElementsChange,
+}: {
+  elements: CardElementData;
+  onElementsChange: (elements: CardElementData) => void;
+}) {
+  const { hero, title, subtitle, avatar } = getProfileDiagonalSplitRegions(elements);
+  const splitStartPct = parseDiagonalSplitStartPct(hero);
+  const splitEndPct = parseDiagonalSplitEndPct(hero);
+  const splitCurvePct = parseDiagonalSplitCurvePct(hero);
+  const avatarSize = parseProfileDiagonalAvatarSize(avatar);
+
+  const setRegionStyle = (elementId: string, style: CardElementStyle) => {
+    onElementsChange(updateProfileDiagonalElementStyle(elements, elementId, style));
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Diagonal split profile card — curved accent panel top-right, avatar, centered title and
+        subtitle. Use <span className="font-medium">Background</span> above for the lower-left body
+        fill.
+      </p>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Split start (left edge)</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{Math.round(splitStartPct)}%</span>
+        </div>
+        <Slider
+          min={DIAGONAL_SPLIT_START_MIN}
+          max={DIAGONAL_SPLIT_START_MAX}
+          step={1}
+          value={[Math.round(splitStartPct)]}
+          onValueChange={([v]) => onElementsChange(applyDiagonalSplitStartPct(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Split end (bottom edge)</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{Math.round(splitEndPct)}%</span>
+        </div>
+        <Slider
+          min={DIAGONAL_SPLIT_END_MIN}
+          max={DIAGONAL_SPLIT_END_MAX}
+          step={1}
+          value={[Math.round(splitEndPct)]}
+          onValueChange={([v]) => onElementsChange(applyDiagonalSplitEndPct(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Split curve</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{Math.round(splitCurvePct)}%</span>
+        </div>
+        <Slider
+          min={DIAGONAL_SPLIT_CURVE_MIN}
+          max={DIAGONAL_SPLIT_CURVE_MAX}
+          step={1}
+          value={[Math.round(splitCurvePct)]}
+          onValueChange={([v]) => onElementsChange(applyDiagonalSplitCurvePct(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      {hero ? (
+        <CardFillStyleControls
+          label="Accent fill"
+          style={hero.style}
+          onChange={(style) => setRegionStyle(PROFILE_HERO_ID, style)}
+        />
+      ) : null}
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Avatar border (match card)</Label>
+        <Switch
+          checked={avatar?.matchCardBorder ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, PROFILE_DIAGONAL_AVATAR_ID, { matchCardBorder: checked }),
+            )
+          }
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Avatar shadow</Label>
+        <Switch
+          checked={avatar?.iconSlotShadow ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, PROFILE_DIAGONAL_AVATAR_ID, { iconSlotShadow: checked }),
+            )
+          }
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Avatar size</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{avatarSize}px</span>
+        </div>
+        <Slider
+          min={32}
+          max={72}
+          step={1}
+          value={[avatarSize]}
+          onValueChange={([v]) => onElementsChange(applyProfileDiagonalAvatarSize(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      {avatar ? (
+        <CardFillStyleControls
+          label="Avatar fill"
+          style={avatar.style}
+          onChange={(style) => setRegionStyle(PROFILE_DIAGONAL_AVATAR_ID, style)}
+        />
+      ) : null}
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Icon position (in slot)</Label>
+        <Select
+          value={avatar?.iconPlacement ?? "center"}
+          onValueChange={(value) =>
+            onElementsChange(
+              updateCardElementTree(elements, PROFILE_DIAGONAL_AVATAR_ID, {
+                iconPlacement: value as CardIconPlacement,
+              }),
+            )
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="Center" />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {CARD_ICON_PLACEMENTS.map(({ value, label }) => (
+              <SelectItem key={value} value={value} className="text-sm">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {title ? (
+        <CardFillStyleControls
+          label="Title segment"
+          style={title.style}
+          onChange={(style) => setRegionStyle(PROFILE_TITLE_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+
+      {subtitle ? (
+        <CardFillStyleControls
+          label="Description segment"
+          style={subtitle.style}
+          onChange={(style) => setRegionStyle(PROFILE_SUBTITLE_ID, style)}
           supportsMesh={false}
         />
       ) : null}
@@ -731,6 +924,9 @@ export function CardPropertiesPanel({
   }
   if (isProfileSocialCard(cardTemplateId)) {
     return <ProfileSocialCardProperties elements={elements} onElementsChange={onElementsChange} />;
+  }
+  if (isProfileDiagonalSplitCard(cardTemplateId)) {
+    return <ProfileDiagonalSplitCardProperties elements={elements} onElementsChange={onElementsChange} />;
   }
   if (cardTemplateId === "compact-horizontal") {
     return <CompactHorizontalCardProperties elements={elements} onElementsChange={onElementsChange} />;

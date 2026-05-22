@@ -4,6 +4,7 @@ import { isDetailPostCard } from "@/lib/card-detail-post";
 import { isDashboardStatCard } from "@/lib/card-dashboard-stat";
 import { isListItemRowCard } from "@/lib/card-list-item";
 import { isProfileSocialCard } from "@/lib/card-profile-social";
+import { isProfileDiagonalSplitCard } from "@/lib/card-profile-diagonal-split";
 
 export const COMPACT_HORIZONTAL_TEMPLATE_ID = "compact-horizontal";
 export const COMPACT_AVATAR_ID = "avatar";
@@ -23,6 +24,7 @@ export function cardTemplateHasDedicatedPropertiesPanel(templateId: string | und
   return (
     templateId === "profile-feature" ||
     isProfileSocialCard(templateId) ||
+    isProfileDiagonalSplitCard(templateId) ||
     isCompactHorizontalCard(templateId) ||
     isListItemRowCard(templateId) ||
     isDetailPostCard(templateId) ||

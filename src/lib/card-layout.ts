@@ -35,11 +35,21 @@ function dim(v?: number | string): string | number | undefined {
   return v;
 }
 
+type FlexLonghand = Pick<CSSProperties, "flexGrow" | "flexShrink" | "flexBasis">;
+
 /** Card layout uses flex as grow weight; `0` means fixed-size (not CSS `flex: 0` which collapses to 0 basis). */
-function layoutFlexToCss(flex: number | undefined): CSSProperties["flex"] | undefined {
-  if (flex == null) return undefined;
-  if (flex === 0) return "0 0 auto";
-  return flex;
+function layoutFlexToLonghand(flex: number | undefined, flexShrinkOverride?: number): FlexLonghand {
+  if (flex == null) {
+    return flexShrinkOverride != null ? { flexShrink: flexShrinkOverride } : {};
+  }
+  if (flex === 0) {
+    return { flexGrow: 0, flexShrink: 0, flexBasis: "auto" };
+  }
+  return {
+    flexGrow: flex,
+    flexShrink: flexShrinkOverride ?? 1,
+    flexBasis: 0,
+  };
 }
 
 export function cardElementStyleToCss(style?: CardElementStyle): CSSProperties {
@@ -71,8 +81,7 @@ export function cardLayoutToCss(layout?: CardLayoutBox, isSection = false): CSSP
   const hasFixedWidth = layout.width != null && layout.flex !== 1;
   return {
     display: hasFlexChild ? "flex" : undefined,
-    flex: layoutFlexToCss(layout.flex),
-    flexShrink: hasFixedWidth ? 0 : undefined,
+    ...layoutFlexToLonghand(layout.flex, hasFixedWidth ? 0 : undefined),
     flexDirection: layout.flexDirection,
     alignItems: mapAlign(layout.alignItems),
     justifyContent: mapJustify(layout.justifyContent),

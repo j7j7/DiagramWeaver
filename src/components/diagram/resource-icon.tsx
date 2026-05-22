@@ -340,8 +340,22 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
       <svg viewBox="0 0 24 24" aria-hidden {...props}>
         <rect x="3" y="3" width="18" height="18" rx="2.5" {...frame} />
         <rect x="4.5" y="4.5" width="15" height="8.5" rx="1.5" fill={CARD_BLUE} />
+        <rect x="4.5" y="13" width="15" height="7.5" rx="1" fill="#fffbeb" />
         <rect x="5" y="14.5" width="10" height="2" rx="0.8" fill={CARD_BLUE_MUTED} />
         <rect x="5" y="17.5" width="7" height="1.5" rx="0.6" fill={CARD_BLUE_LIGHT} />
+      </svg>
+    );
+  }
+  if (slug === "profile-diagonal-split") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <rect x="3" y="3" width="18" height="18" rx="2" {...frame} />
+        <path d="M3 3 L21 3 L21 21 C 16 21 8 17 3 12 Z" fill="#fde8d0" />
+        <path d="M3 12 C 8 17 16 21 21 21 L3 21 Z" fill="#faf8f5" />
+        <path d="M3 12 C 8 17 16 21 21 21" fill="none" stroke="#475569" strokeWidth={1.2} />
+        <circle cx="17" cy="7.5" r="3" fill="#a8d5a2" stroke="#475569" strokeWidth={0.9} />
+        <rect x="7" y="11.5" width="10" height="2" rx="0.6" fill="#e5e7eb" />
+        <rect x="8.5" y="14.5" width="7" height="1.5" rx="0.5" fill="#e5e7eb" />
       </svg>
     );
   }
@@ -377,31 +391,26 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
   if (slug === "list-item-row") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden {...props}>
-        <rect x="2.5" y="5" width="19" height="6" rx="2" {...frame} />
-        <rect x="2.5" y="13" width="19" height="6" rx="2" {...frame} />
-        <circle cx="6" cy="8" r="1.4" fill={CARD_BLUE} />
-        <rect x="9" y="7.2" width="8" height="1.6" rx="0.5" fill={CARD_BLUE_LIGHT} />
-        <circle cx="19" cy="8" r="0.55" fill={CARD_BLUE_MUTED} />
-        <circle cx="19" cy="9.4" r="0.55" fill={CARD_BLUE_MUTED} />
-        <circle cx="19" cy="10.8" r="0.55" fill={CARD_BLUE_MUTED} />
-        <circle cx="6" cy="16" r="1.4" fill={CARD_BLUE} />
-        <rect x="9" y="15.2" width="8" height="1.6" rx="0.5" fill={CARD_BLUE_LIGHT} />
-        <circle cx="19" cy="16" r="0.55" fill={CARD_BLUE_MUTED} />
-        <circle cx="19" cy="17.4" r="0.55" fill={CARD_BLUE_MUTED} />
-        <circle cx="19" cy="18.8" r="0.55" fill={CARD_BLUE_MUTED} />
+        <rect x="2.5" y="9" width="19" height="6" rx="2" fill="#f8fafc" stroke="currentColor" strokeWidth={1.2} />
+        <circle cx="6" cy="12" r={1.4} fill={CARD_BLUE} />
+        <rect x="9" y="11.2" width="8" height="1.6" rx="0.5" fill={CARD_BLUE_LIGHT} />
+        <circle cx="19" cy="11.1" r={0.55} fill={CARD_BLUE_MUTED} />
+        <circle cx="19" cy="12.5" r={0.55} fill={CARD_BLUE_MUTED} />
+        <circle cx="19" cy="13.9" r={0.55} fill={CARD_BLUE_MUTED} />
       </svg>
     );
   }
   if (slug === "detail-post") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden {...props}>
-        <rect x="3" y="3" width="18" height="18" rx="2.5" {...frame} />
+        <rect x="3" y="3" width="18" height="18" rx="2.5" fill="#f8fafc" stroke="currentColor" strokeWidth={1.2} />
         <rect x="5" y="5.5" width="3" height="3" rx="0.8" fill={CARD_BLUE} />
         <rect x="15" y="6" width="4.5" height="1.8" rx="0.6" fill={CARD_BLUE_LIGHT} />
         <rect x="5" y="10.5" width="11" height="2.2" rx="0.8" fill={CARD_BLUE} />
         <rect x="5" y="14" width="13" height="1.5" rx="0.5" fill={CARD_BLUE_MUTED} />
         <rect x="5" y="16.5" width="9" height="1.5" rx="0.5" fill={CARD_BLUE_LIGHT} />
-        <rect x="5" y="19" width="14" height="3" rx="1" fill="none" stroke={CARD_BLUE} strokeWidth={0.9} strokeDasharray="2 1.5" />
+        <rect x="5" y="19" width="14" height="3" rx="1" fill={CARD_BLUE_LIGHT} />
+        <rect x="7" y="20.2" width="10" height="0.9" rx="0.4" fill={CARD_BLUE} opacity={0.85} />
       </svg>
     );
   }
@@ -415,6 +424,7 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
           : slug === "dashboard-defaults"
             ? ["#fecdd3", "#db2777"]
             : ["#ddd6fe", "#7c3aed"];
+    const tall = slug === "dashboard-incentives";
     return (
       <svg viewBox="0 0 24 24" aria-hidden {...props}>
         <defs>
@@ -423,12 +433,22 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
             <stop offset="100%" stopColor={stops[1]} />
           </linearGradient>
         </defs>
-        <rect x="3" y="4" width="18" height="16" rx="3.5" fill={`url(#${gradientId})`} stroke="currentColor" strokeWidth={1} />
-        <rect x="5.5" y="7" width="7" height="1.4" rx="0.5" fill="#fff" opacity={0.9} />
-        <rect x="5.5" y="16.5" width="5" height="2.2" rx="0.6" fill="#fff" opacity={0.95} />
-        <circle cx="17.5" cy="7.8" r="1.5" fill="#fff" opacity={0.35} />
+        <rect
+          x="3"
+          y={tall ? 3 : 4}
+          width="18"
+          height={tall ? 18 : 16}
+          rx="3.5"
+          fill={`url(#${gradientId})`}
+          stroke="currentColor"
+          strokeWidth={1}
+        />
+        <rect x="5.5" y={tall ? 6 : 7} width="7" height={tall ? 1.2 : 1.4} rx="0.5" fill="#fff" opacity={0.9} />
+        {tall ? <rect x="5.5" y="7.8" width="5" height="1" rx="0.4" fill="#fff" opacity={0.75} /> : null}
+        <rect x="5.5" y={tall ? 15.5 : 16.5} width={tall ? 6.5 : 5} height={tall ? 3 : 2.2} rx="0.6" fill="#fff" opacity={0.95} />
+        <circle cx="17.5" cy={tall ? 6.8 : 7.8} r="1.5" fill="#fff" opacity={0.35} />
         <path
-          d="M16.5 14.5c1.8-0.2 3.2 0.8 3.8 2.4 0.5 1.3 0.1 2.6-1 3.4"
+          d={tall ? "M16.5 13.5c1.8-0.2 3.2 0.8 3.8 2.4 0.5 1.3 0.1 2.6-1 3.4" : "M16.5 14.5c1.8-0.2 3.2 0.8 3.8 2.4 0.5 1.3 0.1 2.6-1 3.4"}
           fill="none"
           stroke="#fff"
           strokeWidth={1.2}

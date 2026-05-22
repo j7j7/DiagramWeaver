@@ -457,6 +457,14 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
         </span>
       );
     }
+    if (provider === 'generic' && category === 'cards' && resource.name) {
+      const slug = resource.name.replace(/\s+/g, '-').toLowerCase();
+      return (
+        <span className="inline-flex items-center justify-center">
+          <ResourceIcon type={`generic.card.${slug}`} className="w-6 h-6" />
+        </span>
+      );
+    }
     // Text Box Heading is listed under Text but uses generic.object.* type and object/ asset path
     if (provider === 'generic' && category === 'text' && resource.name?.replace(/\s+/g, '-').toLowerCase() === 'text-box-heading') {
       return (
@@ -846,7 +854,6 @@ return (
                                           invertInDarkMode={
                                             providerKey === 'generic' &&
                                             (categoryKey === 'object' ||
-                                              categoryKey === 'cards' ||
                                               (categoryKey === 'text' &&
                                                 resource.name.replace(/\s+/g, '-').toLowerCase() === 'text-box-heading'))
                                           }

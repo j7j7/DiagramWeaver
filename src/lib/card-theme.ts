@@ -7,6 +7,8 @@ import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 
 /** Profile Social theme apply — kept here to avoid card-theme ↔ card-profile-social import cycle. */
 const PROFILE_SOCIAL_TEMPLATE_ID = "profile-social";
+const PROFILE_DIAGONAL_SPLIT_TEMPLATE_ID = "profile-diagonal-split";
+const PROFILE_DIAGONAL_AVATAR_ID = "avatar";
 const PROFILE_SOCIAL_AVATAR_ID = "avatar";
 const PROFILE_SOCIAL_DIVIDER_ID = "divider";
 /** Lighten theme body stop slightly for card interior (same hue). */
@@ -31,7 +33,11 @@ export type CardBackgroundVisual = Pick<
 
 /** Element id that receives Visual styling → Background for each card template. */
 export function getCardBackgroundElementId(templateId: string | undefined): string {
-  return templateId === "profile-feature" || templateId === "profile-social" ? "body" : "root";
+  return templateId === "profile-feature" ||
+    templateId === "profile-social" ||
+    templateId === "profile-diagonal-split"
+    ? "body"
+    : "root";
 }
 
 export function updateCardElementStyleTree(
@@ -204,6 +210,7 @@ export function applyThemeToCardElements(
   const hueStep = options.hueStepDegrees ?? DIAGRAM_THEME_HUE_STEP_DEG;
   const bgId = getCardBackgroundElementId(templateId);
   const isProfileSocial = templateId === PROFILE_SOCIAL_TEMPLATE_ID;
+  const isProfileDiagonalSplit = templateId === PROFILE_DIAGONAL_SPLIT_TEMPLATE_ID;
   const chipBase = colorProps.backgroundColor ?? colorProps.backgroundColors?.[0] ?? "#93c5fd";
   const accentBase =
     colorProps.backgroundColors?.[1] ??
@@ -267,6 +274,30 @@ export function applyThemeToCardElements(
       return withMergedStyle(el, {
         backgroundColor: profileSocialDividerColor,
         backgroundStyle: "solid",
+      });
+    }
+
+    if (isProfileDiagonalSplit && el.id === "hero") {
+      const c0 = shiftHueOfColor(accentBase, hueShift);
+      const c1 = shiftHueOfColor(accentBase, hueStep + hueShift);
+      return withMergedStyle(el, {
+        backgroundStyle: "gradient",
+        backgroundColors: [c0, c1],
+        gradientAngle: properties.gradientAngle ?? 135,
+      });
+    }
+
+    if (isProfileDiagonalSplit && el.id === PROFILE_DIAGONAL_AVATAR_ID) {
+      const color = shiftHueOfColor(accentBase, hueShift);
+      const ring = profileSocialBodyStyle
+        ? profileSocialThemeBodyRingColor(profileSocialBodyStyle)
+        : themeBackgroundToCardStyle(properties, colorProps).backgroundColor ?? "#ffffff";
+      return withMergedStyle(el, {
+        backgroundColor: color,
+        backgroundStyle: "solid",
+        borderColor: ring,
+        borderWidth: el.style?.borderWidth ?? 2,
+        borderStyle: "solid",
       });
     }
 

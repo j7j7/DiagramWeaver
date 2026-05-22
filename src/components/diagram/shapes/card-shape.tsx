@@ -30,6 +30,23 @@ import {
   resolveProfileSocialTextStyle,
 } from "@/lib/card-profile-social";
 import {
+  PROFILE_DIAGONAL_SPLIT_LINE_ID,
+  PROFILE_DIAGONAL_AVATAR_ID,
+  diagonalSplitAccentPathD,
+  diagonalSplitBodyPathD,
+  diagonalSplitGeometryFromHero,
+  getProfileDiagonalSplitRegions,
+  isProfileDiagonalSplitCard,
+  profileDiagonalAvatarSlotStyle,
+  profileDiagonalBodyLayerStyle,
+  profileDiagonalContentLayerStyle,
+  profileDiagonalHeroLayerStyle,
+  profileDiagonalRootLayerStyle,
+  profileDiagonalSectionPosition,
+  resolveProfileDiagonalAvatarLayout,
+  resolveProfileDiagonalTextStackLayout,
+} from "@/lib/card-profile-diagonal-split";
+import {
   resolveDetailPostBodyLine2Layout,
   resolveDetailPostBodySectionLayout,
   resolveDetailPostCtaStyle,
@@ -105,6 +122,29 @@ interface CardShapeProps {
 
 function elementUsesMesh(style?: CardElementData["style"]): boolean {
   return style?.backgroundStyle === "mesh_gradient";
+}
+
+function ProfileDiagonalSplitClipDefs({
+  accentClipId,
+  bodyClipId,
+  geometry,
+}: {
+  accentClipId: string;
+  bodyClipId: string;
+  geometry: ReturnType<typeof diagonalSplitGeometryFromHero>;
+}) {
+  return (
+    <svg width="0" height="0" aria-hidden className="pointer-events-none absolute">
+      <defs>
+        <clipPath id={accentClipId} clipPathUnits="objectBoundingBox">
+          <path d={diagonalSplitAccentPathD(geometry)} />
+        </clipPath>
+        <clipPath id={bodyClipId} clipPathUnits="objectBoundingBox">
+          <path d={diagonalSplitBodyPathD(geometry)} />
+        </clipPath>
+      </defs>
+    </svg>
+  );
 }
 
 function cardElementBackgroundLayers(
@@ -265,6 +305,8 @@ interface CardElementRendererProps {
   cardRootRef?: React.RefObject<HTMLDivElement | null>;
   cardRootElements?: CardElementData;
   cardShellBorder?: CardShellBorder;
+  cardShellInsetPx?: number;
+  cardShellInnerRadius?: string;
 }
 
 function cardElementTextNode(base: DiagramNodeData, el: CardElementData): DiagramNodeData {
@@ -340,11 +382,13 @@ function CardIconSlot({
 }) {
   const effectiveLayout =
     resolveDashboardStatDecorLayout(element.id, cardTemplateId, element.layout) ??
+    resolveProfileDiagonalAvatarLayout(element.id, cardTemplateId, element.layout) ??
     resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ??
     element.layout;
   const layoutCss = cardLayoutToCss(effectiveLayout);
   const decorOverlayStyle = dashboardStatDecorSlotStyle(element.id, cardTemplateId, effectiveLayout);
   const actionOverlayStyle = dashboardStatActionSlotStyle(element.id, cardTemplateId);
+  const diagonalAvatarStyle = profileDiagonalAvatarSlotStyle(element.id, cardTemplateId);
   const rawStyleCss = cardElementStyleToCss(element.style);
   const { styleCss, meshLayer } = cardElementBackgroundLayers(element, rawStyleCss);
   const isCircle = element.placeholder === "circle" || element.style?.borderRadius === 999;
@@ -414,6 +458,8 @@ function CardIconSlot({
       : 1;
   const isDecorWatermark = !!element.iconDecorGradient;
   const decorWhiteFilter = isDecorWatermark && dashboardStatDecorUsesWhiteFilter(iconRef);
+  const isDiagonalAvatar =
+    isProfileDiagonalSplitCard(cardTemplateId) && element.id === PROFILE_DIAGONAL_AVATAR_ID;
 
   return (
     <div
@@ -426,7 +472,7 @@ function CardIconSlot({
       className={cn(
         "relative flex shrink-0",
         !isDecorWatermark && "overflow-hidden",
-        isDecorWatermark && "pointer-events-auto",
+        (isDecorWatermark || isDiagonalAvatar) && "pointer-events-auto",
         isOver && canDrop && "ring-2 ring-blue-500 ring-inset",
         isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
       )}
@@ -437,6 +483,7 @@ function CardIconSlot({
         ...popStyle,
         ...decorOverlayStyle,
         ...actionOverlayStyle,
+        ...diagonalAvatarStyle,
         ...cardIconSlotContainerStyle(iconSizeMode),
         borderRadius: isCircle ? "50%" : slotStyleCss.borderRadius,
         boxSizing: "border-box",
@@ -536,16 +583,23 @@ function CardElementRenderer({
   cardRootRef,
   cardRootElements,
   cardShellBorder,
+  cardShellInsetPx = 0,
+  cardShellInnerRadius,
 }: CardElementRendererProps) {
+  const diagonalAccentClipId = `dw-diag-a-${nodeId}`;
+  const diagonalBodyClipId = `dw-diag-b-${nodeId}`;
   const effectiveLayout =
     element.kind === "text"
       ? resolveDetailPostBodyLine2Layout(element.id, cardTemplateId, element.layout) ??
         resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout)
       : element.kind === "section"
-        ? resolveDetailPostBodySectionLayout(element.id, cardTemplateId, element.layout) ??
+        ? resolveProfileDiagonalTextStackLayout(element.id, cardTemplateId, element.layout) ??
+          resolveDetailPostBodySectionLayout(element.id, cardTemplateId, element.layout) ??
           resolveProfileSocialSectionLayout(element.id, cardTemplateId, element.layout)
         : element.kind === "icon-slot"
-          ? resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ?? element.layout
+          ? resolveProfileDiagonalAvatarLayout(element.id, cardTemplateId, element.layout) ??
+            resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ??
+            element.layout
           : element.layout;
   const effectiveStyle =
     element.kind === "text"
@@ -569,18 +623,57 @@ function CardElementRenderer({
   const dashboardRootStyle =
     isRoot && isDashboardStatCard(cardTemplateId) ? { position: "relative" as const } : undefined;
 
+  if (
+    isProfileDiagonalSplitCard(cardTemplateId) &&
+    element.id === PROFILE_DIAGONAL_SPLIT_LINE_ID
+  ) {
+    return null;
+  }
+
   if (element.kind === "section") {
-    const sectionStagger = staggerMap.get(element.id);
-    const sectionPop =
-      sectionStagger != null
-        ? elementPopStyle(sectionStagger, popAnimIn, popAnimOut, cardSlideStagger)
-        : undefined;
+    const { hero: diagonalHero } = isProfileDiagonalSplitCard(cardTemplateId)
+      ? getProfileDiagonalSplitRegions(cardRootElements ?? element)
+      : { hero: null };
+    const diagonalGeometry = diagonalSplitGeometryFromHero(diagonalHero);
+    const diagonalBodyStyle = profileDiagonalBodyLayerStyle(
+      element.id,
+      cardTemplateId,
+      `url(#${diagonalBodyClipId})`,
+      cardShellInsetPx,
+      cardShellInnerRadius,
+    );
+    const diagonalHeroStyle = profileDiagonalHeroLayerStyle(
+      element.id,
+      cardTemplateId,
+      `url(#${diagonalAccentClipId})`,
+      cardShellInsetPx,
+      cardShellInnerRadius,
+    );
+    const diagonalContentStyle = profileDiagonalContentLayerStyle(
+      element.id,
+      cardTemplateId,
+      cardShellInsetPx,
+      cardShellInnerRadius,
+    );
+    const diagonalRootStyle = profileDiagonalRootLayerStyle(isRoot, cardTemplateId);
     const showHeroHandle =
       isRoot &&
       isProfileHeroSplitCard(cardTemplateId) &&
       heroBoundaryInteractionEnabled &&
       !!cardRootRef &&
       !!cardRootElements;
+    const sectionPosition = profileDiagonalSectionPosition(
+      element.id,
+      cardTemplateId,
+      needsRelative || showHeroHandle
+        ? "relative"
+        : dashboardSectionStyle?.position ?? dashboardRootStyle?.position,
+    );
+    const sectionStagger = staggerMap.get(element.id);
+    const sectionPop =
+      sectionStagger != null
+        ? elementPopStyle(sectionStagger, popAnimIn, popAnimOut, cardSlideStagger)
+        : undefined;
     return (
       <div
         ref={isRoot ? cardRootRef : undefined}
@@ -589,12 +682,13 @@ function CardElementRenderer({
           ...sectionStyleCss,
           ...dashboardSectionStyle,
           ...dashboardRootStyle,
+          ...diagonalRootStyle,
+          ...diagonalBodyStyle,
+          ...diagonalHeroStyle,
+          ...diagonalContentStyle,
           ...sectionPop,
           boxSizing: "border-box",
-          position:
-            needsRelative || showHeroHandle
-              ? "relative"
-              : dashboardSectionStyle?.position ?? dashboardRootStyle?.position,
+          ...(sectionPosition != null ? { position: sectionPosition } : {}),
           ...(isRoot
             ? { overflow: "hidden", height: "100%", width: "100%", minHeight: 0, minWidth: 0 }
             : {}),
@@ -640,6 +734,8 @@ function CardElementRenderer({
             cardRootRef={cardRootRef}
             cardRootElements={cardRootElements}
             cardShellBorder={cardShellBorder}
+            cardShellInsetPx={cardShellInsetPx}
+            cardShellInnerRadius={cardShellInnerRadius}
           />
         ))}
         {showHeroHandle ? (
@@ -649,6 +745,24 @@ function CardElementRenderer({
             cardRoot={cardRootElements!}
             onPatch={onCardElementsPatch}
             onDragSessionChange={onHeroBoundaryDragSessionChange}
+          />
+        ) : null}
+        {isRoot && isProfileDiagonalSplitCard(cardTemplateId) && cardShellBorder ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 box-border"
+            style={{
+              zIndex: 5,
+              borderRadius: cardShellInnerRadius ?? undefined,
+              border: `${cardShellBorder.width}px ${cardShellBorder.style} ${cardShellBorder.color}`,
+            }}
+          />
+        ) : null}
+        {isRoot && isProfileDiagonalSplitCard(cardTemplateId) ? (
+          <ProfileDiagonalSplitClipDefs
+            accentClipId={diagonalAccentClipId}
+            bodyClipId={diagonalBodyClipId}
+            geometry={diagonalGeometry}
           />
         ) : null}
       </div>
@@ -933,6 +1047,9 @@ export function CardShape(props: CardShapeProps) {
     ? chartSegmentPopKeyframesCss(popAnimIn, popAnimOut)
     : null;
 
+  const isDiagonalSplitCard = isProfileDiagonalSplitCard(resolvedTemplateId);
+  const cardShellInsetPx = needsGradientBorder ? borderWidthNum : 0;
+
   const innerTree = useMemo(() => {
     if (!cardRoot) return null;
     return (
@@ -964,6 +1081,8 @@ export function CardShape(props: CardShapeProps) {
         cardRootRef={cardRootRef}
         cardRootElements={cardRoot}
         cardShellBorder={cardShellBorder}
+        cardShellInsetPx={cardShellInsetPx}
+        cardShellInnerRadius={innerRadiusStr}
       />
     );
   }, [
@@ -990,6 +1109,8 @@ export function CardShape(props: CardShapeProps) {
     onHeroBoundaryDragSessionChange,
     staggerMap,
     cardShellBorder,
+    cardShellInsetPx,
+    innerRadiusStr,
   ]);
 
   const shellBg =
@@ -1066,7 +1187,9 @@ export function CardShape(props: CardShapeProps) {
         data-dw-highlight-anim={maskShellHighlightAnim}
         style={{
           ...maskShellStyle,
-          border: `${borderWidthNum}px dotted ${borderColor}`,
+          ...(isDiagonalSplitCard
+            ? {}
+            : { border: `${borderWidthNum}px dotted ${borderColor}` }),
         }}
       >
         {nodeLevelBgLayer}
@@ -1080,7 +1203,9 @@ export function CardShape(props: CardShapeProps) {
         data-dw-highlight-anim={maskShellHighlightAnim}
         style={{
           ...maskShellStyle,
-          border: `${borderWidthNum}px solid ${borderColor}`,
+          ...(isDiagonalSplitCard
+            ? {}
+            : { border: `${borderWidthNum}px solid ${borderColor}` }),
         }}
       >
         {nodeLevelBgLayer}

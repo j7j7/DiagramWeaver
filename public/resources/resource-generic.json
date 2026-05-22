@@ -185,6 +185,11 @@
           "type": "shape"
         },
         {
+          "name": "Profile Diagonal Split",
+          "file": "profile-diagonal-split.svg",
+          "type": "shape"
+        },
+        {
           "name": "Profile Social",
           "file": "profile-social.svg",
           "type": "shape"
