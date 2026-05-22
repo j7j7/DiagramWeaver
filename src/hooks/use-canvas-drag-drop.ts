@@ -9,6 +9,11 @@ import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
 import { isConnectorLikeSpineNodeType, isMindmapNodeType } from "@/lib/utils";
 import { collectMindmapDragCoMembers } from "@/lib/mindmap-layout";
 import { getConnectorLikeSpinePlacementAnchor } from "@/lib/line-curve-path";
+import {
+  iconDragItemToCardIconRef,
+  isIconPaletteDragItem,
+  resolveCardIconDropFromPoint,
+} from "@/lib/card-utils";
 
 /** Diagram-space radius around drag origin: inside = free movement; crossing = lock to dominant axis */
 const AXIS_CONSTRAINT_DEAD_ZONE = 15;
@@ -109,6 +114,8 @@ interface UseCanvasDragDropOptions {
   /** After Alt+duplicate drop: receive new nodes so the canvas can update selection */
   onDuplicateNodesPlaced?: (newNodes: DiagramNodeData[]) => void;
   onDraggingChange?: (isDragging: boolean) => void;
+  /** When an icon palette item is dropped on a card icon-slot, assign instead of creating a node. */
+  onCardIconDrop?: (nodeId: string, elementId: string, iconRef: import("@/lib/card-types").CardIconRef) => void;
 }
 
 export function useCanvasDragDrop({
@@ -126,6 +133,7 @@ export function useCanvasDragDrop({
   duplicateNodesAtPositions,
   onDuplicateNodesPlaced,
   onDraggingChange,
+  onCardIconDrop,
 }: UseCanvasDragDropOptions) {
   const [altKeyHeld, setAltKeyHeld] = useState(false);
   /** Updated synchronously on modifier events so drop() sees the real Alt state (state alone can lag). */
@@ -502,7 +510,16 @@ export function useCanvasDragDrop({
       // All nodes use free placement - never add to zones on drop
       const targetGroupIdForFreeflow: string | null = null;
       
-      if (itemType === ItemTypes.DIAGRAM_NODE) { 
+      if (itemType === ItemTypes.DIAGRAM_NODE) {
+        const clientOffset = monitor.getClientOffset();
+        if (clientOffset && isIconPaletteDragItem(item as { type?: string })) {
+          const slot = resolveCardIconDropFromPoint(clientOffset.x, clientOffset.y);
+          if (slot && onCardIconDrop) {
+            onCardIconDrop(slot.nodeId, slot.elementId, iconDragItemToCardIconRef(item as { type: string }));
+            return;
+          }
+        }
+        if (monitor.didDrop()) return;
         // Pass full item data to preserve resource information
         addNode(item as any, { x, y }, targetGroupIdForFreeflow);
       } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
@@ -642,7 +659,7 @@ export function useCanvasDragDrop({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
-  }), [transform, processedZones, hoveredGroupId, moveItem, moveMultipleItems, duplicateNodesAtPositions, onDuplicateNodesPlaced, addNode, nodesById, zonesById, selectedItemIds, canvasRef, diagramData]);
+  }), [transform, processedZones, hoveredGroupId, moveItem, moveMultipleItems, duplicateNodesAtPositions, onDuplicateNodesPlaced, addNode, onCardIconDrop, nodesById, zonesById, selectedItemIds, canvasRef, diagramData]);
 
   // Touch palette drops (sidebar icons/shapes): HTML5 DnD is unreliable on mobile — palette items
   // dispatch `mobileDrop` on the canvas element with viewport coordinates.
@@ -677,12 +694,21 @@ export function useCanvasDragDrop({
       let y = (clientY - rect.top - transform.y) / transform.k;
       x = snapToGrid(x);
       y = snapToGrid(y);
+
+      if (isIconPaletteDragItem(item as { type?: string })) {
+        const slot = resolveCardIconDropFromPoint(clientX, clientY);
+        if (slot && onCardIconDrop) {
+          onCardIconDrop(slot.nodeId, slot.elementId, iconDragItemToCardIconRef(item as { type: string }));
+          return;
+        }
+      }
+
       addNode(item as any, { x, y }, null);
     };
 
     el.addEventListener("mobileDrop", onMobilePaletteDrop as EventListener);
     return () => el.removeEventListener("mobileDrop", onMobilePaletteDrop as EventListener);
-  }, [isReadOnly, addNode, canvasRef, transform.x, transform.y, transform.k]);
+  }, [isReadOnly, addNode, onCardIconDrop, canvasRef, transform.x, transform.y, transform.k]);
 
   // Touch moves for items already on the canvas (nodes/zones): long-press-drag emits `mobileMove`.
   useLayoutEffect(() => {

@@ -83,6 +83,9 @@ import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isTimelineNodeType } from "@/lib/utils";
 import { shapeSwapMenuOptions, swapDiagramNodeObjectKind, type SwappableObjectKind } from "@/lib/shape-type-swap";
+import { cardTemplateSwapMenuOptions, swapCardTemplate } from "@/lib/card-template-swap";
+import { isCardNodeType, findCardElement, updateCardElementTree, resolveCardIconSlotFromPoint } from "@/lib/card-utils";
+import type { CardIconRef } from "@/lib/card-types";
 import {
   applyTimelineEntriesSpacedEndpoints,
   insertTimelineEntryNearArcRatio,
@@ -437,6 +440,9 @@ interface EditorCanvasProps {
   onTimelineEntrySelect?: (nodeId: string, entryId: string | null, additive?: boolean) => void;
   /** After a card row is removed from the diagram, prune selection keys so stale ids disappear. */
   onTimelineCardRemoved?: (nodeId: string, entryId: string) => void;
+  /** Selected card sub-element within a card node */
+  cardElementSelection?: { nodeId: string; elementId: string } | null;
+  onCardElementSelect?: (nodeId: string, elementId: string | null) => void;
   /** Connector line: vertex handle click target for delete-point */
   connectorLineFocusedVertex?: { nodeId: string; vertexIndex: number } | null;
   onConnectorLineVertexFocus?: (nodeId: string, vertexIndex: number) => void;
@@ -478,7 +484,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -1041,6 +1047,25 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }));
   }, [setDiagramData]);
 
+  const handleCardIconDrop = useCallback(
+    (nodeId: string, elementId: string, iconRef: CardIconRef) => {
+      setDiagramData((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (n.id !== nodeId || !n.card?.elements) return n;
+          return {
+            ...n,
+            card: {
+              ...n.card,
+              elements: updateCardElementTree(n.card.elements, elementId, { iconRef }),
+            },
+          };
+        }),
+      }));
+    },
+    [setDiagramData],
+  );
+
   const handleNodeResize = useCallback((nodeId: string, newWidth: number, newHeight: number, newX?: number, newY?: number) => {
     if (selectedItemIds.size > 1 && selectedItemIds.has(nodeId)) {
       // Multi-select resize: calculate scale factors from the dragged node
@@ -1159,6 +1184,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     duplicateNodesAtPositions: operations.duplicateNodesAtPositions,
     onDuplicateNodesPlaced: handleDuplicateNodesPlaced,
     onDraggingChange: notifyDraggingChange,
+    onCardIconDrop: handleCardIconDrop,
   });
 
   /**
@@ -1705,9 +1731,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       onNodeClickInConnectMode(node); // In connect mode, clicking creates connection
     } else {
       const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
+      onCardElementSelect?.(node.id, null);
       onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, handleSimulationElementPrimaryClick, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData, selectedItemIds]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onCardElementSelect, handleSimulationElementPrimaryClick, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData, selectedItemIds]);
 
   /** Tap on a timeline card (pointer-up without drag): selects the node + updates card selection; Shift toggles multi-card keys without dropping the parent node from an existing multi-select. */
   const handleTimelineCardTap = useCallback(
@@ -1749,6 +1776,27 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       openSimulationMenu(e, node.id, "node");
       return;
     }
+
+    // Card icon-slot: hit-test at cursor (works even when the slot has no iconRef yet)
+    if (!isReadOnly && isCardNodeType(node.type) && node.card?.elements) {
+      const slotHit = resolveCardIconSlotFromPoint(e.clientX, e.clientY, node.id);
+      if (slotHit) {
+        const slotEl = findCardElement(node.card.elements, slotHit.elementId);
+        if (slotEl?.kind === "icon-slot") {
+          if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
+            // keep multi-selection
+          } else if (selectedItemId !== node.id) {
+            onItemSelect({ ...node, itemType: "node" }, false);
+          }
+          onCardElementSelect?.(node.id, slotHit.elementId);
+          onResetConnectionSettingsTrigger?.();
+          setLastRightClickItemId(node.id);
+          handleContextMenu(e, node.id, "node", { cardElementId: slotHit.elementId });
+          return;
+        }
+      }
+    }
+
     // If multiple items are selected and this node is already in the selection, preserve the selection
     // Otherwise, select just this node
     if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
@@ -1760,7 +1808,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onResetConnectionSettingsTrigger?.();
     setLastRightClickItemId(node.id);
     handleContextMenu(e, node.id, 'node'); // Opens context menu
-  }, [simulationModeEnabled, openSimulationMenu, selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
+  }, [
+    simulationModeEnabled,
+    openSimulationMenu,
+    isReadOnly,
+    selectedItemIds,
+    selectedItemId,
+    onItemSelect,
+    onCardElementSelect,
+    onResetConnectionSettingsTrigger,
+    handleContextMenu,
+  ]);
 
   const handleTimelineEntryContextMenu = useCallback(
     (e: React.MouseEvent, node: DiagramNodeData, entryId: string) => {
@@ -2881,6 +2939,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   }
                   onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                   onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
+                  cardSelectedElementId={
+                    cardElementSelection?.nodeId === node.id ? cardElementSelection.elementId : null
+                  }
+                  onCardElementSelect={onCardElementSelect}
                   visualStylingPanelOpen={visualStylingPanelOpen}
                   diagramNodesForMindmap={diagramData.nodes}
                 />
@@ -3832,6 +3894,48 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 ...prev,
                 nodes: prev.nodes.map((n) =>
                   n.id === id ? swapDiagramNodeObjectKind(n, kind as SwappableObjectKind) : n,
+                ),
+              }));
+              closeContextMenu();
+            }}
+            cardTemplateChangeOptions={cardTemplateSwapMenuOptions(
+              diagramData.nodes.find((n) => n.id === contextMenu.itemId)?.type,
+            )}
+            cardIconContext={(() => {
+              if (!contextMenu.cardElementId || contextMenu.itemType !== "node") return false;
+              const n = diagramData.nodes.find((nn) => nn.id === contextMenu.itemId);
+              if (!n?.card?.elements) return false;
+              const el = findCardElement(n.card.elements, contextMenu.cardElementId);
+              return !!el?.iconRef;
+            })()}
+            onRemoveCardIcon={() => {
+              const nodeId = contextMenu.itemId;
+              const elementId = contextMenu.cardElementId;
+              if (!nodeId || !elementId) return;
+              setDiagramData((prev) => ({
+                ...prev,
+                nodes: prev.nodes.map((n) => {
+                  if (n.id !== nodeId || !n.card?.elements) return n;
+                  return {
+                    ...n,
+                    card: {
+                      ...n.card,
+                      elements: updateCardElementTree(n.card.elements, elementId, {
+                        iconRef: undefined,
+                      }),
+                    },
+                  };
+                }),
+              }));
+              onCardElementSelect?.(nodeId, null);
+            }}
+            onChangeCardTemplate={(templateId) => {
+              const id = contextMenu.itemId;
+              if (!id || contextMenu.itemType !== "node") return;
+              setDiagramData((prev) => ({
+                ...prev,
+                nodes: prev.nodes.map((n) =>
+                  n.id === id && isCardNodeType(n.type) ? swapCardTemplate(n, templateId) : n,
                 ),
               }));
               closeContextMenu();

@@ -29,6 +29,8 @@ import { TIMELINE_DEFAULT_SPINE_LENGTH_PX, TIMELINE_NODE_TYPE } from "@/lib/time
 import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { defaultPaletteSegmentedRectangleNodeProps } from "@/lib/segmented-rectangle";
+import { getCardTemplateIdFromNodeType, createInitialCardSpec } from "@/lib/card-utils";
+import { getCardTemplate } from "@/lib/card-templates";
 import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
 import {
   nextMindmapAutoNumericLabel,
@@ -131,6 +133,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.uml-class' ||
                                 itemType === 'generic.chart.pie' ||
                                 itemType?.startsWith('generic.chart.') ||
+                                itemType?.startsWith('generic.card.') ||
                                 isConnectorLineNodeType(itemType) ||
                                 itemType?.endsWith('.square') ||
                                 itemType?.endsWith('.circle') ||
@@ -183,6 +186,8 @@ export function useCanvasOperations({
         if (itemType === MINDMAP_NODE_TYPE && !isFromScratchPad) {
           initialLabel = nextMindmapAutoNumericLabel(prevData.nodes ?? []);
         }
+        const cardTemplateId = getCardTemplateIdFromNodeType(itemType);
+        const cardTemplate = cardTemplateId ? getCardTemplate(cardTemplateId) : undefined;
         let newNode: DiagramNodeData = {
           id: newNodeId,
           type: itemType,
@@ -218,6 +223,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.line' ? 470 :
              itemType === 'generic.chart.bar' ? 380 :
              itemType === 'generic.chart.ring' ? 410 :
+             cardTemplate ? cardTemplate.defaultWidth :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(240, 40) : undefined, // Initial width - 100% wider than before (was 120)
            height: isShapeResource ? snapDimensionToGrid(
@@ -237,6 +243,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.line' ? 320 :
              itemType === 'generic.chart.bar' ? 280 :
              itemType === 'generic.chart.ring' ? 320 :
+             cardTemplate ? cardTemplate.defaultHeight :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(80, 40) : undefined, // Initial height - same as textbox for plain text
           // Apply default text color for text resources
@@ -338,6 +345,14 @@ export function useCanvasOperations({
             itemType?.startsWith('generic.chart.')) &&
             !isFromScratchPad && {
             chart: defaultChartSpecForNodeType(itemType),
+          }),
+          ...(cardTemplateId && !isFromScratchPad && {
+            cornerRadius: cardTemplate?.cornerRadius ?? 0.12,
+            backgroundStyle: 'none' as const,
+            borderColor: '#0f172a',
+            borderWidth: 2,
+            borderStyle: 'solid' as const,
+            card: createInitialCardSpec(cardTemplateId),
           }),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {

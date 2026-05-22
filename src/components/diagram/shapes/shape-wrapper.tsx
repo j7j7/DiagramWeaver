@@ -59,6 +59,8 @@ interface ShapeWrapperProps {
   omitShapeText?: boolean;
   /** When `backgroundStyle` is frosted and this is set, clips the glass layer to match SVG geometry (see SvgShapeBase). */
   frostedGlassClipPath?: string;
+  /** When true with `skipWrapperStyling`, keep shell overflow visible so outer box-shadow halos (e.g. card highlight glow) are not clipped. */
+  preserveShellHalo?: boolean;
 }
 
 /**
@@ -107,6 +109,7 @@ export function ShapeWrapper({
   slideColorTransition,
   omitShapeText = false,
   frostedGlassClipPath,
+  preserveShellHalo = false,
 }: ShapeWrapperProps) {
   const styles = getShapeStyles(node);
   const slideShapeShadowMode = useSlideShapeShadowTransitionMode();
@@ -141,6 +144,8 @@ export function ShapeWrapper({
   // Use a layered gradient border for all gradient borders.
   // This avoids `border-image` export glitches (gray fills in html-to-image snapshots).
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(shouldSkipStyling, borderImage, borderColors);
+  const skipShellClip = shouldSkipStyling && !!calculatedBorderRadius;
+  const clipShellOverflow = skipShellClip && !preserveShellHalo;
 
   // Frosted glass: inline `backdrop-filter` stack. SVG shapes skip CSS wrapper fill but still use
   // `backgroundStyle: 'frosted'` + transparent SVG fill — must not disable glass here.
@@ -158,7 +163,8 @@ export function ShapeWrapper({
       className="relative"
       style={{
         boxSizing: 'border-box',
-        borderRadius: needsGradientBorderLayer ? calculatedBorderRadius : undefined,
+        borderRadius: needsGradientBorderLayer || skipShellClip ? calculatedBorderRadius : undefined,
+        overflow: clipShellOverflow ? "hidden" : undefined,
         width: width + overlap,
         height: height + overlap,
         minWidth: width + overlap,
@@ -208,8 +214,11 @@ export function ShapeWrapper({
           width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
-          /* `overflow: visible` helps Chromium sample siblings behind this shape for inline `backdrop-filter`. */
-          ...(isFrostedBg ? { position: "relative", overflow: "visible" } : {}),
+          ...(skipShellClip
+            ? { overflow: preserveShellHalo ? "visible" : "hidden" }
+            : isFrostedBg
+              ? { position: "relative", overflow: "visible" }
+              : {}),
           ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && needsGradientBorderLayer ? {
             boxShadow: 'var(--shape-shadow)'
           } : {}),

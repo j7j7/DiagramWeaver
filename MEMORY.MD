@@ -3,6 +3,100 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-22 – Cards: compact horizontal icon slot + text layout fix
+
+**`flex: 0`** on fixed-size card regions (avatar, list indicator) was passed through as CSS **`flex: 0`**, which sets **`flex-basis: 0%`** and collapses the icon circle to zero width. **`cardLayoutToCss`** now maps layout **`flex: 0`** → **`0 0 auto`** and sets **`flexShrink: 0`** on fixed-width slots. Compact horizontal template padding/line-height tightened and default size **220×80**. Patch bumped.
+
+
+### 2026-05-22 – Cards: compact horizontal template + visual styling panel
+
+**Compact Horizontal** (`generic.card.compact-horizontal`) is wired like Profile Feature: row layout with circular **avatar** icon-slot left and **name** / **status** text right. Visual styling **Background** applies to the **root** fill; **Card properties** accordion adds icon size slider plus icon region and text segment fills. Helpers in **`card-compact-horizontal.ts`**; **`CardPropertiesPanel`** is template-aware. Patch bumped.
+
+
+### 2026-05-22 – Cards: remove-background toggle on card icons
+
+**Remove background** in Icon Styling now works for card icon-slots: stored on **`CardIconRef.noIconBackground`**, persisted via **`partitionCardIconVisualStylingPatch`**, toggle reads/writes **`iconRef`** (not the card node). Glyph wrapper applies **`bg-card` / `dw-icon-container`** when background is on. Patch bumped.
+
+
+### 2026-05-22 – Cards: fix corner icon placement clipping (emoji)
+
+Card icon-slots pass **`width="100%"`** into **`ResourceIcon`**; emoji sizing used **`parseInt("100%") === 100`**, so a **quarter/fixed** ~18px glyph rendered a **100px** emoji — mostly clipped at **top-right** (and other corners). Emoji now **fills the glyph box** via **`min(100cqw, 100cqh)`**; glyph wrapper uses **`containerType: size`**. JSON **`iconPlacement`** / **`iconSizeMode`** fields were already valid. Patch bumped.
+
+
+### 2026-05-22 – Cards: icon sizing fixed vs scaled
+
+Card icon-slots support **Sizing → Fixed | Scaled** in Icon Styling (and card element panel). **Scaled** (default): glyph size follows the icon region via container queries. **Fixed**: constant px from the **Icon size** preset (`nodeSize` → canvas icon dimensions); resizing the hero/top region does not change icon px size. Stored on **`CardIconRef.iconSizeMode`**. Patch bumped.
+
+
+### 2026-05-22 – Cards: icon placement edge alignment fix
+
+**Right/left/top/bottom** icon position on wide or tall icon-slots now aligns flush to the slot edge. Glyph size uses a **square** box from **`min(cqw, cqh)`** (container query on the slot) instead of separate width/height percentages — the old wide box made **`object-contain`** draw the icon centered while the box was already pinned to the right. Patch bumped.
+
+
+### 2026-05-22 – Cards: icon size in Icon Styling panel
+
+Card icon **Icon Styling** now shows the **Icon size** dropdown (Normal / Half / Quarter / Double). Size was hidden because card nodes are shapes (`isShape`); panel shows size when **`showIconTileStyling`** is true and toolbar passes **`isShape={false}`** for card icon selection. Patch bumped.
+
+
+### 2026-05-22 – Cards: restore resize handles + flush icon placement
+
+**Resize/connect handles**: Restored two-step selection — first click selects the **card node** (handles visible); second click selects an internal region/icon. Sub-element clicks no longer steal the first click from the node. **Icon position**: Left/right/top/bottom now use **absolute edge alignment** (no inner padding) within the icon-slot region. Patch bumped.
+
+
+### 2026-05-22 – Cards: icon styling via menu only; position in panel
+
+Right-click on a card icon-slot no longer auto-opens Visual Styling — use **Icon styling** in the context menu. **Icon position** moved from the context submenu into **Icon Styling** (Visual Styling panel) when editing a dropped icon on a card. Patch bumped.
+
+
+### 2026-05-22 – Cards: fix icon-slot click + right-click hit-testing
+
+Icon-slot selection no longer requires pre-selecting the card (`trySelectCardElement`); clicking the slot selects the card + element. **Right-click** uses **`elementsFromPoint`** hit-testing in **`handleNodeContextMenu`** (penetrates resize rails/overlays) and works for **empty icon-slots** (hero/avatar region), not only slots with a dropped **`iconRef`**. Visual Styling opens for any icon-slot right-click. Patch bumped.
+
+
+### 2026-05-22 – Cards: fix icon right-click (context menu + visual styling)
+
+Card icon **right-click** was swallowed by the slot handler (`stopPropagation` without reliably opening the menu). **Node-level delegation** on `diagram-node` now detects `[data-dw-card-icon-slot][data-dw-card-has-icon]` and opens the context menu + **Visual Styling** panel (same as choosing “Icon styling”). Patch bumped.
+
+
+### 2026-05-22 – Cards: icon-slot icon styling (right-click + visual styling)
+
+Icons dropped into card **icon-slot** regions can be **right-clicked** for **Icon styling** (opens Visual styling panel with icon color, opacity, size), **Icon position** submenu (center / edges / corners), and **Remove icon**. **`CardIconRef`** extended with **`iconOpacity`**, **`nodeSize`**; **`CardElementData.iconPlacement`** positions the glyph inside the slot. **`CardElementStylingPanel`** footer shows the same controls when the slot is selected. Rendering uses **`card-icon-layout.ts`** (flex placement + size scale). Patch bumped.
+
+
+### 2026-05-22 – Cards: theme + visual styling for all templates
+
+**Theme apply** (`applyThemeToCardElements` in **`card-theme.ts`**, wired from **`theme-manager`**): border → card shell; background → template background region (`body` on profile-feature, `root` on others); accent/icon slots + text/tag chips get hue-stepped fills; text colour from theme. Shell **`backgroundStyle`** stays **`none`**. **Visual styling** Background/Border sync works for **all** card templates (not only profile-feature); **Card properties** accordion shows profile controls or a short hint for other templates. Mesh gradient enabled for all cards. Patch bumped.
+
+
+### 2026-05-22 – Profile card: background via Visual styling Background section
+
+Removed duplicate **Background** row from **Card properties**; the lower card area is styled through the main **Background** accordion (synced to the body section element). **Top fill**, text segments, and strip height stay under **Card properties**. Patch bumped.
+
+
+### 2026-05-22 – Profile card: fix hero split drag + visual styling panel close
+
+Hero/body resize no longer collapses the top strip: **`flex: 0`** (flex-basis 0) replaced with **flex-grow weights** (e.g. 55/45). Layout patches replace **`layout`** instead of merging (avoids stale **`height: %`**). Card property updates preserve **`itemType: 'node'`** on **`selectedItem`** so Visual styling stays open; slider drag excluded from click-outside close. Patch bumped.
+
+
+### 2026-05-22 – Profile card: Card properties in Visual styling + hero split drag
+
+**Profile Feature** card (`generic.card.profile-feature`): **Visual styling** panel adds **Card properties** accordion (same pattern as Timeline bar) — top fill, background, title/description segment fills each support **None / Solid / Gradient / Mesh gradient** (`CardFillStyleControls`, `card-fill-style-controls.tsx`); **Top strip height** slider. Canvas: drag handle on hero/body boundary resizes top strip (`applyProfileHeroHeightPct`, `ProfileHeroSplitHandle` in **`card-shape.tsx`**). Mesh fills render via **`CardElementMeshBackground`** SVG layer. **`CardElementStyle.backgroundStyle`** extended with **`mesh_gradient`** + **`meshGradientPoints`**. Patch bumped.
+
+
+### 2026-05-22 – Cards: highlight glow on mask shell
+
+**Glow** (`highlightAnim`) on **`generic.card.*`**: **`CardShape`** computes **`roundedShellGlow`** styles on the rounded **mask shell** (not the rectangular node frame). **`ShapeWrapper`** **`overflow: hidden`** was clipping an inner glow wrapper so constant glow never appeared. **`mergeCardShellHighlightStyle`** combines shape shadow **filter** with glow. Patch bumped.
+
+### 2026-05-22 – Cards: per-element styling, template swap, slide stagger, visual polish
+
+**Per-element properties:** click a card region to select it; **Visual styling** panel footer shows **`CardElementStylingPanel`** (section/text/icon/tag bg, text color, border, tag label). **`cardElementSelection`** state in **`diagram-editor`** → canvas + toolbar. **Template swap:** context menu **Change card template** merges content by element **`id`** (`card-template-swap.ts`). **Presentation:** **`cardSlideStagger`** in **`use-slide-transition`** staggers sub-elements on appear/disappear/content change (same pop keyframes as charts). **Nested icon drop:** canvas/mobile drop resolves **`[data-dw-card-icon-slot]`** before adding a new node. **Visual fixes:** padding-as-border shell + inner clip (no white corner bleed); root section **`overflow: hidden`**; default text padding **`[8,12]`** on templates. Patch bumped.
+
+
+### 2026-05-22 – Cards: new composite template resource type
+
+New **Generic → Cards** palette category with four draggable templates (**Profile Feature**, **Compact Horizontal**, **List Item Row**, **Detail Post**) matching wireframe layouts. Runtime type **`generic.card.*`**; each node stores a flex-like **`card.elements`** tree (`CardElementData`: sections, text, icon-slots, tags, decor) in **`src/lib/card-types.ts`** / **`card-templates.ts`**. **`CardShape`** renders CSS-flex regions that scale on resize; double-click text regions edits in place; drag icons onto **`icon-slot`** regions (nested react-dnd + `monitor.didDrop()` guard). Connectors use rectangular bounds like shapes; corner-radius handle + full context menu parity. Patch bumped.
+
+
 ### 2026-05-22 – Bar chart: drag column edge to change bar width
 
 Canvas **bar chart** nodes: drag the **left/right** edge of a column (vertical) or **top/bottom** edge (horizontal) to widen or narrow bars. Updates persisted **`chart.categoryGap`** (same field as **Chart data → Category spacing**). Invisible hit strips use **`data-dw-bar-width-handle`**; reuses **`onBarChartValueDragSessionChange`** so node drag stays blocked during resize. Helpers **`resolveBarCategoryGap`**, **`barThicknessFromCategoryGap`**, **`categoryGapFromBarThickness`** in **`bar-chart-layout.ts`**. **`BarChartShape`**, **`diagram-node`**. Patch bumped.

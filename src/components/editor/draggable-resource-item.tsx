@@ -70,6 +70,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
     const isBarChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'bar-chart';
     const isLineChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'line-chart';
     const isRingChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'ring-chart';
+    const isCardPalette = provider === 'generic' && category === 'cards';
     return {
       type: isTextPaletteTextBoxHeading
         ? 'generic.object.text-box-heading'
@@ -81,7 +82,9 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
               ? 'generic.chart.line'
               : isRingChartPalette
                 ? 'generic.chart.ring'
-                : `${provider}.${category}.${derivedSlug}`,
+                : isCardPalette
+                  ? `generic.card.${derivedSlug}`
+                  : `${provider}.${category}.${derivedSlug}`,
       label: resource.name,
       provider,
       category: isTextPaletteTextBoxHeading ? 'object' : category,

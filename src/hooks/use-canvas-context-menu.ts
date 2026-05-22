@@ -10,6 +10,8 @@ interface ContextMenuState {
   timelineEntryId?: string;
   /** Timeline: arc-length ratio along spine when menu opened from spine right-click (for insert position). */
   timelineSpineArcRatio?: number;
+  /** Card: icon-slot element id when menu opened from an assigned card icon */
+  cardElementId?: string;
 }
 
 interface UseCanvasContextMenuOptions {
@@ -33,7 +35,7 @@ export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: 
     event: React.MouseEvent,
     itemId: string,
     itemType: 'node' | 'zone',
-    opts?: { timelineEntryId?: string; timelineSpineArcRatio?: number },
+    opts?: { timelineEntryId?: string; timelineSpineArcRatio?: number; cardElementId?: string },
   ) => {
     if (isReadOnly) return;
     event.preventDefault();
@@ -84,6 +86,7 @@ export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: 
       itemId,
       timelineEntryId: opts?.timelineEntryId,
       timelineSpineArcRatio: opts?.timelineSpineArcRatio,
+      cardElementId: opts?.cardElementId,
     });
   };
 
@@ -93,6 +96,7 @@ export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: 
       visible: false,
       timelineEntryId: undefined,
       timelineSpineArcRatio: undefined,
+      cardElementId: undefined,
     }));
   }, []);
 

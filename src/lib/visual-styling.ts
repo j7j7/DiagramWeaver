@@ -8,6 +8,7 @@ import type {
   PyramidDirection,
   PyramidSizing,
 } from "./types";
+import type { CardIconPlacement, CardIconSizeMode } from "./card-types";
 import type { ThemeProperties } from './theme-types';
 
 // Visual styling interface for consistency
@@ -94,6 +95,10 @@ export interface VisualStyling {
   iconBevelGridOffset?: number;
   noIconBackground?: boolean; // Remove background from icon/resource nodes
   nodeSize?: NodeSize; // Size mode for nodes and icons
+  /** Card icon-slot: glyph alignment inside the slot (not used on canvas icon nodes). */
+  iconPlacement?: CardIconPlacement;
+  /** Card icon-slot: scaled follows slot resize; fixed keeps px size from nodeSize preset. */
+  iconSizeMode?: CardIconSizeMode;
   /** When true, orthogonal connectors do not route around this shape or zone. */
   ignoreConnectionAvoidance?: boolean;
 }

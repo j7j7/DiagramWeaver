@@ -21,6 +21,8 @@ import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-tex
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
+import { isCardNodeType, findCardElement, updateCardElementTree } from "@/lib/card-utils";
+import type { CardIconRef } from "@/lib/card-types";
 import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, snapIconLabelWidthToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getIconTileAnchorSize } from "@/lib/icon-bevel";
@@ -66,6 +68,7 @@ import {
   TimelineBarShape,
   SegmentedRectangleShape,
   PyramidShape,
+  CardShape,
 } from "./shapes";
 import {
   SlideShapeShadowTransitionProvider,
@@ -314,6 +317,8 @@ interface DiagramNodeProps {
     chartSlideStagger?: ChartSlideStagger;
     /** Pyramid / segmented rectangle per-section slide stagger */
     sectionSlideStagger?: ChartSlideStagger;
+    /** Card composite per-element slide stagger */
+    cardSlideStagger?: ChartSlideStagger;
     /** Play / slide transitions: stagger grow+fade on new timeline cards (see `timelineEnterStaggerOrder`). */
     timelineSlideStagger?: ChartSlideStagger;
     /** Removed cards from previous slide — exit animation (shrink + fade). */
@@ -354,6 +359,11 @@ interface DiagramNodeProps {
   onTimelineEntryContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, entryId: string) => void;
   /** Right-click on spine — arc ratio (0–1) used when adding a card */
   onTimelineSpineContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, arcRatio: number) => void;
+  /** Selected card sub-element id (when this card node is selected) */
+  cardSelectedElementId?: string | null;
+  onCardElementSelect?: (nodeId: string, elementId: string | null) => void;
+  /** Right-click on a card icon-slot that has an icon assigned */
+  onCardIconContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, elementId: string) => void;
   /** Mind-map theme-hues: pass all diagram nodes so anchor cascade can resolve fill/border base. */
   diagramNodesForMindmap?: DiagramNodeData[];
   /** Editor: Visual styling panel open — mesh gradient hub markers use this with selection. */
@@ -399,6 +409,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
       return false;
     }
     if (JSON.stringify((p as any).chart) !== JSON.stringify((n as any).chart)) return false;
+    if (JSON.stringify((p as any).card) !== JSON.stringify((n as any).card)) return false;
     const pUml = (p as any).umlClass;
     const nUml = (n as any).umlClass;
     if (JSON.stringify(pUml) !== JSON.stringify(nUml)) return false;
@@ -509,6 +520,9 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onTimelineCardTap === next.onTimelineCardTap &&
     prev.onTimelineEntryContextMenu === next.onTimelineEntryContextMenu &&
     prev.onTimelineSpineContextMenu === next.onTimelineSpineContextMenu &&
+    prev.cardSelectedElementId === next.cardSelectedElementId &&
+    prev.onCardElementSelect === next.onCardElementSelect &&
+    prev.onCardIconContextMenu === next.onCardIconContextMenu &&
     prev.visualStylingPanelOpen === next.visualStylingPanelOpen;
 }
 
@@ -557,6 +571,9 @@ function DiagramNodeInner({
   onTimelineCardTap,
   onTimelineEntryContextMenu,
   onTimelineSpineContextMenu,
+  cardSelectedElementId = null,
+  onCardElementSelect,
+  onCardIconContextMenu,
   diagramNodesForMindmap,
   visualStylingPanelOpen = false,
 }: DiagramNodeProps) {
@@ -572,6 +589,8 @@ function DiagramNodeInner({
   const [editTagText, setEditTagText] = useState(node.tag || '');
   const [isEditingTimelineEntryLabel, setIsEditingTimelineEntryLabel] = useState(false);
   const [timelineEditEntryId, setTimelineEditEntryId] = useState<string | null>(null);
+  const [isEditingCardElement, setIsEditingCardElement] = useState(false);
+  const [cardEditElementId, setCardEditElementId] = useState<string | null>(null);
 
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
@@ -906,6 +925,47 @@ function DiagramNodeInner({
       );
     } else if (nodeType === 'generic.object.rectangle' || nodeType?.endsWith('.rectangle')) {
       return <RectangleShape {...shapeProps} />;
+    } else if (isCardNodeType(nodeType)) {
+      return (
+        <CardShape
+          {...shapeProps}
+          isReadOnly={isReadOnly}
+          cardEditElementId={cardEditElementId}
+          isEditingCardElement={isEditingCardElement}
+          cardEditRuns={cardElementEditRuns}
+          cardSelectedElementId={cardSelectedElementId}
+          onCardElementSelect={handleCardElementSelect}
+          onCardElementDoubleClick={handleCardElementDoubleClick}
+          onCardElementRichSubmit={handleCardElementRichSubmit}
+          onCardElementKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setIsEditingCardElement(false);
+              setCardEditElementId(null);
+            }
+          }}
+          onCardIconDrop={handleCardIconDrop}
+          onCardIconContextMenu={handleCardIconContextMenu}
+          presentationCardSlideStagger={animationStyle?.cardSlideStagger}
+          cardNodeSelected={isSelected || isMultiSelected}
+          cardTemplateId={node.card?.templateId}
+          heroBoundaryInteractionEnabled={Boolean(onUpdate && !isReadOnly && isSelected && !isMultiSelected)}
+          onCardElementsPatch={
+            onUpdate && !isReadOnly
+              ? (elements) => onUpdate({ ...node, card: { ...node.card!, elements } })
+              : undefined
+          }
+          onHeroBoundaryDragSessionChange={
+            onUpdate && !isReadOnly
+              ? (active) => {
+                  chartValueDragInteractionRef.current = active;
+                  onChartValueDragSessionChange?.(active);
+                }
+              : undefined
+          }
+          highlightAnimStaggerIndex={highlightAnimStaggerIndex}
+          highlightAnimStaggerCount={highlightAnimStaggerCount}
+        />
+      );
     } else if (nodeType === 'generic.object.rounded-rectangle' || nodeType?.endsWith('.rounded-rectangle')) {
       const roundedNode = isDraggingCornerRadius && localCornerRadius !== null
         ? { ...visualNode, cornerRadius: localCornerRadius }
@@ -1741,12 +1801,14 @@ function DiagramNodeInner({
   const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode || isTimelineNode);
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
    const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
+  const isCardNode = isCardNodeType(node.type);
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
    const isMindmapCardNode = isMindmapNodeType(node.type);
    const mindmapBodyRounded =
      isMindmapCardNode &&
      normalizeCompositeBodyShapeKind((node as DiagramNodeData).compositeBodyShape) === "rounded-rectangle";
-   const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode || mindmapBodyRounded;
+   const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode || mindmapBodyRounded || isCardNode;
+  const cardHandleZIndex = isCardNode ? "z-[125]" : "z-50";
   const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode && !isTimelineNode;
   const isIconNode = !isTextNode && !isTextboxNode && !isShapeNode && !isLineNode;
   /** 3D icon bevel: glow follows the tilted tile, not the rectangular node frame. */
@@ -1804,6 +1866,80 @@ function DiagramNodeInner({
       setTimelineEditEntryId(null);
     },
     [onUpdate, timelineEditEntryId, node, isMultiSelected],
+  );
+
+  const cardElementEditRuns = useMemo(() => {
+    if (!cardEditElementId || !node.card?.elements) return [] as RichTextRun[];
+    const el = findCardElement(node.card.elements, cardEditElementId);
+    return el ? el.richText ?? labelToRuns(el.text ?? "") : [];
+  }, [cardEditElementId, node.card?.elements]);
+
+  const handleCardElementDoubleClick = useCallback(
+    (elementId: string, e: React.MouseEvent) => {
+      if (isReadOnly || !onUpdate || !isCardNodeType(node.type) || !node.card?.elements) return;
+      e.stopPropagation();
+      e.preventDefault();
+      setIsEditingLabel(false);
+      setIsOpen(false);
+      const el = findCardElement(node.card.elements, elementId);
+      if (!el || el.kind !== "text" || el.editable === false) return;
+      setCardEditElementId(elementId);
+      setIsEditingCardElement(true);
+    },
+    [isReadOnly, onUpdate, node],
+  );
+
+  const handleCardElementRichSubmit = useCallback(
+    (elementId: string, plainText: string, runs: RichTextRun[]) => {
+      if (!onUpdate || !node.card?.elements) {
+        setIsEditingCardElement(false);
+        setCardEditElementId(null);
+        return;
+      }
+      const nextPlain = plainText.trim();
+      const normNew = normalizeRuns(runs);
+      const el = findCardElement(node.card.elements, elementId);
+      const normPrev = el ? normalizeRuns(el.richText ?? labelToRuns(el.text ?? "")) : [];
+      const elements =
+        !isMultiSelected && el && JSON.stringify(normNew) === JSON.stringify(normPrev)
+          ? node.card.elements
+          : updateCardElementTree(node.card.elements, elementId, {
+              text: nextPlain,
+              richText: normNew,
+            });
+      onUpdate({
+        ...node,
+        card: { ...node.card, elements },
+      });
+      setIsEditingCardElement(false);
+      setCardEditElementId(null);
+    },
+    [onUpdate, node, isMultiSelected],
+  );
+
+  const handleCardIconDrop = useCallback(
+    (elementId: string, iconRef: CardIconRef) => {
+      if (isReadOnly || !onUpdate || !node.card?.elements) return;
+      const elements = updateCardElementTree(node.card.elements, elementId, { iconRef });
+      onUpdate({ ...node, card: { ...node.card, elements } });
+    },
+    [isReadOnly, onUpdate, node],
+  );
+
+  const handleCardIconContextMenu = useCallback(
+    (elementId: string, e: React.MouseEvent) => {
+      if (isReadOnly || !onCardIconContextMenu) return;
+      onCardIconContextMenu(e, node, elementId);
+    },
+    [isReadOnly, onCardIconContextMenu, node],
+  );
+
+  const handleCardElementSelect = useCallback(
+    (elementId: string, e: React.MouseEvent) => {
+      if (isReadOnly || !onCardElementSelect) return;
+      onCardElementSelect(node.id, elementId);
+    },
+    [isReadOnly, onCardElementSelect, node.id],
   );
 
   const rotation = (node as any).rotation || 0;
@@ -3023,7 +3159,7 @@ function DiagramNodeInner({
     <div
       data-node-id={node.id}
       data-dw-highlight-anim={
-        highlightAnimStyle && !highlightPulseUsesShapeSilhouette ? 'true' : undefined
+        highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode ? 'true' : undefined
       }
       ref={(el) => {
         if (el && !isDuplicateDragPreview) {
@@ -3032,11 +3168,11 @@ function DiagramNodeInner({
       }}
       className={cn(
         "absolute group duration-200 ease-in-out",
-        spineLikeNode || (isIconNode && Boolean((node as DiagramNodeData).iconBevel))
+        spineLikeNode || (isIconNode && Boolean((node as DiagramNodeData).iconBevel)) || isCardNode
           ? "overflow-visible"
           : "rounded-lg",
         // Highlight pulse animates box-shadow; transitioning `filter` here can fight keyframes on some browsers (e.g. Chrome/Win).
-        node.highlightAnim && !isDuplicateDragPreview && !spineLikeNode && !highlightPulseUsesShapeSilhouette
+        node.highlightAnim && !isDuplicateDragPreview && !spineLikeNode && (highlightPulseUsesShapeSilhouette || isCardNode)
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
@@ -3071,7 +3207,7 @@ function DiagramNodeInner({
           onSubDiagramDoubleClick(node);
         }
       }}
-      onContextMenu={spineLikeNode ? undefined : (e) => onContextMenu && onContextMenu(e, node)} // Lines handle context menu in their SVG (not on container)
+      onContextMenu={spineLikeNode ? undefined : (e) => onContextMenu?.(e, node)}
       style={{
         zIndex: stackZIndex ?? 2,
         // For lines during drag, keep container position stable (use initial position)
@@ -3121,7 +3257,7 @@ function DiagramNodeInner({
         ...(spineLikeNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
-        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette ? highlightAnimStyle : {}),
+        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode ? highlightAnimStyle : {}),
         // Layer show/hide animation (opacity, transition, transform)
         ...(animationStyle && !isDuplicateDragPreview && {
           opacity: animationStyle.opacity,
@@ -3201,12 +3337,12 @@ function DiagramNodeInner({
                       isTimelineNode && "pointer-events-none",
                     )}
                     data-dw-highlight-anim={
-                      highlightAnimStyle && highlightPulseUsesShapeSilhouette ? 'true' : undefined
+                      highlightAnimStyle && highlightPulseUsesShapeSilhouette && !isCardNode ? 'true' : undefined
                     }
                     style={{
                       width: '100%',
                       height: '100%',
-                      ...(highlightAnimStyle && highlightPulseUsesShapeSilhouette ? highlightAnimStyle : {}),
+                      ...(highlightAnimStyle && highlightPulseUsesShapeSilhouette && !isCardNode ? highlightAnimStyle : {}),
                     }}
                   >
                     {renderShape()}
@@ -3447,7 +3583,7 @@ function DiagramNodeInner({
             hoveredHandle={hoveredHandle}
             onStart={handleResizeStart}
             disabled={false}
-            zIndexClass="z-50"
+            zIndexClass={cardHandleZIndex}
             handles={isIconNode ? ['right'] : undefined}
           />
        )}
@@ -3534,7 +3670,7 @@ function DiagramNodeInner({
            onConnect={() => onConnect({ style: 'bezier', curvature: 0.6 })}
            isConnectMode={isConnectMode}
            disabled={false}
-           zIndexClass="z-50"
+           zIndexClass={cardHandleZIndex}
          />
        )}
 
@@ -3557,7 +3693,7 @@ function DiagramNodeInner({
            visible={true}
            onPointerDown={handleCornerRadiusDragStart}
            disabled={isDraggingCornerRadius}
-           zIndexClass="z-50"
+           zIndexClass={cardHandleZIndex}
          />
        )}
 
@@ -3568,7 +3704,7 @@ function DiagramNodeInner({
            onPointerDown={onRotationPointerDown}
            disabled={false}
            isDragging={isRotationDragging ?? false}
-           zIndexClass="z-50"
+           zIndexClass={cardHandleZIndex}
          />
        )}
       </SlideShapeShadowTransitionProvider>

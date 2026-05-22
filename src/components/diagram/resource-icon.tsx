@@ -328,6 +328,71 @@ function PaletteMindmapGlyph(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+const CARD_BLUE = "#3b82f6";
+const CARD_BLUE_LIGHT = "#bfdbfe";
+const CARD_BLUE_MUTED = "#93c5fd";
+
+function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { type: string }) {
+  const slug = type.replace(/^generic\.card\./, "");
+  const frame = { stroke: "currentColor", strokeWidth: 1.2, fill: "#fff" as const };
+  if (slug === "profile-feature") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <rect x="3" y="3" width="18" height="18" rx="2.5" {...frame} />
+        <rect x="4.5" y="4.5" width="15" height="8.5" rx="1.5" fill={CARD_BLUE} />
+        <rect x="5" y="14.5" width="10" height="2" rx="0.8" fill={CARD_BLUE_MUTED} />
+        <rect x="5" y="17.5" width="7" height="1.5" rx="0.6" fill={CARD_BLUE_LIGHT} />
+      </svg>
+    );
+  }
+  if (slug === "compact-horizontal") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <rect x="2.5" y="6" width="19" height="12" rx="3" {...frame} />
+        <circle cx="7.5" cy="12" r="3.2" fill={CARD_BLUE} />
+        <rect x="12" y="9.5" width="7.5" height="2" rx="0.8" fill={CARD_BLUE_MUTED} />
+        <rect x="12" y="13" width="5.5" height="1.5" rx="0.6" fill={CARD_BLUE_LIGHT} />
+      </svg>
+    );
+  }
+  if (slug === "list-item-row") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <rect x="2.5" y="5" width="19" height="6" rx="2" {...frame} />
+        <rect x="2.5" y="13" width="19" height="6" rx="2" {...frame} />
+        <circle cx="6" cy="8" r="1.4" fill={CARD_BLUE} />
+        <rect x="9" y="7.2" width="8" height="1.6" rx="0.5" fill={CARD_BLUE_LIGHT} />
+        <circle cx="19" cy="8" r="0.55" fill={CARD_BLUE_MUTED} />
+        <circle cx="19" cy="9.4" r="0.55" fill={CARD_BLUE_MUTED} />
+        <circle cx="19" cy="10.8" r="0.55" fill={CARD_BLUE_MUTED} />
+        <circle cx="6" cy="16" r="1.4" fill={CARD_BLUE} />
+        <rect x="9" y="15.2" width="8" height="1.6" rx="0.5" fill={CARD_BLUE_LIGHT} />
+        <circle cx="19" cy="16" r="0.55" fill={CARD_BLUE_MUTED} />
+        <circle cx="19" cy="17.4" r="0.55" fill={CARD_BLUE_MUTED} />
+        <circle cx="19" cy="18.8" r="0.55" fill={CARD_BLUE_MUTED} />
+      </svg>
+    );
+  }
+  if (slug === "detail-post") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <rect x="3" y="3" width="18" height="18" rx="2.5" {...frame} />
+        <rect x="5" y="5.5" width="3" height="3" rx="0.8" fill={CARD_BLUE} />
+        <rect x="15" y="6" width="4.5" height="1.8" rx="0.6" fill={CARD_BLUE_LIGHT} />
+        <rect x="5" y="10.5" width="11" height="2.2" rx="0.8" fill={CARD_BLUE} />
+        <rect x="5" y="14" width="13" height="1.5" rx="0.5" fill={CARD_BLUE_MUTED} />
+        <rect x="5" y="16.5" width="9" height="1.5" rx="0.5" fill={CARD_BLUE_LIGHT} />
+        <rect x="5" y="19" width="14" height="3" rx="1" fill="none" stroke={CARD_BLUE} strokeWidth={0.9} strokeDasharray="2 1.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...props}>
+      <rect x="4" y="5" width="16" height="14" rx="2.5" {...frame} />
+    </svg>
+  );
+}
+
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
   imagePath?: string; // If provided, use this exact icon path (legacy support)
@@ -340,6 +405,46 @@ interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   iconColor?: string; // Color for Lucide icons
   imageUrl?: string; // External URL for generic.icon.custom
   imageOptions?: Partial<CustomImageOptions>;
+}
+
+type EmojiSizeSpec = { mode: "px"; size: number } | { mode: "fill" };
+
+/** Avoid parseInt("100%") === 100 — treat % widths as fill-the-glyph-box. */
+function resolveEmojiDisplaySize(width: string | number | undefined): EmojiSizeSpec {
+  if (typeof width === "number" && Number.isFinite(width) && width > 0) {
+    return { mode: "px", size: width };
+  }
+  if (typeof width === "string") {
+    const trimmed = width.trim();
+    if (trimmed.endsWith("%")) return { mode: "fill" };
+    const parsed = Number.parseFloat(trimmed);
+    if (Number.isFinite(parsed) && parsed > 0) return { mode: "px", size: parsed };
+  }
+  return { mode: "px", size: 70 };
+}
+
+function emojiGlyphStyle(sizeSpec: EmojiSizeSpec, extra?: React.CSSProperties): React.CSSProperties {
+  const base: React.CSSProperties = {
+    lineHeight: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    ...extra,
+  };
+  if (sizeSpec.mode === "fill") {
+    return {
+      ...base,
+      width: "100%",
+      height: "100%",
+      fontSize: "min(100cqw, 100cqh)",
+    };
+  }
+  return {
+    ...base,
+    width: sizeSpec.size,
+    height: sizeSpec.size,
+    fontSize: sizeSpec.size,
+  };
 }
 
 export function ResourceIcon({ type, imagePath, provider, category, file, iconType, iconName, emoji, iconColor, imageUrl, imageOptions, ...props }: ResourceIconProps) {
@@ -528,21 +633,15 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   }
 
   if (iconType === "emoji" && emoji) {
-    const size = typeof props.width === "number" ? props.width : parseInt(String(props.width || 70), 10) || 70;
+    const sizeSpec = resolveEmojiDisplaySize(props.width);
     return (
       <span
         role="img"
         aria-label={type}
-        style={{
-          fontSize: `${size}px`,
-          lineHeight: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: `${size}px`,
-          height: `${size}px`,
-          ...(typeof props.style === "object" && props.style !== null ? props.style : {}),
-        }}
+        style={emojiGlyphStyle(
+          sizeSpec,
+          typeof props.style === "object" && props.style !== null ? props.style : undefined,
+        )}
       >
         {emoji}
       </span>
@@ -566,9 +665,16 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         bookmark: "🔖", camera: "📷", document: "📄", folder: "📁", gift: "🎁", location: "📍",
       };
       const emojiChar = emojiMap[slug] || "📌";
-      const size = typeof props.width === "number" ? props.width : parseInt(String(props.width || 70), 10) || 70;
+      const sizeSpec = resolveEmojiDisplaySize(props.width);
       return (
-        <span role="img" aria-label={type} style={{ fontSize: `${size}px`, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: `${size}px`, height: `${size}px`, ...(typeof props.style === "object" && props.style !== null ? props.style : {}) }}>
+        <span
+          role="img"
+          aria-label={type}
+          style={emojiGlyphStyle(
+            sizeSpec,
+            typeof props.style === "object" && props.style !== null ? props.style : undefined,
+          )}
+        >
           {emojiChar}
         </span>
       );
@@ -591,6 +697,10 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   }
   if (type === "generic.chart.ring") {
     return <ChartPaletteRingGlyph {...props} />;
+  }
+
+  if (type?.startsWith("generic.card.")) {
+    return <CardPaletteGlyph type={type} {...props} />;
   }
 
   // Vector preview only: matches the on-canvas shape (rounded body + dark heading strip), not the flat PNG.

@@ -22,6 +22,8 @@ import {
   highlightGlowApproxHaloPx,
 } from "@/lib/highlight-anim";
 import { ChevronDown, Palette, RotateCcw, Shuffle, X } from "lucide-react";
+import { CARD_ICON_PLACEMENTS, CARD_ICON_SIZE_MODES } from "@/lib/card-icon-layout";
+import type { CardIconPlacement, CardIconSizeMode } from "@/lib/card-types";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import {
   ICON_BEVEL_DEFAULT_DEPTH,
@@ -45,6 +47,9 @@ import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
+import type { CardElementData } from "@/lib/card-types";
+import { CardPropertiesPanel } from "./card-properties-panel";
+import { cardTemplateHasDedicatedPropertiesPanel } from "@/lib/card-compact-horizontal";
 
 /** Native steppers steal horizontal space on short inputs and clip fractional values (Chrome/Safari/Firefox). */
 const NUMBER_INPUT_NO_SPINNER =
@@ -356,6 +361,8 @@ interface VisualStylingPanelProps {
   isLucideIcon?: boolean;
   /** Icon/resource/emoji tile — opacity, size, remove background (see `isDiagramIconTileNodeType`). */
   showIconTileStyling?: boolean;
+  /** Card icon-slot with a dropped icon — show position control in Icon Styling. */
+  showCardIconPlacement?: boolean;
   /** When true, shows 3D bevel + rotation (icon/resource/emoji tiles). */
   showIconBevel?: boolean;
   /** Node fields for raster plate-colour sampling (catalog lookup by type when needed). */
@@ -381,6 +388,15 @@ interface VisualStylingPanelProps {
   isPyramid?: boolean;
   /** When true, shows heading strip color (text-box-heading only) */
   isTextBoxHeading?: boolean;
+  /** When true, shows profile card region styling (top fill, text segments). */
+  isCardProfile?: boolean;
+  /** When true, selected item is any card template. */
+  isCardNode?: boolean;
+  cardTemplateId?: string;
+  cardElements?: CardElementData;
+  onCardElementsChange?: (elements: CardElementData) => void;
+  /** Optional extra sections (e.g. card element styling) rendered at the bottom of the scroll area */
+  footer?: React.ReactNode;
 }
 
 function IconBevelMatchColorPreview({
@@ -507,7 +523,7 @@ function IconBevelMatchColorPreview({
   );
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, footer }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -914,11 +930,13 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             </div>
           )}
 
-          {!isShape && (
+          {(!isShape || showIconTileStyling) && (
             <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-muted-foreground rounded-full shrink-0" />
-                <Label className="text-sm font-semibold text-foreground">Size</Label>
+                <Label className="text-sm font-semibold text-foreground">
+                  {showIconTileStyling ? "Icon size" : "Size"}
+                </Label>
               </div>
               <Select
                 value={styling.nodeSize || 'normal'}
@@ -932,6 +950,58 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   <SelectItem value="half" className="text-sm">Half</SelectItem>
                   <SelectItem value="quarter" className="text-sm">Quarter</SelectItem>
                   <SelectItem value="double" className="text-sm">Double</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {showCardIconPlacement && (
+            <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-muted-foreground rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Sizing</Label>
+              </div>
+              <Select
+                value={styling.iconSizeMode ?? "scaled"}
+                onValueChange={(value) =>
+                  onStylingChange({ iconSizeMode: value as CardIconSizeMode })
+                }
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Scaled" />
+                </SelectTrigger>
+                <SelectContent className="z-[70]">
+                  {CARD_ICON_SIZE_MODES.map(({ value, label }) => (
+                    <SelectItem key={value} value={value} className="text-sm">
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {showCardIconPlacement && (
+            <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-muted-foreground rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Icon position</Label>
+              </div>
+              <Select
+                value={styling.iconPlacement ?? "center"}
+                onValueChange={(value) =>
+                  onStylingChange({ iconPlacement: value as CardIconPlacement })
+                }
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Center" />
+                </SelectTrigger>
+                <SelectContent className="z-[70]">
+                  {CARD_ICON_PLACEMENTS.map(({ value, label }) => (
+                    <SelectItem key={value} value={value} className="text-sm">
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1086,6 +1156,12 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               </StylingAccordionSection>
 
               <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Background" dotClassName="bg-emerald-500" outerClassName="border-emerald-200/50 bg-emerald-50/50">
+                {isCardNode ? (
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    Card fill area{cardTemplateId ? ` (${cardTemplateId.replace(/-/g, " ")})` : ""}. Border
+                    styles the card outline; click inner regions on the canvas to style segments individually.
+                  </p>
+                ) : null}
                 <div
                   className={cn(
                     "mb-2 grid gap-2",
@@ -1653,6 +1729,36 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       </div>
                     </div>
                   ) : null}
+                </StylingAccordionSection>
+              ) : null}
+
+              {cardTemplateHasDedicatedPropertiesPanel(cardTemplateId) &&
+              cardElements &&
+              onCardElementsChange ? (
+                <StylingAccordionSection
+                  defaultOpen={accordionDefaultOpen}
+                  title="Card properties"
+                  dotClassName="bg-sky-500"
+                  outerClassName="border-sky-200/50 bg-sky-50/50"
+                >
+                  <CardPropertiesPanel
+                    cardTemplateId={cardTemplateId}
+                    elements={cardElements}
+                    onElementsChange={onCardElementsChange}
+                  />
+                </StylingAccordionSection>
+              ) : isCardNode && !cardTemplateHasDedicatedPropertiesPanel(cardTemplateId) ? (
+                <StylingAccordionSection
+                  defaultOpen={accordionDefaultOpen}
+                  title="Card properties"
+                  dotClassName="bg-sky-500"
+                  outerClassName="border-sky-200/50 bg-sky-50/50"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    Select regions on the card to style icon areas, text chips, and tags in the panel
+                    footer. Use <span className="font-medium">Background</span> above for the card fill and{" "}
+                    <span className="font-medium">Border</span> for the outline.
+                  </p>
                 </StylingAccordionSection>
               ) : null}
 
@@ -2244,6 +2350,8 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   </div>
                 </div>
               </StylingAccordionSection>
+
+              {footer}
             </div>
           </div>
           )}

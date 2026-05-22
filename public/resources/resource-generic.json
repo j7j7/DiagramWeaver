@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 41,
+  "totalResources": 45,
   "categories": {
     "text": {
       "name": "Text",
@@ -171,6 +171,32 @@
         {
           "name": "UML Class",
           "file": "uml-class.png",
+          "type": "shape"
+        }
+      ]
+    },
+    "cards": {
+      "name": "Cards",
+      "path": "generic/cards",
+      "resources": [
+        {
+          "name": "Profile Feature",
+          "file": "profile-feature.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Compact Horizontal",
+          "file": "compact-horizontal.svg",
+          "type": "shape"
+        },
+        {
+          "name": "List Item Row",
+          "file": "list-item-row.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Detail Post",
+          "file": "detail-post.svg",
           "type": "shape"
         }
       ]

@@ -779,6 +779,28 @@ export default function DiagramEditor() {
     );
   }, []);
 
+  /** Selected card sub-element (node id + element id) for per-region styling. */
+  const [cardElementSelection, setCardElementSelection] = React.useState<{
+    nodeId: string;
+    elementId: string;
+  } | null>(null);
+
+  const handleCardElementSelect = React.useCallback((nodeId: string, elementId: string | null) => {
+    if (elementId === null) {
+      setCardElementSelection((prev) => (prev?.nodeId === nodeId ? null : prev));
+      return;
+    }
+    setCardElementSelection({ nodeId, elementId });
+  }, []);
+
+  React.useEffect(() => {
+    if (!selectedItem || selectedItem.itemType === "edge") {
+      setCardElementSelection(null);
+      return;
+    }
+    setCardElementSelection((prev) => (prev?.nodeId === selectedItem.id ? prev : null));
+  }, [selectedItem?.id, selectedItem?.itemType]);
+
   React.useEffect(() => {
     setTimelineEntrySelectionKeys((prev) => {
       const next = prev.filter((k) => {
@@ -4855,6 +4877,8 @@ export default function DiagramEditor() {
         timelineActiveEntryId={timelineActiveEntryId}
         onTimelineEntrySelect={handleTimelineEntrySelect}
         onTimelineCardRemoved={handleTimelineCardRemoved}
+        cardElementSelection={cardElementSelection}
+        onCardElementSelect={handleCardElementSelect}
         handleResourceSelect={handleResourceSelect}
         handleResourceActivate={handleResourceActivate}
         handleResourceActivateAtPosition={handleResourceActivateAtPosition}

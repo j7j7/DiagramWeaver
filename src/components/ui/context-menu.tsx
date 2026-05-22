@@ -114,6 +114,12 @@ interface ContextMenuProps {
   /** Closed `*.object.*` palette shapes — swap rendered kind while preserving node id and connections. */
   shapeChangeOptions?: Array<{ kind: string; label: string }>;
   onChangeDiagramObjectShapeKind?: (kind: string) => void;
+  /** Card template swap submenu (`generic.card.*`). */
+  cardTemplateChangeOptions?: Array<{ templateId: string; label: string }>;
+  onChangeCardTemplate?: (templateId: string) => void;
+  /** Card icon-slot: menu opened from an assigned icon inside a card */
+  cardIconContext?: boolean;
+  onRemoveCardIcon?: () => void;
 }
 
 // Connector-only lines hide root label/text tooling; timeline keeps Text actions like shapes.
@@ -214,12 +220,17 @@ export function ContextMenu({
   mindmapPairConnectVisible = false,
   shapeChangeOptions = [],
   onChangeDiagramObjectShapeKind,
+  cardTemplateChangeOptions = [],
+  onChangeCardTemplate,
+  cardIconContext = false,
+  onRemoveCardIcon,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
   const [renderOrderSubmenuOpen, setRenderOrderSubmenuOpen] = useState(false);
   const [layoutOrderSubmenuOpen, setLayoutOrderSubmenuOpen] = useState(false);
   const [shapeSubmenuOpen, setShapeSubmenuOpen] = useState(false);
+  const [cardTemplateSubmenuOpen, setCardTemplateSubmenuOpen] = useState(false);
   const [pasteSpecialSubmenuOpen, setPasteSpecialSubmenuOpen] = useState(false);
 
   useEffect(() => {
@@ -228,6 +239,7 @@ export function ContextMenu({
       setRenderOrderSubmenuOpen(false);
       setLayoutOrderSubmenuOpen(false);
       setShapeSubmenuOpen(false);
+      setCardTemplateSubmenuOpen(false);
       setPasteSpecialSubmenuOpen(false);
     }
   }, [visible]);
@@ -467,7 +479,8 @@ export function ContextMenu({
         const isText = t.startsWith('generic.text.');
         const isResourceItem = !isShape && !isText && !isConnectorPolylineOnlyNodeType(t);
         const closedLineFill = isConnectorPolylineOnlyNodeType(t) && connectorLineClosed;
-        return isShape || isTextbox || isLucide || isResourceItem || isEmoji || closedLineFill;
+        const isCard = t.startsWith('generic.card.');
+        return cardIconContext || isCard || isShape || isTextbox || isLucide || isResourceItem || isEmoji || closedLineFill;
       })() && (
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
@@ -477,7 +490,21 @@ export function ContextMenu({
           }}
         >
           <Palette className="w-4 h-4" />
-          Visual Styling
+          {cardIconContext ? 'Icon styling' : 'Visual Styling'}
+        </button>
+      )}
+
+      {cardIconContext && onRemoveCardIcon && (
+        <button
+          type="button"
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2 text-destructive"
+          onClick={() => {
+            onRemoveCardIcon();
+            onClose();
+          }}
+        >
+          <Trash2 className="w-4 h-4" />
+          Remove icon
         </button>
       )}
 
@@ -513,6 +540,49 @@ export function ContextMenu({
                     onClick={() => {
                       onChangeDiagramObjectShapeKind(opt.kind);
                       setShapeSubmenuOpen(false);
+                      onClose();
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+      {itemType === 'node' &&
+        cardTemplateChangeOptions.length > 0 &&
+        onChangeCardTemplate && (
+          <div className="relative">
+            <button
+              type="button"
+              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+              onMouseEnter={() => setCardTemplateSubmenuOpen(true)}
+              onMouseLeave={() => setCardTemplateSubmenuOpen(false)}
+            >
+              <Shapes className="w-4 h-4 shrink-0" />
+              Change card template
+              <ChevronRight className="w-4 h-4 ml-auto shrink-0" />
+            </button>
+            {cardTemplateSubmenuOpen && (
+              <div
+                className={cn(
+                  "absolute left-full top-0 bg-popover border border-border rounded-md shadow-lg py-1 z-50 max-h-[min(360px,calc(100vh-96px))] overflow-y-auto",
+                  "animate-in fade-in-0 zoom-in-95 min-w-[180px]",
+                )}
+                style={{ marginLeft: "0px" }}
+                onMouseEnter={() => setCardTemplateSubmenuOpen(true)}
+                onMouseLeave={() => setCardTemplateSubmenuOpen(false)}
+              >
+                {cardTemplateChangeOptions.map((opt) => (
+                  <button
+                    key={opt.templateId}
+                    type="button"
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      onChangeCardTemplate(opt.templateId);
+                      setCardTemplateSubmenuOpen(false);
                       onClose();
                     }}
                   >

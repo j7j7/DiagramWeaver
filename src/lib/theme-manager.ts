@@ -14,6 +14,8 @@ import { shiftHueOfColor } from './color-shift';
 import { isConnectorLineGeometryClosed } from './line-curve-path';
 import { syncClosedConnectorLineBorderWidth } from './line-styling';
 import { isConnectorLineNodeType } from './utils';
+import { isCardNodeType, getCardTemplateIdFromNodeType } from './card-utils';
+import { applyThemeToCardElements } from './card-theme';
 
 /**
  * Hue step per pie/bar/line series row and per item when multi-select hue staggering is on
@@ -1963,6 +1965,26 @@ class ThemeManager {
       delete (updated as any).progressTrackColors;
       delete (updated as any).progressTrackGradientAngle;
       Object.assign(updated, progressBarFillFromTheme(properties, colorProps));
+    }
+
+    const cardNode = updated as DiagramNodeData;
+    if (isCardNodeType(cardNode.type) && cardNode.card?.elements) {
+      const templateId =
+        cardNode.card.templateId ?? getCardTemplateIdFromNodeType(cardNode.type) ?? "profile-feature";
+      cardNode.backgroundStyle = "none";
+      delete (cardNode as { backgroundColor?: string }).backgroundColor;
+      delete (cardNode as { backgroundColors?: string[] }).backgroundColors;
+      delete (cardNode as { meshGradientPoints?: unknown }).meshGradientPoints;
+      cardNode.card = {
+        ...cardNode.card,
+        elements: applyThemeToCardElements(
+          cardNode.card.elements,
+          templateId,
+          properties,
+          colorProps,
+          { hueShiftDegrees: hueShift, hueStepDegrees: chartSeriesHueStepDeg },
+        ),
+      };
     }
 
     return syncClosedConnectorLineBorderWidth(updated as DiagramNodeData) as typeof updated;

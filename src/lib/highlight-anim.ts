@@ -2,6 +2,25 @@ import type { CSSProperties } from 'react';
 import type { DiagramNodeData } from '@/lib/types';
 import { isConnectorLineNodeType } from '@/lib/utils';
 
+/** Merge shape drop-shadow filter with highlight glow filter on one card shell element. */
+export function mergeCardShellHighlightStyle(
+  highlightStyle: CSSProperties | undefined,
+  shapeShadowFilter: string | undefined,
+): CSSProperties {
+  if (!highlightStyle && !shapeShadowFilter) return {};
+  const glowFilter =
+    typeof highlightStyle?.filter === 'string' ? highlightStyle.filter : undefined;
+  const mergedFilter = [shapeShadowFilter, glowFilter].filter(Boolean).join(' ') || undefined;
+  if (!highlightStyle) {
+    return shapeShadowFilter ? { filter: shapeShadowFilter } : {};
+  }
+  const { filter: _glowFilter, ...rest } = highlightStyle;
+  return {
+    ...rest,
+    ...(mergedFilter ? { filter: mergedFilter } : {}),
+  };
+}
+
 export const HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC = 1;
 export const HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC = 5;
 export const HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR = 'rgba(59, 130, 246, 0.85)';
@@ -236,6 +255,11 @@ export function getHighlightAnimStyleForNode(
     highlightAnimStaggerCount?: number;
     /** Pulse follows painted silhouette (e.g. SVG circle/triangle), not the rectangular node frame. */
     pulseFollowsShapeSilhouette?: boolean;
+    /**
+     * HTML rounded shell (e.g. cards): use box-shadow on the shell's border-radius, not alpha
+     * drop-shadow on the rectangular node frame or a filter-only wrapper.
+     */
+    roundedShellGlow?: boolean;
   }
 ): CSSProperties | undefined {
   if (opts.isLineNode || opts.isDuplicateDragPreview) return undefined;
@@ -243,7 +267,11 @@ export function getHighlightAnimStyleForNode(
 
   const color = node.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR;
   const intensity = clampHighlightGlowIntensity((node as any).highlightAnimGlowIntensity);
-  const silhouetteMode: HighlightAnimSilhouetteMode = opts.pulseFollowsShapeSilhouette ? 'alpha' : 'box';
+  const silhouetteMode: HighlightAnimSilhouetteMode = opts.roundedShellGlow
+    ? 'box'
+    : opts.pulseFollowsShapeSilhouette
+      ? 'alpha'
+      : 'box';
 
   if (node.highlightAnimMode === 'constant') {
     return getHighlightConstantGlowStyle(color, silhouetteMode, intensity);

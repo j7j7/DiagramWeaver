@@ -52,6 +52,7 @@ import { applyMindmapHueAnchorsAfterVisualChanges } from '@/lib/mindmap-layout';
 import { TextStylingPanel } from './text-styling-panel';
 import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
+import { CardElementStylingPanel } from './card-element-styling-panel';
 import { LineStylingPanel } from './line-styling-panel';
 import { ConnectionAnimationControls } from './connection-animation-controls';
 import { ConnectionLineStyleFields } from './connection-line-style-fields';
@@ -75,6 +76,16 @@ import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
+import { findCardElement, isCardNodeType, updateCardElementTree } from '@/lib/card-utils';
+import { cardIconVisualStyling, partitionCardIconVisualStylingPatch } from '@/lib/card-icon-styling';
+import { CARD_ICON_PLACEMENTS } from '@/lib/card-icon-layout';
+import {
+  cardBackgroundVisualFromElements,
+  applyCardBackgroundVisual,
+  partitionCardVisualStylingPatch,
+} from '@/lib/card-theme';
+import { getCardTemplateIdFromNodeType } from '@/lib/card-utils';
+import type { CardElementData } from '@/lib/card-types';
 import { supportsDiagramMeshGradient } from '@/lib/diagram-mesh-gradient-support';
 import { extractLineStylingFromNode, applyLineStylingToNode, syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
@@ -114,6 +125,9 @@ interface ContextToolbarProps {
   presentationHasLaterSlides?: boolean;
   onPropagateAddToLaterSlides?: () => void;
   onPropagateDeleteToLaterSlides?: () => void;
+  /** Selected card sub-element (when a card node is selected) */
+  cardElementSelection?: { nodeId: string; elementId: string } | null;
+  onCardElementSelect?: (nodeId: string, elementId: string | null) => void;
 }
 
 export function ContextToolbar({
@@ -146,6 +160,8 @@ export function ContextToolbar({
   presentationHasLaterSlides = false,
   onPropagateAddToLaterSlides,
   onPropagateDeleteToLaterSlides,
+  cardElementSelection = null,
+  onCardElementSelect,
 }: ContextToolbarProps) {
   const { toast } = useToast();
   const [labelOpen, setLabelOpen] = useState(false);
@@ -291,6 +307,11 @@ export function ContextToolbar({
       
       // Check if click is on a Radix Select item
       if (target.closest('[data-radix-select-item]')) {
+        return;
+      }
+
+      // Slider thumb/track (Radix) — drag can extend outside panel bounds
+      if (target.closest('[role="slider"]') || target.closest('[data-radix-slider-thumb]') || target.closest('[data-radix-slider-track]')) {
         return;
       }
       
@@ -566,6 +587,22 @@ export function ContextToolbar({
     return {};
   }, [selectedItem, isNode, selectedItemIds, diagramData]);
 
+  const selectedCardElement = useMemo(() => {
+    if (!cardElementSelection) return null;
+    const data = currentDiagramData ?? diagramData;
+    if (!data) return null;
+    const node = data.nodes.find((n) => n.id === cardElementSelection.nodeId);
+    if (!node?.card?.elements) return null;
+    return findCardElement(node.card.elements, cardElementSelection.elementId);
+  }, [cardElementSelection, currentDiagramData, diagramData]);
+
+  const selectedCardIconElement = useMemo(() => {
+    if (!selectedCardElement || selectedCardElement.kind !== "icon-slot" || !selectedCardElement.iconRef) {
+      return null;
+    }
+    return selectedCardElement;
+  }, [selectedCardElement]);
+
   const getCurrentVisualStyling = useMemo(() => {
     if (!selectedItem || !diagramData) return {};
     let currentItem = selectedItem;
@@ -573,11 +610,23 @@ export function ContextToolbar({
       const foundNode = diagramData.nodes.find((n) => n.id === selectedItem.id);
       currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
     }
+    if (selectedCardIconElement?.iconRef) {
+      return cardIconVisualStyling(selectedCardIconElement.iconRef, selectedCardIconElement);
+    }
     if (isNode) {
-      return extractVisualStylingFromNode(currentItem as any);
+      const node = currentItem as DiagramNodeData;
+      const base = extractVisualStylingFromNode(node);
+      if (isCardNodeType(node.type) && node.card?.elements) {
+        const templateId = node.card.templateId ?? getCardTemplateIdFromNodeType(node.type) ?? undefined;
+        return {
+          ...base,
+          ...cardBackgroundVisualFromElements(node.card.elements, templateId),
+        };
+      }
+      return base;
     }
     return {};
-  }, [selectedItem, isNode, diagramData]);
+  }, [selectedItem, isNode, diagramData, selectedCardIconElement]);
 
   const getCurrentLineStyling = useMemo(() => {
     if (!selectedItem || !diagramData) return {};
@@ -1231,18 +1280,74 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
+      if (selectedCardIconElement?.iconRef && cardElementSelection) {
+        const { iconRefPatch, elementPatch } = partitionCardIconVisualStylingPatch(stylingObj);
+        const patch: Partial<import("@/lib/card-types").CardElementData> = { ...elementPatch };
+        if (Object.keys(iconRefPatch).length > 0) {
+          patch.iconRef = { ...selectedCardIconElement.iconRef, ...iconRefPatch };
+        }
+        if (Object.keys(patch).length === 0) return;
+
+        const applyPatch = (prev: DiagramData): DiagramData => ({
+          ...prev,
+          nodes: prev.nodes.map((n) => {
+            if (n.id !== cardElementSelection.nodeId || !n.card?.elements) return n;
+            return {
+              ...n,
+              card: {
+                ...n.card,
+                elements: updateCardElementTree(n.card.elements, cardElementSelection.elementId, patch),
+              },
+            };
+          }),
+        });
+        if (onCurrentDiagramDataUpdate) {
+          onCurrentDiagramDataUpdate(applyPatch);
+        } else if (onDiagramDataUpdate && diagramData) {
+          onDiagramDataUpdate(applyPatch(diagramData));
+        }
+        if (selectedItem?.id === cardElementSelection.nodeId) {
+          const data = currentDiagramData ?? diagramData;
+          const patched = data ? applyPatch(data).nodes.find((n) => n.id === cardElementSelection.nodeId) : undefined;
+          if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+        }
+        return;
+      }
+
+      const selectedNode = selectedItem as DiagramNodeData;
+      const isCard =
+        isCardNodeType(selectedNode.type) && !!selectedNode.card?.elements;
+      const cardTemplateId =
+        selectedNode.card?.templateId ?? getCardTemplateIdFromNodeType(selectedNode.type) ?? undefined;
+
+      let stylingForNode = stylingObj;
+      let cardElements = selectedNode.card?.elements;
+
+      if (isCard && cardElements) {
+        const { cardBackground, nodePatch } = partitionCardVisualStylingPatch(stylingObj);
+        if (Object.keys(cardBackground).length > 0) {
+          cardElements = applyCardBackgroundVisual(cardElements, cardTemplateId, cardBackground);
+        }
+        stylingForNode = nodePatch;
+      }
+
       const augmented = selectedItem
         ? augmentTimelineBarOrientationPatch(
-            selectedItem as DiagramNodeData,
-            augmentSegmentedRectangleStylingPlacementPatch(selectedItem as DiagramNodeData, stylingObj),
+            selectedNode,
+            augmentSegmentedRectangleStylingPlacementPatch(selectedNode, stylingForNode),
           )
-        : stylingObj;
+        : stylingForNode;
       const merged = { ...selectedItem } as Record<string, unknown>;
       for (const [k, v] of Object.entries(augmented)) {
         if (v === null) delete merged[k];
         else if (v !== undefined) merged[k] = v;
       }
-      onItemUpdate?.(syncClosedConnectorLineBorderWidth(merged as unknown as DiagramNodeData) as SelectedItem);
+      if (isCard && cardElements && selectedNode.card) {
+        merged.card = { ...selectedNode.card, elements: cardElements };
+      }
+      onItemUpdate?.(
+        syncClosedConnectorLineBorderWidth(merged as unknown as DiagramNodeData) as SelectedItem,
+      );
     }
   };
 
@@ -1319,6 +1424,90 @@ export function ContextToolbar({
       );
     }
   };
+
+  const handleCardElementChange = useCallback(
+    (patch: Partial<CardElementData>) => {
+      if (!cardElementSelection) return;
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (n.id !== cardElementSelection.nodeId || !n.card?.elements) return n;
+          return {
+            ...n,
+            card: {
+              ...n.card,
+              elements: updateCardElementTree(n.card.elements, cardElementSelection.elementId, patch),
+            },
+          };
+        }),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      if (selectedItem?.id === cardElementSelection.nodeId) {
+        const data = currentDiagramData ?? diagramData;
+        const node = data?.nodes.find((n) => n.id === cardElementSelection.nodeId);
+        if (node) {
+          const patched = applyPatch(data!).nodes.find((n) => n.id === cardElementSelection.nodeId);
+          if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+        }
+      }
+    },
+    [
+      cardElementSelection,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      selectedItem?.id,
+      onItemUpdate,
+    ],
+  );
+
+  const selectedCardNodeElements = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    return node?.card?.elements;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const selectedCardTemplateId = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    return node?.card?.templateId;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const handleCardElementsChange = useCallback(
+    (elements: CardElementData) => {
+      if (!selectedItem?.id) return;
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (n.id !== selectedItem.id || !n.card) return n;
+          return { ...n, card: { ...n.card, elements } };
+        }),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      const data = currentDiagramData ?? diagramData;
+      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
+      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+    },
+    [
+      selectedItem?.id,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      onItemUpdate,
+    ],
+  );
 
   const handleLineStylingChange = (styling: any) => {
     // Check if multiple items are selected
@@ -2265,17 +2454,29 @@ export function ContextToolbar({
                   }}
                   onTagPositionChange={(tagPosition) => onItemUpdate?.({ ...selectedItem, tagPosition } as SelectedItem)}
                   isLucideIcon={(() => {
+                    if (selectedCardIconElement?.iconRef) {
+                      const ir = selectedCardIconElement.iconRef;
+                      return ir.type.startsWith('generic.icon.') || ir.iconType === 'lucide';
+                    }
                     const t = (selectedItem as any)?.type || '';
                     return t.startsWith('generic.icon.') || (selectedItem as any)?.iconType === 'lucide';
                   })()}
                   showIconTileStyling={(() => {
+                    if (selectedCardIconElement?.iconRef) {
+                      const ir = selectedCardIconElement.iconRef;
+                      return isDiagramIconTileNodeType(ir.type, ir.iconType);
+                    }
                     const t = (selectedItem as any)?.type || '';
                     return isDiagramIconTileNodeType(t, (selectedItem as any)?.iconType);
                   })()}
-                  showIconBevel={isDiagramIconTileNodeType(
-                    (selectedItem as any)?.type,
-                    (selectedItem as any)?.iconType,
-                  )}
+                  showCardIconPlacement={!!selectedCardIconElement?.iconRef}
+                  showIconBevel={(() => {
+                    if (selectedCardIconElement?.iconRef) return false;
+                    return isDiagramIconTileNodeType(
+                      (selectedItem as any)?.type,
+                      (selectedItem as any)?.iconType,
+                    );
+                  })()}
                   iconBevelSampleNode={(() => {
                     if (!isNode || !diagramData) return undefined;
                     const found = diagramData.nodes.find((n) => n.id === selectedItem.id);
@@ -2291,6 +2492,12 @@ export function ContextToolbar({
                     });
                   })()}
                   showRemoveBackground={(() => {
+                    if (selectedCardIconElement?.iconRef) {
+                      const ir = selectedCardIconElement.iconRef;
+                      const isLucide = ir.type.startsWith('generic.icon.') || ir.iconType === 'lucide';
+                      const isEmoji = ir.type.startsWith('generic.emoji.') || ir.iconType === 'emoji';
+                      return isLucide || isEmoji || isDiagramIconTileNodeType(ir.type, ir.iconType);
+                    }
                     const t = (selectedItem as any)?.type || '';
                     const isShape = isShapeNodeType(t);
                     const isText = t.startsWith('generic.text.');
@@ -2300,6 +2507,7 @@ export function ContextToolbar({
                     return isLucide || isResourceItem || isEmoji;
                   })()}
                   showFullStyling={(() => {
+                    if (selectedCardIconElement?.iconRef) return false;
                     const t = (selectedItem as any)?.type || '';
                     const isShape = isShapeNodeType(t);
                     const isTextbox = t === 'generic.text.textbox';
@@ -2307,11 +2515,15 @@ export function ContextToolbar({
                     return isShape || isTextbox || closedLineFill;
                   })()}
                   isShape={(() => {
+                    if (selectedCardIconElement?.iconRef) return false;
                     const t = (selectedItem as any)?.type || '';
                     const closedLineFill = isLineNode && isClosedConnectorLine;
                     return isShapeNodeType(t) || closedLineFill;
                   })()}
-                  supportsMeshGradientBackground={supportsDiagramMeshGradient((selectedItem as any)?.type)}
+                  supportsMeshGradientBackground={
+                    supportsDiagramMeshGradient((selectedItem as any)?.type) ||
+                    isCardNodeType((selectedItem as DiagramNodeData)?.type)
+                  }
                   isRoundedRectangle={
                     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
                     (selectedItem as any)?.type === 'generic.object.mind-map-node' ||
@@ -2338,13 +2550,33 @@ export function ContextToolbar({
                     (selectedItem as any)?.type === 'generic.object.pyramid' ||
                     (selectedItem as any)?.type?.endsWith?.('.pyramid')
                   }
+                  isCardNode={isCardNodeType((selectedItem as DiagramNodeData)?.type)}
+                  cardTemplateId={selectedCardTemplateId}
+                  cardElements={selectedCardNodeElements}
+                  onCardElementsChange={handleCardElementsChange}
                   noIconBackground={(() => {
+                    if (selectedCardIconElement?.iconRef) {
+                      return !!selectedCardIconElement.iconRef.noIconBackground;
+                    }
                     if (!selectedItem || !diagramData) return false;
                     const item = selectedItemIds && selectedItemIds.size > 1
                       ? diagramData.nodes.find(n => n.id === selectedItem.id) || selectedItem
                       : selectedItem;
                     return !!(item as any)?.noIconBackground;
                   })()}
+                  footer={
+                    selectedCardElement &&
+                    cardElementSelection?.nodeId === selectedItem?.id &&
+                    isCardNodeType((selectedItem as DiagramNodeData)?.type) ? (
+                      <CardElementStylingPanel
+                        element={selectedCardElement}
+                        onElementChange={handleCardElementChange}
+                        onClearSelection={() =>
+                          onCardElementSelect?.(cardElementSelection.nodeId, null)
+                        }
+                      />
+                    ) : undefined
+                  }
                 />
               </div>,
               document.body

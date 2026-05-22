@@ -197,6 +197,9 @@ interface TopMenuBarProps {
   onSelectAll?: () => void;
   selectedItem?: SelectedItem | null;
   selectedItemIds?: Set<string>;
+  /** Selected card sub-element for per-region styling in the visual panel */
+  cardElementSelection?: { nodeId: string; elementId: string } | null;
+  onCardElementSelect?: (nodeId: string, elementId: string | null) => void;
   onItemUpdate?: (updatedItem: SelectedItem) => void;
   /** Multi-select: apply tag / description (`info`) / plain label to all selected nodes and zones. */
   onBulkMetadataUpdate?: (patch: { tag?: string; info?: string; label?: string }) => void;
@@ -321,6 +324,8 @@ export function TopMenuBar({
   onSelectAll,
   selectedItem,
   selectedItemIds = new Set(),
+  cardElementSelection = null,
+  onCardElementSelect,
   onItemUpdate,
   onBulkMetadataUpdate,
   onConnect,
@@ -1319,6 +1324,8 @@ export function TopMenuBar({
           <ContextToolbar
             selectedItem={selectedItem}
             selectedItemIds={selectedItemIds}
+            cardElementSelection={cardElementSelection}
+            onCardElementSelect={onCardElementSelect}
             onItemUpdate={onItemUpdate}
             onBulkMetadataUpdate={onBulkMetadataUpdate}
             onConnect={onConnect}

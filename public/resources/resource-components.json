@@ -49,7 +49,7 @@
      "generic": {
        "name": "Generic",
        "icon": "generic.png",
-        "totalResources": 17,
+        "totalResources": 21,
       "file": "resource-generic.json",
       "enabled": true
     },

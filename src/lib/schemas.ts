@@ -58,6 +58,95 @@ const HttpImageUrlSchema = z
     }
   }, "imageUrl must use http or https");
 
+const CardIconRefSchema = z.object({
+  type: z.string(),
+  provider: z.string().optional(),
+  category: z.string().optional(),
+  file: z.string().optional(),
+  iconType: z.enum(['lucide', 'emoji']).optional(),
+  iconName: z.string().optional(),
+  emoji: z.string().optional(),
+  iconColor: z.string().optional(),
+  iconOpacity: z.number().min(0).max(1).optional(),
+  nodeSize: z.enum(['normal', 'half', 'quarter', 'double']).optional(),
+  iconSizeMode: z.enum(['fixed', 'scaled']).optional(),
+  noIconBackground: z.boolean().optional(),
+  imageUrl: HttpImageUrlSchema.optional(),
+  imageOptions: CustomImageOptionsSchema.optional(),
+});
+
+const CardElementDataSchema: z.ZodType<import('./card-types').CardElementData> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    kind: z.enum(['section', 'text', 'icon-slot', 'tag', 'decor']),
+    layout: z.object({
+      flex: z.number().optional(),
+      width: z.union([z.number(), z.string()]).optional(),
+      height: z.union([z.number(), z.string()]).optional(),
+      minWidth: z.union([z.number(), z.string()]).optional(),
+      minHeight: z.union([z.number(), z.string()]).optional(),
+      maxHeight: z.union([z.number(), z.string()]).optional(),
+      padding: z.union([
+        z.number(),
+        z.tuple([z.number(), z.number()]),
+        z.tuple([z.number(), z.number(), z.number(), z.number()]),
+      ]).optional(),
+      gap: z.number().optional(),
+      flexDirection: z.enum(['row', 'column']).optional(),
+      alignItems: z.enum(['start', 'center', 'end', 'stretch']).optional(),
+      justifyContent: z.enum(['start', 'center', 'end', 'space-between']).optional(),
+      alignSelf: z.enum(['start', 'center', 'end', 'stretch']).optional(),
+      borderRadius: z.number().optional(),
+      overflow: z.enum(['hidden', 'visible']).optional(),
+    }).optional(),
+    style: z.object({
+      backgroundColor: z.string().optional(),
+      backgroundStyle: z.enum(['solid', 'gradient', 'none', 'mesh_gradient']).optional(),
+      backgroundColors: z.tuple([z.string(), z.string()]).optional(),
+      gradientAngle: z.number().optional(),
+      meshGradientPoints: z.array(z.object({
+        xPct: z.number(),
+        yPct: z.number(),
+        color: z.string(),
+      })).optional(),
+      borderColor: z.string().optional(),
+      borderWidth: z.number().optional(),
+      borderStyle: z.enum(['solid', 'dashed', 'dotted']).optional(),
+      opacity: z.number().optional(),
+      borderRadius: z.number().optional(),
+    }).optional(),
+    text: z.string().optional(),
+    richText: z.array(RichTextRunSchema).optional(),
+    tag: z.string().optional(),
+    children: z.array(CardElementDataSchema).optional(),
+    iconRef: CardIconRefSchema.optional(),
+    iconPlacement: z
+      .enum([
+        'center',
+        'left',
+        'right',
+        'top',
+        'bottom',
+        'top-left',
+        'top-right',
+        'bottom-left',
+        'bottom-right',
+      ])
+      .optional(),
+    placeholder: z.enum(['circle', 'rect', 'dots']).optional(),
+    editable: z.boolean().optional(),
+    fontSize: z.number().optional(),
+    fontWeight: z.string().optional(),
+    textColor: z.string().optional(),
+    lineHeight: z.number().optional(),
+  })
+);
+
+const NodeCardSpecSchema = z.object({
+  templateId: z.string(),
+  elements: CardElementDataSchema,
+});
+
 const ChartPieSeriesRowSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
@@ -448,6 +537,7 @@ export const DiagramNodeDataSchema = z.object({
   subDiagramId: z.string().optional(), // Links this node to a sub-diagram (double-click to navigate)
 
   chart: z.preprocess(normalizeChartField, NodeChartSpecSchema).optional(),
+  card: NodeCardSpecSchema.optional(),
   umlClass: z.object({
     name: z.string(),
     attributes: z.array(z.string()),

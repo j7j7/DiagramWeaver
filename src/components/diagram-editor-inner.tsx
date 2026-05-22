@@ -121,6 +121,8 @@ export function DiagramEditorInner({
   timelineActiveEntryId,
   onTimelineEntrySelect,
   onTimelineCardRemoved,
+  cardElementSelection,
+  onCardElementSelect,
   handleResourceSelect,
   handleResourceActivate,
   handleResourceActivateAtPosition,
@@ -526,6 +528,8 @@ export function DiagramEditorInner({
                     onSelectAll={handleSelectAll}
                     selectedItem={selectedItem}
                     selectedItemIds={selectedItemIds}
+                    cardElementSelection={cardElementSelection}
+                    onCardElementSelect={onCardElementSelect}
                     onItemUpdate={handleItemUpdate}
                     onBulkMetadataUpdate={handleBulkMetadataUpdate}
                     onConnect={startConnecting}
@@ -690,6 +694,8 @@ export function DiagramEditorInner({
                     timelineActiveEntryId={timelineActiveEntryId}
                     onTimelineEntrySelect={onTimelineEntrySelect}
                     onTimelineCardRemoved={onTimelineCardRemoved}
+                    cardElementSelection={cardElementSelection}
+                    onCardElementSelect={onCardElementSelect}
                     isConnectMode={isConnectMode}
                     onNodeClickInConnectMode={handleConnect}
                     onConnect={startConnecting}

@@ -1,3 +1,5 @@
+import type { NodeCardSpec } from "@/lib/card-types";
+
 /** Rich text run - segment with optional bold/italic/underline/list and per-line formatting */
 export interface RichTextRun {
   text: string;
@@ -516,6 +518,9 @@ export interface DiagramNodeData {
 
   /** Live chart data for `generic.chart.*` nodes (pie and bar). */
   chart?: NodeChartSpec;
+
+  /** Composite card layout for `generic.card.*` template nodes. */
+  card?: NodeCardSpec;
 
   /** UML class diagram compartments: name, attributes, methods in separate sections */
   umlClass?: {

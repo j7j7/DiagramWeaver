@@ -23,6 +23,8 @@ import {
   sectionedShapePresentationSignature,
   sectionedShapeSegmentCount,
 } from '@/lib/sectioned-shape-slide-transition';
+import { isCardNodeType } from '@/lib/card-utils';
+import { cardPresentationSignature, cardElementCount } from '@/lib/card-presentation';
 
 export interface SlideTransitionStyle {
   opacity: number;
@@ -45,6 +47,8 @@ export interface SlideTransitionStyle {
   chartSlideStagger?: ChartSlideStagger;
   /** Pyramid / segmented rectangle: per-tier or per-strip opacity stagger (outer motion suppressed like charts). */
   sectionSlideStagger?: ChartSlideStagger;
+  /** Card composite: per-element opacity stagger (outer motion suppressed like charts). */
+  cardSlideStagger?: ChartSlideStagger;
   /** Timeline cards: same stagger contract as `chartSlideStagger` (play / slide transitions). */
   timelineSlideStagger?: ChartSlideStagger;
   /** Removed cards ghosted from the previous slide (shrink + fade; staggered). */
@@ -95,6 +99,10 @@ interface SlideNodeAnimStyle {
   suppressSectionedShapeOuterMotion?: boolean;
   isAppearingSectionedShape?: boolean;
   isDisappearingSectionedShape?: boolean;
+  cardPresentationChanged?: boolean;
+  suppressCardOuterMotion?: boolean;
+  isAppearingCard?: boolean;
+  isDisappearingCard?: boolean;
 }
 
 interface SlideAnimation {
@@ -453,6 +461,31 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         translateYEnd = 0;
       }
 
+      const prevCardSig = prevNode ? cardPresentationSignature(prevNode) : null;
+      const currCardSig = currNode ? cardPresentationSignature(currNode) : null;
+      const cardPresentationChanged = Boolean(
+        prevCardSig != null && currCardSig != null && prevCardSig !== currCardSig,
+      );
+      const isCardNode =
+        isCardNodeType(prevNode?.type) || isCardNodeType(currNode?.type);
+      const isDisappearingCard = Boolean(
+        isDisappearing && prevNode && isCardNodeType(prevNode.type),
+      );
+      const suppressCardOuterMotion = Boolean(
+        isCardNode && (!isDisappearing || isDisappearingCard),
+      );
+      const isAppearingCard = Boolean(
+        isAppearing && currNode && isCardNodeType(currNode.type),
+      );
+      if (isAppearingCard) {
+        opacityStart = 1;
+        translateYStart = 0;
+      }
+      if (isDisappearingCard) {
+        opacityEnd = 1;
+        translateYEnd = 0;
+      }
+
       const needsNodeTransition =
         isAppearing ||
         isDisappearing ||
@@ -461,7 +494,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         hasVisualColorChange ||
         chartPresentationChanged ||
         timelinePresentationChanged ||
-        sectionedShapePresentationChanged;
+        sectionedShapePresentationChanged ||
+        cardPresentationChanged;
 
       if (!needsNodeTransition) continue;
 
@@ -500,6 +534,10 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         suppressSectionedShapeOuterMotion,
         isAppearingSectionedShape,
         isDisappearingSectionedShape,
+        cardPresentationChanged,
+        suppressCardOuterMotion,
+        isAppearingCard,
+        isDisappearingCard,
       });
 
       if (isDisappearing) {
@@ -742,6 +780,30 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       );
     }
 
+    for (const [nodeId, st] of nodeIdStyles) {
+      const pn = prevNodesMap.get(nodeId);
+      const cn = currNodesMap.get(nodeId);
+      const cardNode =
+        cn && isCardNodeType(cn.type)
+          ? cn
+          : pn && isCardNodeType(pn.type)
+            ? pn
+            : null;
+      if (!cardNode) continue;
+      const nEl = cardElementCount(cardNode);
+      if (nEl <= 0) continue;
+      const useCardTail =
+        st.isAppearingCard ||
+        st.isDisappearingCard ||
+        !!st.cardPresentationChanged;
+      if (!useCardTail) continue;
+      const base = nodeDelayMs.get(nodeId) ?? 0;
+      chartTailMs = Math.max(
+        chartTailMs,
+        base + (nEl - 1) * CHART_SLIDE_SEGMENT_STAGGER_MS + TRANSITION_DURATION_MS,
+      );
+    }
+
     /** Longest intrinsic moment (no tail pad): node/conn motion + stagger vs chart/timeline/section tails. */
     const intrinsicMotionMs = Math.max(maxStaggerMs + TRANSITION_DURATION_MS, chartTailMs);
     const slideTimeBudgetMotionMs = Math.max(
@@ -805,7 +867,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         } else if (
           style.suppressChartOuterScale ||
           style.suppressTimelineOuterMotion ||
-          style.suppressSectionedShapeOuterMotion
+          style.suppressSectionedShapeOuterMotion ||
+          style.suppressCardOuterMotion
         ) {
           scaleX = 1;
           scaleY = 1;
@@ -865,6 +928,20 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             }
           : undefined;
 
+        const useCardSlideStagger =
+          style.isAppearingCard ||
+          !!style.isDisappearingCard ||
+          !!style.cardPresentationChanged;
+        const cardSlideStagger: ChartSlideStagger | undefined = useCardSlideStagger
+          ? {
+              baseDelayMs: dMs0,
+              staggerMs: segmentStaggerMs,
+              durationMs: motionDurationMs,
+              easingCss: EASE_IN_OUT,
+              exit: !!style.isDisappearingCard,
+            }
+          : undefined;
+
         const tlCardPatch = computeTimelineCardTransitionStylePatch(
           nodeId,
           style,
@@ -894,6 +971,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             visualColorCrossfadeTopTransition: 'none',
             ...(chartSlideStagger ? { chartSlideStagger } : {}),
             ...(sectionSlideStagger ? { sectionSlideStagger } : {}),
+            ...(cardSlideStagger ? { cardSlideStagger } : {}),
             ...tlCardPatch,
             ...chartLerpFields,
           });
@@ -909,6 +987,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             } : {}),
             ...(chartSlideStagger ? { chartSlideStagger } : {}),
             ...(sectionSlideStagger ? { sectionSlideStagger } : {}),
+            ...(cardSlideStagger ? { cardSlideStagger } : {}),
             ...tlCardPatch,
             ...chartLerpFields,
           });
@@ -970,7 +1049,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             const transformY =
               style.isDisappearingChart ||
               style.isDisappearingTimeline ||
-              style.isDisappearingSectionedShape
+              style.isDisappearingSectionedShape ||
+              style.isDisappearingCard
               ? 0
               : style.isResizeOnly
                 ? 0
@@ -980,14 +1060,16 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               style.isDisappearing &&
               !style.isDisappearingChart &&
               !style.isDisappearingTimeline &&
-              !style.isDisappearingSectionedShape
+              !style.isDisappearingSectionedShape &&
+              !style.isDisappearingCard
                 ? 0
                 : 1;
             const scaleY =
               style.isDisappearing &&
               !style.isDisappearingChart &&
               !style.isDisappearingTimeline &&
-              !style.isDisappearingSectionedShape
+              !style.isDisappearingSectionedShape &&
+              !style.isDisappearingCard
                 ? 0
                 : 1;
 
@@ -1039,6 +1121,20 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 }
               : undefined;
 
+            const useCardSlideStagger =
+              style.isAppearingCard ||
+              !!style.isDisappearingCard ||
+              !!style.cardPresentationChanged;
+            const cardSlideStagger: ChartSlideStagger | undefined = useCardSlideStagger
+              ? {
+                  baseDelayMs: dMs,
+                  staggerMs: segmentStaggerMs,
+                  durationMs: motionDurationMs,
+                  easingCss: EASE_IN_OUT,
+                  exit: !!style.isDisappearingCard,
+                }
+              : undefined;
+
             const tlCardPatch = computeTimelineCardTransitionStylePatch(
               nodeId,
               style,
@@ -1069,6 +1165,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs, motionDurationMs),
                 ...(chartSlideStagger ? { chartSlideStagger } : {}),
                 ...(sectionSlideStagger ? { sectionSlideStagger } : {}),
+                ...(cardSlideStagger ? { cardSlideStagger } : {}),
                 ...tlCardPatch,
                 ...chartLerpFields,
               });
@@ -1084,6 +1181,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 visualColorMergeTransition: slideMergeTransitionWithDelay(dMs, motionDurationMs),
                 ...(chartSlideStagger ? { chartSlideStagger } : {}),
                 ...(sectionSlideStagger ? { sectionSlideStagger } : {}),
+                ...(cardSlideStagger ? { cardSlideStagger } : {}),
                 ...tlCardPatch,
                 ...chartLerpFields,
               });
@@ -1096,6 +1194,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 transformOrigin,
                 ...(chartSlideStagger ? { chartSlideStagger } : {}),
                 ...(sectionSlideStagger ? { sectionSlideStagger } : {}),
+                ...(cardSlideStagger ? { cardSlideStagger } : {}),
                 ...tlCardPatch,
                 ...chartLerpFields,
               });
@@ -1370,6 +1469,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               visualColorCrossfadeTopTransition: undefined,
               chartSlideStagger: undefined,
               sectionSlideStagger: undefined,
+              cardSlideStagger: undefined,
               timelineSlideStagger: undefined,
               timelineRemoveStagger: undefined,
               timelineRemovedCards: undefined,

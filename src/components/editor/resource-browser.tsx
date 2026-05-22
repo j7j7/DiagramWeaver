@@ -164,6 +164,7 @@ function getCategoryTintClasses(categoryKey: string): string {
     mobile: 'bg-violet-500/5 border-violet-500/10',
     iot: 'bg-lime-500/5 border-lime-500/10',
     object: 'bg-slate-500/5 border-slate-500/10',
+    cards: 'bg-sky-500/5 border-sky-500/10',
   };
   return tints[categoryKey] || 'bg-muted/5 border-muted/10';
 }
@@ -845,6 +846,7 @@ return (
                                           invertInDarkMode={
                                             providerKey === 'generic' &&
                                             (categoryKey === 'object' ||
+                                              categoryKey === 'cards' ||
                                               (categoryKey === 'text' &&
                                                 resource.name.replace(/\s+/g, '-').toLowerCase() === 'text-box-heading'))
                                           }

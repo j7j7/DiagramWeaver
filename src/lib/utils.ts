@@ -53,7 +53,7 @@ export function isDiagramEmojiTileNodeType(type: string | undefined, iconType?: 
 
 /** Diagram object + chart nodes: use shape bounding / connection geometry, not icon-in-box layout. */
 export function isGenericObjectOrChartShapeType(type: string | undefined): boolean {
-  return !!(type?.startsWith('generic.object.') || type?.startsWith('generic.chart.'))
+  return !!(type?.startsWith('generic.object.') || type?.startsWith('generic.chart.') || type?.startsWith('generic.card.'))
 }
 
 /**
@@ -105,6 +105,7 @@ export function isHighlightPulseShapeSilhouetteType(type: string | undefined): b
 export function isShapeNodeType(nodeType: string): boolean {
   if (isIconOrEmojiType(nodeType)) return false
   if (isChartNodeType(nodeType)) return true
+  if (nodeType?.startsWith('generic.card.')) return true
   return nodeType === 'generic.object.timeline' ||
          nodeType === 'generic.object.square' ||
          nodeType === 'generic.object.circle' ||

@@ -29,5 +29,6 @@ export { PieChartShape } from './pie-chart-shape';
 export { RingChartShape } from './ring-chart-shape';
 export { BarChartShape } from './bar-chart-shape';
 export { LineChartShape } from './line-chart-shape';
+export { CardShape } from './card-shape';
 export { ShapeWrapper } from './shape-wrapper';
 export { ShapeTag } from './shape-tag';
