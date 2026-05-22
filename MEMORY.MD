@@ -3,6 +3,11 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-22 – Bar chart: drag column edge to change bar width
+
+Canvas **bar chart** nodes: drag the **left/right** edge of a column (vertical) or **top/bottom** edge (horizontal) to widen or narrow bars. Updates persisted **`chart.categoryGap`** (same field as **Chart data → Category spacing**). Invisible hit strips use **`data-dw-bar-width-handle`**; reuses **`onBarChartValueDragSessionChange`** so node drag stays blocked during resize. Helpers **`resolveBarCategoryGap`**, **`barThicknessFromCategoryGap`**, **`categoryGapFromBarThickness`** in **`bar-chart-layout.ts`**. **`BarChartShape`**, **`diagram-node`**. Patch bumped.
+
+
 ### 2026-05-20 – Align: Distribute evenly uses real layout (icon tiles)
 
 **Distribute horizontally / vertically** (context menu, toolbar, menu bar) no longer assumes a fixed **80×50** box for catalog icons — it uses **`computeDistributeAlongAxisPositions`** with **`measureNodeDims`** geometry and equal gaps between successive **icon tile** edges when items are catalog/Lucide/emoji tiles (same basis as Alignment even-spacing). **`nodeToSpacingAlignItem`** now attaches tile offsets for **`isDiagramIconTileNodeType`** nodes (e.g. `aws.*`), not only `generic.icon` / `generic.emoji`. **`src/lib/uniform-spacing-align.ts`**, **`diagram-editor.tsx`**. Patch bumped.

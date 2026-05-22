@@ -191,9 +191,30 @@ export function computeBarLegendBandHeight(
   return rowH + 1.25;
 }
 
-function clamp01(v: number, max = 0.85): number {
+/** Upper bound for `NodeChartSpecBar.categoryGap` (matches schema + data editor slider). */
+export const BAR_CATEGORY_GAP_MAX = 0.85;
+
+function clampBarCategoryGap(v: number, max = BAR_CATEGORY_GAP_MAX): number {
   if (!Number.isFinite(v)) return 0.2;
   return Math.max(0, Math.min(max, v));
+}
+
+/** Resolved category gap from chart spec (0 = bars fill slot, higher = narrower bars). */
+export function resolveBarCategoryGap(spec: NodeChartSpecBar): number {
+  return clampBarCategoryGap(spec.categoryGap ?? 0.22);
+}
+
+/** Bar thickness along the category axis from gap and slot width (viewBox units). */
+export function barThicknessFromCategoryGap(categoryGap: number, catSlot: number): number {
+  if (!Number.isFinite(catSlot) || catSlot <= 0) return 0;
+  return catSlot * (1 - clampBarCategoryGap(categoryGap));
+}
+
+/** Category gap from bar thickness along the category axis (viewBox units). */
+export function categoryGapFromBarThickness(thickness: number, catSlot: number): number {
+  if (!Number.isFinite(catSlot) || catSlot <= 0) return 0.22;
+  const frac = thickness / catSlot;
+  return clampBarCategoryGap(1 - frac);
 }
 
 function niceValueTicks(max: number, targetSteps = 4): number[] {
@@ -375,7 +396,7 @@ export function buildBarChartLayout(
   }
   const valueTicks = niceValueTicks(valueAxisMax, 4);
 
-  const catGap = clamp01(spec.categoryGap ?? 0.22);
+  const catGap = resolveBarCategoryGap(spec);
   const stackGap = Math.max(0, Math.min(2, spec.stackGap ?? 0.12));
 
   const rects: BarRect[] = [];

@@ -17,7 +17,10 @@ import {
   barColumnClipPathHorizontal,
   barColumnClipPathVertical,
   barLegendEntries,
+  barThicknessFromCategoryGap,
   buildBarChartLayout,
+  categoryGapFromBarThickness,
+  resolveBarCategoryGap,
   wrapBarLabelLines,
   type BarRect,
 } from "@/lib/bar-chart-layout";
@@ -85,6 +88,8 @@ const BAR_CELL_POINTER_LEAVE_DELAY_MS = 140;
 const BAR_HIT_STROKE_PAD = 0.75;
 /** Ignore double-click value edit after a bar value drag (screen px). */
 const BAR_CELL_DRAG_SUPPRESS_DBLCLICK_PX = 6;
+/** Invisible hit strip width for bar thickness edge drag (viewBox units). */
+const BAR_WIDTH_HANDLE_HIT = 2.5;
 
 type BarCellDragSession = {
   pointerId: number;
@@ -98,6 +103,15 @@ type BarCellDragSession = {
   startAxisValue: number;
   /** `series[segmentIndex].values[categoryIndex]` at pointerdown (same render as the bar rect). */
   startCellValue: number;
+};
+
+type BarWidthDragSession = {
+  pointerId: number;
+  svg: SVGSVGElement;
+  categoryIndex: number;
+  edge: "start" | "end";
+  /** Category center on the thickness axis (viewBox units). */
+  centerAlong: number;
 };
 
 interface BarChartShapeProps {
@@ -126,6 +140,8 @@ interface BarChartShapeProps {
   onBarCategoryLabelChange?: (categoryIndex: number, label: string) => void;
   /** Double-click in-bar numeric value; updates `series[segmentIndex].values[categoryIndex]`. */
   onBarCellValueChange?: (segmentIndex: number, categoryIndex: number, value: number) => void;
+  /** Drag bar/column edge; updates `chart.categoryGap` (bar thickness in the category slot). */
+  onBarCategoryGapChange?: (gap: number) => void;
   /** Blocks canvas node drag while a bar segment value drag is active (react-dnd `canDrag`). */
   onBarChartValueDragSessionChange?: (active: boolean) => void;
   presentationChartStagger?: ChartSlideStagger;
@@ -150,6 +166,7 @@ export function BarChartShape(props: BarChartShapeProps) {
     onBarSegmentNameChange,
     onBarCategoryLabelChange,
     onBarCellValueChange,
+    onBarCategoryGapChange,
     onBarChartValueDragSessionChange,
     presentationChartStagger,
     presentationChartLerpU,
@@ -201,6 +218,7 @@ export function BarChartShape(props: BarChartShapeProps) {
     vertical: true,
   });
   const barCellDragRef = useRef<BarCellDragSession | null>(null);
+  const barWidthDragRef = useRef<BarWidthDragSession | null>(null);
   const suppressBarValueDblClickAfterDragRef = useRef(false);
 
   const series = chart.series;
@@ -243,6 +261,10 @@ export function BarChartShape(props: BarChartShapeProps) {
   const canEditValue = !isReadOnly && !!onBarCellValueChange;
   const canDragBarValue =
     canEditValue && typeof onBarChartValueDragSessionChange === "function";
+  const canDragBarWidth =
+    !isReadOnly &&
+    !!onBarCategoryGapChange &&
+    typeof onBarChartValueDragSessionChange === "function";
 
   const cancelBarLeaveTimer = () => {
     const t = barPointerLeaveTimerRef.current;
@@ -331,6 +353,193 @@ export function BarChartShape(props: BarChartShapeProps) {
   }, [series, inlineEdit, categoryCount]);
 
   const catSlot = vertical ? plot.w / Math.max(1, categoryCount) : plot.h / Math.max(1, categoryCount);
+
+  const categoryGapResolved = resolveBarCategoryGap(chart);
+  const barThickness = barThicknessFromCategoryGap(categoryGapResolved, catSlot);
+
+  const columnWidthMetrics = useMemo(() => {
+    return Array.from({ length: categoryCount }, (_, j) => {
+      if (vertical) {
+        const centerAlong = plot.x0 + (j + 0.5) * catSlot;
+        const half = barThickness / 2;
+        return {
+          categoryIndex: j,
+          centerAlong,
+          startEdge: centerAlong - half,
+          endEdge: centerAlong + half,
+          crossStart: plot.y0,
+          crossSize: plot.h,
+        };
+      }
+      const centerAlong = plot.y0 + (j + 0.5) * catSlot;
+      const half = barThickness / 2;
+      return {
+        categoryIndex: j,
+        centerAlong,
+        startEdge: centerAlong - half,
+        endEdge: centerAlong + half,
+        crossStart: plot.x0,
+        crossSize: plot.w,
+      };
+    });
+  }, [categoryCount, vertical, plot, catSlot, barThickness]);
+
+  const categoryGapFromPointerAlong = (
+    ptrAlong: number,
+    centerAlong: number,
+    edge: "start" | "end",
+    slot: number
+  ): number => {
+    const half = edge === "start" ? centerAlong - ptrAlong : ptrAlong - centerAlong;
+    const thickness = Math.max(slot * 0.08, half * 2);
+    const gap = categoryGapFromBarThickness(thickness, slot);
+    return Math.round(gap * 100) / 100;
+  };
+
+  const endBarWidthDrag = (pointerId: number, target: Element | null) => {
+    const drag = barWidthDragRef.current;
+    if (!drag || drag.pointerId !== pointerId) return;
+    if (target instanceof Element) {
+      try {
+        (target as SVGRectElement).releasePointerCapture(pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+    barWidthDragRef.current = null;
+    onBarChartValueDragSessionChange?.(false);
+  };
+
+  const barWidthEdgeCursor = vertical ? "ew-resize" : "ns-resize";
+
+  const barWidthHandleHandlers = (
+    categoryIndex: number,
+    edge: "start" | "end",
+    centerAlong: number
+  ): React.SVGProps<SVGRectElement> => {
+    if (!canDragBarWidth || !onBarCategoryGapChange) {
+      return { pointerEvents: "none" };
+    }
+    const dragProps: Record<string, unknown> = {
+      "data-dw-bar-width-handle": "",
+      onMouseDownCapture: (e: React.MouseEvent<SVGRectElement>) => {
+        e.stopPropagation();
+      },
+      onPointerDown: (e: React.PointerEvent<SVGRectElement>) => {
+        if (barCellDragRef.current || barWidthDragRef.current) return;
+        e.stopPropagation();
+        const svg = e.currentTarget.ownerSVGElement;
+        if (!svg) return;
+        onBarChartValueDragSessionChange?.(true);
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        barWidthDragRef.current = {
+          pointerId: e.pointerId,
+          svg,
+          categoryIndex,
+          edge,
+          centerAlong,
+        };
+      },
+      onPointerMove: (e: React.PointerEvent<SVGRectElement>) => {
+        const drag = barWidthDragRef.current;
+        if (
+          !drag ||
+          drag.pointerId !== e.pointerId ||
+          !onBarCategoryGapChange
+        ) {
+          return;
+        }
+        const pt = svgUserPointFromClient(drag.svg, e.clientX, e.clientY);
+        if (!pt) return;
+        const ptrAlong = vertical ? pt.x : pt.y;
+        const gap = categoryGapFromPointerAlong(
+          ptrAlong,
+          drag.centerAlong,
+          drag.edge,
+          catSlot
+        );
+        onBarCategoryGapChange(gap);
+      },
+      onPointerUp: (e: React.PointerEvent<SVGRectElement>) => {
+        endBarWidthDrag(e.pointerId, e.currentTarget);
+      },
+      onPointerCancel: (e: React.PointerEvent<SVGRectElement>) => {
+        endBarWidthDrag(e.pointerId, e.currentTarget);
+      },
+      onLostPointerCapture: () => {
+        barWidthDragRef.current = null;
+        onBarChartValueDragSessionChange?.(false);
+      },
+      style: {
+        cursor: barWidthEdgeCursor,
+        touchAction: "none" as const,
+      },
+    };
+    return dragProps as React.SVGProps<SVGRectElement>;
+  };
+
+  const barWidthHandles =
+    canDragBarWidth && columnWidthMetrics.length > 0
+      ? columnWidthMetrics.flatMap((col) => {
+          const hit = BAR_WIDTH_HANDLE_HIT;
+          const startProps = barWidthHandleHandlers(
+            col.categoryIndex,
+            "start",
+            col.centerAlong
+          );
+          const endProps = barWidthHandleHandlers(
+            col.categoryIndex,
+            "end",
+            col.centerAlong
+          );
+          if (vertical) {
+            return [
+              <rect
+                key={`bar-w-start-${col.categoryIndex}`}
+                x={col.startEdge - hit / 2}
+                y={col.crossStart}
+                width={hit}
+                height={col.crossSize}
+                fill="transparent"
+                {...startProps}
+              />,
+              <rect
+                key={`bar-w-end-${col.categoryIndex}`}
+                x={col.endEdge - hit / 2}
+                y={col.crossStart}
+                width={hit}
+                height={col.crossSize}
+                fill="transparent"
+                {...endProps}
+              />,
+            ];
+          }
+          return [
+            <rect
+              key={`bar-w-start-${col.categoryIndex}`}
+              x={col.crossStart}
+              y={col.startEdge - hit / 2}
+              width={col.crossSize}
+              height={hit}
+              fill="transparent"
+              {...startProps}
+            />,
+            <rect
+              key={`bar-w-end-${col.categoryIndex}`}
+              x={col.crossStart}
+              y={col.endEdge - hit / 2}
+              width={col.crossSize}
+              height={hit}
+              fill="transparent"
+              {...endProps}
+            />,
+          ];
+        })
+      : null;
 
   const valueGridLines = valueTicks.map((t) => {
     if (vertical) {
@@ -436,7 +645,7 @@ export function BarChartShape(props: BarChartShapeProps) {
             });
           },
           onPointerDown: (e: React.PointerEvent<SVGRectElement>) => {
-            if (!onBarCellValueChange) return;
+            if (!onBarCellValueChange || barWidthDragRef.current) return;
             e.stopPropagation();
             const svg = e.currentTarget.ownerSVGElement;
             if (!svg) return;
@@ -499,7 +708,7 @@ export function BarChartShape(props: BarChartShapeProps) {
 
     return {
       onPointerEnter: (e: React.PointerEvent<SVGRectElement>) => {
-        if (barCellDragRef.current) return;
+        if (barCellDragRef.current || barWidthDragRef.current) return;
         cancelBarLeaveTimer();
         setHoveredKey(k);
         if (showTip) {
@@ -1596,6 +1805,7 @@ export function BarChartShape(props: BarChartShapeProps) {
       {defs}
       {gridEls}
       {svgShadow ? <g filter={`url(#${filterId})`}>{bars}</g> : bars}
+      {barWidthHandles}
       {segmentOverlays}
       {valueLabels}
       {catLabelsEls}
