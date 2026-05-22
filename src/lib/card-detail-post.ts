@@ -113,6 +113,7 @@ export function resolveDetailPostBodyLine2Layout(
     justifyContent: "start",
     alignSelf: "start",
     fillRemaining: true,
+    overflow: "hidden",
   };
 }
 
@@ -145,4 +146,29 @@ export function resolveDetailPostCtaStyle(
   }
   const { borderStyle: _bs, borderColor: _bc, borderWidth: _bw, ...rest } = style;
   return rest;
+}
+
+/** Footer border comes from the card shell, not a fixed element style. */
+export function resolveDetailPostFooterStyle(
+  elementId: string,
+  templateId: string | undefined,
+  style: CardElementStyle | undefined,
+): CardElementStyle | undefined {
+  if (templateId !== DETAIL_POST_TEMPLATE_ID || elementId !== DETAIL_POST_FOOTER_ID || !style) {
+    return style;
+  }
+  const { borderStyle: _bs, borderColor: _bc, borderWidth: _bw, ...rest } = style;
+  return rest;
+}
+
+export function detailPostFooterUsesShellBorder(
+  element: Pick<CardElementData, "id" | "kind" | "matchCardBorder">,
+  templateId: string | undefined,
+): boolean {
+  if (element.matchCardBorder) return true;
+  return (
+    templateId === DETAIL_POST_TEMPLATE_ID &&
+    element.kind === "section" &&
+    element.id === DETAIL_POST_FOOTER_ID
+  );
 }

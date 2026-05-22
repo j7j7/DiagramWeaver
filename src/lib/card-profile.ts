@@ -44,6 +44,11 @@ export function isProfileFeatureCard(templateId: string | undefined): boolean {
   return templateId === PROFILE_CARD_TEMPLATE_ID;
 }
 
+/** Profile Feature + Profile Social share hero/body split drag handle. */
+export function isProfileHeroSplitCard(templateId: string | undefined): boolean {
+  return templateId === PROFILE_CARD_TEMPLATE_ID || templateId === "profile-social";
+}
+
 export function getProfileCardRegions(root: CardElementData | undefined): {
   hero: CardElementData | null;
   body: CardElementData | null;

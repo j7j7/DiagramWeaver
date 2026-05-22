@@ -85,6 +85,7 @@ import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNod
 import { shapeSwapMenuOptions, swapDiagramNodeObjectKind, type SwappableObjectKind } from "@/lib/shape-type-swap";
 import { cardTemplateSwapMenuOptions, swapCardTemplate } from "@/lib/card-template-swap";
 import { isCardNodeType, findCardElement, updateCardElementTree, resolveCardIconSlotFromPoint } from "@/lib/card-utils";
+import { normalizeDashboardDecorIconRef } from "@/lib/card-dashboard-stat";
 import type { CardIconRef } from "@/lib/card-types";
 import {
   applyTimelineEntriesSpacedEndpoints,
@@ -1053,11 +1054,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         ...prev,
         nodes: prev.nodes.map((n) => {
           if (n.id !== nodeId || !n.card?.elements) return n;
+          const iconRefNormalized = normalizeDashboardDecorIconRef(n.card.elements, elementId, iconRef);
           return {
             ...n,
             card: {
               ...n.card,
-              elements: updateCardElementTree(n.card.elements, elementId, { iconRef }),
+              elements: updateCardElementTree(n.card.elements, elementId, { iconRef: iconRefNormalized }),
             },
           };
         }),

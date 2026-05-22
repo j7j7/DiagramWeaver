@@ -8,7 +8,7 @@ export type CardElementKind =
   | "tag"
   | "decor";
 
-export type CardFlexAlign = "start" | "center" | "end" | "stretch";
+export type CardFlexAlign = "start" | "center" | "end" | "stretch" | "baseline";
 export type CardFlexJustify = "start" | "center" | "end" | "space-between";
 
 /** CSS-flex-like box model for card regions (percent strings scale with card resize). */
@@ -25,6 +25,9 @@ export interface CardLayoutBox {
   alignItems?: CardFlexAlign;
   justifyContent?: CardFlexJustify;
   alignSelf?: CardFlexAlign;
+  marginTop?: number;
+  marginBottom?: number;
+  zIndex?: number;
   borderRadius?: number;
   overflow?: "hidden" | "visible";
   /** When true, text region keeps its flex slot even with no visible content. */
@@ -101,6 +104,8 @@ export interface CardElementData {
   matchCardBorder?: boolean;
   /** When true, icon-slot uses the same drop shadow as the card shell. */
   iconSlotShadow?: boolean;
+  /** Decorative watermark icon — large, bottom-right, soft gradient fade. */
+  iconDecorGradient?: boolean;
   editable?: boolean;
   fontSize?: number;
   fontWeight?: string;

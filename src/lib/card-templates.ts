@@ -1,8 +1,51 @@
-import type { CardTemplate } from "@/lib/card-types";
+import type { CardElementData, CardTemplate } from "@/lib/card-types";
+import { createDashboardStatTemplate } from "@/lib/card-dashboard-stat";
 
 const BLUE = "#3b82f6";
 const BLUE_LIGHT = "#bfdbfe";
 const BLUE_MUTED = "#93c5fd";
+
+const TEAL = "#2ab7bc";
+const SLATE_DARK = "#2d3748";
+const SLATE_MUTED = "#718096";
+const DIVIDER_GRAY = "#e2e8f0";
+const CARD_WHITE = "#ffffff";
+
+function profileSocialStatColumn(
+  valueId: string,
+  labelId: string,
+  value: string,
+  label: string,
+): CardElementData {
+  return {
+    id: valueId.replace("-value", ""),
+    kind: "section",
+    layout: { flexDirection: "column", flex: 1, alignItems: "center", gap: 2, minWidth: 0 },
+    children: [
+      {
+        id: valueId,
+        kind: "text",
+        text: value,
+        editable: true,
+        fontSize: 13,
+        fontWeight: "700",
+        textColor: SLATE_DARK,
+        layout: { alignSelf: "center", padding: [0, 2] },
+        style: { backgroundStyle: "none" },
+      },
+      {
+        id: labelId,
+        kind: "text",
+        text: label,
+        editable: true,
+        fontSize: 9,
+        textColor: SLATE_MUTED,
+        layout: { alignSelf: "center", padding: [0, 2] },
+        style: { backgroundStyle: "none" },
+      },
+    ],
+  };
+}
 
 /** Registry of built-in card templates (palette + drop defaults). */
 export const CARD_TEMPLATES: Record<string, CardTemplate> = {
@@ -50,6 +93,174 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
               textColor: "#334155",
               layout: { width: "55%", padding: [8, 12] },
               style: { backgroundColor: BLUE_LIGHT, backgroundStyle: "solid", borderRadius: 4 },
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  "profile-social": {
+    id: "profile-social",
+    name: "Profile Social",
+    defaultWidth: 175,
+    defaultHeight: 260,
+    cornerRadius: 0.12,
+    root: {
+      id: "root",
+      kind: "section",
+      layout: { flexDirection: "column", width: "100%", height: "100%", gap: 0, padding: 0, overflow: "hidden" },
+      style: { backgroundColor: CARD_WHITE, backgroundStyle: "solid" },
+      children: [
+        {
+          id: "hero",
+          kind: "section",
+          layout: { flex: 38, width: "100%", minHeight: 0 },
+          style: { backgroundColor: TEAL, backgroundStyle: "solid" },
+        },
+        {
+          id: "body",
+          kind: "section",
+          layout: {
+            flexDirection: "column",
+            flex: 62,
+            width: "100%",
+            minHeight: 0,
+            alignItems: "center",
+            gap: 6,
+            padding: [0, 12, 12, 12],
+          },
+          style: { backgroundColor: CARD_WHITE, backgroundStyle: "solid" },
+          children: [
+            {
+              id: "avatar",
+              kind: "icon-slot",
+              layout: { width: 56, height: 56, flex: 0, alignSelf: "center", marginTop: -28, zIndex: 2 },
+              style: {
+                borderRadius: 999,
+                backgroundColor: TEAL,
+                backgroundStyle: "solid",
+                borderColor: CARD_WHITE,
+                borderWidth: 4,
+                borderStyle: "solid",
+              },
+              placeholder: "circle",
+              iconFillSlot: true,
+              matchCardBorder: false,
+              iconSlotShadow: true,
+            },
+            {
+              id: "info",
+              kind: "section",
+              layout: { flexDirection: "column", alignItems: "center", gap: 2, width: "100%", flex: 0 },
+              children: [
+                {
+                  id: "name-row",
+                  kind: "section",
+                  layout: {
+                    flexDirection: "row",
+                    alignItems: "baseline",
+                    justifyContent: "center",
+                    gap: 6,
+                    width: "100%",
+                    flex: 0,
+                  },
+                  children: [
+                    {
+                      id: "name",
+                      kind: "text",
+                      text: "Victor Crest",
+                      editable: true,
+                      fontSize: 14,
+                      fontWeight: "700",
+                      textColor: SLATE_DARK,
+                      layout: { alignSelf: "center", padding: [0, 2] },
+                      style: { backgroundStyle: "none" },
+                    },
+                    {
+                      id: "age",
+                      kind: "text",
+                      text: "26",
+                      editable: true,
+                      fontSize: 12,
+                      fontWeight: "400",
+                      textColor: SLATE_MUTED,
+                      layout: { alignSelf: "center", padding: [0, 2] },
+                      style: { backgroundStyle: "none" },
+                    },
+                  ],
+                },
+                {
+                  id: "location",
+                  kind: "text",
+                  text: "London",
+                  editable: true,
+                  fontSize: 11,
+                  textColor: SLATE_MUTED,
+                  layout: { alignSelf: "center", padding: [0, 2] },
+                  style: { backgroundStyle: "none" },
+                },
+              ],
+            },
+            {
+              id: "description",
+              kind: "text",
+              text: "Short bio or description",
+              editable: true,
+              fontSize: 10,
+              lineHeight: 1.4,
+              textColor: SLATE_MUTED,
+              layout: {
+                width: "100%",
+                flex: 1,
+                minHeight: 0,
+                flexDirection: "column",
+                justifyContent: "start",
+                alignSelf: "stretch",
+                fillRemaining: true,
+                overflow: "hidden",
+                padding: [4, 8],
+              },
+              style: { backgroundStyle: "none" },
+            },
+            {
+              id: "footer",
+              kind: "section",
+              layout: {
+                flexDirection: "column",
+                width: "100%",
+                flex: 0,
+                alignSelf: "stretch",
+                gap: 0,
+                minHeight: 0,
+              },
+              children: [
+                {
+                  id: "divider",
+                  kind: "section",
+                  layout: { width: "100%", height: 1, flex: 0, marginTop: 8, marginBottom: 4 },
+                  style: { backgroundColor: DIVIDER_GRAY, backgroundStyle: "solid" },
+                },
+                {
+                  id: "stats",
+                  kind: "section",
+                  layout: {
+                    flexDirection: "row",
+                    width: "100%",
+                    flex: 0,
+                    justifyContent: "space-between",
+                    alignItems: "start",
+                    gap: 4,
+                    minHeight: 0,
+                    padding: [4, 0, 0, 0],
+                  },
+                  children: [
+                    profileSocialStatColumn("stat-1-value", "stat-1-label", "80K", "Followers"),
+                    profileSocialStatColumn("stat-2-value", "stat-2-label", "803K", "Likes"),
+                    profileSocialStatColumn("stat-3-value", "stat-3-label", "1.4K", "Photos"),
+                  ],
+                },
+              ],
             },
           ],
         },
@@ -253,6 +464,7 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
                 justifyContent: "start",
                 alignSelf: "start",
                 fillRemaining: true,
+                overflow: "hidden",
                 padding: [8, 12],
               },
               style: { backgroundColor: BLUE_LIGHT, backgroundStyle: "solid", borderRadius: 4 },
@@ -262,13 +474,11 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
         {
           id: "footer",
           kind: "section",
+          matchCardBorder: true,
           layout: { width: "100%", padding: 8, flex: 0 },
           style: {
             backgroundColor: BLUE_LIGHT,
             backgroundStyle: "solid",
-            borderColor: "#0f172a",
-            borderWidth: 1,
-            borderStyle: "solid",
             borderRadius: 8,
           },
           children: [
@@ -292,6 +502,48 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
       ],
     },
   },
+
+  "dashboard-score": createDashboardStatTemplate({
+    id: "dashboard-score",
+    name: "Dashboard Score",
+    defaultWidth: 200,
+    defaultHeight: 120,
+    gradient: ["#ddd6fe", "#7c3aed"],
+    title: "Overall Score",
+    value: "8 / 10",
+  }),
+
+  "dashboard-ranking": createDashboardStatTemplate({
+    id: "dashboard-ranking",
+    name: "Dashboard Ranking",
+    defaultWidth: 200,
+    defaultHeight: 120,
+    gradient: ["#bbf7d0", "#16a34a"],
+    title: "Ranking",
+    value: "25",
+  }),
+
+  "dashboard-incentives": createDashboardStatTemplate({
+    id: "dashboard-incentives",
+    name: "Dashboard Incentives",
+    defaultWidth: 200,
+    defaultHeight: 160,
+    gradient: ["#bae6fd", "#0284c7"],
+    title: "Incentives",
+    subtitle: "worth of",
+    value: "$ 15",
+    valueFontSize: 36,
+  }),
+
+  "dashboard-defaults": createDashboardStatTemplate({
+    id: "dashboard-defaults",
+    name: "Dashboard Defaults",
+    defaultWidth: 200,
+    defaultHeight: 120,
+    gradient: ["#fecdd3", "#db2777"],
+    title: "Defaults",
+    value: "2",
+  }),
 };
 
 export const CARD_TEMPLATE_LIST = Object.values(CARD_TEMPLATES);

@@ -1,9 +1,20 @@
 import type { CardElementData, CardElementStyle } from "@/lib/card-types";
 import type { ThemeProperties } from "@/lib/theme-types";
 import type { VisualStyling } from "@/lib/visual-styling";
-import { shiftHueOfColor } from "@/lib/color-shift";
+import { multiplyLightnessOfColor, shiftHueOfColor } from "@/lib/color-shift";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
+
+/** Profile Social theme apply — kept here to avoid card-theme ↔ card-profile-social import cycle. */
+const PROFILE_SOCIAL_TEMPLATE_ID = "profile-social";
+const PROFILE_SOCIAL_AVATAR_ID = "avatar";
+const PROFILE_SOCIAL_DIVIDER_ID = "divider";
+/** Lighten theme body stop slightly for card interior (same hue). */
+const PROFILE_SOCIAL_BODY_LIGHTNESS_FACTOR = 1.1;
+/** Darken theme accent stop for header strip (same hue, stronger contrast). */
+const PROFILE_SOCIAL_HERO_LIGHTNESS_FACTOR = 0.78;
+/** Muted divider from theme accent (same hue, lighter). */
+const PROFILE_SOCIAL_DIVIDER_LIGHTNESS_FACTOR = 1.42;
 
 export const CARD_BACKGROUND_VISUAL_KEYS = [
   "backgroundStyle",
@@ -20,7 +31,7 @@ export type CardBackgroundVisual = Pick<
 
 /** Element id that receives Visual styling → Background for each card template. */
 export function getCardBackgroundElementId(templateId: string | undefined): string {
-  return templateId === "profile-feature" ? "body" : "root";
+  return templateId === "profile-feature" || templateId === "profile-social" ? "body" : "root";
 }
 
 export function updateCardElementStyleTree(
@@ -145,6 +156,42 @@ function withMergedStyle(el: CardElementData, stylePatch: Partial<CardElementSty
   return { ...el, style: { ...el.style, ...stylePatch } };
 }
 
+function profileSocialThemeAccentColor(colorProps: ThemeProperties, accentFallback: string): string {
+  return (
+    colorProps.backgroundColors?.[1] ??
+    colorProps.borderColor ??
+    colorProps.borderColors?.[0] ??
+    accentFallback
+  );
+}
+
+function profileSocialThemeBodyStyle(
+  properties: ThemeProperties,
+  colorProps: ThemeProperties,
+): Partial<CardElementStyle> {
+  const base = themeBackgroundToCardStyle(properties, colorProps);
+  if (base.backgroundStyle === "gradient" && base.backgroundColors?.length === 2) {
+    return {
+      ...base,
+      backgroundColors: [
+        multiplyLightnessOfColor(base.backgroundColors[0], PROFILE_SOCIAL_BODY_LIGHTNESS_FACTOR),
+        multiplyLightnessOfColor(base.backgroundColors[1], PROFILE_SOCIAL_BODY_LIGHTNESS_FACTOR),
+      ],
+    };
+  }
+  if (base.backgroundColor) {
+    return {
+      ...base,
+      backgroundColor: multiplyLightnessOfColor(base.backgroundColor, PROFILE_SOCIAL_BODY_LIGHTNESS_FACTOR),
+    };
+  }
+  return base;
+}
+
+function profileSocialThemeBodyRingColor(bodyStyle: Partial<CardElementStyle>): string {
+  return bodyStyle.backgroundColor ?? bodyStyle.backgroundColors?.[0] ?? "#ffffff";
+}
+
 /** Apply diagram theme colours to card shell border + internal regions. */
 export function applyThemeToCardElements(
   elements: CardElementData,
@@ -156,20 +203,40 @@ export function applyThemeToCardElements(
   const hueShift = options.hueShiftDegrees ?? 0;
   const hueStep = options.hueStepDegrees ?? DIAGRAM_THEME_HUE_STEP_DEG;
   const bgId = getCardBackgroundElementId(templateId);
-
-  let root = updateCardElementStyleTree(
-    elements,
-    bgId,
-    themeBackgroundToCardStyle(properties, colorProps),
-  );
-
+  const isProfileSocial = templateId === PROFILE_SOCIAL_TEMPLATE_ID;
+  const chipBase = colorProps.backgroundColor ?? colorProps.backgroundColors?.[0] ?? "#93c5fd";
   const accentBase =
     colorProps.backgroundColors?.[1] ??
     colorProps.backgroundColors?.[0] ??
     colorProps.borderColor ??
     colorProps.backgroundColor ??
     "#3b82f6";
-  const chipBase = colorProps.backgroundColor ?? colorProps.backgroundColors?.[0] ?? "#93c5fd";
+
+  const profileSocialBodyStyle = isProfileSocial
+    ? profileSocialThemeBodyStyle(properties, colorProps)
+    : null;
+  const profileSocialHeroColor = isProfileSocial
+    ? multiplyLightnessOfColor(
+        profileSocialThemeAccentColor(colorProps, accentBase),
+        PROFILE_SOCIAL_HERO_LIGHTNESS_FACTOR,
+      )
+    : null;
+  const profileSocialDividerColor = isProfileSocial
+    ? multiplyLightnessOfColor(
+        profileSocialThemeAccentColor(colorProps, accentBase),
+        PROFILE_SOCIAL_DIVIDER_LIGHTNESS_FACTOR,
+      )
+    : null;
+  const profileSocialAvatarRingColor = profileSocialBodyStyle
+    ? profileSocialThemeBodyRingColor(profileSocialBodyStyle)
+    : "#ffffff";
+
+  let root = updateCardElementStyleTree(
+    elements,
+    bgId,
+    profileSocialBodyStyle ?? themeBackgroundToCardStyle(properties, colorProps),
+  );
+
   const borderBase =
     colorProps.borderColor ??
     (colorProps.borderColors && colorProps.borderColors.length > 0
@@ -182,7 +249,28 @@ export function applyThemeToCardElements(
   root = mapCardElementTree(root, (el) => {
     if (el.id === bgId) return el;
 
-    if (el.id === "hero" || el.kind === "icon-slot") {
+    if (isProfileSocial && el.id === "hero" && profileSocialHeroColor) {
+      return withMergedStyle(el, { backgroundColor: profileSocialHeroColor, backgroundStyle: "solid" });
+    }
+
+    if (isProfileSocial && el.id === PROFILE_SOCIAL_AVATAR_ID && profileSocialHeroColor) {
+      return withMergedStyle(el, {
+        backgroundColor: profileSocialHeroColor,
+        backgroundStyle: "solid",
+        borderColor: profileSocialAvatarRingColor,
+        borderWidth: el.style?.borderWidth ?? 4,
+        borderStyle: "solid",
+      });
+    }
+
+    if (isProfileSocial && el.id === PROFILE_SOCIAL_DIVIDER_ID && profileSocialDividerColor) {
+      return withMergedStyle(el, {
+        backgroundColor: profileSocialDividerColor,
+        backgroundStyle: "solid",
+      });
+    }
+
+    if (el.id === "hero" || (el.kind === "icon-slot" && !el.iconDecorGradient)) {
       const color = shiftHueOfColor(accentBase, iconIndex * hueStep + hueShift);
       iconIndex += 1;
       return withMergedStyle(el, { backgroundColor: color, backgroundStyle: "solid" });

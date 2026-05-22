@@ -185,6 +185,11 @@
           "type": "shape"
         },
         {
+          "name": "Profile Social",
+          "file": "profile-social.svg",
+          "type": "shape"
+        },
+        {
           "name": "Compact Horizontal",
           "file": "compact-horizontal.svg",
           "type": "shape"
@@ -197,6 +202,26 @@
         {
           "name": "Detail Post",
           "file": "detail-post.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Dashboard Score",
+          "file": "dashboard-score.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Dashboard Ranking",
+          "file": "dashboard-ranking.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Dashboard Incentives",
+          "file": "dashboard-incentives.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Dashboard Defaults",
+          "file": "dashboard-defaults.svg",
           "type": "shape"
         }
       ]

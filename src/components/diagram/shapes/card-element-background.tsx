@@ -36,7 +36,7 @@ export function CardElementMeshBackground({ style, borderRadius }: CardElementMe
   return (
     <svg
       aria-hidden
-      className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+      className="pointer-events-none absolute inset-0 -z-10 h-full w-full"
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
     >

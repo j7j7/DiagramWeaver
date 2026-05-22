@@ -19,11 +19,36 @@ import { iconDragItemToCardIconRef, isIconPaletteDragItem } from "@/lib/card-uti
 import { flattenCardElements } from "@/lib/card-presentation";
 import {
   applyProfileHeroHeightPct,
-  isProfileFeatureCard,
+  isProfileHeroSplitCard,
   parseProfileHeroHeightPct,
   PROFILE_HERO_ID,
 } from "@/lib/card-profile";
-import { resolveDetailPostBodyLine2Layout, resolveDetailPostBodySectionLayout, resolveDetailPostCtaStyle } from "@/lib/card-detail-post";
+import {
+  resolveProfileSocialAvatarLayout,
+  resolveProfileSocialDescriptionLayout,
+  resolveProfileSocialSectionLayout,
+  resolveProfileSocialTextStyle,
+} from "@/lib/card-profile-social";
+import {
+  resolveDetailPostBodyLine2Layout,
+  resolveDetailPostBodySectionLayout,
+  resolveDetailPostCtaStyle,
+  resolveDetailPostFooterStyle,
+  detailPostFooterUsesShellBorder,
+} from "@/lib/card-detail-post";
+import {
+  dashboardStatActionSlotStyle,
+  dashboardStatDecorClipStyle,
+  dashboardStatDecorIconImageStyle,
+  dashboardStatDecorIconWrapStyle,
+  dashboardStatDecorSlotStyle,
+  dashboardStatDecorUsesWhiteFilter,
+  dashboardStatSectionClassName,
+  dashboardStatSectionStyle,
+  isDashboardStatCard,
+  parseDashboardDecorIconOpacity,
+  resolveDashboardStatDecorLayout,
+} from "@/lib/card-dashboard-stat";
 import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "../textbox-rich-editor";
 import { TextboxRichDisplay } from "../textbox-rich-display";
@@ -267,6 +292,21 @@ interface CardShellBorder {
   style: "solid" | "dotted" | "dashed";
 }
 
+function mergeCardShellBorderStyle(
+  styleCss: React.CSSProperties,
+  useShellBorder: boolean,
+  cardShellBorder?: CardShellBorder,
+): React.CSSProperties {
+  if (!useShellBorder || !cardShellBorder || cardShellBorder.width <= 0) return styleCss;
+  return {
+    ...styleCss,
+    borderWidth: undefined,
+    borderStyle: undefined,
+    borderColor: undefined,
+    border: `${cardShellBorder.width}px ${cardShellBorder.style} ${cardShellBorder.color}`,
+  };
+}
+
 function CardIconSlot({
   element,
   nodeId,
@@ -281,6 +321,7 @@ function CardIconSlot({
   onCardElementSelect,
   cardNodeSelected,
   cardShellBorder,
+  cardTemplateId,
 }: {
   element: CardElementData;
   nodeId: string;
@@ -295,8 +336,15 @@ function CardIconSlot({
   onCardElementSelect?: (elementId: string, e: React.MouseEvent) => void;
   cardNodeSelected?: boolean;
   cardShellBorder?: CardShellBorder;
+  cardTemplateId?: string;
 }) {
-  const layoutCss = cardLayoutToCss(element.layout);
+  const effectiveLayout =
+    resolveDashboardStatDecorLayout(element.id, cardTemplateId, element.layout) ??
+    resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ??
+    element.layout;
+  const layoutCss = cardLayoutToCss(effectiveLayout);
+  const decorOverlayStyle = dashboardStatDecorSlotStyle(element.id, cardTemplateId, effectiveLayout);
+  const actionOverlayStyle = dashboardStatActionSlotStyle(element.id, cardTemplateId);
   const rawStyleCss = cardElementStyleToCss(element.style);
   const { styleCss, meshLayer } = cardElementBackgroundLayers(element, rawStyleCss);
   const isCircle = element.placeholder === "circle" || element.style?.borderRadius === 999;
@@ -304,19 +352,7 @@ function CardIconSlot({
   const fillSlot = element.iconFillSlot ?? element.placeholder === "circle";
   const useShellBorder =
     !!element.matchCardBorder && !!cardShellBorder && cardShellBorder.width > 0;
-  const slotStyleCss = useShellBorder
-    ? {
-        ...styleCss,
-        borderWidth: undefined,
-        borderStyle: undefined,
-        borderColor: undefined,
-      }
-    : styleCss;
-  const shellBorderCss: React.CSSProperties = useShellBorder
-    ? {
-        border: `${cardShellBorder!.width}px ${cardShellBorder!.style} ${cardShellBorder!.color}`,
-      }
-    : {};
+  const slotStyleCss = mergeCardShellBorderStyle(styleCss, useShellBorder, cardShellBorder);
   const slotShadowCss: React.CSSProperties =
     element.iconSlotShadow ? { filter: "var(--shape-shadow-drop)" } : {};
 
@@ -343,7 +379,7 @@ function CardIconSlot({
       drop: (item) => {
         if (!item.type) return;
         let iconRef = iconDragItemToCardIconRef({ ...item, type: item.type });
-        if (element.iconFillSlot ?? element.placeholder === "circle") {
+        if ((element.iconFillSlot ?? element.placeholder === "circle") || element.iconDecorGradient) {
           iconRef = { ...iconRef, noIconBackground: true };
         }
         onCardIconDrop?.(element.id, iconRef);
@@ -371,10 +407,13 @@ function CardIconSlot({
   const noIconBackground = iconRef?.noIconBackground ?? false;
   const hideIconTile = noIconBackground || fillSlot;
   const rawIconOpacity = iconRef?.iconOpacity;
-  const iconGlyphOpacity =
-    typeof rawIconOpacity === "number" && Number.isFinite(rawIconOpacity)
+  const iconGlyphOpacity = element.iconDecorGradient
+    ? parseDashboardDecorIconOpacity(element)
+    : typeof rawIconOpacity === "number" && Number.isFinite(rawIconOpacity)
       ? Math.min(1, Math.max(0, rawIconOpacity))
       : 1;
+  const isDecorWatermark = !!element.iconDecorGradient;
+  const decorWhiteFilter = isDecorWatermark && dashboardStatDecorUsesWhiteFilter(iconRef);
 
   return (
     <div
@@ -385,16 +424,19 @@ function CardIconSlot({
       data-dw-card-element-kind="icon-slot"
       data-dw-card-has-icon={iconRef ? "true" : undefined}
       className={cn(
-        "relative flex shrink-0 overflow-hidden",
+        "relative flex shrink-0",
+        !isDecorWatermark && "overflow-hidden",
+        isDecorWatermark && "pointer-events-auto",
         isOver && canDrop && "ring-2 ring-blue-500 ring-inset",
         isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
       )}
       style={{
         ...layoutCss,
         ...slotStyleCss,
-        ...shellBorderCss,
         ...slotShadowCss,
         ...popStyle,
+        ...decorOverlayStyle,
+        ...actionOverlayStyle,
         ...cardIconSlotContainerStyle(iconSizeMode),
         borderRadius: isCircle ? "50%" : slotStyleCss.borderRadius,
         boxSizing: "border-box",
@@ -405,23 +447,42 @@ function CardIconSlot({
     >
       {meshLayer}
       {iconRef ? (
-        <div
-          className={cn(
-            fillSlot ? "absolute inset-0" : "absolute shrink-0",
-            "flex items-center justify-center overflow-hidden",
-            fillSlot && isCircle && "rounded-full",
-            !hideIconTile && "rounded-lg shadow-md bg-card dw-icon-container border",
-            !hideIconTile && isSelected && !isReadOnly && "border-primary",
-          )}
-          data-dw-card-icon-glyph
-          style={{
-            ...(fillSlot ? {} : placementStyle),
-            ...cardIconGlyphSizeStyle(iconRef.nodeSize, iconSizeMode, fillSlot),
-            containerType: "size",
-            opacity: iconGlyphOpacity,
-          }}
-        >
-          <ResourceIcon
+        isDecorWatermark ? (
+          <div data-dw-card-icon-glyph style={dashboardStatDecorClipStyle()}>
+            <div style={dashboardStatDecorIconWrapStyle(iconGlyphOpacity)}>
+              <ResourceIcon
+                type={iconRef.type}
+                provider={iconRef.provider}
+                category={iconRef.category}
+                file={iconRef.file}
+                iconType={iconRef.iconType}
+                iconName={iconRef.iconName}
+                emoji={iconRef.emoji}
+                iconColor={iconRef.iconColor ?? "#ffffff"}
+                imageUrl={iconRef.imageUrl}
+                imageOptions={iconRef.imageOptions}
+                width="100%"
+                height="100%"
+                style={dashboardStatDecorIconImageStyle(decorWhiteFilter, iconGlyphOpacity)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              fillSlot ? "absolute inset-0" : "absolute shrink-0",
+              "flex items-center justify-center overflow-hidden",
+              fillSlot && isCircle && "rounded-full",
+              !hideIconTile && "rounded-lg shadow-md bg-card dw-icon-container border",
+              !hideIconTile && isSelected && !isReadOnly && "border-primary",
+            )}
+            data-dw-card-icon-glyph
+            style={{
+              ...(fillSlot ? {} : { ...placementStyle, ...cardIconGlyphSizeStyle(iconRef.nodeSize, iconSizeMode, fillSlot) }),
+              containerType: "size",
+            }}
+          >
+            <ResourceIcon
               type={iconRef.type}
               provider={iconRef.provider}
               category={iconRef.category}
@@ -436,8 +497,9 @@ function CardIconSlot({
               height="100%"
               className={cn("h-full w-full", fillSlot ? "object-cover" : "object-contain")}
             />
-        </div>
-      ) : element.placeholder === "rect" || element.placeholder === "circle" ? null : (
+          </div>
+        )
+      ) : element.placeholder === "rect" || element.placeholder === "circle" || element.iconDecorGradient ? null : (
         <span className="flex h-full w-full items-center justify-center text-[10px] text-white/70">
           Drop icon
         </span>
@@ -477,19 +539,35 @@ function CardElementRenderer({
 }: CardElementRendererProps) {
   const effectiveLayout =
     element.kind === "text"
-      ? resolveDetailPostBodyLine2Layout(element.id, cardTemplateId, element.layout)
+      ? resolveDetailPostBodyLine2Layout(element.id, cardTemplateId, element.layout) ??
+        resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout)
       : element.kind === "section"
-        ? resolveDetailPostBodySectionLayout(element.id, cardTemplateId, element.layout)
-        : element.layout;
+        ? resolveDetailPostBodySectionLayout(element.id, cardTemplateId, element.layout) ??
+          resolveProfileSocialSectionLayout(element.id, cardTemplateId, element.layout)
+        : element.kind === "icon-slot"
+          ? resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ?? element.layout
+          : element.layout;
   const effectiveStyle =
     element.kind === "text"
       ? resolveDetailPostCtaStyle(element.id, cardTemplateId, element.style)
-      : element.style;
+      : element.kind === "section"
+        ? resolveDetailPostFooterStyle(element.id, cardTemplateId, element.style)
+        : element.style;
   const layoutCss = cardLayoutToCss(effectiveLayout, element.kind === "section");
   const rawStyleCss = cardElementStyleToCss(effectiveStyle);
   const { styleCss, meshLayer } = cardElementBackgroundLayers(element, rawStyleCss);
   const isSelected = cardSelectedElementId === element.id;
   const needsRelative = !!meshLayer;
+  const sectionUsesShellBorder =
+    element.kind === "section" &&
+    detailPostFooterUsesShellBorder(element, cardTemplateId) &&
+    !!cardShellBorder &&
+    cardShellBorder.width > 0;
+  const sectionStyleCss = mergeCardShellBorderStyle(styleCss, sectionUsesShellBorder, cardShellBorder);
+  const dashboardSectionStyle = dashboardStatSectionStyle(element.id, cardTemplateId);
+  const dashboardSectionClass = dashboardStatSectionClassName(element.id, cardTemplateId);
+  const dashboardRootStyle =
+    isRoot && isDashboardStatCard(cardTemplateId) ? { position: "relative" as const } : undefined;
 
   if (element.kind === "section") {
     const sectionStagger = staggerMap.get(element.id);
@@ -499,7 +577,7 @@ function CardElementRenderer({
         : undefined;
     const showHeroHandle =
       isRoot &&
-      isProfileFeatureCard(cardTemplateId) &&
+      isProfileHeroSplitCard(cardTemplateId) &&
       heroBoundaryInteractionEnabled &&
       !!cardRootRef &&
       !!cardRootElements;
@@ -508,10 +586,15 @@ function CardElementRenderer({
         ref={isRoot ? cardRootRef : undefined}
         style={{
           ...layoutCss,
-          ...styleCss,
+          ...sectionStyleCss,
+          ...dashboardSectionStyle,
+          ...dashboardRootStyle,
           ...sectionPop,
           boxSizing: "border-box",
-          position: needsRelative || showHeroHandle ? "relative" : undefined,
+          position:
+            needsRelative || showHeroHandle
+              ? "relative"
+              : dashboardSectionStyle?.position ?? dashboardRootStyle?.position,
           ...(isRoot
             ? { overflow: "hidden", height: "100%", width: "100%", minHeight: 0, minWidth: 0 }
             : {}),
@@ -519,7 +602,10 @@ function CardElementRenderer({
         data-dw-card-section={element.id}
         data-dw-card-element-id={element.id}
         data-dw-card-element-kind="section"
-        className={cn(isSelected && !isReadOnly && "ring-2 ring-primary ring-inset")}
+        className={cn(
+          dashboardSectionClass,
+          isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
+        )}
         onClick={(e) =>
           trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect)
         }
@@ -588,6 +674,7 @@ function CardElementRenderer({
         onCardElementSelect={onCardElementSelect}
         cardNodeSelected={cardNodeSelected}
         cardShellBorder={cardShellBorder}
+        cardTemplateId={cardTemplateId}
       />
     );
   }
@@ -671,10 +758,12 @@ function CardElementRenderer({
     }
     const textNode = cardElementTextNode(node, element);
     const textPad = effectiveLayout?.padding ?? [8, 12];
+    const socialTextStyle = resolveProfileSocialTextStyle(element.id, cardTemplateId);
     const textStyle: React.CSSProperties = {
       ...layoutCss,
       ...styleCss,
       ...popStyle,
+      ...socialTextStyle,
       fontSize: element.fontSize ?? 12,
       fontWeight: element.fontWeight as React.CSSProperties["fontWeight"],
       color: element.textColor ?? "#0f172a",
@@ -683,6 +772,9 @@ function CardElementRenderer({
       padding: cardLayoutToCss({ padding: textPad }).padding,
       boxSizing: "border-box",
       position: needsRelative ? "relative" : undefined,
+      ...(fillRemaining
+        ? { overflow: isEditing ? "auto" : (layoutCss.overflow ?? "hidden") }
+        : {}),
     };
 
     return (
@@ -692,6 +784,7 @@ function CardElementRenderer({
         data-dw-card-element-kind="text"
         className={cn(
           "min-w-0",
+          fillRemaining && "min-h-0",
           isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
         )}
         onClick={(e) =>
@@ -699,7 +792,12 @@ function CardElementRenderer({
         }
       >
         {meshLayer}
-        <div className="relative z-[1] min-w-0">
+        <div
+          className={cn(
+            "relative z-[1] min-w-0",
+            fillRemaining && "min-h-0 flex-1 overflow-hidden",
+          )}
+        >
         {isEditing ? (
           <TextboxRichEditor
             node={textNode}

@@ -6,6 +6,7 @@ function mapAlign(a?: CardFlexAlign): CSSProperties["alignItems"] {
     case "start": return "flex-start";
     case "end": return "flex-end";
     case "stretch": return "stretch";
+    case "baseline": return "baseline";
     case "center": return "center";
     default: return undefined;
   }
@@ -76,6 +77,9 @@ export function cardLayoutToCss(layout?: CardLayoutBox, isSection = false): CSSP
     alignItems: mapAlign(layout.alignItems),
     justifyContent: mapJustify(layout.justifyContent),
     alignSelf: mapAlign(layout.alignSelf),
+    marginTop: layout.marginTop,
+    marginBottom: layout.marginBottom,
+    zIndex: layout.zIndex,
     gap: layout.gap,
     padding: normalizePadding(layout.padding),
     width: dim(layout.width),

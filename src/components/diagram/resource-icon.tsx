@@ -345,6 +345,25 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
       </svg>
     );
   }
+  if (slug === "profile-social") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <rect x="3.5" y="3.5" width="17" height="17" rx="2.8" {...frame} />
+        <rect x="4.5" y="4.5" width="15" height="7.5" rx="1.2" fill="#2ab7bc" />
+        <circle cx="12" cy="11.2" r="3.1" fill="#fff" stroke="#2ab7bc" strokeWidth={1.2} />
+        <circle cx="12" cy="11.2" r="2.3" fill="#94dce0" />
+        <rect x="7.5" y="14.8" width="9" height="1.4" rx="0.5" fill="#475569" opacity={0.85} />
+        <rect x="9" y="16.8" width="6" height="1" rx="0.4" fill="#94a3b8" />
+        <line x1="5.5" y1="18.8" x2="18.5" y2="18.8" stroke="#e2e8f0" strokeWidth={0.8} />
+        <rect x="5.5" y="20" width="3.2" height="1.2" rx="0.4" fill="#334155" />
+        <rect x="5.5" y="21.4" width="3.8" height="0.8" rx="0.3" fill="#94a3b8" />
+        <rect x="10.4" y="20" width="3.2" height="1.2" rx="0.4" fill="#334155" />
+        <rect x="10.4" y="21.4" width="2.8" height="0.8" rx="0.3" fill="#94a3b8" />
+        <rect x="15.3" y="20" width="3.2" height="1.2" rx="0.4" fill="#334155" />
+        <rect x="15.3" y="21.4" width="3.2" height="0.8" rx="0.3" fill="#94a3b8" />
+      </svg>
+    );
+  }
   if (slug === "compact-horizontal") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden {...props}>
@@ -383,6 +402,38 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
         <rect x="5" y="14" width="13" height="1.5" rx="0.5" fill={CARD_BLUE_MUTED} />
         <rect x="5" y="16.5" width="9" height="1.5" rx="0.5" fill={CARD_BLUE_LIGHT} />
         <rect x="5" y="19" width="14" height="3" rx="1" fill="none" stroke={CARD_BLUE} strokeWidth={0.9} strokeDasharray="2 1.5" />
+      </svg>
+    );
+  }
+  if (slug.startsWith("dashboard-")) {
+    const gradientId = `card-dash-${slug}`;
+    const stops =
+      slug === "dashboard-ranking"
+        ? ["#bbf7d0", "#16a34a"]
+        : slug === "dashboard-incentives"
+          ? ["#bae6fd", "#0284c7"]
+          : slug === "dashboard-defaults"
+            ? ["#fecdd3", "#db2777"]
+            : ["#ddd6fe", "#7c3aed"];
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={stops[0]} />
+            <stop offset="100%" stopColor={stops[1]} />
+          </linearGradient>
+        </defs>
+        <rect x="3" y="4" width="18" height="16" rx="3.5" fill={`url(#${gradientId})`} stroke="currentColor" strokeWidth={1} />
+        <rect x="5.5" y="7" width="7" height="1.4" rx="0.5" fill="#fff" opacity={0.9} />
+        <rect x="5.5" y="16.5" width="5" height="2.2" rx="0.6" fill="#fff" opacity={0.95} />
+        <circle cx="17.5" cy="7.8" r="1.5" fill="#fff" opacity={0.35} />
+        <path
+          d="M16.5 14.5c1.8-0.2 3.2 0.8 3.8 2.4 0.5 1.3 0.1 2.6-1 3.4"
+          fill="none"
+          stroke="#fff"
+          strokeWidth={1.2}
+          opacity={0.28}
+        />
       </svg>
     );
   }

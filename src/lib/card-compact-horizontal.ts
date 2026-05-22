@@ -1,7 +1,9 @@
 import type { CardElementData, CardElementStyle } from "@/lib/card-types";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 import { isDetailPostCard } from "@/lib/card-detail-post";
+import { isDashboardStatCard } from "@/lib/card-dashboard-stat";
 import { isListItemRowCard } from "@/lib/card-list-item";
+import { isProfileSocialCard } from "@/lib/card-profile-social";
 
 export const COMPACT_HORIZONTAL_TEMPLATE_ID = "compact-horizontal";
 export const COMPACT_AVATAR_ID = "avatar";
@@ -20,9 +22,11 @@ export function isCompactHorizontalCard(templateId: string | undefined): boolean
 export function cardTemplateHasDedicatedPropertiesPanel(templateId: string | undefined): boolean {
   return (
     templateId === "profile-feature" ||
+    isProfileSocialCard(templateId) ||
     isCompactHorizontalCard(templateId) ||
     isListItemRowCard(templateId) ||
-    isDetailPostCard(templateId)
+    isDetailPostCard(templateId) ||
+    isDashboardStatCard(templateId)
   );
 }
 

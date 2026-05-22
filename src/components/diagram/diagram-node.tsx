@@ -22,6 +22,7 @@ import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { isCardNodeType, findCardElement, updateCardElementTree } from "@/lib/card-utils";
+import { normalizeDashboardDecorIconRef } from "@/lib/card-dashboard-stat";
 import type { CardIconRef } from "@/lib/card-types";
 import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, snapIconLabelWidthToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
@@ -1930,7 +1931,8 @@ function DiagramNodeInner({
   const handleCardIconDrop = useCallback(
     (elementId: string, iconRef: CardIconRef) => {
       if (isReadOnly || !onUpdate || !node.card?.elements) return;
-      const elements = updateCardElementTree(node.card.elements, elementId, { iconRef });
+      const iconRefNormalized = normalizeDashboardDecorIconRef(node.card.elements, elementId, iconRef);
+      const elements = updateCardElementTree(node.card.elements, elementId, { iconRef: iconRefNormalized });
       onUpdate({ ...node, card: { ...node.card, elements } });
     },
     [isReadOnly, onUpdate, node],

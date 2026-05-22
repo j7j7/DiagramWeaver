@@ -3,6 +3,60 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-22 – Cards: Profile Social template
+
+New **Profile Social** card (`generic.card.profile-social`) based on **Profile Feature** hero/body split: teal header strip, overlapping circular **avatar** (drop icon target), centered name/age/location, multiline **description** (`fillRemaining`) between location and a **footer** section (divider + three-column stats pinned to the bottom on vertical resize). Helpers in **`card-profile-social.ts`**; **Card properties** adds header height, header fill, avatar size/border/shadow/fill, and text segment fills; Visual styling **Background** applies to **body** (same as profile-feature). Hero split drag handle shared via **`isProfileHeroSplitCard`**. **Theme apply**: body uses the theme’s light gradient stop (lightness +10%); header/avatar use the bold stop darkened (~22%); divider is a lighter tint of the accent — same hue family as the theme, no arbitrary hue rotation. Palette glyph in **`resource-icon.tsx`**. Patch bumped.
+
+### 2026-05-22 – Cards: dashboard action icon drop target
+
+**Action** icon slot moved to **root** (absolute top-right, **z-index 3**) so it receives drops above pass-through header/body layers; decor watermark unchanged bottom-right. Legacy cards with action in header still pick up the overlay style. Patch bumped.
+
+
+### 2026-05-22 – Cards: dashboard decor top-left anchor + img opacity gradient
+
+Decor watermark: icon **2× clip** at **top-left** of clip (`object-position: left top`) so the icon’s top-left quadrant shows; **opacity gradient 20→50%** applied on the **img** layer (with white filter for file icons). Patch bumped.
+
+
+### 2026-05-22 – Cards: dashboard decor top-left quadrant + 20–50% fade
+
+Decor watermark shows the icon’s **top-left quadrant** (4× asset, `translate(50%, 50%)` from slot corner). Opacity mask runs **top-left 20% → bottom-right 50%**. Patch bumped.
+
+
+### 2026-05-22 – Cards: dashboard decor icon visible watermark
+
+Decor watermark no longer clips an empty icon corner — icon scales from **bottom-right** with opacity fade; raster/catalog icons get **`brightness(0) invert(1)`** so file icons render white on the gradient. Patch bumped.
+
+
+### 2026-05-22 – Cards: dashboard decor drop hit-testing
+
+Dashboard stat **header/body** sections use **`pointer-events: none`** (children **`auto`**) so the bottom-right **decor** slot receives icon drops; **`normalizeDashboardDecorIconRef`** applied on all drop paths (white @ 0.5 default). Patch bumped.
+
+
+### 2026-05-22 – Cards: dashboard decor icon quadrant + corner fade
+
+Dashboard stat **decor** icon slot: **4×** asset anchored top-right in a bottom-right clip region so only the icon’s **top-right quadrant** shows; **CSS mask** fades from ~**50%** at the card corner to transparent toward the top-left (watermark). Drop defaults to white @ 0.5 opacity. Patch bumped.
+
+
+### 2026-05-22 – Cards: dashboard stat templates (score, ranking, incentives, defaults)
+
+Four gradient **dashboard stat** card templates (`generic.card.dashboard-*`): title + large value, semi-transparent action icon top-right, decorative watermark icon bottom-right via **`iconDecorGradient`** (CSS gradient mask + opacity). Shared factory in **`card-dashboard-stat.ts`**; **Card properties** panel adds action/decor size and decor opacity sliders. Palette entries in **`resource-generic.json`**. Patch bumped.
+
+
+### 2026-05-22 – Cards: detail post body line 2 overflow clip
+
+**Detail Post** **body line 2** (`fillRemaining`) clips overflowing text instead of painting over the footer — **`overflow: hidden`** on layout (template + **`resolveDetailPostBodyLine2Layout`**) and flex **`min-h-0`** / inner clip in **`CardElementRenderer`**. Patch bumped.
+
+
+### 2026-05-22 – Cards: mesh background behind section fills
+
+Card element mesh SVG layer uses **`-z-10`** so in-flow child sections (headline/body chips, footer plate, tags) paint above the root mesh — same visibility as with solid or gradient backgrounds. Patch bumped.
+
+
+### 2026-05-22 – Cards: detail post footer border matches card shell
+
+**Detail Post** footer section uses **`matchCardBorder`** (same width, colour, solid/dotted/dashed as the card outline). Legacy footers with a fixed border pick this up at render via **`resolveDetailPostFooterStyle`**. Patch bumped.
+
+
 ### 2026-05-22 – Cards: editable header tag + detail post CTA border
 
 Card **tag** regions are double-click editable (same inline editor as text); empty tag text hides the chip. **Detail Post** CTA no longer has a dashed inner border (template + **`resolveDetailPostCtaStyle`** for legacy cards). Patch bumped.
