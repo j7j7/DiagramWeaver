@@ -3,6 +3,10 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-26 – Editor: rectangle resize handle click jump
+
+Resize **`pointerDown`** stored pointer position as **`x`/`y`** on the same object used as **`handleResizeEnd`’s fallback** when **`latestResizeDimensionsRef`** was unset (click without **`pointerMove`**). **`handleResizeEnd`** treated those keys as **diagram coordinates** and called **`onResize`**, teleporting nodes. **`resizeStartPos`** now uses **`pointerClientX`/`pointerClientY`**; **`onResize`** runs only after at least one **`handleResizeMove`** (committed dims). **`diagram-node.tsx`**. Patch bumped.
+
 ### 2026-05-22 – Cards: palette SVG/PNG resource glyphs
 
 Added **`public/resources/generic/cards/`** wireframe **SVG** + **48px PNG** for all ten card templates (profile, compact, list row, detail post, dashboard stats), matching template colors/layout. **`resource-generic.json`** already pointed at these files; palette **`DraggableResourceItem`** loads them via **`buildResourceIconPath`**. Removed dark-mode **invert** on card thumbnails (multi-color glyphs). **`CardPaletteGlyph`** / list row / detail post footer aligned with assets. Patch bumped.

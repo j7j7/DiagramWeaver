@@ -598,7 +598,15 @@ function DiagramNodeInner({
   const [resizeHandle, setResizeHandle] = useState<'top' | 'left' | 'right' | 'bottom' | 'bottom-right' | null>(null);
   const [hoveredHandle, setHoveredHandle] = useState<'top' | 'left' | 'right' | 'bottom' | 'bottom-right' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const resizeStartPos = useRef<{ x: number; y: number; startX: number; startY: number; startWidth: number; startHeight: number } | null>(null);
+  /** Pointer client coords use `pointerClientX/Y` so we never collide with diagram `x`/`y` in resize end bookkeeping. */
+  const resizeStartPos = useRef<{
+    pointerClientX: number;
+    pointerClientY: number;
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+  } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Local dimensions during resize for instant visual feedback (no parent update until end)
   const [resizeDimensions, setResizeDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -2110,8 +2118,8 @@ function DiagramNodeInner({
     }
     
     resizeStartPos.current = {
-      x: e.clientX,
-      y: e.clientY,
+      pointerClientX: e.clientX,
+      pointerClientY: e.clientY,
       startX,
       startY,
       startWidth,
@@ -2122,8 +2130,8 @@ function DiagramNodeInner({
   const handleResizeMove = (e: React.MouseEvent | React.PointerEvent) => {
     if (!isResizing || !resizeStartPos.current || !resizeHandle) return;
     
-    let deltaX = e.clientX - resizeStartPos.current.x;
-    let deltaY = e.clientY - resizeStartPos.current.y;
+    let deltaX = e.clientX - resizeStartPos.current.pointerClientX;
+    let deltaY = e.clientY - resizeStartPos.current.pointerClientY;
     if (transform) {
       deltaX = deltaX / transform.k;
       deltaY = deltaY / transform.k;
@@ -2208,7 +2216,8 @@ function DiagramNodeInner({
   };
 
   const handleResizeEnd = () => {
-    const dimensions = latestResizeDimensionsRef.current ?? resizeStartPos.current;
+    /** Set only after `handleResizeMove` — avoids treating pointer-down `resizeStartPos` as diagram x/y (`x`/`y` were screen coords before pointerClient rename). */
+    const committedDims = latestResizeDimensionsRef.current;
     latestResizeDimensionsRef.current = null;
     resizeStartPos.current = null;
     setResizeDimensions(null);
@@ -2217,11 +2226,8 @@ function DiagramNodeInner({
     setResizeHandle(null);
     delete (node as any).originalWidth;
     delete (node as any).originalHeight;
-    if (dimensions && onResize) {
-      const w = 'width' in dimensions ? dimensions.width : dimensions.startWidth;
-      const h = 'height' in dimensions ? dimensions.height : dimensions.startHeight;
-      const newX = dimensions && 'x' in dimensions ? dimensions.x : undefined;
-      const newY = dimensions && 'y' in dimensions ? dimensions.y : undefined;
+    if (committedDims && onResize) {
+      const { width: w, height: h, x: newX, y: newY } = committedDims;
       onResize(node.id, w, h, newX, newY);
     }
     if (onResizeEnd) {
