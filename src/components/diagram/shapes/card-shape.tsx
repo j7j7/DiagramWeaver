@@ -17,6 +17,7 @@ import {
 } from "@/lib/card-icon-layout";
 import { iconDragItemToCardIconRef, isIconPaletteDragItem } from "@/lib/card-utils";
 import {
+  cardShellExitStaggerSegmentIndex,
   flattenCardElementsForSlideStaggerTiming,
   type CardSlideStaggerTimingOptions,
 } from "@/lib/card-presentation";
@@ -1316,12 +1317,20 @@ export function CardShape(props: CardShapeProps) {
     }),
     [resolvedTemplateId, nodeAny.agendaDividersEnabled, isReadOnly, cardNodeSelected],
   );
+  const staggerTimingParticipants = useMemo(
+    () => flattenCardElementsForSlideStaggerTiming(cardRoot, staggerTimingOpts),
+    [cardRoot, staggerTimingOpts],
+  );
   const staggerMap = useMemo(() => {
-    const timingFlat = flattenCardElementsForSlideStaggerTiming(cardRoot, staggerTimingOpts);
     const m = new Map<string, number>();
-    timingFlat.forEach((el, i) => m.set(el.id, i));
+    staggerTimingParticipants.forEach((el, i) => m.set(el.id, i));
     return m;
-  }, [cardRoot, staggerTimingOpts]);
+  }, [staggerTimingParticipants]);
+
+  const shellExitStaggerSegIdx = useMemo(
+    () => cardShellExitStaggerSegmentIndex(staggerTimingParticipants, resolvedTemplateId),
+    [staggerTimingParticipants, resolvedTemplateId],
+  );
   const shellHighlightStyle = useMemo(
     () =>
       getHighlightAnimStyleForNode(
@@ -1360,12 +1369,16 @@ export function CardShape(props: CardShapeProps) {
     if (!presentationCardSlideStagger) return undefined;
     const cfg = presentationCardSlideStagger;
     if (!cfg.exit && !cfg.shellEntrance) return undefined;
-    const lastIdx = staggerMap.size <= 1 ? 0 : staggerMap.size - 1;
     if (cfg.exit) {
-      return elementPopStyle(lastIdx, popAnimIn, popAnimOut, cfg);
+      return elementPopStyle(shellExitStaggerSegIdx, popAnimIn, popAnimOut, cfg);
     }
     return elementPopStyle(0, popAnimIn, popAnimOut, { ...cfg, exit: false });
-  }, [presentationCardSlideStagger, staggerMap, popAnimIn, popAnimOut]);
+  }, [
+    presentationCardSlideStagger,
+    shellExitStaggerSegIdx,
+    popAnimIn,
+    popAnimOut,
+  ]);
 
   const isDiagonalSplitCard = isProfileDiagonalSplitCard(resolvedTemplateId);
   const cardShellInsetPx = needsGradientBorder ? borderWidthNum : 0;

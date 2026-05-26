@@ -87,6 +87,32 @@ export function flattenCardElementsForSlideStaggerTiming(
   return flattenCardElements(root).filter((el) => !shouldExcludeFromCardSlidePopTiming(el, opts));
 }
 
+/**
+ * Stagger segment index for the card shell exit opacity pop — must match ordering used to build
+ * {@link flattenCardElementsForSlideStaggerTiming} / `staggerMap`.
+ *
+ * For agenda templates, DFS order can leave thin horizontal/vertical divider sections at the tail
+ * (or after omitted empty cells in read‑only playback). Waiting for those waves delays outer shell /
+ * background fading after the viewer perceives content has already cascaded (~one extra cascade
+ * step per divider; compounding stagger can reach ~slide budget gaps).
+ */
+export function cardShellExitStaggerSegmentIndex(
+  timingParticipants: readonly CardElementData[],
+  templateId: string | undefined,
+): number {
+  const n = timingParticipants.length;
+  if (n <= 1) return 0;
+
+  if (templateId && isAgendaCard(templateId)) {
+    for (let i = n - 1; i >= 0; i--) {
+      const el = timingParticipants[i]!;
+      if (!isAgendaDividerElement(el.id)) return i;
+    }
+  }
+
+  return n - 1;
+}
+
 /** Slide budget / tail: viewer-style playback (add-row omitted; matches stagger map cardinality). */
 export function cardSlideStaggerParticipantCount(node: DiagramNodeData): number {
   if (!isCardNodeType(node.type) || !node.card) return 0;

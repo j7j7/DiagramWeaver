@@ -122,7 +122,7 @@ Below, “**key exports**” are representative; open the file for the full surf
 | **`presentation-storage.ts`** | **`savePresentationsByTab`** persistence contract. |
 | **`presentation-deck-merge.ts`** | **`collapsePresentationDecksToOne`**. |
 | **`extract-embedded-presentations.ts`** | Pull embedded decks from JSON for viewer. |
-| **`chart-slide-lerp.ts`**, **`chart-presentation-stagger.ts`**, **`ease-slide-cubic-bezier.ts`**, **`slide-transition-order.ts`**, **`slide-visual-color.ts`** | Transitions and chart interpolation during slide changes. |
+| **`chart-slide-lerp.ts`**, **`chart-presentation-stagger.ts`**, **`card-presentation.ts`**, **`ease-slide-cubic-bezier.ts`**, **`slide-transition-order.ts`**, **`slide-visual-color.ts`** | Transitions and chart interpolation during slide changes; **`card-presentation`** — card stagger participant list/count and agenda shell‑exit stagger index. |
 
 ### Themes & visual styling
 
