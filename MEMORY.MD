@@ -3,6 +3,18 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-26 – Presentation: card shell timing + stagger map + dashboard shell fade-in
+
+**Pause after last row:** `staggerMap` targeted the raw **`flattenCardElements`** DFS order, including **holes** (IDs **never mounted** in read-only playback: agenda chrome, diagonal split-line, empty placeholder tags/text). Inner elements behaved like a **dense** cascade, while **`slideShellExitStyle`** still keyed off **`n−1`** in the **long** holey list ⇒ long dead delay (~1–2s). **`staggerMap`** is now built **only** from **`flattenCardElementsForSlideStaggerTiming`** (contiguous indices); shell exit delay is **`lastIdx = size − 1`**. **`shouldExcludeFromCardSlidePopTiming`** is the central filter (**`cardSlideStaggerParticipantCount`** unchanged contract). **`ChartSlideStagger.shellEntrance`** runs **`dw-card-in`** at index **0** on **`ShapeWrapper`** when **`isAppearingCard`** so dashboard-like shells fade in with the cascade. Patch bumped.
+
+### 2026-05-26 – Presentation: prev/next beside hidden-bar chevron (`PresentationPlayer`)
+
+When the bottom playback bar is **hidden** (**Hide controls / fullscreen slide** → **`panelHidden`**), **`fixed bottom-4`** is now a **row**: **ArrowLeft** (prev) and **ArrowRight** (next) in **`h-9 w-9`** semi-transparent **`rounded-full`** grey circles flanking the existing **ChevronUp** **Show controls** button (same **`size="sm"`** pill styling, no longer **`fixed`** on that button alone). Patch bumped.
+
+### 2026-05-26 – Presentation: prev/next chrome in minimal fullscreen (`PresentationPlayer`)
+
+When **`showPlaybackToolbar`** is false (viewer fullscreen), **top-right** shows a **row of three** matching **h-10 w-10** semi-transparent circular buttons: **ArrowLeft** (previous), **X** (exit), **ArrowRight** (next) — same **`bg-black/35` / `border-white/20`** styling as the lone exit control. Editor fullscreen with the full toolbar unchanged (exit only top-right). Patch bumped.
+
 ### 2026-05-26 – Cards: Agenda new row infers hue step from existing rows
 
 New agenda rows use **`inferAgendaRowHueStepDeg`** (average consecutive hue delta between existing row fills) instead of only the Themes menu step, so added items match the preset/sequence step. Patch bumped.

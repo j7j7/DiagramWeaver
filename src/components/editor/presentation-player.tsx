@@ -3,7 +3,22 @@
 import React from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Check, ChevronLeft, ChevronRight, ChevronUp, Clock3, Copy, Maximize2, MoreHorizontal, MonitorPlay, Play, Wand2, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Clock3,
+  Copy,
+  Maximize2,
+  MoreHorizontal,
+  MonitorPlay,
+  Play,
+  Wand2,
+  X,
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -304,6 +319,13 @@ export function PresentationPlayer({
   const playbackBarClassName =
     'pointer-events-auto fixed bottom-4 left-1/2 z-[60] flex max-w-[min(920px,calc(100vw-2rem))] -translate-x-1/2 flex-wrap items-center gap-2 rounded-lg border border-border bg-card/95 px-3 py-2 text-foreground shadow-lg backdrop-blur-sm';
 
+  const minimalFullscreenChromeBtnClass =
+    'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/50 disabled:pointer-events-none disabled:opacity-40';
+
+  /** Hidden playback bar: circular prev/next flanking the centered “show controls” chevron (~same touch target as `Button size="sm"`). */
+  const hiddenBarNavBtnClass =
+    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/55 text-foreground shadow-md backdrop-blur-sm transition-colors hover:bg-muted/75 disabled:pointer-events-none disabled:opacity-40';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -315,15 +337,49 @@ export function PresentationPlayer({
         <DialogTitle className="sr-only">
           {currentSlide?.title || 'Presentation Player'}
         </DialogTitle>
-        <button
-          type="button"
-          onClick={() => onOpenChange(false)}
-          className="fixed top-4 right-4 z-[200] flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/50"
-          aria-label="Exit fullscreen"
-          title="Exit fullscreen"
-        >
-          <X className="h-4 w-4 opacity-90" strokeWidth={2.25} />
-        </button>
+        {!showPlaybackToolbar ? (
+          <div className="fixed top-4 right-4 z-[200] flex items-center gap-2">
+            <button
+              type="button"
+              onClick={goPrevious}
+              disabled={totalSlides === 0}
+              className={minimalFullscreenChromeBtnClass}
+              aria-label="Previous slide"
+              title="Previous slide"
+            >
+              <ArrowLeft className="h-4 w-4 opacity-90" strokeWidth={2.25} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className={minimalFullscreenChromeBtnClass}
+              aria-label="Exit fullscreen"
+              title="Exit fullscreen"
+            >
+              <X className="h-4 w-4 opacity-90" strokeWidth={2.25} />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={totalSlides === 0}
+              className={minimalFullscreenChromeBtnClass}
+              aria-label="Next slide"
+              title="Next slide"
+            >
+              <ArrowRight className="h-4 w-4 opacity-90" strokeWidth={2.25} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="fixed top-4 right-4 z-[200] flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/50"
+            aria-label="Exit fullscreen"
+            title="Exit fullscreen"
+          >
+            <X className="h-4 w-4 opacity-90" strokeWidth={2.25} />
+          </button>
+        )}
         <div
           className="relative flex h-full w-full flex-col"
           style={{ backgroundColor: presentationShellBackgroundColor }}
@@ -369,16 +425,38 @@ export function PresentationPlayer({
 
           {showPlaybackToolbar &&
             (panelHidden ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="pointer-events-auto fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 border border-border bg-card/95 px-3 py-1.5 text-foreground shadow-lg backdrop-blur-sm hover:bg-accent"
-                onClick={() => setPanelHidden(false)}
-                title="Show controls"
-                aria-label="Show controls"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
+              <div className="pointer-events-auto fixed bottom-4 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={goPrevious}
+                  disabled={totalSlides === 0}
+                  className={hiddenBarNavBtnClass}
+                  title="Previous slide"
+                  aria-label="Previous slide"
+                >
+                  <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
+                </button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border border-border bg-card/95 px-3 py-1.5 text-foreground shadow-lg backdrop-blur-sm hover:bg-accent"
+                  onClick={() => setPanelHidden(false)}
+                  title="Show controls"
+                  aria-label="Show controls"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  disabled={totalSlides === 0}
+                  className={hiddenBarNavBtnClass}
+                  title="Next slide"
+                  aria-label="Next slide"
+                >
+                  <ArrowRight className="h-4 w-4" strokeWidth={2.25} />
+                </button>
+              </div>
             ) : (
               <div className={playbackBarClassName}>
                 <div className="flex min-w-0 flex-1 items-center gap-2">

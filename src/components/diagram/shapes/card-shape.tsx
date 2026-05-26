@@ -16,7 +16,10 @@ import {
   cardIconSlotContainerStyle,
 } from "@/lib/card-icon-layout";
 import { iconDragItemToCardIconRef, isIconPaletteDragItem } from "@/lib/card-utils";
-import { flattenCardElements } from "@/lib/card-presentation";
+import {
+  flattenCardElementsForSlideStaggerTiming,
+  type CardSlideStaggerTimingOptions,
+} from "@/lib/card-presentation";
 import {
   applyProfileHeroHeightPct,
   isProfileHeroSplitCard,
@@ -1304,12 +1307,21 @@ export function CardShape(props: CardShapeProps) {
   }, [nodeBorderStyle, borderWidthNum, borderColor, needsGradientBorder, styles.borderColors]);
 
   const cardRoot = nodeAny.card?.elements;
+  const staggerTimingOpts: CardSlideStaggerTimingOptions = useMemo(
+    () => ({
+      templateId: resolvedTemplateId,
+      agendaDividersEnabled: nodeAny.agendaDividersEnabled !== false,
+      isReadOnly: Boolean(isReadOnly),
+      cardNodeSelected: Boolean(cardNodeSelected),
+    }),
+    [resolvedTemplateId, nodeAny.agendaDividersEnabled, isReadOnly, cardNodeSelected],
+  );
   const staggerMap = useMemo(() => {
-    const flat = flattenCardElements(cardRoot);
+    const timingFlat = flattenCardElementsForSlideStaggerTiming(cardRoot, staggerTimingOpts);
     const m = new Map<string, number>();
-    flat.forEach((el, i) => m.set(el.id, i));
+    timingFlat.forEach((el, i) => m.set(el.id, i));
     return m;
-  }, [cardRoot]);
+  }, [cardRoot, staggerTimingOpts]);
   const shellHighlightStyle = useMemo(
     () =>
       getHighlightAnimStyleForNode(
@@ -1343,6 +1355,17 @@ export function CardShape(props: CardShapeProps) {
   const popKeyframes = presentationCardSlideStagger
     ? chartSegmentPopKeyframesCss(popAnimIn, popAnimOut)
     : null;
+
+  const slideShellCardPopStyle = useMemo(() => {
+    if (!presentationCardSlideStagger) return undefined;
+    const cfg = presentationCardSlideStagger;
+    if (!cfg.exit && !cfg.shellEntrance) return undefined;
+    const lastIdx = staggerMap.size <= 1 ? 0 : staggerMap.size - 1;
+    if (cfg.exit) {
+      return elementPopStyle(lastIdx, popAnimIn, popAnimOut, cfg);
+    }
+    return elementPopStyle(0, popAnimIn, popAnimOut, { ...cfg, exit: false });
+  }, [presentationCardSlideStagger, staggerMap, popAnimIn, popAnimOut]);
 
   const isDiagonalSplitCard = isProfileDiagonalSplitCard(resolvedTemplateId);
   const cardShellInsetPx = needsGradientBorder ? borderWidthNum : 0;
@@ -1601,6 +1624,7 @@ export function CardShape(props: CardShapeProps) {
       omitShapeText
       borderRadius={borderRadiusStr}
       slideColorTransition={slideColorTransition}
+      slideShellExitStyle={slideShellCardPopStyle}
     >
       {popKeyframes ? <style>{popKeyframes}</style> : null}
       {maskedCard}

@@ -11,6 +11,8 @@ export interface ChartSlideStagger {
   easingCss: string;
   /** True: sequential segment fade-out (chart removed on next slide). */
   exit?: boolean;
+  /** Card shell: fade outer `ShapeWrapper` in with the first stagger wave (dashboard, etc.). */
+  shellEntrance?: boolean;
 }
 
 /** Delay between segment i and i+1 so the cascade reads clearly (ms). */

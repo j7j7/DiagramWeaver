@@ -55,6 +55,8 @@ interface ShapeWrapperProps {
   onLabelDoubleClick: (e: React.MouseEvent) => void;
   /** Presentation slide transition: lerp fill/stroke between slides */
   slideColorTransition?: string;
+  /** Card / shape: single opacity exit keyed with last stagger (includes outer box-shadow/filter). */
+  slideShellExitStyle?: React.CSSProperties;
   /** When true, skip ShapeText so the shape can render custom label regions (e.g. text-box-heading) */
   omitShapeText?: boolean;
   /** When `backgroundStyle` is frosted and this is set, clips the glass layer to match SVG geometry (see SvgShapeBase). */
@@ -107,6 +109,7 @@ export function ShapeWrapper({
   onLabelKeyDown,
   onLabelDoubleClick,
   slideColorTransition,
+  slideShellExitStyle,
   omitShapeText = false,
   frostedGlassClipPath,
   preserveShellHalo = false,
@@ -182,7 +185,8 @@ export function ShapeWrapper({
           ? {
               filter: "var(--shape-shadow-drop)",
             }
-          : {})
+          : {}),
+        ...slideShellExitStyle,
       }}
     >
       {needsGradientBorderLayer ? (

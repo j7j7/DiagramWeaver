@@ -24,7 +24,7 @@ import {
   sectionedShapeSegmentCount,
 } from '@/lib/sectioned-shape-slide-transition';
 import { isCardNodeType } from '@/lib/card-utils';
-import { cardPresentationSignature, cardElementCount } from '@/lib/card-presentation';
+import { cardPresentationSignature, cardSlideStaggerParticipantCount } from '@/lib/card-presentation';
 
 export interface SlideTransitionStyle {
   opacity: number;
@@ -790,7 +790,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             ? pn
             : null;
       if (!cardNode) continue;
-      const nEl = cardElementCount(cardNode);
+      const nEl = cardSlideStaggerParticipantCount(cardNode);
       if (nEl <= 0) continue;
       const useCardTail =
         st.isAppearingCard ||
@@ -939,6 +939,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               durationMs: motionDurationMs,
               easingCss: EASE_IN_OUT,
               exit: !!style.isDisappearingCard,
+              shellEntrance: !!style.isAppearingCard,
             }
           : undefined;
 
@@ -1132,6 +1133,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                   durationMs: motionDurationMs,
                   easingCss: EASE_IN_OUT,
                   exit: !!style.isDisappearingCard,
+                  shellEntrance: !!style.isAppearingCard,
                 }
               : undefined;
 
