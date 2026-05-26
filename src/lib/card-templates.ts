@@ -1,4 +1,5 @@
 import type { CardElementData, CardTemplate } from "@/lib/card-types";
+import { createAgendaTemplate } from "@/lib/card-agenda";
 import { createDashboardStatTemplate } from "@/lib/card-dashboard-stat";
 
 const BLUE = "#3b82f6";
@@ -642,6 +643,8 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
     title: "Defaults",
     value: "2",
   }),
+
+  agenda: createAgendaTemplate(),
 };
 
 export const CARD_TEMPLATE_LIST = Object.values(CARD_TEMPLATES);

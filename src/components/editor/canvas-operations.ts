@@ -30,6 +30,7 @@ import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { defaultPaletteSegmentedRectangleNodeProps } from "@/lib/segmented-rectangle";
 import { getCardTemplateIdFromNodeType, createInitialCardSpec } from "@/lib/card-utils";
+import { AGENDA_TEMPLATE_ID, defaultAgendaPaletteNodeProps } from "@/lib/card-agenda";
 import { getCardTemplate } from "@/lib/card-templates";
 import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
 import {
@@ -346,14 +347,21 @@ export function useCanvasOperations({
             !isFromScratchPad && {
             chart: defaultChartSpecForNodeType(itemType),
           }),
-          ...(cardTemplateId && !isFromScratchPad && {
-            cornerRadius: cardTemplate?.cornerRadius ?? 0.12,
-            backgroundStyle: 'none' as const,
-            borderColor: '#0f172a',
-            borderWidth: 2,
-            borderStyle: 'solid' as const,
-            card: createInitialCardSpec(cardTemplateId),
-          }),
+          ...(cardTemplateId && !isFromScratchPad && (
+            cardTemplateId === AGENDA_TEMPLATE_ID
+              ? {
+                  ...defaultAgendaPaletteNodeProps(),
+                  card: createInitialCardSpec(cardTemplateId),
+                }
+              : {
+                  cornerRadius: cardTemplate?.cornerRadius ?? 0.12,
+                  backgroundStyle: 'none' as const,
+                  borderColor: '#0f172a',
+                  borderWidth: 2,
+                  borderStyle: 'solid' as const,
+                  card: createInitialCardSpec(cardTemplateId),
+                }
+          )),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {
             noIconBackground: true

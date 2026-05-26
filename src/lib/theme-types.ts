@@ -80,6 +80,11 @@ export interface ThemeApplicationOptions {
    * {@link ThemeMenuApplyOptions.multiSelectHueStepDegrees}.
    */
   chartSeriesHueStepDegrees?: number;
+  /**
+   * When true, consecutive card internal regions (agenda rows, tinted sections, icon slots)
+   * step hue when applying a theme. Mirrors Themes menu “Step hue for multi-selection”.
+   */
+  stepHueWithinCard?: boolean;
 }
 
 /** Options passed from the Themes dropdown when applying a theme to the selection. */

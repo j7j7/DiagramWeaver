@@ -8,9 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { ChevronDown } from "lucide-react";
-import type { CardElementData, CardIconSizeMode } from "@/lib/card-types";
+import type { CardElementData, CardFlexJustify, CardIconSizeMode } from "@/lib/card-types";
 import type { NodeSize } from "@/lib/types";
 import { CARD_ICON_SIZE_MODES } from "@/lib/card-icon-layout";
+import {
+  isAgendaRowId,
+  isAgendaSessionCellId,
+  isAgendaTimeCellId,
+  setAgendaCellAlign,
+  setAgendaRowHighlight,
+} from "@/lib/card-agenda";
 import { CardFillStyleControls } from "./card-fill-style-controls";
 import { cn } from "@/lib/utils";
 
@@ -18,12 +25,16 @@ export interface CardElementStylingPanelProps {
   element: CardElementData;
   onElementChange: (patch: Partial<CardElementData>) => void;
   onClearSelection?: () => void;
+  onElementsChange?: (elements: CardElementData) => void;
+  cardElements?: CardElementData;
 }
 
 export function CardElementStylingPanel({
   element,
   onElementChange,
   onClearSelection,
+  onElementsChange,
+  cardElements,
 }: CardElementStylingPanelProps) {
   const hasIcon = element.kind === "icon-slot" && !!element.iconRef;
   const iconRef = element.iconRef;
@@ -50,6 +61,16 @@ export function CardElementStylingPanel({
     typeof rawIconOpacity === "number" && Number.isFinite(rawIconOpacity)
       ? Math.min(1, Math.max(0, rawIconOpacity))
       : 1;
+
+  const isAgendaTimeCell = isAgendaTimeCellId(element.id);
+  const isAgendaSessionCell = isAgendaSessionCellId(element.id);
+  const isAgendaRow = element.kind === "section" && isAgendaRowId(element.id);
+  const cellAlign = element.layout?.justifyContent ?? "start";
+  const alignOptions: { value: CardFlexJustify; label: string }[] = [
+    { value: "start", label: "Left" },
+    { value: "center", label: "Center" },
+    { value: "end", label: "Right" },
+  ];
 
   return (
     <Collapsible defaultOpen className="border-t pt-3 mt-3">
@@ -169,6 +190,39 @@ export function CardElementStylingPanel({
             <ColorPicker
               value={textColor}
               onChange={(value) => onElementChange({ textColor: value })}
+            />
+          </div>
+        )}
+        {(isAgendaTimeCell || isAgendaSessionCell) && cardElements && onElementsChange && (
+          <div className="space-y-1">
+            <Label className="text-sm text-muted-foreground">Cell align</Label>
+            <Select
+              value={cellAlign}
+              onValueChange={(value) =>
+                onElementsChange(setAgendaCellAlign(cardElements, element.id, value as CardFlexJustify))
+              }
+            >
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[70]">
+                {alignOptions.map(({ value, label }) => (
+                  <SelectItem key={value} value={value} className="text-sm">
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {isAgendaRow && cardElements && onElementsChange && (
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-sm text-muted-foreground">Highlight row</Label>
+            <Switch
+              checked={!!element.highlighted || (element.style?.borderWidth ?? 0) > 0}
+              onCheckedChange={(checked) =>
+                onElementsChange(setAgendaRowHighlight(cardElements, element.id, checked))
+              }
             />
           </div>
         )}

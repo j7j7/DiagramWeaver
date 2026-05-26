@@ -3068,7 +3068,7 @@ function DiagramNodeInner({
     if (
       rawTarget instanceof Element &&
       rawTarget.closest(
-        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-bar-width-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-line-vertex-handle], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
+        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-bar-width-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-line-vertex-handle], [data-dw-card-action], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
       )
     ) {
       return;
@@ -3310,7 +3310,7 @@ function DiagramNodeInner({
         if (
           rawTarget instanceof Element &&
           rawTarget.closest(
-            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-bar-width-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag]"
+            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-bar-width-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-card-action]"
           )
         ) {
           e.preventDefault();

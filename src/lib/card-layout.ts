@@ -22,6 +22,30 @@ function mapJustify(j?: CardFlexJustify): CSSProperties["justifyContent"] {
   }
 }
 
+export function flexJustifyToTextJustify(
+  j?: CardFlexJustify,
+): "left" | "center" | "right" | "full" | undefined {
+  switch (j) {
+    case "start": return "left";
+    case "center": return "center";
+    case "end": return "right";
+    case "space-between": return "full";
+    default: return undefined;
+  }
+}
+
+export function textJustifyToFlexJustify(
+  j?: "left" | "center" | "right" | "full",
+): CardFlexJustify | undefined {
+  switch (j) {
+    case "left": return "start";
+    case "center": return "center";
+    case "right": return "end";
+    case "full": return "space-between";
+    default: return undefined;
+  }
+}
+
 function normalizePadding(p?: CardLayoutBox["padding"]): CSSProperties["padding"] {
   if (p == null) return undefined;
   if (typeof p === "number") return p;
@@ -52,6 +76,34 @@ function layoutFlexToLonghand(flex: number | undefined, flexShrinkOverride?: num
   };
 }
 
+/** Avoid React warnings from mixing `background` shorthand with `backgroundColor` across rerenders. */
+function applyCardBackgroundCss(
+  out: CSSProperties,
+  style: CardElementStyle,
+): void {
+  if (style.backgroundStyle === "gradient" && style.backgroundColors?.length === 2) {
+    const angle = style.gradientAngle ?? 135;
+    out.backgroundImage = `linear-gradient(${angle}deg, ${style.backgroundColors[0]}, ${style.backgroundColors[1]})`;
+    out.backgroundColor = "transparent";
+    return;
+  }
+  if (style.backgroundStyle === "mesh_gradient") {
+    /* Mesh painted by CardElementMeshBackground */
+    out.backgroundImage = "none";
+    out.backgroundColor = "transparent";
+    return;
+  }
+  if (style.backgroundColor && style.backgroundStyle !== "none") {
+    out.backgroundImage = "none";
+    out.backgroundColor = style.backgroundColor;
+    return;
+  }
+  if (style.backgroundStyle === "none") {
+    out.backgroundImage = "none";
+    out.backgroundColor = "transparent";
+  }
+}
+
 export function cardElementStyleToCss(style?: CardElementStyle): CSSProperties {
   if (!style) return {};
   const out: CSSProperties = {};
@@ -62,16 +114,7 @@ export function cardElementStyleToCss(style?: CardElementStyle): CSSProperties {
     out.borderStyle = style.borderStyle ?? "solid";
     out.borderColor = style.borderColor ?? "#0f172a";
   }
-  if (style.backgroundStyle === "gradient" && style.backgroundColors?.length === 2) {
-    const angle = style.gradientAngle ?? 135;
-    out.background = `linear-gradient(${angle}deg, ${style.backgroundColors[0]}, ${style.backgroundColors[1]})`;
-  } else if (style.backgroundStyle === "mesh_gradient") {
-    /* Mesh painted by CardElementMeshBackground */
-  } else if (style.backgroundColor && style.backgroundStyle !== "none") {
-    out.backgroundColor = style.backgroundColor;
-  } else if (style.backgroundStyle === "none") {
-    out.backgroundColor = "transparent";
-  }
+  applyCardBackgroundCss(out, style);
   return out;
 }
 

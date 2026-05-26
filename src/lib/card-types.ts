@@ -109,8 +109,27 @@ export interface CardElementData {
   editable?: boolean;
   fontSize?: number;
   fontWeight?: string;
+  fontFamily?: string;
+  fontStyle?: "normal" | "italic" | "oblique";
+  textDecoration?: "none" | "underline" | "overline" | "line-through";
+  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+  letterSpacing?: number;
   textColor?: string;
   lineHeight?: number;
+  textOpacity?: number;
+  textOutlineWidth?: number;
+  textOutlineColor?: string;
+  textGlowBlur?: number;
+  textGlowColor?: string;
+  textShadowOffsetX?: number;
+  textShadowOffsetY?: number;
+  textShadowBlur?: number;
+  textShadowColor?: string;
+  textDropShadowEnabled?: boolean;
+  textJustify?: "left" | "center" | "right" | "full";
+  textVerticalPosition?: "top" | "middle" | "bottom";
+  /** Agenda row — draw highlight border around the row section. */
+  highlighted?: boolean;
 }
 
 export interface CardTemplate {

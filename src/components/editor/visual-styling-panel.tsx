@@ -395,7 +395,10 @@ interface VisualStylingPanelProps {
   cardTemplateId?: string;
   cardElements?: CardElementData;
   onCardElementsChange?: (elements: CardElementData) => void;
-  /** Optional extra sections (e.g. card element styling) rendered at the bottom of the scroll area */
+  agendaRowThemeHue?: boolean;
+  onAgendaRowThemeHueChange?: (enabled: boolean) => void;
+  agendaDividersEnabled?: boolean;
+  onAgendaDividersEnabledChange?: (enabled: boolean) => void;
   footer?: React.ReactNode;
 }
 
@@ -523,7 +526,7 @@ function IconBevelMatchColorPreview({
   );
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, footer }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, footer }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -1745,6 +1748,10 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     cardTemplateId={cardTemplateId}
                     elements={cardElements}
                     onElementsChange={onCardElementsChange}
+                    agendaRowThemeHue={agendaRowThemeHue}
+                    onAgendaRowThemeHueChange={onAgendaRowThemeHueChange}
+                    agendaDividersEnabled={agendaDividersEnabled}
+                    onAgendaDividersEnabledChange={onAgendaDividersEnabledChange}
                   />
                 </StylingAccordionSection>
               ) : isCardNode && !cardTemplateHasDedicatedPropertiesPanel(cardTemplateId) ? (

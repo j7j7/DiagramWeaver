@@ -3,6 +3,7 @@ import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 import { isDetailPostCard } from "@/lib/card-detail-post";
 import { isDashboardStatCard } from "@/lib/card-dashboard-stat";
 import { isListItemRowCard } from "@/lib/card-list-item";
+import { isAgendaCard } from "@/lib/card-agenda";
 import { isProfileSocialCard } from "@/lib/card-profile-social";
 import { isProfileDiagonalSplitCard } from "@/lib/card-profile-diagonal-split";
 
@@ -28,7 +29,8 @@ export function cardTemplateHasDedicatedPropertiesPanel(templateId: string | und
     isCompactHorizontalCard(templateId) ||
     isListItemRowCard(templateId) ||
     isDetailPostCard(templateId) ||
-    isDashboardStatCard(templateId)
+    isDashboardStatCard(templateId) ||
+    isAgendaCard(templateId)
   );
 }
 

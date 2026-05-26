@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -101,12 +102,40 @@ import {
   updateDashboardElementStyle,
   isDashboardStatCard,
 } from "@/lib/card-dashboard-stat";
+import {
+  addAgendaRow,
+  AGENDA_DATE_HEADER_ID,
+  AGENDA_SESSION_HEADER_ID,
+  AGENDA_TABLE_HEADER_ID,
+  AGENDA_TIME_HEADER_ID,
+  applyAgendaRowFillStyle,
+  applyAgendaDividerColor,
+  AGENDA_DIVIDER_COLOR_DEFAULT,
+  getAgendaDividerColor,
+  getAgendaRegions,
+  getAgendaRows,
+  isAgendaCard,
+  parseAgendaRow,
+  removeAgendaRow,
+  setAgendaColumnAlign,
+  setAgendaRowHighlight,
+  updateAgendaElementStyle,
+} from "@/lib/card-agenda";
+import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
+import { useThemeMultiHueLayout } from "@/hooks/use-theme-multi-hue-layout";
+import type { CardFlexJustify } from "@/lib/card-types";
+import { Button } from "@/components/ui/button";
+import { Minus, Plus } from "lucide-react";
 import { CardFillStyleControls } from "./card-fill-style-controls";
 
 export interface CardPropertiesPanelProps {
   cardTemplateId?: string;
   elements: CardElementData;
   onElementsChange: (elements: CardElementData) => void;
+  agendaRowThemeHue?: boolean;
+  onAgendaRowThemeHueChange?: (enabled: boolean) => void;
+  agendaDividersEnabled?: boolean;
+  onAgendaDividersEnabledChange?: (enabled: boolean) => void;
 }
 
 function ProfileCardProperties({
@@ -914,10 +943,211 @@ function DashboardStatCardProperties({
   );
 }
 
+function AgendaCardProperties({
+  elements,
+  onElementsChange,
+  agendaRowThemeHue,
+  onAgendaRowThemeHueChange,
+  agendaDividersEnabled = true,
+  onAgendaDividersEnabledChange,
+}: {
+  elements: CardElementData;
+  onElementsChange: (elements: CardElementData) => void;
+  agendaRowThemeHue?: boolean;
+  onAgendaRowThemeHueChange?: (enabled: boolean) => void;
+  agendaDividersEnabled?: boolean;
+  onAgendaDividersEnabledChange?: (enabled: boolean) => void;
+}) {
+  const { dateHeader, tableHeader } = getAgendaRegions(elements);
+  const rows = getAgendaRows(elements).map(parseAgendaRow);
+  const timeHeader = tableHeader?.children?.find((c) => c.id === AGENDA_TIME_HEADER_ID);
+  const sessionHeader = tableHeader?.children?.find((c) => c.id === AGENDA_SESSION_HEADER_ID);
+  const timeAlign = timeHeader?.layout?.justifyContent ?? "start";
+  const sessionAlign = sessionHeader?.layout?.justifyContent ?? "start";
+  const globalMultiHue = useThemeMultiHueLayout();
+  const hueStepDeg = useThemeMenuHueStepDeg();
+  const rowFillStyle = getAgendaRows(elements)[0]?.style;
+  const dividerColor = getAgendaDividerColor(elements);
+
+  const setRegionStyle = (elementId: string, style: CardElementStyle) => {
+    onElementsChange(updateAgendaElementStyle(elements, elementId, style));
+  };
+
+  const alignOptions: { value: CardFlexJustify; label: string }[] = [
+    { value: "start", label: "Left" },
+    { value: "center", label: "Center" },
+    { value: "end", label: "Right" },
+  ];
+
+  const themeHueOn = agendaRowThemeHue ?? globalMultiHue;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Agenda — date band, dark column headers (auto-inverts in dark UI), and schedule rows. Click{" "}
+        <span className="font-medium">+ Add item</span> on the card or use the list below. Card shell
+        fill is under <span className="font-medium">Background</span> above.
+      </p>
+
+      {dateHeader ? (
+        <CardFillStyleControls
+          label="Date / title band"
+          style={dateHeader.style}
+          onChange={(style) => setRegionStyle(AGENDA_DATE_HEADER_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+
+      {tableHeader ? (
+        <CardFillStyleControls
+          label="Time / Session header band"
+          style={tableHeader.style}
+          onChange={(style) => setRegionStyle(AGENDA_TABLE_HEADER_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+
+      {rowFillStyle ? (
+        <CardFillStyleControls
+          label="Row fill (all lines)"
+          style={rowFillStyle}
+          onChange={(style) => onElementsChange(applyAgendaRowFillStyle(elements, style))}
+          supportsMesh={false}
+        />
+      ) : null}
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Divider lines</Label>
+        <Switch
+          checked={agendaDividersEnabled}
+          onCheckedChange={(checked) => onAgendaDividersEnabledChange?.(checked)}
+        />
+      </div>
+      {agendaDividersEnabled ? (
+        <div className="space-y-1">
+          <Label className="text-sm text-muted-foreground">Divider color</Label>
+          <ColorPicker
+            value={dividerColor || AGENDA_DIVIDER_COLOR_DEFAULT}
+            onChange={(value) => onElementsChange(applyAgendaDividerColor(elements, value))}
+          />
+        </div>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Step hue per row</Label>
+        <Switch
+          checked={themeHueOn}
+          onCheckedChange={(checked) => onAgendaRowThemeHueChange?.(checked)}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        When on, each row shifts hue by {hueStepDeg}° (Themes → Step hue for multi-selection). When off,
+        every row uses the same fill. Defaults to that Themes checkbox when unset.
+      </p>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Time column align</Label>
+        <Select
+          value={timeAlign}
+          onValueChange={(value) =>
+            onElementsChange(setAgendaColumnAlign(elements, "time", value as CardFlexJustify))
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {alignOptions.map(({ value, label }) => (
+              <SelectItem key={value} value={value} className="text-sm">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Session column align</Label>
+        <Select
+          value={sessionAlign}
+          onValueChange={(value) =>
+            onElementsChange(setAgendaColumnAlign(elements, "session", value as CardFlexJustify))
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {alignOptions.map(({ value, label }) => (
+              <SelectItem key={value} value={value} className="text-sm">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Schedule rows</Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 px-2 text-xs"
+            onClick={() => onElementsChange(addAgendaRow(elements))}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add row
+          </Button>
+        </div>
+        <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border/60 p-1">
+          {rows.map((row) => (
+            <div
+              key={row.id}
+              className="flex items-center gap-1 rounded px-1 py-0.5 text-xs hover:bg-muted/50"
+            >
+              <span className="min-w-0 flex-1 truncate tabular-nums text-muted-foreground">
+                {row.time || "—"}
+              </span>
+              <span className="min-w-0 flex-[2] truncate">{row.session || "Untitled"}</span>
+              <Switch
+                checked={!!row.highlighted}
+                onCheckedChange={(checked) =>
+                  onElementsChange(setAgendaRowHighlight(elements, row.id, checked))
+                }
+                aria-label={`Highlight ${row.session}`}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 shrink-0 p-0"
+                disabled={rows.length <= 1}
+                onClick={() => onElementsChange(removeAgendaRow(elements, row.id))}
+              >
+                <Minus className="h-3.5 w-3.5" />
+                <span className="sr-only">Remove row</span>
+              </Button>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Toggle highlight per row; remove with minus (at least one row required).
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function CardPropertiesPanel({
   cardTemplateId,
   elements,
   onElementsChange,
+  agendaRowThemeHue,
+  onAgendaRowThemeHueChange,
+  agendaDividersEnabled,
+  onAgendaDividersEnabledChange,
 }: CardPropertiesPanelProps) {
   if (isProfileFeatureCard(cardTemplateId)) {
     return <ProfileCardProperties elements={elements} onElementsChange={onElementsChange} />;
@@ -939,6 +1169,18 @@ export function CardPropertiesPanel({
   }
   if (isDashboardStatCard(cardTemplateId)) {
     return <DashboardStatCardProperties elements={elements} onElementsChange={onElementsChange} />;
+  }
+  if (isAgendaCard(cardTemplateId)) {
+    return (
+      <AgendaCardProperties
+        elements={elements}
+        onElementsChange={onElementsChange}
+        agendaRowThemeHue={agendaRowThemeHue}
+        onAgendaRowThemeHueChange={onAgendaRowThemeHueChange}
+        agendaDividersEnabled={agendaDividersEnabled}
+        onAgendaDividersEnabledChange={onAgendaDividersEnabledChange}
+      />
+    );
   }
   return null;
 }

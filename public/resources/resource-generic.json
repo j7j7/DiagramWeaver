@@ -210,6 +210,11 @@
           "type": "shape"
         },
         {
+          "name": "Agenda",
+          "file": "agenda.svg",
+          "type": "shape"
+        },
+        {
           "name": "Dashboard Score",
           "file": "dashboard-score.svg",
           "type": "shape"

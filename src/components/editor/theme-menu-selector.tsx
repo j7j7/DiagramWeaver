@@ -23,13 +23,17 @@ import {
   dispatchThemeMenuHueStepChanged,
   THEME_MENU_HUE_STEP_STORAGE_KEY,
 } from '@/lib/theme-menu-hue-step';
+import {
+  dispatchThemeMultiHueLayoutChanged,
+  THEME_MULTI_HUE_LAYOUT_STORAGE_KEY,
+} from '@/hooks/use-theme-multi-hue-layout';
 import { Input } from '@/components/ui/input';
 import { getVisualStylingCSS, themePropertiesToVisualStyling } from '@/lib/visual-styling';
 
 /** Hover delay before theme description tooltip opens (ms). */
 const THEME_DESCRIPTION_TOOLTIP_DELAY_MS = 1500;
 
-const MULTI_HUE_LAYOUT_STORAGE_KEY = 'diagram-weaver-theme-multi-hue-layout';
+const MULTI_HUE_LAYOUT_STORAGE_KEY = THEME_MULTI_HUE_LAYOUT_STORAGE_KEY;
 
 interface ThemeMenuSelectorProps {
   onThemeSelect?: (theme: DiagramTheme, options?: ThemeMenuApplyOptions) => void;
@@ -207,6 +211,7 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
             } catch {
               /* ignore */
             }
+            dispatchThemeMultiHueLayoutChanged(on);
           }}
         >
           Step hue for multi-selection.

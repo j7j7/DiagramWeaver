@@ -3310,6 +3310,7 @@ export default function DiagramEditor() {
       if (selectedItem) {
         const updatedItem = themeManager.applyThemeToItem(selectedItem, theme, {
           chartSeriesHueStepDegrees: chartStepDeg,
+          stepHueWithinCard: multiHue,
         });
         handleItemUpdate(updatedItem as any);
       }
@@ -3333,6 +3334,7 @@ export default function DiagramEditor() {
             return themeManager.applyThemeToItem(node, theme, {
               hueShiftDegrees: hueShift,
               chartSeriesHueStepDegrees: chartStepDeg,
+              stepHueWithinCard: multiHue,
             }) as DiagramNodeData;
           }
           return node;
@@ -3344,6 +3346,7 @@ export default function DiagramEditor() {
             return themeManager.applyThemeToItem(connection, theme, {
               hueShiftDegrees: hueShift,
               chartSeriesHueStepDegrees: chartStepDeg,
+              stepHueWithinCard: multiHue,
             }) as DiagramConnectionData;
           }
           return connection;

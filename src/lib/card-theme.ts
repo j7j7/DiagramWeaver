@@ -204,10 +204,16 @@ export function applyThemeToCardElements(
   templateId: string,
   properties: ThemeProperties,
   colorProps: ThemeProperties,
-  options: { hueShiftDegrees?: number; hueStepDegrees?: number } = {},
+  options: {
+    hueShiftDegrees?: number;
+    hueStepDegrees?: number;
+    stepHueWithinCard?: boolean;
+  } = {},
 ): CardElementData {
   const hueShift = options.hueShiftDegrees ?? 0;
   const hueStep = options.hueStepDegrees ?? DIAGRAM_THEME_HUE_STEP_DEG;
+  const stepWithin = options.stepHueWithinCard === true;
+  const regionHueDelta = (index: number): number => (stepWithin ? index * hueStep : 0);
   const bgId = getCardBackgroundElementId(templateId);
   const isProfileSocial = templateId === PROFILE_SOCIAL_TEMPLATE_ID;
   const isProfileDiagonalSplit = templateId === PROFILE_DIAGONAL_SPLIT_TEMPLATE_ID;
@@ -302,25 +308,25 @@ export function applyThemeToCardElements(
     }
 
     if (el.id === "hero" || (el.kind === "icon-slot" && !el.iconDecorGradient)) {
-      const color = shiftHueOfColor(accentBase, iconIndex * hueStep + hueShift);
+      const color = shiftHueOfColor(accentBase, regionHueDelta(iconIndex) + hueShift);
       iconIndex += 1;
       return withMergedStyle(el, { backgroundColor: color, backgroundStyle: "solid" });
     }
 
     if (el.kind === "text" && el.style?.backgroundColor && el.style.backgroundColor !== "transparent") {
-      const color = shiftHueOfColor(chipBase, chipIndex * hueStep + hueShift);
+      const color = shiftHueOfColor(chipBase, regionHueDelta(chipIndex) + hueShift);
       chipIndex += 1;
       return withMergedStyle(el, { backgroundColor: color, backgroundStyle: "solid" });
     }
 
     if (el.kind === "tag" && el.style?.backgroundColor) {
-      const color = shiftHueOfColor(chipBase, chipIndex * hueStep + hueShift);
+      const color = shiftHueOfColor(chipBase, regionHueDelta(chipIndex) + hueShift);
       chipIndex += 1;
       return withMergedStyle(el, { backgroundColor: color, backgroundStyle: "solid" });
     }
 
     if (el.kind === "section" && el.style?.backgroundColor && el.id !== bgId) {
-      const color = shiftHueOfColor(chipBase, chipIndex * hueStep + hueShift);
+      const color = shiftHueOfColor(chipBase, regionHueDelta(chipIndex) + hueShift);
       chipIndex += 1;
       let next = withMergedStyle(el, { backgroundColor: color, backgroundStyle: "solid" });
       if (borderBase && el.style.borderWidth) {

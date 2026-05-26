@@ -141,8 +141,26 @@ const CardElementDataSchema: z.ZodType<import('./card-types').CardElementData> =
     editable: z.boolean().optional(),
     fontSize: z.number().optional(),
     fontWeight: z.string().optional(),
+    fontFamily: z.string().optional(),
+    fontStyle: z.enum(['normal', 'italic', 'oblique']).optional(),
+    textDecoration: z.enum(['none', 'underline', 'overline', 'line-through']).optional(),
+    textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(),
+    letterSpacing: z.number().optional(),
     textColor: z.string().optional(),
     lineHeight: z.number().optional(),
+    textOpacity: z.number().optional(),
+    textOutlineWidth: z.number().optional(),
+    textOutlineColor: z.string().optional(),
+    textGlowBlur: z.number().optional(),
+    textGlowColor: z.string().optional(),
+    textShadowOffsetX: z.number().optional(),
+    textShadowOffsetY: z.number().optional(),
+    textShadowBlur: z.number().optional(),
+    textShadowColor: z.string().optional(),
+    textDropShadowEnabled: z.boolean().optional(),
+    textJustify: z.enum(['left', 'center', 'right', 'full']).optional(),
+    textVerticalPosition: z.enum(['top', 'middle', 'bottom']).optional(),
+    highlighted: z.boolean().optional(),
   })
 );
 
@@ -542,6 +560,8 @@ export const DiagramNodeDataSchema = z.object({
 
   chart: z.preprocess(normalizeChartField, NodeChartSpecSchema).optional(),
   card: NodeCardSpecSchema.optional(),
+  agendaRowThemeHue: z.boolean().optional(),
+  agendaDividersEnabled: z.boolean().optional(),
   umlClass: z.object({
     name: z.string(),
     attributes: z.array(z.string()),

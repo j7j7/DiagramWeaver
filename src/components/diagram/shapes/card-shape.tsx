@@ -66,7 +66,36 @@ import {
   parseDashboardDecorIconOpacity,
   resolveDashboardStatDecorLayout,
 } from "@/lib/card-dashboard-stat";
+import {
+  addAgendaRow,
+  agendaRowThemeHueEnabled,
+  AGENDA_MIN_ROWS,
+  AGENDA_ADD_ROW_LABEL_ID,
+  AGENDA_HEADER_ENTRIES_DIVIDER_ID,
+  AGENDA_TABLE_HEADER_ID,
+  getAgendaDividerColor,
+  getAgendaRegions,
+  getAgendaRows,
+  isAgendaAddRowId,
+  isAgendaCard,
+  isAgendaDividerElement,
+  isAgendaRowId,
+  removeAgendaRow,
+  resolveAgendaEntriesSectionLayout,
+  resolveAgendaFullBleedSectionLayout,
+  resolveAgendaHorizontalDividerLayout,
+  resolveAgendaRowStyle,
+  resolveAgendaSessionCellLayout,
+  resolveAgendaTableHeaderSectionStyle,
+  resolveAgendaTableHeaderTextColor,
+  resolveAgendaTimeCellLayout,
+  resolveAgendaTimeTextStyle,
+} from "@/lib/card-agenda";
 import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
+import { extractTextStylingFromCardElement } from "@/lib/text-styling";
+import { useTheme } from "@/components/theme-provider";
+import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
+import { useThemeMultiHueLayout } from "@/hooks/use-theme-multi-hue-layout";
 import { TextboxRichEditor } from "../textbox-rich-editor";
 import { TextboxRichDisplay } from "../textbox-rich-display";
 import { ResourceIcon } from "../resource-icon";
@@ -75,6 +104,15 @@ import { ShapeWrapper } from "./shape-wrapper";
 import { getShapeStyles } from "./shape-utils";
 import { ItemTypes } from "@/components/editor/draggable-item";
 import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
+import {
+  AgendaRowDropIndicator,
+  AgendaRowDropIndicatorBottom,
+  AgendaRowReorderGrip,
+  AgendaRowReorderProvider,
+  agendaRowIndexFromElements,
+  useAgendaRowSectionReorder,
+} from "./card-agenda-row-reorder";
 import {
   getHighlightAnimStyleForNode,
   mergeCardShellHighlightStyle,
@@ -154,8 +192,13 @@ function cardElementBackgroundLayers(
   if (!elementUsesMesh(element.style)) {
     return { styleCss, meshLayer: null };
   }
+  const { background: _background, ...restStyle } = styleCss;
   return {
-    styleCss: { ...styleCss, background: undefined, backgroundColor: undefined },
+    styleCss: {
+      ...restStyle,
+      backgroundImage: "none",
+      backgroundColor: "transparent",
+    },
     meshLayer: (
       <CardElementMeshBackground
         style={element.style!}
@@ -252,6 +295,23 @@ function ProfileHeroSplitHandle({
   );
 }
 
+function stopCardNodeDrag(e: React.SyntheticEvent) {
+  e.stopPropagation();
+}
+
+function tryAgendaAddRowClick(
+  elementId: string,
+  e: React.MouseEvent,
+  cardRootElements: CardElementData | undefined,
+  onCardElementsPatch?: (elements: CardElementData) => void,
+): boolean {
+  if (!isAgendaAddRowId(elementId) && elementId !== AGENDA_ADD_ROW_LABEL_ID) return false;
+  if (!cardRootElements || !onCardElementsPatch) return false;
+  e.stopPropagation();
+  onCardElementsPatch(addAgendaRow(cardRootElements));
+  return true;
+}
+
 function trySelectCardElement(
   e: React.MouseEvent,
   elementId: string,
@@ -307,15 +367,22 @@ interface CardElementRendererProps {
   cardShellBorder?: CardShellBorder;
   cardShellInsetPx?: number;
   cardShellInnerRadius?: string;
+  agendaThemeHue?: boolean;
+  agendaHueStepDeg?: number;
+  isDarkTheme?: boolean;
+  agendaRowIndexMap?: Map<string, number>;
+  agendaTableHeaderStyle?: CardElementData["style"];
+  agendaDividersEnabled?: boolean;
 }
 
 function cardElementTextNode(base: DiagramNodeData, el: CardElementData): DiagramNodeData {
+  const styling = extractTextStylingFromCardElement(el);
   return {
     ...base,
-    fontSize: el.fontSize ?? 12,
-    textColor: el.textColor,
-    fontWeight: (el.fontWeight as DiagramNodeData["fontWeight"]) ?? "normal",
-    textJustify: "left",
+    ...styling,
+    fontSize: styling.fontSize ?? 12,
+    fontWeight: (styling.fontWeight as DiagramNodeData["fontWeight"]) ?? "normal",
+    textJustify: styling.textJustify ?? "left",
   };
 }
 
@@ -585,12 +652,60 @@ function CardElementRenderer({
   cardShellBorder,
   cardShellInsetPx = 0,
   cardShellInnerRadius,
+  agendaThemeHue = false,
+  agendaHueStepDeg: agendaHueStepDegProp = 36,
+  isDarkTheme = false,
+  agendaRowIndexMap,
+  agendaTableHeaderStyle,
+  agendaDividersEnabled = true,
 }: CardElementRendererProps) {
   const diagonalAccentClipId = `dw-diag-a-${nodeId}`;
   const diagonalBodyClipId = `dw-diag-b-${nodeId}`;
-  const effectiveLayout =
+  const agendaRowIndex = agendaRowIndexMap?.get(element.id) ?? 0;
+  const agendaRowCount =
+    isAgendaCard(cardTemplateId) && cardRootElements ? getAgendaRows(cardRootElements).length : 0;
+  const showAgendaRowDelete =
+    isAgendaCard(cardTemplateId) &&
+    isAgendaRowId(element.id) &&
+    cardNodeSelected &&
+    !isReadOnly &&
+    !!cardRootElements &&
+    !!onCardElementsPatch &&
+    agendaRowCount > AGENDA_MIN_ROWS;
+  const showAgendaRowReorder =
+    isAgendaCard(cardTemplateId) &&
+    isAgendaRowId(element.id) &&
+    cardNodeSelected &&
+    !isReadOnly &&
+    agendaRowCount > 1;
+  const agendaRowListIndex =
+    showAgendaRowReorder && cardRootElements
+      ? agendaRowIndexFromElements(cardRootElements, element.id)
+      : -1;
+  const rowReorder = useAgendaRowSectionReorder(element.id, agendaRowListIndex);
+  const isAgendaAddRowSection = isAgendaCard(cardTemplateId) && isAgendaAddRowId(element.id);
+
+  if (isAgendaCard(cardTemplateId) && isAgendaAddRowId(element.id)) {
+    if (isReadOnly || !cardNodeSelected) return null;
+  }
+
+  if (
+    isAgendaCard(cardTemplateId) &&
+    element.id === AGENDA_HEADER_ENTRIES_DIVIDER_ID &&
+    agendaDividersEnabled
+  ) {
+    return null;
+  }
+
+  if (isAgendaCard(cardTemplateId) && isAgendaDividerElement(element.id) && !agendaDividersEnabled) {
+    return null;
+  }
+
+  const baseLayout =
     element.kind === "text"
-      ? resolveDetailPostBodyLine2Layout(element.id, cardTemplateId, element.layout) ??
+      ? resolveAgendaSessionCellLayout(element.id, cardTemplateId, element.layout) ??
+        resolveAgendaTimeCellLayout(element.id, cardTemplateId, element.layout) ??
+        resolveDetailPostBodyLine2Layout(element.id, cardTemplateId, element.layout) ??
         resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout)
       : element.kind === "section"
         ? resolveProfileDiagonalTextStackLayout(element.id, cardTemplateId, element.layout) ??
@@ -601,11 +716,27 @@ function CardElementRenderer({
             resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ??
             element.layout
           : element.layout;
+  const withAgendaLayout = (layout: CardElementData["layout"]) =>
+    resolveAgendaEntriesSectionLayout(element.id, cardTemplateId, layout) ??
+    resolveAgendaHorizontalDividerLayout(element.id, cardTemplateId, layout) ??
+    layout;
+  const effectiveLayout =
+    resolveAgendaFullBleedSectionLayout(element.id, cardTemplateId, withAgendaLayout(baseLayout)) ??
+    withAgendaLayout(baseLayout);
   const effectiveStyle =
     element.kind === "text"
       ? resolveDetailPostCtaStyle(element.id, cardTemplateId, element.style)
       : element.kind === "section"
-        ? resolveDetailPostFooterStyle(element.id, cardTemplateId, element.style)
+        ? resolveAgendaTableHeaderSectionStyle(element.id, cardTemplateId, element.style, isDarkTheme) ??
+          resolveAgendaRowStyle(
+            element.id,
+            cardTemplateId,
+            element.style,
+            agendaRowIndex,
+            agendaThemeHue,
+            agendaHueStepDegProp,
+          ) ??
+          resolveDetailPostFooterStyle(element.id, cardTemplateId, element.style)
         : element.style;
   const layoutCss = cardLayoutToCss(effectiveLayout, element.kind === "section");
   const rawStyleCss = cardElementStyleToCss(effectiveStyle);
@@ -674,12 +805,27 @@ function CardElementRenderer({
       sectionStagger != null
         ? elementPopStyle(sectionStagger, popAnimIn, popAnimOut, cardSlideStagger)
         : undefined;
+    const agendaTableHeaderBottomRule: React.CSSProperties =
+      isAgendaCard(cardTemplateId) &&
+      element.id === AGENDA_TABLE_HEADER_ID &&
+      agendaDividersEnabled &&
+      cardRootElements
+        ? {
+            borderBottomWidth: 1,
+            borderBottomStyle: "solid",
+            borderBottomColor: getAgendaDividerColor(cardRootElements),
+          }
+        : {};
     return (
       <div
-        ref={isRoot ? cardRootRef : undefined}
+        ref={(el) => {
+          if (isRoot && cardRootRef) cardRootRef.current = el;
+          if (showAgendaRowReorder) rowReorder.setRowRef(el);
+        }}
         style={{
           ...layoutCss,
           ...sectionStyleCss,
+          ...agendaTableHeaderBottomRule,
           ...dashboardSectionStyle,
           ...dashboardRootStyle,
           ...diagonalRootStyle,
@@ -696,15 +842,36 @@ function CardElementRenderer({
         data-dw-card-section={element.id}
         data-dw-card-element-id={element.id}
         data-dw-card-element-kind="section"
+        data-dw-card-action={isAgendaAddRowSection ? "" : undefined}
+        {...(showAgendaRowReorder ? rowReorder.rowSectionProps : {})}
         className={cn(
           dashboardSectionClass,
           isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
+          isAgendaAddRowSection && "cursor-pointer hover:bg-primary/5",
+          (isAgendaAddRowSection || showAgendaRowDelete || showAgendaRowReorder) && "relative",
+          showAgendaRowDelete && "pr-6",
+          showAgendaRowReorder && "pl-5 touch-none",
+          showAgendaRowReorder && !rowReorder.isDragging && "cursor-grab",
+          rowReorder.isDragging && "opacity-50",
         )}
-        onClick={(e) =>
-          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect)
-        }
+        onPointerDown={(e) => {
+          if (isAgendaAddRowSection) stopCardNodeDrag(e);
+          rowReorder.rowSectionProps.onPointerDown?.(e);
+        }}
+        onMouseDown={isAgendaAddRowSection ? stopCardNodeDrag : undefined}
+        onClick={(e) => {
+          if (tryAgendaAddRowClick(element.id, e, cardRootElements, onCardElementsPatch)) return;
+          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect);
+        }}
       >
         {meshLayer}
+        {showAgendaRowReorder && agendaRowListIndex >= 0 ? (
+          <>
+            <AgendaRowDropIndicator rowIndex={agendaRowListIndex} />
+            <AgendaRowDropIndicatorBottom rowIndex={agendaRowListIndex} />
+            <AgendaRowReorderGrip rowId={element.id} />
+          </>
+        ) : null}
         {(element.children ?? []).map((child) => (
           <CardElementRenderer
             key={child.id}
@@ -736,8 +903,30 @@ function CardElementRenderer({
             cardShellBorder={cardShellBorder}
             cardShellInsetPx={cardShellInsetPx}
             cardShellInnerRadius={cardShellInnerRadius}
+            agendaThemeHue={agendaThemeHue}
+            agendaHueStepDeg={agendaHueStepDegProp}
+            isDarkTheme={isDarkTheme}
+            agendaRowIndexMap={agendaRowIndexMap}
+            agendaTableHeaderStyle={agendaTableHeaderStyle}
+            agendaDividersEnabled={agendaDividersEnabled}
           />
         ))}
+        {showAgendaRowDelete ? (
+          <button
+            type="button"
+            aria-label="Remove row"
+            data-dw-card-action=""
+            className="absolute right-1 top-1/2 z-[5] flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            onPointerDown={stopCardNodeDrag}
+            onMouseDown={stopCardNodeDrag}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCardElementsPatch!(removeAgendaRow(cardRootElements!, element.id));
+            }}
+          >
+            <X className="h-3 w-3" strokeWidth={2} aria-hidden />
+          </button>
+        ) : null}
         {showHeroHandle ? (
           <ProfileHeroSplitHandle
             enabled
@@ -873,14 +1062,24 @@ function CardElementRenderer({
     const textNode = cardElementTextNode(node, element);
     const textPad = effectiveLayout?.padding ?? [8, 12];
     const socialTextStyle = resolveProfileSocialTextStyle(element.id, cardTemplateId);
+    const agendaTimeStyle = resolveAgendaTimeTextStyle(element.id, cardTemplateId);
+    const resolvedTextColor =
+      resolveAgendaTableHeaderTextColor(
+        element.id,
+        cardTemplateId,
+        element.textColor,
+        isDarkTheme,
+        agendaTableHeaderStyle,
+      ) ?? element.textColor ?? "#0f172a";
     const textStyle: React.CSSProperties = {
       ...layoutCss,
       ...styleCss,
       ...popStyle,
       ...socialTextStyle,
+      ...agendaTimeStyle,
       fontSize: element.fontSize ?? 12,
       fontWeight: element.fontWeight as React.CSSProperties["fontWeight"],
-      color: element.textColor ?? "#0f172a",
+      color: resolvedTextColor,
       lineHeight: element.lineHeight ?? 1.35,
       wordBreak: "break-word",
       padding: cardLayoutToCss({ padding: textPad }).padding,
@@ -896,14 +1095,30 @@ function CardElementRenderer({
         style={textStyle}
         data-dw-card-element-id={element.id}
         data-dw-card-element-kind="text"
+        data-dw-card-action={
+          element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id) ? "" : undefined
+        }
         className={cn(
           "min-w-0",
           fillRemaining && "min-h-0",
           isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
+          (element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id)) &&
+            "cursor-pointer",
         )}
-        onClick={(e) =>
-          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect)
+        onPointerDown={
+          element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id)
+            ? stopCardNodeDrag
+            : undefined
         }
+        onMouseDown={
+          element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id)
+            ? stopCardNodeDrag
+            : undefined
+        }
+        onClick={(e) => {
+          if (tryAgendaAddRowClick(element.id, e, cardRootElements, onCardElementsPatch)) return;
+          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect);
+        }}
       >
         {meshLayer}
         <div
@@ -1050,6 +1265,24 @@ export function CardShape(props: CardShapeProps) {
   const isDiagonalSplitCard = isProfileDiagonalSplitCard(resolvedTemplateId);
   const cardShellInsetPx = needsGradientBorder ? borderWidthNum : 0;
 
+  const { resolvedTheme } = useTheme();
+  const isDarkTheme = resolvedTheme === "dark";
+  const themesMenuHueStepDeg = useThemeMenuHueStepDeg();
+  const globalMultiHue = useThemeMultiHueLayout();
+  const agendaThemeHue = agendaRowThemeHueEnabled(nodeAny.agendaRowThemeHue, globalMultiHue);
+  const agendaHueStep = themesMenuHueStepDeg;
+  const agendaDividersEnabled = nodeAny.agendaDividersEnabled !== false;
+  const agendaTableHeaderStyle = useMemo(
+    () => (cardRoot ? getAgendaRegions(cardRoot).tableHeader?.style : undefined),
+    [cardRoot],
+  );
+  const agendaRowIndexMap = useMemo(() => {
+    if (!isAgendaCard(resolvedTemplateId) || !cardRoot) return undefined;
+    const m = new Map<string, number>();
+    getAgendaRows(cardRoot).forEach((r, i) => m.set(r.id, i));
+    return m;
+  }, [cardRoot, resolvedTemplateId]);
+
   const innerTree = useMemo(() => {
     if (!cardRoot) return null;
     return (
@@ -1083,6 +1316,12 @@ export function CardShape(props: CardShapeProps) {
         cardShellBorder={cardShellBorder}
         cardShellInsetPx={cardShellInsetPx}
         cardShellInnerRadius={innerRadiusStr}
+        agendaThemeHue={agendaThemeHue}
+        agendaHueStepDeg={agendaHueStep}
+        isDarkTheme={isDarkTheme}
+        agendaRowIndexMap={agendaRowIndexMap}
+        agendaTableHeaderStyle={agendaTableHeaderStyle}
+        agendaDividersEnabled={agendaDividersEnabled}
       />
     );
   }, [
@@ -1107,10 +1346,16 @@ export function CardShape(props: CardShapeProps) {
     heroBoundaryInteractionEnabled,
     onCardElementsPatch,
     onHeroBoundaryDragSessionChange,
-    staggerMap,
     cardShellBorder,
     cardShellInsetPx,
     innerRadiusStr,
+    staggerMap,
+    agendaThemeHue,
+    agendaHueStep,
+    isDarkTheme,
+    agendaRowIndexMap,
+    agendaTableHeaderStyle,
+    agendaDividersEnabled,
   ]);
 
   const shellBg =
@@ -1128,15 +1373,47 @@ export function CardShape(props: CardShapeProps) {
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-0"
-        style={{ background: shellBg, ...shellTransition }}
+        style={{
+          ...(shellBg.includes("gradient(")
+            ? { backgroundImage: shellBg, backgroundColor: "transparent" }
+            : { backgroundImage: "none", backgroundColor: shellBg }),
+          ...shellTransition,
+        }}
       />
     ) : null;
 
-  const cardContentLayer = (
+  const agendaRowIds = useMemo(() => {
+    if (!isAgendaCard(resolvedTemplateId) || !cardRoot) return [] as string[];
+    return getAgendaRows(cardRoot).map((r) => r.id);
+  }, [cardRoot, resolvedTemplateId]);
+  const agendaRowReorderEnabled =
+    isAgendaCard(resolvedTemplateId) &&
+    !!cardNodeSelected &&
+    !isReadOnly &&
+    agendaRowIds.length > 1 &&
+    !!cardRoot &&
+    !!onCardElementsPatch;
+
+  const cardContentInner = (
     <div className="relative z-[1] flex h-full min-h-0 w-full min-w-0 flex-col">
       {innerTree}
     </div>
   );
+
+  const cardContentLayer =
+    agendaRowReorderEnabled ? (
+      <AgendaRowReorderProvider
+        enabled
+        rowIds={agendaRowIds}
+        cardRootElements={cardRoot}
+        onPatch={onCardElementsPatch}
+        onDragSessionChange={onHeroBoundaryDragSessionChange}
+      >
+        {cardContentInner}
+      </AgendaRowReorderProvider>
+    ) : (
+      cardContentInner
+    );
 
   /** One rounded mask; shadow + glow live here (ShapeWrapper uses overflow:hidden and would clip an outer halo). */
   const maskShellStyle: React.CSSProperties = {
@@ -1164,8 +1441,8 @@ export function CardShape(props: CardShapeProps) {
           aria-hidden
           className="pointer-events-none absolute inset-0 z-0"
           style={{
-            background: borderGradientBackground,
-            backgroundColor: styles.borderColors?.[0],
+            backgroundImage: borderGradientBackground,
+            backgroundColor: styles.borderColors?.[0] ?? "transparent",
           }}
         />
         <div

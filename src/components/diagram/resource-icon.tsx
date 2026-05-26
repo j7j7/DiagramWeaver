@@ -414,6 +414,29 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
       </svg>
     );
   }
+  if (slug === "agenda") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <rect x="3" y="3" width="18" height="18" rx="3" fill="#fff" stroke="currentColor" strokeWidth={1.2} />
+        <rect x="6" y="5.5" width="12" height="1.6" rx="0.5" fill="#334155" opacity={0.85} />
+        <line x1="5" y1="8.5" x2="19" y2="8.5" stroke="#e2e8f0" strokeWidth={0.8} />
+        <rect x="6" y="9.8" width="4" height="1" rx="0.35" fill="#64748b" />
+        <rect x="12" y="9.8" width="6" height="1" rx="0.35" fill="#64748b" />
+        <line x1="11" y1="9.5" x2="11" y2="20.5" stroke="#e2e8f0" strokeWidth={0.7} />
+        <line x1="5" y1="11.5" x2="19" y2="11.5" stroke="#e2e8f0" strokeWidth={0.7} />
+        {[13.2, 15, 16.8, 18.6].map((y) => (
+          <line key={y} x1="5" y1={y} x2="19" y2={y} stroke="#e2e8f0" strokeWidth={0.6} />
+        ))}
+        <rect x="6" y="12.2" width="3.5" height="0.9" rx="0.3" fill="#93c5fd" />
+        <rect x="12" y="12.2" width="5.5" height="0.9" rx="0.3" fill="#bfdbfe" />
+        <rect x="6" y="14" width="3.5" height="0.9" rx="0.3" fill="#93c5fd" />
+        <rect x="12" y="14" width="4.5" height="0.9" rx="0.3" fill="#bfdbfe" />
+        <rect x="5.5" y="16.5" width="13" height="2.2" rx="0.6" fill="none" stroke={CARD_BLUE} strokeWidth={0.9} />
+        <rect x="6" y="17.2" width="3.5" height="0.9" rx="0.3" fill="#3b82f6" />
+        <rect x="12" y="17.2" width="5" height="0.9" rx="0.3" fill="#93c5fd" />
+      </svg>
+    );
+  }
   if (slug.startsWith("dashboard-")) {
     const gradientId = `card-dash-${slug}`;
     const stops =

@@ -1,5 +1,6 @@
 import type { CardElementData, CardIconRef, NodeCardSpec } from "@/lib/card-types";
 import { CARD_NODE_TYPE_PREFIX } from "@/lib/card-types";
+import { AGENDA_TEMPLATE_ID, createDefaultAgendaRoot } from "@/lib/card-agenda";
 import { getCardTemplate } from "@/lib/card-templates";
 
 export function isCardNodeType(type: string | undefined): boolean {
@@ -39,6 +40,12 @@ function deepCloneElement(el: CardElementData): CardElementData {
 export function createInitialCardSpec(templateId: string): NodeCardSpec | undefined {
   const template = getCardTemplate(templateId);
   if (!template) return undefined;
+  if (templateId === AGENDA_TEMPLATE_ID) {
+    return {
+      templateId,
+      elements: createDefaultAgendaRoot(new Date()),
+    };
+  }
   return {
     templateId,
     elements: deepCloneElement(template.root),

@@ -16,6 +16,7 @@ import { syncClosedConnectorLineBorderWidth } from './line-styling';
 import { isConnectorLineNodeType } from './utils';
 import { isCardNodeType, getCardTemplateIdFromNodeType } from './card-utils';
 import { applyThemeToCardElements } from './card-theme';
+import { AGENDA_TEMPLATE_ID } from './card-agenda';
 
 /**
  * Hue step per pie/bar/line series row and per item when multi-select hue staggering is on
@@ -1781,6 +1782,7 @@ class ThemeManager {
       Number.isFinite(options.chartSeriesHueStepDegrees)
         ? options.chartSeriesHueStepDegrees
         : DIAGRAM_THEME_HUE_STEP_DEG;
+    const stepHueWithinCard = options.stepHueWithinCard === true;
     const colorProps = hueShift !== 0 ? shiftDiagramThemePropertiesColors(properties, hueShift) : properties;
     const updated = { ...item };
 
@@ -1982,9 +1984,16 @@ class ThemeManager {
           templateId,
           properties,
           colorProps,
-          { hueShiftDegrees: hueShift, hueStepDegrees: chartSeriesHueStepDeg },
+          {
+            hueShiftDegrees: hueShift,
+            hueStepDegrees: chartSeriesHueStepDeg,
+            stepHueWithinCard,
+          },
         ),
       };
+      if (templateId === AGENDA_TEMPLATE_ID) {
+        cardNode.agendaRowThemeHue = stepHueWithinCard;
+      }
     }
 
     return syncClosedConnectorLineBorderWidth(updated as DiagramNodeData) as typeof updated;

@@ -1,3 +1,5 @@
+import type { CardElementData } from './card-types';
+import { flexJustifyToTextJustify, textJustifyToFlexJustify } from './card-layout';
 import type { DiagramNodeData, DiagramNodeItem, DiagramZoneData, DiagramZoneItem } from './types';
 import type { ThemeProperties } from './theme-types';
 
@@ -331,6 +333,88 @@ export function applyTextStylingToGroup(
   styling: Partial<TextStyling>
 ): any {
   return applyTextStylingToZone(group, styling);
+}
+
+/** Reads text styling from a card text/tag element (layout justify falls back when textJustify unset). */
+export function extractTextStylingFromCardElement(element: CardElementData): TextStyling {
+  return {
+    fontFamily: element.fontFamily,
+    fontSize: element.fontSize,
+    fontWeight: element.fontWeight as TextStyling["fontWeight"],
+    fontStyle: element.fontStyle,
+    textDecoration: element.textDecoration,
+    textTransform: element.textTransform,
+    letterSpacing: element.letterSpacing,
+    lineHeight: element.lineHeight,
+    textOpacity: element.textOpacity,
+    textColor: element.textColor,
+    textOutlineWidth: element.textOutlineWidth,
+    textOutlineColor: element.textOutlineColor,
+    textGlowBlur: element.textGlowBlur,
+    textGlowColor: element.textGlowColor,
+    textShadowOffsetX: element.textShadowOffsetX,
+    textShadowOffsetY: element.textShadowOffsetY,
+    textShadowBlur: element.textShadowBlur,
+    textShadowColor: element.textShadowColor,
+    textDropShadowEnabled: element.textDropShadowEnabled,
+    textJustify: element.textJustify ?? flexJustifyToTextJustify(element.layout?.justifyContent),
+    textVerticalPosition: element.textVerticalPosition,
+  };
+}
+
+/** Applies text toolbar styling to a card text/tag element; syncs flex justify when alignment changes. */
+export function applyTextStylingToCardElement(
+  element: CardElementData,
+  styling: Partial<TextStyling>,
+): Partial<CardElementData> {
+  const updated: Partial<CardElementData> = {};
+  const hasRichText = element.richText && element.richText.length > 0;
+  if (
+    hasRichText &&
+    ("textJustify" in styling ||
+      "fontSize" in styling ||
+      "fontFamily" in styling ||
+      "fontWeight" in styling)
+  ) {
+    updated.richText = element.richText!.map((run) => {
+      const r = { ...run };
+      if ("fontSize" in styling) delete r.lineFontSize;
+      if ("fontFamily" in styling) delete r.lineFontFamily;
+      if ("fontWeight" in styling) delete r.lineFontWeight;
+      if ("textJustify" in styling) delete r.lineJustify;
+      return r;
+    });
+  }
+
+  if ("fontFamily" in styling) updated.fontFamily = styling.fontFamily;
+  if ("fontSize" in styling) updated.fontSize = styling.fontSize;
+  if ("fontWeight" in styling) updated.fontWeight = styling.fontWeight;
+  if ("fontStyle" in styling) updated.fontStyle = styling.fontStyle;
+  if ("textDecoration" in styling) updated.textDecoration = styling.textDecoration;
+  if ("textTransform" in styling) updated.textTransform = styling.textTransform;
+  if ("letterSpacing" in styling) updated.letterSpacing = styling.letterSpacing;
+  if ("lineHeight" in styling) updated.lineHeight = styling.lineHeight;
+  if ("textOpacity" in styling) updated.textOpacity = styling.textOpacity;
+  if ("textColor" in styling) updated.textColor = styling.textColor;
+  if ("textOutlineWidth" in styling) updated.textOutlineWidth = styling.textOutlineWidth;
+  if ("textOutlineColor" in styling) updated.textOutlineColor = styling.textOutlineColor;
+  if ("textGlowBlur" in styling) updated.textGlowBlur = styling.textGlowBlur;
+  if ("textGlowColor" in styling) updated.textGlowColor = styling.textGlowColor;
+  if ("textShadowOffsetX" in styling) updated.textShadowOffsetX = styling.textShadowOffsetX;
+  if ("textShadowOffsetY" in styling) updated.textShadowOffsetY = styling.textShadowOffsetY;
+  if ("textShadowBlur" in styling) updated.textShadowBlur = styling.textShadowBlur;
+  if ("textShadowColor" in styling) updated.textShadowColor = styling.textShadowColor;
+  if ("textDropShadowEnabled" in styling) updated.textDropShadowEnabled = styling.textDropShadowEnabled;
+  if ("textVerticalPosition" in styling) updated.textVerticalPosition = styling.textVerticalPosition;
+  if ("textJustify" in styling) {
+    updated.textJustify = styling.textJustify;
+    const flexJustify = textJustifyToFlexJustify(styling.textJustify);
+    if (flexJustify) {
+      updated.layout = { ...element.layout, justifyContent: flexJustify };
+    }
+  }
+
+  return updated;
 }
 
 /**

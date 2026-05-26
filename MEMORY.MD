@@ -3,6 +3,58 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-26 – Cards: Agenda teal workshop default on palette drop
+
+New agenda cards from the palette use the **teal workshop** preset: **230×330**, gradient border (`#0d7b96` → `#14b8a6`), shadow, gradient card fill, date + **Workshop** subtitle, `#0d7b96` dividers, right-aligned **Time** column, stepped row fills, and **`agendaRowThemeHue: true`**. Wired via **`createDefaultAgendaRoot`**, **`defaultAgendaPaletteNodeProps`**, **`createAgendaTemplate`**, **`createInitialCardSpec`**, and **`canvas-operations`** agenda branch. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda date header includes day of month
+
+Default date band text is now **`Tuesday, 27th May 2026`** (weekday, ordinal day, month, year) via **`formatAgendaDateHeader`**. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda header grid line gap fix
+
+Removed entries band top padding (legacy normalized to 0). Time/Session header bottom rule is drawn as **`border-bottom`** on the header band so column dividers meet the horizontal line with no purple gap; legacy **`header-entries-divider`** element hidden when dividers are on. Patch bumped.
+
+### 2026-05-26 – Cards: fix background / backgroundColor React warning
+
+Card element CSS now uses **`backgroundImage` + `backgroundColor`** longhands only (no **`background`** shorthand), including gradient fills and mesh layers — fixes console warning when agenda rows reorder or restyle. Patch bumped.
+
+### 2026-05-26 – Cards: fix agenda row reorder on drop
+
+Row reorder showed the drop line but did not apply — **`endDrag`** cleared **`dropInsertIndexRef`** before reading it. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda row drag-to-reorder on canvas
+
+When the agenda card is selected and there are 2+ rows, drag the **grip** on the left or drag the row chrome (not time/session text) to reorder. A blue line marks the drop position; node drag is suppressed during reorder. **`reorderAgendaRows`** in **`card-agenda.ts`**. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda add-row click + row delete on canvas
+
+**+ Add item** is clickable when the card is selected (label click no longer swallowed; pointer events don’t start a node drag). Each agenda row shows an **×** on the right when selected (hidden when only one row remains). Patch bumped.
+
+### 2026-05-26 – Cards: card text elements use text toolbar styling
+
+Selecting a card **text/tag** cell now routes **text toolbar** changes (alignment, font, color, effects) to that **card element** instead of the parent node. **`cardElementTextNode`** reads element styling; agenda column/cell align syncs **`textJustify`** ↔ flex **`justifyContent`**. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda fixed Time column width
+
+Time column uses a **fixed 76px** width (fits `10:30AM` without wrap); Session column absorbs extra width when the card is resized. Legacy `%` time widths normalized on render. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda theme apply respects multi-select hue toggle
+
+Applying a **theme** to an Agenda (or any card) now uses **Step hue for multi-selection**: when off, all internal tinted sections get the **same** theme fill (no per-section hue step); when on, sections step by the Themes hue step. Sets **`agendaRowThemeHue`** on agenda nodes to match. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda full-bleed header + divider controls
+
+Time/Session header band and section dividers span **edge-to-edge** (entries horizontal padding removed). **Card properties**: **Divider lines** toggle and **Divider color** picker (section rules + row rules + column rules). **`agendaDividersEnabled`** on node. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda layout polish (bands, row hues, add item)
+
+Agenda card — **date/title band** and **Time|Session header band** with separate fills (Card properties); header band dark/light text auto-inverts with UI theme. **+ Add item** on canvas when card selected. **Step hue per row** toggle (syncs with Themes → Step hue for multi-selection); row fill control applies to all lines. Wider time column, nowrap on times. **`agendaRowThemeHue`** on node. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda template
+
+New **`generic.card.agenda`** — rounded-rectangle card with date header (defaults to **today** on drop), **Time | Session** column headers, divider lines, and editable schedule rows. **Visual styling → Card** panel: add/remove rows, column left/center/right align, per-row highlight toggle. Element panel: cell align + row highlight when a row/cell is selected. **`src/lib/card-agenda.ts`**, palette glyph + **`agenda.svg`**. Patch bumped.
+
 ### 2026-05-26 – Editor: rectangle resize handle click jump
 
 Resize **`pointerDown`** stored pointer position as **`x`/`y`** on the same object used as **`handleResizeEnd`’s fallback** when **`latestResizeDimensionsRef`** was unset (click without **`pointerMove`**). **`handleResizeEnd`** treated those keys as **diagram coordinates** and called **`onResize`**, teleporting nodes. **`resizeStartPos`** now uses **`pointerClientX`/`pointerClientY`**; **`onResize`** runs only after at least one **`handleResizeMove`** (committed dims). **`diagram-node.tsx`**. Patch bumped.

@@ -522,6 +522,11 @@ export interface DiagramNodeData {
   /** Composite card layout for `generic.card.*` template nodes. */
   card?: NodeCardSpec;
 
+  /** Agenda card: step row background hues (defaults to Themes menu multi-select hue setting). */
+  agendaRowThemeHue?: boolean;
+  /** Agenda card: show divider lines between sections and rows (default true). */
+  agendaDividersEnabled?: boolean;
+
   /** UML class diagram compartments: name, attributes, methods in separate sections */
   umlClass?: {
     name: string;
