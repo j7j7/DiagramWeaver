@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react";
-import type { CardElementData, CardElementStyle, CardFlexJustify, CardTemplate } from "@/lib/card-types";
-import type { DiagramNodeData } from "@/lib/types";
+import type { CardElementData, CardElementStyle, CardFlexJustify, CardLayoutBox, CardTemplate } from "@/lib/card-types";
+import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { flexJustifyToTextJustify } from "@/lib/card-layout";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
-import { shiftHueOfColor } from "@/lib/color-shift";
+import { shiftHueOfColor, hueDeltaBetweenColors } from "@/lib/color-shift";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 
 export const AGENDA_TEMPLATE_ID = "agenda";
@@ -37,8 +37,8 @@ const SLATE_MUTED = "#64748b";
 const HIGHLIGHT_BORDER = "#3b82f6";
 const CARD_WHITE = "#ffffff";
 
-/** Fixed px width for Time column — does not grow when the card is resized wider. */
-export const AGENDA_TIME_COL_WIDTH_PX = 76;
+/** Default Time column width at default drop scale (fits `10:30AM` on one line). */
+export const AGENDA_TIME_COL_WIDTH_PX = 80;
 export const AGENDA_MIN_ROWS = 1;
 
 /** Default drop size / corner radius for palette agenda cards. */
@@ -67,6 +67,98 @@ export const AGENDA_DEFAULT_THEME = {
   addRowTextColor: "#134e4a",
   dateSubtitle: AGENDA_DEFAULT_DATE_SUBTITLE,
 };
+
+export type AgendaResizeMetrics = {
+  /** Uniform scale vs default drop size (230×330). */
+  scale: number;
+  /** Width scale vs default drop width. */
+  scaleW: number;
+  /** Time column width in px (tracks typography scale, not card width). */
+  timeColWidthPx: number;
+};
+
+/** Time column width from typography scale only — extra card width goes to Session. */
+function computeAgendaTimeColWidthPx(scale: number): number {
+  const rowFontPx = scaleAgendaFontSize(11, scale);
+  const headerFontPx = scaleAgendaFontSize(10, scale);
+  const fontPx = Math.max(rowFontPx, headerFontPx);
+  const padPair = scaleAgendaPadding([8, 10] as [number, number], scale);
+  const horizontalPad =
+    typeof padPair === "number" ? padPair * 2 : ((padPair?.[1] ?? 10) * 2);
+  const contentMin = fontPx * 5.5 + horizontalPad;
+  const baseScaled = AGENDA_TIME_COL_WIDTH_PX * scale;
+  return Math.max(48, Math.ceil(Math.max(baseScaled, contentMin)));
+}
+
+/** Scale typography and spacing when the agenda card is resized away from its default size. */
+export function computeAgendaResizeMetrics(
+  width: number,
+  height: number,
+  shellInsetPx = 0,
+): AgendaResizeMetrics {
+  const innerW = Math.max(1, width - shellInsetPx * 2);
+  const innerH = Math.max(1, height - shellInsetPx * 2);
+  const scaleW = innerW / AGENDA_DEFAULT_WIDTH;
+  const scaleH = innerH / AGENDA_DEFAULT_HEIGHT;
+  const scale = Math.min(scaleW, scaleH);
+  return {
+    scale,
+    scaleW,
+    timeColWidthPx: computeAgendaTimeColWidthPx(scale),
+  };
+}
+
+export function scaleAgendaPadding(
+  padding: CardLayoutBox["padding"],
+  scale: number,
+): CardLayoutBox["padding"] {
+  if (padding == null) return padding;
+  if (typeof padding === "number") return padding * scale;
+  return padding.map((n) => n * scale) as CardLayoutBox["padding"];
+}
+
+export function scaleAgendaFontSize(size: number | undefined, scale: number, minPx = 6): number {
+  return Math.max(minPx, (size ?? 12) * scale);
+}
+
+export function scaleAgendaRichTextRuns(runs: RichTextRun[], scale: number): RichTextRun[] {
+  return runs.map((run) => ({
+    ...run,
+    lineFontSize:
+      run.lineFontSize != null ? scaleAgendaFontSize(run.lineFontSize, scale) : undefined,
+  }));
+}
+
+/** Stretch rows to fill entries height; scale fixed chrome padding/margins. */
+export function applyAgendaResizeLayout(
+  elementId: string,
+  layout: CardElementData["layout"],
+  metrics: AgendaResizeMetrics,
+): CardElementData["layout"] {
+  const { scale } = metrics;
+  let next = layout ?? {};
+
+  if (isAgendaRowId(elementId)) {
+    next = { ...next, flex: 1, minHeight: 0 };
+  }
+
+  if (elementId === AGENDA_DATE_HEADER_ID) {
+    next = {
+      ...next,
+      padding: scaleAgendaPadding(next.padding ?? ([12, 14] as [number, number]), scale),
+    };
+  }
+
+  if (elementId === AGENDA_ADD_ROW_ID) {
+    next = {
+      ...next,
+      padding: scaleAgendaPadding(next.padding ?? ([8, 10] as [number, number]), scale),
+      marginTop: (next.marginTop ?? 4) * scale,
+    };
+  }
+
+  return next;
+}
 
 export type AgendaThemePreset = typeof AGENDA_DEFAULT_THEME;
 
@@ -733,6 +825,87 @@ function readAgendaAddRowLabelColor(root: CardElementData): string {
   return addLabel?.textColor ?? "#3b82f6";
 }
 
+export function getAgendaFirstRowFillColor(root: CardElementData | undefined): string {
+  return (
+    (root ? getAgendaRows(root)[0]?.style?.backgroundColor : undefined) ??
+    AGENDA_ROW_FILL_DEFAULT
+  );
+}
+
+/** Resolved row background (uniform theme-hue rows shift from first-row base by index). */
+export function resolveAgendaRowBackgroundColor(
+  root: CardElementData,
+  rowIndex: number,
+  storedColor: string | undefined,
+  themeHue: boolean,
+  hueStepDeg: number,
+): string {
+  const fill =
+    storedColor ?? readRowFillBaseStyle(root).backgroundColor ?? AGENDA_ROW_FILL_DEFAULT;
+  const base = getAgendaFirstRowFillColor(root);
+  if (themeHue && fill === base) {
+    return rowIndex === 0 ? base : shiftHueOfColor(base, rowIndex * hueStepDeg);
+  }
+  return fill;
+}
+
+/** Hue step between existing rows (average consecutive delta); falls back to `fallbackDeg`. */
+export function inferAgendaRowHueStepDeg(
+  root: CardElementData,
+  themeHue: boolean,
+  fallbackDeg: number,
+): number {
+  const rows = getAgendaRows(root);
+  if (rows.length < 2) return fallbackDeg;
+
+  const deltas: number[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const prevColor = resolveAgendaRowBackgroundColor(
+      root,
+      i - 1,
+      rows[i - 1]?.style?.backgroundColor,
+      themeHue,
+      fallbackDeg,
+    );
+    const currColor = resolveAgendaRowBackgroundColor(
+      root,
+      i,
+      rows[i]?.style?.backgroundColor,
+      themeHue,
+      fallbackDeg,
+    );
+    deltas.push(hueDeltaBetweenColors(prevColor, currColor));
+  }
+
+  const nonTrivial = deltas.filter((d) => Math.abs(d) >= 0.25);
+  if (nonTrivial.length === 0) return fallbackDeg;
+
+  const sum = nonTrivial.reduce((acc, d) => acc + d, 0);
+  return sum / nonTrivial.length;
+}
+
+function nextAgendaRowStyle(
+  root: CardElementData,
+  themeHue: boolean,
+  fallbackHueStepDeg: number,
+): CardElementStyle {
+  const rows = getAgendaRows(root);
+  const lastIndex = Math.max(0, rows.length - 1);
+  const last = rows[lastIndex];
+  const stepDeg = inferAgendaRowHueStepDeg(root, themeHue, fallbackHueStepDeg);
+  const prevFill = resolveAgendaRowBackgroundColor(
+    root,
+    lastIndex,
+    last?.style?.backgroundColor,
+    themeHue,
+    fallbackHueStepDeg,
+  );
+  return {
+    backgroundStyle: last?.style?.backgroundStyle ?? "solid",
+    backgroundColor: shiftHueOfColor(prevFill, stepDeg),
+  };
+}
+
 function rebuildAgendaEntries(root: CardElementData, rows: AgendaRowData[]): CardElementData {
   const timeJustify = readColumnJustify(root, "time");
   const sessionJustify = readColumnJustify(root, "session");
@@ -765,11 +938,21 @@ function rebuildAgendaEntries(root: CardElementData, rows: AgendaRowData[]): Car
   return updateCardElementTree(root, AGENDA_ENTRIES_ID, { children: entryChildren });
 }
 
-export function addAgendaRow(elements: CardElementData): CardElementData {
+export function addAgendaRow(
+  elements: CardElementData,
+  options?: { hueStepDeg?: number; themeHue?: boolean },
+): CardElementData {
   const rows = getAgendaRows(elements);
   const newId = nextAgendaRowId(rows);
   const parsed = rows.map(parseAgendaRow);
-  parsed.push({ id: newId, time: "12:00PM", session: "New session" });
+  const hueStepDeg = options?.hueStepDeg ?? DIAGRAM_THEME_HUE_STEP_DEG;
+  const themeHue = options?.themeHue ?? false;
+  parsed.push({
+    id: newId,
+    time: "12:00PM",
+    session: "New session",
+    rowStyle: nextAgendaRowStyle(elements, themeHue, hueStepDeg),
+  });
   return rebuildAgendaEntries(elements, parsed);
 }
 
@@ -946,33 +1129,40 @@ export function resolveAgendaRowStyle(
   rowIndex: number,
   themeHue: boolean,
   hueStepDeg: number,
+  firstRowBaseColor?: string,
 ): CardElementStyle | undefined {
   if (!isAgendaCard(templateId) || !isAgendaRowId(elementId)) return style;
-  if (!style) return style;
-  let resolved = { ...style };
-  if (themeHue && resolved.backgroundStyle === "solid" && resolved.backgroundColor) {
-    const delta = rowIndex * hueStepDeg;
-    resolved = {
-      ...resolved,
-      backgroundColor: delta === 0 ? resolved.backgroundColor : shiftHueOfColor(resolved.backgroundColor, delta),
-    };
+  if (!style?.backgroundColor || style.backgroundStyle !== "solid") return style;
+  const base = firstRowBaseColor ?? style.backgroundColor;
+  let backgroundColor = style.backgroundColor;
+  if (themeHue && backgroundColor === base) {
+    backgroundColor =
+      rowIndex === 0 ? base : shiftHueOfColor(base, rowIndex * hueStepDeg);
   }
-  return resolved;
+  return { ...style, backgroundColor };
 }
 
 export function resolveAgendaTimeCellLayout(
   elementId: string,
   templateId: string | undefined,
   layout: CardElementData["layout"],
+  metrics?: AgendaResizeMetrics | null,
 ): CardElementData["layout"] | undefined {
   if (!isAgendaCard(templateId) || !isAgendaTimeCellId(elementId)) return layout;
+  const timeWidth = metrics?.timeColWidthPx ?? AGENDA_TIME_COL_WIDTH_PX;
+  const base = layout ?? {};
+  const scaledPadding =
+    metrics != null && base.padding != null
+      ? scaleAgendaPadding(base.padding, metrics.scale)
+      : base.padding;
   return {
-    ...layout,
+    ...base,
     flex: 0,
-    width: AGENDA_TIME_COL_WIDTH_PX,
-    minWidth: undefined,
-    justifyContent: layout?.justifyContent ?? "start",
-    alignItems: layout?.alignItems ?? "center",
+    width: timeWidth,
+    minWidth: timeWidth,
+    padding: scaledPadding,
+    justifyContent: base.justifyContent ?? "start",
+    alignItems: base.alignItems ?? "center",
   };
 }
 
@@ -980,13 +1170,20 @@ export function resolveAgendaSessionCellLayout(
   elementId: string,
   templateId: string | undefined,
   layout: CardElementData["layout"],
+  metrics?: AgendaResizeMetrics | null,
 ): CardElementData["layout"] | undefined {
   if (!isAgendaCard(templateId) || !isAgendaSessionCellId(elementId)) return layout;
+  const base = layout ?? {};
+  const scaledPadding =
+    metrics != null && base.padding != null
+      ? scaleAgendaPadding(base.padding, metrics.scale)
+      : base.padding;
   return {
-    ...layout,
+    ...base,
     flex: 1,
     width: undefined,
     minWidth: 0,
+    padding: scaledPadding,
   };
 }
 
@@ -994,9 +1191,8 @@ export function resolveAgendaTimeTextStyle(
   elementId: string,
   templateId: string | undefined,
 ): CSSProperties | undefined {
-  if (!isAgendaCard(templateId)) return undefined;
-  if (!isAgendaTimeCellId(elementId) || elementId === AGENDA_TIME_HEADER_ID) return undefined;
-  return { whiteSpace: "nowrap" };
+  if (!isAgendaCard(templateId) || !isAgendaTimeCellId(elementId)) return undefined;
+  return { whiteSpace: "nowrap", wordBreak: "keep-all" };
 }
 
 export function agendaRowThemeHueEnabled(

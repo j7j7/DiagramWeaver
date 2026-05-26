@@ -3,6 +3,30 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-26 – Cards: Agenda new row infers hue step from existing rows
+
+New agenda rows use **`inferAgendaRowHueStepDeg`** (average consecutive hue delta between existing row fills) instead of only the Themes menu step, so added items match the preset/sequence step. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda new row continues hue from previous row
+
+**+ Add item** / **Add row** sets the new row fill to **previous row colour + Themes hue step** (`nextAgendaRowStyle` / `resolveAgendaRowBackgroundColor`). Theme-hue uniform rows still shift from first-row base by index; explicit stored fills (preset or added rows) render as-is. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda Time column width tracks font scale only
+
+Time column no longer grows with card width (was ~42% on wide cards); width follows **typography scale** only so Session absorbs extra horizontal space. Base **80px** at default scale. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda Time column no-wrap + wider base
+
+Fixed Time cells shrinking (`minWidth: 0` override) and **`TextboxRichDisplay`** `break-words` breaking times across lines; Time column base width **76→96px**, font-based min widened, **`singleLine`** display mode for Time cells. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda Time column grows with resize scale
+
+Time column width now uses the max of width share, width scale, and a **font-based minimum** (`computeAgendaTimeColWidthPx`) so scaled times are not clipped; cells get **`minWidth`**, and time cells no longer use **`overflow: hidden`**. Patch bumped.
+
+### 2026-05-26 – Cards: Agenda resize scales text and fills height
+
+Agenda cards now compute **`computeAgendaResizeMetrics`** from current size vs default **230×330**: font sizes, cell padding, Time column width, and date/add-row chrome scale proportionally. Agenda **rows use `flex: 1`** in the entries band so all sessions share remaining vertical space (no overflow when shorter/taller). Patch bumped.
+
 ### 2026-05-26 – Cards: Agenda teal workshop default on palette drop
 
 New agenda cards from the palette use the **teal workshop** preset: **230×330**, gradient border (`#0d7b96` → `#14b8a6`), shadow, gradient card fill, date + **Workshop** subtitle, `#0d7b96` dividers, right-aligned **Time** column, stepped row fills, and **`agendaRowThemeHue: true`**. Wired via **`createDefaultAgendaRoot`**, **`defaultAgendaPaletteNodeProps`**, **`createAgendaTemplate`**, **`createInitialCardSpec`**, and **`canvas-operations`** agenda branch. Patch bumped.

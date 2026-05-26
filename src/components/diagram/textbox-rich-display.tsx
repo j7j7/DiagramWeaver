@@ -15,6 +15,8 @@ interface TextboxRichDisplayProps {
   suppressHoverBackground?: boolean;
   /** Let clicks/context menu reach SVG/HTML beneath (e.g. timeline card silhouette under foreignObject). */
   pointerEventsNone?: boolean;
+  /** Keep all content on one line (agenda Time column). */
+  singleLine?: boolean;
 }
 
 function getLineStyle(run: RichTextRun, node: DiagramNodeData): React.CSSProperties {
@@ -38,7 +40,14 @@ export function TextboxRichDisplay({
   onDoubleClick,
   suppressHoverBackground = false,
   pointerEventsNone = false,
+  singleLine = false,
 }: TextboxRichDisplayProps) {
+  const lineWrapClass = singleLine
+    ? "whitespace-nowrap leading-normal"
+    : "break-words leading-normal whitespace-pre-wrap w-full";
+  const containerWrapClass = singleLine
+    ? "whitespace-nowrap leading-normal w-auto"
+    : "break-words leading-normal w-full space-y-0.5";
   const nodeAny = node as unknown as Record<string, unknown>;
   const interactionClass = pointerEventsNone
     ? "pointer-events-none cursor-default select-none"
@@ -116,7 +125,7 @@ export function TextboxRichDisplay({
   const content = lines.map((line, lineIdx) => {
     if (line.runs.length === 0) {
       return (
-        <div key={lineIdx} style={line.lineFormat ? getLineStyle(line.lineFormat, node) : getTextStylingForNode(node)} className="break-words leading-normal whitespace-pre-wrap">
+        <div key={lineIdx} style={line.lineFormat ? getLineStyle(line.lineFormat, node) : getTextStylingForNode(node)} className={lineWrapClass}>
           <br />
         </div>
       );
@@ -151,7 +160,7 @@ export function TextboxRichDisplay({
       );
     });
     return (
-      <div key={lineIdx} style={lineStyle} className="break-words leading-normal whitespace-pre-wrap w-full">
+      <div key={lineIdx} style={lineStyle} className={lineWrapClass}>
         {spans}
       </div>
     );
@@ -161,7 +170,7 @@ export function TextboxRichDisplay({
   const containerStyle = { ...baseStyle, display: "block" as const };
   return (
     <div
-      className={`break-words leading-normal rounded w-full space-y-0.5 ${interactionClass}`}
+      className={`${containerWrapClass} rounded ${interactionClass}`}
       style={containerStyle}
       onDoubleClick={onDoubleClick}
     >

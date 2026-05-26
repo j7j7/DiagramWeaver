@@ -73,13 +73,19 @@ import {
   AGENDA_ADD_ROW_LABEL_ID,
   AGENDA_HEADER_ENTRIES_DIVIDER_ID,
   AGENDA_TABLE_HEADER_ID,
+  AGENDA_SESSION_HEADER_ID,
+  AGENDA_TIME_HEADER_ID,
+  applyAgendaResizeLayout,
+  computeAgendaResizeMetrics,
   getAgendaDividerColor,
+  getAgendaFirstRowFillColor,
   getAgendaRegions,
   getAgendaRows,
   isAgendaAddRowId,
   isAgendaCard,
   isAgendaDividerElement,
   isAgendaRowId,
+  isAgendaTimeCellId,
   removeAgendaRow,
   resolveAgendaEntriesSectionLayout,
   resolveAgendaFullBleedSectionLayout,
@@ -90,6 +96,10 @@ import {
   resolveAgendaTableHeaderTextColor,
   resolveAgendaTimeCellLayout,
   resolveAgendaTimeTextStyle,
+  scaleAgendaFontSize,
+  scaleAgendaPadding,
+  scaleAgendaRichTextRuns,
+  type AgendaResizeMetrics,
 } from "@/lib/card-agenda";
 import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
 import { extractTextStylingFromCardElement } from "@/lib/text-styling";
@@ -304,11 +314,13 @@ function tryAgendaAddRowClick(
   e: React.MouseEvent,
   cardRootElements: CardElementData | undefined,
   onCardElementsPatch?: (elements: CardElementData) => void,
+  themeHue = false,
+  hueStepDeg = 36,
 ): boolean {
   if (!isAgendaAddRowId(elementId) && elementId !== AGENDA_ADD_ROW_LABEL_ID) return false;
   if (!cardRootElements || !onCardElementsPatch) return false;
   e.stopPropagation();
-  onCardElementsPatch(addAgendaRow(cardRootElements));
+  onCardElementsPatch(addAgendaRow(cardRootElements, { themeHue, hueStepDeg }));
   return true;
 }
 
@@ -373,6 +385,7 @@ interface CardElementRendererProps {
   agendaRowIndexMap?: Map<string, number>;
   agendaTableHeaderStyle?: CardElementData["style"];
   agendaDividersEnabled?: boolean;
+  agendaResizeMetrics?: AgendaResizeMetrics | null;
 }
 
 function cardElementTextNode(base: DiagramNodeData, el: CardElementData): DiagramNodeData {
@@ -658,10 +671,14 @@ function CardElementRenderer({
   agendaRowIndexMap,
   agendaTableHeaderStyle,
   agendaDividersEnabled = true,
+  agendaResizeMetrics = null,
 }: CardElementRendererProps) {
   const diagonalAccentClipId = `dw-diag-a-${nodeId}`;
   const diagonalBodyClipId = `dw-diag-b-${nodeId}`;
   const agendaRowIndex = agendaRowIndexMap?.get(element.id) ?? 0;
+  const agendaFirstRowFill = cardRootElements
+    ? getAgendaFirstRowFillColor(cardRootElements)
+    : undefined;
   const agendaRowCount =
     isAgendaCard(cardTemplateId) && cardRootElements ? getAgendaRows(cardRootElements).length : 0;
   const showAgendaRowDelete =
@@ -703,8 +720,18 @@ function CardElementRenderer({
 
   const baseLayout =
     element.kind === "text"
-      ? resolveAgendaSessionCellLayout(element.id, cardTemplateId, element.layout) ??
-        resolveAgendaTimeCellLayout(element.id, cardTemplateId, element.layout) ??
+      ? resolveAgendaSessionCellLayout(
+          element.id,
+          cardTemplateId,
+          element.layout,
+          agendaResizeMetrics,
+        ) ??
+        resolveAgendaTimeCellLayout(
+          element.id,
+          cardTemplateId,
+          element.layout,
+          agendaResizeMetrics,
+        ) ??
         resolveDetailPostBodyLine2Layout(element.id, cardTemplateId, element.layout) ??
         resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout)
       : element.kind === "section"
@@ -720,9 +747,13 @@ function CardElementRenderer({
     resolveAgendaEntriesSectionLayout(element.id, cardTemplateId, layout) ??
     resolveAgendaHorizontalDividerLayout(element.id, cardTemplateId, layout) ??
     layout;
-  const effectiveLayout =
+  const resolvedLayout =
     resolveAgendaFullBleedSectionLayout(element.id, cardTemplateId, withAgendaLayout(baseLayout)) ??
     withAgendaLayout(baseLayout);
+  const effectiveLayout =
+    isAgendaCard(cardTemplateId) && agendaResizeMetrics && element.kind === "section"
+      ? applyAgendaResizeLayout(element.id, resolvedLayout, agendaResizeMetrics)
+      : resolvedLayout;
   const effectiveStyle =
     element.kind === "text"
       ? resolveDetailPostCtaStyle(element.id, cardTemplateId, element.style)
@@ -735,6 +766,7 @@ function CardElementRenderer({
             agendaRowIndex,
             agendaThemeHue,
             agendaHueStepDegProp,
+            agendaFirstRowFill,
           ) ??
           resolveDetailPostFooterStyle(element.id, cardTemplateId, element.style)
         : element.style;
@@ -860,7 +892,17 @@ function CardElementRenderer({
         }}
         onMouseDown={isAgendaAddRowSection ? stopCardNodeDrag : undefined}
         onClick={(e) => {
-          if (tryAgendaAddRowClick(element.id, e, cardRootElements, onCardElementsPatch)) return;
+          if (
+            tryAgendaAddRowClick(
+              element.id,
+              e,
+              cardRootElements,
+              onCardElementsPatch,
+              agendaThemeHue,
+              agendaHueStepDegProp,
+            )
+          )
+            return;
           trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect);
         }}
       >
@@ -909,6 +951,7 @@ function CardElementRenderer({
             agendaRowIndexMap={agendaRowIndexMap}
             agendaTableHeaderStyle={agendaTableHeaderStyle}
             agendaDividersEnabled={agendaDividersEnabled}
+            agendaResizeMetrics={agendaResizeMetrics}
           />
         ))}
         {showAgendaRowDelete ? (
@@ -1054,13 +1097,29 @@ function CardElementRenderer({
   if (element.kind === "text") {
     const isEditing = isEditingCardElement && cardEditElementId === element.id;
     const runs = element.richText ?? labelToRuns(element.text ?? "");
+    const displayRuns =
+      isAgendaCard(cardTemplateId) && agendaResizeMetrics
+        ? scaleAgendaRichTextRuns(runs, agendaResizeMetrics.scale)
+        : runs;
     const hasText = getPlainTextFromRuns(runs).trim().length > 0;
     const fillRemaining = effectiveLayout?.fillRemaining === true;
     if (!hasText && !isEditing && !fillRemaining) {
       return null;
     }
     const textNode = cardElementTextNode(node, element);
-    const textPad = effectiveLayout?.padding ?? [8, 12];
+    if (isAgendaCard(cardTemplateId) && agendaResizeMetrics) {
+      textNode.fontSize = scaleAgendaFontSize(element.fontSize, agendaResizeMetrics.scale);
+    }
+    const rawTextPad = effectiveLayout?.padding ?? [8, 12];
+    const textPad =
+      isAgendaCard(cardTemplateId) && agendaResizeMetrics
+        ? scaleAgendaPadding(rawTextPad, agendaResizeMetrics.scale)
+        : rawTextPad;
+    const isAgendaTimeCell =
+      isAgendaCard(cardTemplateId) && isAgendaTimeCellId(element.id);
+    const isAgendaSessionCell =
+      isAgendaCard(cardTemplateId) &&
+      (/^row-\d+-session$/.test(element.id) || element.id === AGENDA_SESSION_HEADER_ID);
     const socialTextStyle = resolveProfileSocialTextStyle(element.id, cardTemplateId);
     const agendaTimeStyle = resolveAgendaTimeTextStyle(element.id, cardTemplateId);
     const resolvedTextColor =
@@ -1077,14 +1136,25 @@ function CardElementRenderer({
       ...popStyle,
       ...socialTextStyle,
       ...agendaTimeStyle,
-      fontSize: element.fontSize ?? 12,
+      fontSize:
+        isAgendaCard(cardTemplateId) && agendaResizeMetrics
+          ? scaleAgendaFontSize(element.fontSize, agendaResizeMetrics.scale)
+          : (element.fontSize ?? 12),
       fontWeight: element.fontWeight as React.CSSProperties["fontWeight"],
       color: resolvedTextColor,
       lineHeight: element.lineHeight ?? 1.35,
-      wordBreak: "break-word",
+      wordBreak: isAgendaTimeCell ? "keep-all" : "break-word",
       padding: cardLayoutToCss({ padding: textPad }).padding,
       boxSizing: "border-box",
       position: needsRelative ? "relative" : undefined,
+      ...(isAgendaTimeCell
+        ? {
+            flexShrink: 0,
+            minWidth: agendaResizeMetrics?.timeColWidthPx ?? layoutCss.minWidth,
+            whiteSpace: "nowrap",
+          }
+        : {}),
+      ...(isAgendaSessionCell ? { overflow: "hidden", minHeight: 0 } : {}),
       ...(fillRemaining
         ? { overflow: isEditing ? "auto" : (layoutCss.overflow ?? "hidden") }
         : {}),
@@ -1099,7 +1169,7 @@ function CardElementRenderer({
           element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id) ? "" : undefined
         }
         className={cn(
-          "min-w-0",
+          isAgendaTimeCell ? "shrink-0" : "min-w-0",
           fillRemaining && "min-h-0",
           isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
           (element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id)) &&
@@ -1116,28 +1186,40 @@ function CardElementRenderer({
             : undefined
         }
         onClick={(e) => {
-          if (tryAgendaAddRowClick(element.id, e, cardRootElements, onCardElementsPatch)) return;
+          if (
+            tryAgendaAddRowClick(
+              element.id,
+              e,
+              cardRootElements,
+              onCardElementsPatch,
+              agendaThemeHue,
+              agendaHueStepDegProp,
+            )
+          )
+            return;
           trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect);
         }}
       >
         {meshLayer}
         <div
           className={cn(
-            "relative z-[1] min-w-0",
+            "relative z-[1]",
+            isAgendaTimeCell ? "shrink-0 whitespace-nowrap" : "min-w-0",
             fillRemaining && "min-h-0 flex-1 overflow-hidden",
           )}
         >
         {isEditing ? (
           <TextboxRichEditor
             node={textNode}
-            runs={cardEditRuns ?? runs}
+            runs={cardEditRuns ?? displayRuns}
             onSubmit={(plain, nextRuns) => onCardElementRichSubmit?.(element.id, plain, nextRuns)}
             onKeyDown={onCardElementKeyDown ?? (() => {})}
           />
         ) : (
           <TextboxRichDisplay
             node={textNode}
-            runs={runs}
+            runs={displayRuns}
+            singleLine={isAgendaTimeCell}
             onDoubleClick={(e) => {
               e.stopPropagation();
               if (element.editable !== false && !isReadOnly) {
@@ -1282,6 +1364,10 @@ export function CardShape(props: CardShapeProps) {
     getAgendaRows(cardRoot).forEach((r, i) => m.set(r.id, i));
     return m;
   }, [cardRoot, resolvedTemplateId]);
+  const agendaResizeMetrics = useMemo(() => {
+    if (!isAgendaCard(resolvedTemplateId)) return null;
+    return computeAgendaResizeMetrics(w, h, cardShellInsetPx);
+  }, [resolvedTemplateId, w, h, cardShellInsetPx]);
 
   const innerTree = useMemo(() => {
     if (!cardRoot) return null;
@@ -1322,6 +1408,7 @@ export function CardShape(props: CardShapeProps) {
         agendaRowIndexMap={agendaRowIndexMap}
         agendaTableHeaderStyle={agendaTableHeaderStyle}
         agendaDividersEnabled={agendaDividersEnabled}
+        agendaResizeMetrics={agendaResizeMetrics}
       />
     );
   }, [
@@ -1356,6 +1443,7 @@ export function CardShape(props: CardShapeProps) {
     agendaRowIndexMap,
     agendaTableHeaderStyle,
     agendaDividersEnabled,
+    agendaResizeMetrics,
   ]);
 
   const shellBg =

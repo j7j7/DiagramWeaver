@@ -179,6 +179,19 @@ export function meshGradientFallbackHubColors(baseColor: string): string[] {
   });
 }
 
+/** Signed hue difference `to - from` in degrees, shortest arc in [-180, 180]. */
+export function hueDeltaBetweenColors(from: string, to: string): number {
+  const a = parseColorToRgbChannels(from.trim());
+  const b = parseColorToRgbChannels(to.trim());
+  if (!a || !b) return 0;
+  const h1 = rgbToHsl(a.r, a.g, a.b).h;
+  const h2 = rgbToHsl(b.r, b.g, b.b).h;
+  let d = h2 - h1;
+  while (d > 180) d -= 360;
+  while (d < -180) d += 360;
+  return d;
+}
+
 /** Degrees to add to hue (wraps). */
 export function shiftHueOfColor(input: string, deltaDegrees: number): string {
   if (!Number.isFinite(deltaDegrees) || deltaDegrees === 0) return input;

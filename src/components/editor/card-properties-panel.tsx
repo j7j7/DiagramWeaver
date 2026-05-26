@@ -1095,7 +1095,11 @@ function AgendaCardProperties({
             variant="outline"
             size="sm"
             className="h-7 gap-1 px-2 text-xs"
-            onClick={() => onElementsChange(addAgendaRow(elements))}
+            onClick={() =>
+              onElementsChange(
+                addAgendaRow(elements, { themeHue: themeHueOn, hueStepDeg }),
+              )
+            }
           >
             <Plus className="h-3.5 w-3.5" />
             Add row
