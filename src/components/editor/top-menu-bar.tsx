@@ -216,7 +216,6 @@ interface TopMenuBarProps {
   currentDiagramData?: DiagramData;
   /** Updates current diagram - use for sub-diagram safe updates */
   onCurrentDiagramDataUpdate?: (updater: DiagramData | ((prev: DiagramData) => DiagramData)) => void;
-  mousePosition?: { x: number; y: number } | null;
   hoverEnabled?: boolean;
   onToggleHover?: () => void;
   iconBackgroundEnabled?: boolean;
@@ -339,7 +338,6 @@ export function TopMenuBar({
   onDiagramDataUpdate,
   currentDiagramData,
   onCurrentDiagramDataUpdate,
-  mousePosition,
   hoverEnabled,
   onToggleHover,
   iconBackgroundEnabled,
@@ -1364,11 +1362,6 @@ export function TopMenuBar({
               ? `Selected: Connection ${truncateName(`${selectedItem.from} → ${selectedItem.to}`)}`
               : `Selected: ${truncateName(selectedItem?.label || selectedItem?.id || 'Item')}`
           }
-        </div>
-      )}
-      {mousePosition && (
-        <div className="text-xs text-muted-foreground px-2 border-l border-border">
-          Cursor: X: {mousePosition.x.toFixed(0)}, Y: {mousePosition.y.toFixed(0)}
         </div>
       )}
 

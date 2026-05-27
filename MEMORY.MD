@@ -4,6 +4,10 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-27 – Top menubar: remove cursor position readout
+
+Removed live **Cursor: X/Y** display from **`TopMenuBar`**. Canvas still reports pointer activity for connection-animation idle pause; **`mousePosition`** state and prop chain dropped. Tutorial step text updated. Patch bumped.
+
 ### 2026-05-27 – Cards: List Item Row default preset
 
 **List Item Row** template + palette drop defaults updated to workshop preset: **250×40**, pill **`cornerRadius`**, violet gradient shell border, Shield icon (**29px**, no circle mask), gradient label segment, drag handle on. Patch bumped.

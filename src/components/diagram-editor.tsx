@@ -272,7 +272,6 @@ export default function DiagramEditor() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const mermaidInputRef = React.useRef<HTMLInputElement>(null);
   const subDiagramImportInputRef = React.useRef<HTMLInputElement>(null);
-  const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
   const [defaultTextLabelsEnabled, setDefaultTextLabelsEnabled] = React.useState<boolean>(true);
@@ -379,7 +378,6 @@ export default function DiagramEditor() {
 
   const setMousePositionForIdle = React.useCallback(
     (pos: { x: number; y: number } | null) => {
-      setMousePosition(pos);
       if (pos !== null) {
         onConnectionAnimationCanvasActivity();
       }
@@ -4935,7 +4933,6 @@ export default function DiagramEditor() {
         historyIndex={historyIndex}
         history={history}
         handleSelectAll={handleSelectAll}
-        mousePosition={mousePosition}
         hoverEnabled={hoverEnabled}
         setHoverEnabled={setHoverEnabled}
         iconBackgroundEnabled={iconBackgroundEnabled}

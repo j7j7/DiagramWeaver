@@ -188,7 +188,6 @@ export function DiagramEditorInner({
   historyIndex,
   history,
   handleSelectAll,
-  mousePosition,
   hoverEnabled,
   setHoverEnabled,
   iconBackgroundEnabled,
@@ -547,7 +546,6 @@ export function DiagramEditorInner({
                     onDiagramDataUpdate={setDiagramData}
                     currentDiagramData={currentDiagramData}
                     onCurrentDiagramDataUpdate={setCurrentDiagramData}
-                    mousePosition={mousePosition}
                     hoverEnabled={hoverEnabled}
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
                     iconBackgroundEnabled={iconBackgroundEnabled}
