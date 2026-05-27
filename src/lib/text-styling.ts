@@ -1,5 +1,6 @@
 import type { CardElementData } from './card-types';
 import { flexJustifyToTextJustify, textJustifyToFlexJustify } from './card-layout';
+import { mapCardElementTree } from './card-utils';
 import type { DiagramNodeData, DiagramNodeItem, DiagramZoneData, DiagramZoneItem } from './types';
 import type { ThemeProperties } from './theme-types';
 
@@ -415,6 +416,55 @@ export function applyTextStylingToCardElement(
   }
 
   return updated;
+}
+
+export function isCardTextOrTagElement(element: CardElementData): boolean {
+  return element.kind === "text" || element.kind === "tag";
+}
+
+/** Applies text toolbar styling to every text/tag cell in a card element tree. */
+export function applyTextStylingToAllCardTextElements(
+  root: CardElementData,
+  styling: Partial<TextStyling>,
+): CardElementData {
+  if (Object.keys(styling).length === 0) return root;
+  return mapCardElementTree(root, (el) => {
+    if (!isCardTextOrTagElement(el)) return el;
+    const patch = applyTextStylingToCardElement(el, styling);
+    return Object.keys(patch).length > 0 ? { ...el, ...patch } : el;
+  });
+}
+
+/** First text/tag cell styling — used when the card node is selected (not a sub-element). */
+export function extractRepresentativeTextStylingFromCardElements(
+  root: CardElementData,
+): Partial<TextStyling> {
+  let representative: Partial<TextStyling> = {};
+  mapCardElementTree(root, (el) => {
+    if (isCardTextOrTagElement(el) && Object.keys(representative).length === 0) {
+      representative = extractTextStylingFromCardElement(el);
+    }
+    return el;
+  });
+  return representative;
+}
+
+/** Merges card element text styling onto a node without clobbering base values with `undefined`. */
+export function mergeCardElementTextStylingOntoNode(
+  base: DiagramNodeData,
+  element: CardElementData,
+): DiagramNodeData {
+  const styling = extractTextStylingFromCardElement(element);
+  const merged: DiagramNodeData = { ...base };
+  for (const [key, value] of Object.entries(styling) as [keyof TextStyling, TextStyling[keyof TextStyling]][]) {
+    if (value !== undefined) {
+      (merged as unknown as Record<string, unknown>)[key] = value;
+    }
+  }
+  merged.fontSize = styling.fontSize ?? base.fontSize ?? 12;
+  merged.fontWeight = (styling.fontWeight ?? base.fontWeight ?? "normal") as DiagramNodeData["fontWeight"];
+  merged.textJustify = styling.textJustify ?? base.textJustify ?? "left";
+  return merged;
 }
 
 /**

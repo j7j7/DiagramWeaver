@@ -76,6 +76,18 @@ export function updateCardElementTree(
   };
 }
 
+export function mapCardElementTree(
+  root: CardElementData,
+  mapFn: (el: CardElementData) => CardElementData,
+): CardElementData {
+  const mapped = mapFn(root);
+  if (!mapped.children?.length) return mapped;
+  return {
+    ...mapped,
+    children: mapped.children.map((child) => mapCardElementTree(child, mapFn)),
+  };
+}
+
 export function iconDragItemToCardIconRef(item: {
   type: string;
   provider?: string;

@@ -566,6 +566,7 @@ export function getBulletListTextStylingForModal(root: CardElementData): Partial
   const itemStyling = itemText ? extractTextStylingFromCardElement(itemText) : {};
   return {
     textJustify: titleStyling.textJustify ?? getBulletListTitleAlign(root),
+    fontFamily: titleStyling.fontFamily ?? itemStyling.fontFamily,
     textTransform: itemStyling.textTransform,
     letterSpacing: itemStyling.letterSpacing,
     lineHeight: itemStyling.lineHeight,

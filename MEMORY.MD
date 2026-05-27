@@ -4,6 +4,10 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-27 – Cards: text styling font family on card text elements
+
+**Text Styling** **font family** (and other typography fields) now apply to card **text/tag** cells: whole-card selection updates every text region via **`applyTextStylingToAllCardTextElements`**; sub-element selection still patches one cell; **Bullet List** routes non-split fields (including font family) to all text cells when the card is selected. **`mergeCardElementTextStylingOntoNode`** stops undefined element fields from wiping inherited node typography; **`card-shape`** passes **`fontFamily`** on text/tag wrappers. Patch bumped.
+
 ### 2026-05-27 – Cards: Bullet List text styling modal routing
 
 **Bullet List** text styling modal: **text justification** → title; **text transform / letter spacing / line height** → all item rows (`applyBulletListTextStylingFromModal`, `getBulletListTextStylingForModal`). Patch bumped.

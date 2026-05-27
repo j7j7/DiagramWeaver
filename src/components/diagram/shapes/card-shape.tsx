@@ -156,7 +156,7 @@ import {
   type BulletListResizeMetrics,
 } from "@/lib/card-bullet-list";
 import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
-import { extractTextStylingFromCardElement } from "@/lib/text-styling";
+import { mergeCardElementTextStylingOntoNode } from "@/lib/text-styling";
 import { useTheme } from "@/components/theme-provider";
 import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
 import { useThemeMultiHueLayout } from "@/hooks/use-theme-multi-hue-layout";
@@ -468,14 +468,7 @@ interface CardElementRendererProps {
 }
 
 function cardElementTextNode(base: DiagramNodeData, el: CardElementData): DiagramNodeData {
-  const styling = extractTextStylingFromCardElement(el);
-  return {
-    ...base,
-    ...styling,
-    fontSize: styling.fontSize ?? 12,
-    fontWeight: (styling.fontWeight as DiagramNodeData["fontWeight"]) ?? "normal",
-    textJustify: styling.textJustify ?? "left",
-  };
+  return mergeCardElementTextStylingOntoNode(base, el);
 }
 
 function elementPopStyle(
@@ -1298,6 +1291,7 @@ function CardElementRenderer({
           ...popStyle,
           ...dashboardEditablePointerStyle,
           fontSize: element.fontSize ?? 10,
+          fontFamily: element.fontFamily,
           color: element.textColor ?? "#1e40af",
           padding: layoutCss.padding ?? "4px 10px",
           boxSizing: "border-box",
@@ -1400,6 +1394,7 @@ function CardElementRenderer({
               ? bulletListUniformItemFontSize
               : (element.fontSize ?? 12),
       fontWeight: element.fontWeight as React.CSSProperties["fontWeight"],
+      fontFamily: element.fontFamily,
       color: resolvedTextColor,
       lineHeight: element.lineHeight ?? 1.35,
       wordBreak: isAgendaTimeCell ? "keep-all" : "break-word",

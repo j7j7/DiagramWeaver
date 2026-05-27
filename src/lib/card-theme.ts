@@ -3,7 +3,7 @@ import type { ThemeProperties } from "@/lib/theme-types";
 import type { VisualStyling } from "@/lib/visual-styling";
 import { multiplyLightnessOfColor, shiftHueOfColor } from "@/lib/color-shift";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
-import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
+import { findCardElement, mapCardElementTree, updateCardElementTree } from "@/lib/card-utils";
 import {
   applyBulletListThemeColors,
   BULLET_LIST_TEMPLATE_ID,
@@ -94,18 +94,6 @@ function themeBackgroundToCardStyle(
   return {
     backgroundStyle: "solid",
     backgroundColor: colorProps.backgroundColor ?? "#f3f4f6",
-  };
-}
-
-function mapCardElementTree(
-  root: CardElementData,
-  mapFn: (el: CardElementData) => CardElementData,
-): CardElementData {
-  const mapped = mapFn(root);
-  if (!mapped.children?.length) return mapped;
-  return {
-    ...mapped,
-    children: mapped.children.map((child) => mapCardElementTree(child, mapFn)),
   };
 }
 

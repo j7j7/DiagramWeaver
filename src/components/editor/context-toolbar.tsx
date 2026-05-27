@@ -61,7 +61,7 @@ import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionDa
 import { buildIconBevelSampleNode } from '@/lib/icon-bevel';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
-import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode, extractTextStylingFromCardElement, applyTextStylingToCardElement, type TextStyling } from '@/lib/text-styling';
+import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode, extractTextStylingFromCardElement, applyTextStylingToCardElement, applyTextStylingToAllCardTextElements, extractRepresentativeTextStylingFromCardElements, type TextStyling } from '@/lib/text-styling';
 import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEFAULT_UML_CLASS_TEXT_STYLING } from '@/lib/uml-text-styling';
 import {
   cn,
@@ -604,6 +604,12 @@ export function ContextToolbar({
       if (isBulletListCard(node.card?.templateId) && node.card?.elements) {
         return getBulletListTextStylingForModal(node.card.elements);
       }
+      if (isCardNodeType(node.type) && node.card?.elements && !selectedCardElement) {
+        return {
+          ...extractTextStylingFromNode(node),
+          ...extractRepresentativeTextStylingFromCardElements(node.card.elements),
+        };
+      }
     }
     if (
       selectedCardElement &&
@@ -647,24 +653,74 @@ export function ContextToolbar({
       const otherStyling = Object.fromEntries(
         Object.entries(styling).filter(([key]) => !splitKeys.has(key)),
       ) as Partial<TextStyling>;
-      if (
-        Object.keys(otherStyling).length > 0 &&
-        cardElementSelection &&
-        selectedCardElement &&
-        (selectedCardElement.kind === "text" || selectedCardElement.kind === "tag")
-      ) {
-        const patch = applyCardElementTextStylingPatch(selectedCardElement, otherStyling);
-        if (Object.keys(patch).length > 0) {
-          elements = updateCardElementTree(elements, cardElementSelection.elementId, patch);
+      if (Object.keys(otherStyling).length > 0) {
+        if (
+          cardElementSelection &&
+          selectedCardElement &&
+          (selectedCardElement.kind === "text" || selectedCardElement.kind === "tag")
+        ) {
+          const patch = applyCardElementTextStylingPatch(selectedCardElement, otherStyling);
+          if (Object.keys(patch).length > 0) {
+            elements = updateCardElementTree(elements, cardElementSelection.elementId, patch);
+          }
+        } else {
+          elements = applyTextStylingToAllCardTextElements(elements, otherStyling);
         }
       }
 
       return {
-        ...node,
+        ...applyTextStylingToNode(node, styling),
         card: { ...node.card, elements },
       };
     },
     [applyCardElementTextStylingPatch, cardElementSelection, selectedCardElement],
+  );
+
+  const applyCardNodeTextStyling = useCallback(
+    (node: DiagramNodeData, styling: Partial<TextStyling>): DiagramNodeData => {
+      if (!isCardNodeType(node.type) || !node.card?.elements) {
+        return applyTextStylingToNode(node, styling) as DiagramNodeData;
+      }
+
+      if (isBulletListCard(node.card.templateId)) {
+        const updatedBulletList = applyBulletListNodeTextStyling(node, styling);
+        if (updatedBulletList) return updatedBulletList;
+      }
+
+      if (
+        cardElementSelection &&
+        selectedCardElement &&
+        (selectedCardElement.kind === "text" || selectedCardElement.kind === "tag")
+      ) {
+        const patch = applyCardElementTextStylingPatch(selectedCardElement, styling);
+        if (Object.keys(patch).length > 0) {
+          return {
+            ...node,
+            card: {
+              ...node.card,
+              elements: updateCardElementTree(
+                node.card.elements,
+                cardElementSelection.elementId,
+                patch,
+              ),
+            },
+          };
+        }
+        return node;
+      }
+
+      const elements = applyTextStylingToAllCardTextElements(node.card.elements, styling);
+      return {
+        ...(applyTextStylingToNode(node, styling) as DiagramNodeData),
+        card: { ...node.card, elements },
+      };
+    },
+    [
+      applyBulletListNodeTextStyling,
+      applyCardElementTextStylingPatch,
+      cardElementSelection,
+      selectedCardElement,
+    ],
   );
 
   const handleCardElementChange = useCallback(
@@ -1258,9 +1314,9 @@ export function ContextToolbar({
       if (isNode) {
         const data = currentDiagramData ?? diagramData;
         const node = (data?.nodes.find((n) => n.id === selectedItem.id) ?? selectedItem) as DiagramNodeData;
-        const updatedBulletList = applyBulletListNodeTextStyling(node, styling);
-        if (updatedBulletList) {
-          onItemUpdate?.({ ...updatedBulletList, itemType: "node" } as SelectedItem);
+        if (isCardNodeType(node.type) && node.card?.elements) {
+          const updatedCard = applyCardNodeTextStyling(node, styling);
+          onItemUpdate?.({ ...updatedCard, itemType: "node" } as SelectedItem);
           return;
         }
       }
@@ -1360,14 +1416,9 @@ export function ContextToolbar({
       if (isNode) {
         const data = currentDiagramData ?? diagramData;
         const node = (data?.nodes.find((n) => n.id === selectedItem.id) ?? selectedItem) as DiagramNodeData;
-        const updatedBulletList = applyBulletListNodeTextStyling(node, {
-          textJustify: "center",
-          textTransform: undefined,
-          letterSpacing: undefined,
-          lineHeight: undefined,
-        });
-        if (updatedBulletList) {
-          onItemUpdate?.({ ...updatedBulletList, itemType: "node" } as SelectedItem);
+        if (isCardNodeType(node.type) && node.card?.elements) {
+          const updatedCard = applyCardNodeTextStyling(node, defaultStyling);
+          onItemUpdate?.({ ...updatedCard, itemType: "node" } as SelectedItem);
           return;
         }
       }
