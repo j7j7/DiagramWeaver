@@ -69,6 +69,18 @@ import {
   isDetailPostCard,
 } from "@/lib/card-detail-post";
 import {
+  getSidebarAccentRegions,
+  parseSidebarAccentBarWidth,
+  applySidebarAccentBarWidth,
+  applySidebarAccentHeadingColor,
+  updateSidebarAccentElementStyle,
+  SIDEBAR_ACCENT_BODY_ID,
+  SIDEBAR_ACCENT_COLOR_DEFAULT,
+  SIDEBAR_ACCENT_BAR_WIDTH_MIN,
+  SIDEBAR_ACCENT_BAR_WIDTH_MAX,
+  isSidebarAccentCard,
+} from "@/lib/card-sidebar-accent";
+import {
   getProfileDiagonalSplitRegions,
   parseDiagonalSplitStartPct,
   parseDiagonalSplitEndPct,
@@ -122,6 +134,25 @@ import {
   setAgendaRowHighlight,
   updateAgendaElementStyle,
 } from "@/lib/card-agenda";
+import {
+  addBulletListRow,
+  applyBulletListAccentColor,
+  applyBulletListBulletShape,
+  applyBulletListBulletSize,
+  applyBulletListItemTextColor,
+  BULLET_LIST_ITEM_TEXT_DEFAULT,
+  BULLET_LIST_CUBE_SUFFIX,
+  BULLET_SIZE_MAX,
+  BULLET_SIZE_MIN,
+  getBulletListAccentColor,
+  getBulletListItemTextColor,
+  getBulletListRows,
+  isBulletListCard,
+  parseBulletListRow,
+  parseBulletListBulletShape,
+  parseBulletListBulletSize,
+  removeBulletListRow,
+} from "@/lib/card-bullet-list";
 import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
 import { useThemeMultiHueLayout } from "@/hooks/use-theme-multi-hue-layout";
 import type { CardFlexJustify } from "@/lib/card-types";
@@ -137,6 +168,8 @@ export interface CardPropertiesPanelProps {
   onAgendaRowThemeHueChange?: (enabled: boolean) => void;
   agendaDividersEnabled?: boolean;
   onAgendaDividersEnabledChange?: (enabled: boolean) => void;
+  bulletListItemThemeHue?: boolean;
+  onBulletListItemThemeHueChange?: (enabled: boolean) => void;
 }
 
 function ProfileCardProperties({
@@ -713,6 +746,64 @@ function ListItemRowCardProperties({
   );
 }
 
+function SidebarAccentCardProperties({
+  elements,
+  onElementsChange,
+}: {
+  elements: CardElementData;
+  onElementsChange: (elements: CardElementData) => void;
+}) {
+  const { accentBar, heading, body } = getSidebarAccentRegions(elements);
+  const barWidth = parseSidebarAccentBarWidth(accentBar);
+  const accentColor = heading?.textColor ?? SIDEBAR_ACCENT_COLOR_DEFAULT;
+
+  const setRegionStyle = (elementId: string, style: CardElementStyle) => {
+    onElementsChange(updateSidebarAccentElementStyle(elements, elementId, style));
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Sidebar accent card — pill accent on the left matches the heading color. Use{" "}
+        <span className="font-medium">Background</span> above for the card fill and{" "}
+        <span className="font-medium">Border</span> for the outline.
+      </p>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Sidebar thickness</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{barWidth}px</span>
+        </div>
+        <Slider
+          min={SIDEBAR_ACCENT_BAR_WIDTH_MIN}
+          max={SIDEBAR_ACCENT_BAR_WIDTH_MAX}
+          step={1}
+          value={[barWidth]}
+          onValueChange={([v]) => onElementsChange(applySidebarAccentBarWidth(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Heading &amp; sidebar color</Label>
+        <ColorPicker
+          value={accentColor}
+          onChange={(value) => onElementsChange(applySidebarAccentHeadingColor(elements, value))}
+        />
+      </div>
+
+      {body ? (
+        <CardFillStyleControls
+          label="Body text segment"
+          style={body.style}
+          onChange={(style) => setRegionStyle(SIDEBAR_ACCENT_BODY_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function DetailPostCardProperties({
   elements,
   onElementsChange,
@@ -1148,6 +1239,134 @@ function AgendaCardProperties({
   );
 }
 
+function BulletListCardProperties({
+  elements,
+  onElementsChange,
+  bulletListItemThemeHue,
+  onBulletListItemThemeHueChange,
+}: {
+  elements: CardElementData;
+  onElementsChange: (elements: CardElementData) => void;
+  bulletListItemThemeHue?: boolean;
+  onBulletListItemThemeHueChange?: (enabled: boolean) => void;
+}) {
+  const rows = getBulletListRows(elements).map(parseBulletListRow);
+  const globalMultiHue = useThemeMultiHueLayout();
+  const hueStepDeg = useThemeMenuHueStepDeg();
+  const accentColor = getBulletListAccentColor(elements);
+  const itemTextColor = getBulletListItemTextColor(elements);
+  const themeHueOn = bulletListItemThemeHue ?? globalMultiHue;
+  const firstCube = getBulletListRows(elements)[0]?.children?.find((c) =>
+    c.id.endsWith(BULLET_LIST_CUBE_SUFFIX),
+  );
+  const bulletSize = parseBulletListBulletSize(firstCube);
+  const bulletCircle = parseBulletListBulletShape(firstCube) === "circle";
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Bullet list — centered title, bullets, and editable items that stretch to fill the card
+        height. Click <span className="font-medium">+ Add item</span> on the card or use the list
+        below. Card shell fill is under <span className="font-medium">Background</span> above.
+      </p>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Circle bullet</Label>
+        <Switch
+          checked={bulletCircle}
+          onCheckedChange={(checked) =>
+            onElementsChange(applyBulletListBulletShape(elements, checked ? "circle" : "square"))
+          }
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Bullet size</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{bulletSize}px</span>
+        </div>
+        <Slider
+          min={BULLET_SIZE_MIN}
+          max={BULLET_SIZE_MAX}
+          step={1}
+          value={[bulletSize]}
+          onValueChange={([v]) => onElementsChange(applyBulletListBulletSize(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Accent color (title, border, bullets)</Label>
+        <ColorPicker
+          value={accentColor}
+          onChange={(value) => onElementsChange(applyBulletListAccentColor(elements, value))}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Item text color</Label>
+        <ColorPicker
+          value={itemTextColor || BULLET_LIST_ITEM_TEXT_DEFAULT}
+          onChange={(value) => onElementsChange(applyBulletListItemTextColor(elements, value))}
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Step hue per bullet</Label>
+        <Switch
+          checked={themeHueOn}
+          onCheckedChange={(checked) => onBulletListItemThemeHueChange?.(checked)}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        When off, every cube matches the accent color. When on, each bullet shifts hue from the first
+        (uses Themes menu hue step).
+      </p>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Items</Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 px-2 text-xs"
+            onClick={() =>
+              onElementsChange(
+                addBulletListRow(elements, { themeHue: themeHueOn, hueStepDeg }),
+              )
+            }
+          >
+            <Plus className="h-3 w-3" />
+            Add
+          </Button>
+        </div>
+        <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+          {rows.map((row) => (
+            <div key={row.id} className="flex items-center gap-2 text-xs">
+              <span className="min-w-0 flex-1 truncate">{row.text || "Empty item"}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 shrink-0 p-0"
+                disabled={rows.length <= 1}
+                onClick={() => onElementsChange(removeBulletListRow(elements, row.id))}
+              >
+                <Minus className="h-3.5 w-3.5" />
+                <span className="sr-only">Remove item</span>
+              </Button>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Drag rows on the card to reorder; remove with minus (at least one item required).
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function CardPropertiesPanel({
   cardTemplateId,
   elements,
@@ -1156,6 +1375,8 @@ export function CardPropertiesPanel({
   onAgendaRowThemeHueChange,
   agendaDividersEnabled,
   onAgendaDividersEnabledChange,
+  bulletListItemThemeHue,
+  onBulletListItemThemeHueChange,
 }: CardPropertiesPanelProps) {
   if (isProfileFeatureCard(cardTemplateId)) {
     return <ProfileCardProperties elements={elements} onElementsChange={onElementsChange} />;
@@ -1172,6 +1393,9 @@ export function CardPropertiesPanel({
   if (isListItemRowCard(cardTemplateId)) {
     return <ListItemRowCardProperties elements={elements} onElementsChange={onElementsChange} />;
   }
+  if (isSidebarAccentCard(cardTemplateId)) {
+    return <SidebarAccentCardProperties elements={elements} onElementsChange={onElementsChange} />;
+  }
   if (isDetailPostCard(cardTemplateId)) {
     return <DetailPostCardProperties elements={elements} onElementsChange={onElementsChange} />;
   }
@@ -1187,6 +1411,16 @@ export function CardPropertiesPanel({
         onAgendaRowThemeHueChange={onAgendaRowThemeHueChange}
         agendaDividersEnabled={agendaDividersEnabled}
         onAgendaDividersEnabledChange={onAgendaDividersEnabledChange}
+      />
+    );
+  }
+  if (isBulletListCard(cardTemplateId)) {
+    return (
+      <BulletListCardProperties
+        elements={elements}
+        onElementsChange={onElementsChange}
+        bulletListItemThemeHue={bulletListItemThemeHue}
+        onBulletListItemThemeHueChange={onBulletListItemThemeHueChange}
       />
     );
   }

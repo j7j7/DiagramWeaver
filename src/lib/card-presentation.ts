@@ -9,6 +9,11 @@ import {
   isAgendaDividerElement,
 } from "@/lib/card-agenda";
 import {
+  BULLET_LIST_ADD_ROW_LABEL_ID,
+  isBulletListAddRowId,
+  isBulletListCard,
+} from "@/lib/card-bullet-list";
+import {
   isProfileDiagonalSplitCard,
   PROFILE_DIAGONAL_SPLIT_LINE_ID,
 } from "@/lib/card-profile-diagonal-split";
@@ -63,6 +68,12 @@ export function shouldExcludeFromCardSlidePopTiming(
     const hideAddRow = opts.isReadOnly || !opts.cardNodeSelected;
     if (hideAddRow && isAgendaAddRowId(el.id)) return true;
     if (hideAddRow && el.id === AGENDA_ADD_ROW_LABEL_ID) return true;
+  }
+
+  if (tid && isBulletListCard(tid)) {
+    const hideAddRow = opts.isReadOnly || !opts.cardNodeSelected;
+    if (hideAddRow && isBulletListAddRowId(el.id)) return true;
+    if (hideAddRow && el.id === BULLET_LIST_ADD_ROW_LABEL_ID) return true;
   }
 
   if (tid && isProfileDiagonalSplitCard(tid) && el.id === PROFILE_DIAGONAL_SPLIT_LINE_ID) return true;

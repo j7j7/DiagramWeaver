@@ -1,6 +1,7 @@
 import type { CardElementData, CardTemplate } from "@/lib/card-types";
 import type { DiagramNodeData } from "@/lib/types";
 import { createAgendaTemplate } from "@/lib/card-agenda";
+import { createBulletListTemplate } from "@/lib/card-bullet-list";
 import { createDashboardStatTemplate } from "@/lib/card-dashboard-stat";
 
 const TEAL = "#2ab7bc";
@@ -564,6 +565,78 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
     },
   },
 
+  "sidebar-accent": {
+    id: "sidebar-accent",
+    name: "Sidebar Accent",
+    defaultWidth: 240,
+    defaultHeight: 96,
+    cornerRadius: 0.08,
+    root: {
+      id: "root",
+      kind: "section",
+      layout: {
+        flexDirection: "row",
+        width: "100%",
+        height: "100%",
+        padding: [12, 14],
+        gap: 12,
+        alignItems: "stretch",
+      },
+      style: {
+        backgroundColor: "#051923",
+        backgroundStyle: "gradient",
+        backgroundColors: ["#051923", "#004e64"],
+        gradientAngle: 135,
+      },
+      children: [
+        {
+          id: "accent-bar",
+          kind: "decor",
+          placeholder: "rect",
+          layout: { width: 6, flex: 0 },
+        },
+        {
+          id: "content-col",
+          kind: "section",
+          layout: {
+            flexDirection: "column",
+            flex: 1,
+            gap: 6,
+            justifyContent: "center",
+            minWidth: 0,
+          },
+          children: [
+            {
+              id: "heading",
+              kind: "text",
+              text: "HEADING TEXT TITLE",
+              editable: true,
+              fontSize: 11,
+              fontWeight: "700",
+              textTransform: "uppercase",
+              letterSpacing: 0.6,
+              lineHeight: 1.25,
+              textColor: "#45d1af",
+              layout: { width: "100%", alignSelf: "stretch" },
+              style: { backgroundStyle: "none" },
+            },
+            {
+              id: "body",
+              kind: "text",
+              text: "Body text section",
+              editable: true,
+              fontSize: 10,
+              lineHeight: 1.35,
+              textColor: "#ffffff",
+              layout: { width: "100%", alignSelf: "stretch" },
+              style: { backgroundStyle: "none" },
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   "detail-post": {
     id: "detail-post",
     name: "Detail Post",
@@ -908,6 +981,7 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
   },
 
   agenda: createAgendaTemplate(),
+  "bullet-list": createBulletListTemplate(),
 };
 
 /** Node-level shell defaults when dropping a card from the palette (excludes position). */
@@ -975,6 +1049,27 @@ const CARD_PALETTE_NODE_DEFAULTS = {
     textJustify: "center",
     cornerRadius: 0.12,
     borderColor: "#0f172a",
+  },
+  "sidebar-accent": {
+    sizeMode: "custom",
+    borderStyle: "solid",
+    borderColors: ["#2dd4bf", "#14b8a6"],
+    borderWidth: 1,
+    backgroundStyle: "none",
+    lineStyle: "solid",
+    lineColor: "#45d1af",
+    lineWidth: 2,
+    lineOpacity: 1,
+    shadow: true,
+    shadowColor: "#051923",
+    shadowOpacity: 0.45,
+    shadowBlur: 8,
+    textColor: "#45d1af",
+    textOpacity: 1,
+    gradientAngle: 135,
+    textJustify: "left",
+    cornerRadius: 0.08,
+    borderColor: "#2dd4bf",
   },
   "detail-post": {
     sizeMode: "custom",

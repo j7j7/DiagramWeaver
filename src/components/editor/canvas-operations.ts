@@ -31,6 +31,10 @@ import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { defaultPaletteSegmentedRectangleNodeProps } from "@/lib/segmented-rectangle";
 import { getCardTemplateIdFromNodeType, createInitialCardSpec } from "@/lib/card-utils";
 import { AGENDA_TEMPLATE_ID, defaultAgendaPaletteNodeProps } from "@/lib/card-agenda";
+import {
+  BULLET_LIST_TEMPLATE_ID,
+  defaultBulletListPaletteNodeProps,
+} from "@/lib/card-bullet-list";
 import { getCardTemplate, defaultCardPaletteNodeProps } from "@/lib/card-templates";
 import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
 import {
@@ -353,10 +357,15 @@ export function useCanvasOperations({
                   ...defaultAgendaPaletteNodeProps(),
                   card: createInitialCardSpec(cardTemplateId),
                 }
-              : {
-                  ...defaultCardPaletteNodeProps(cardTemplateId),
-                  card: createInitialCardSpec(cardTemplateId),
-                }
+              : cardTemplateId === BULLET_LIST_TEMPLATE_ID
+                ? {
+                    ...defaultBulletListPaletteNodeProps(),
+                    card: createInitialCardSpec(cardTemplateId),
+                  }
+                : {
+                    ...defaultCardPaletteNodeProps(cardTemplateId),
+                    card: createInitialCardSpec(cardTemplateId),
+                  }
           )),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {

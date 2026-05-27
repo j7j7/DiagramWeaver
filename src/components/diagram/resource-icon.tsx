@@ -400,6 +400,23 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
       </svg>
     );
   }
+  if (slug === "sidebar-accent") {
+    const gradientId = "card-sidebar-accent-bg";
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#051923" />
+            <stop offset="100%" stopColor="#004e64" />
+          </linearGradient>
+        </defs>
+        <rect x="2.5" y="5.5" width="19" height="13" rx="2.5" fill={`url(#${gradientId})`} stroke="#2dd4bf" strokeWidth={1} />
+        <rect x="4.5" y="7.5" width="1.6" height="9" rx="0.8" fill="#45d1af" />
+        <rect x="7.5" y="8.2" width="11.5" height="2" rx="0.5" fill="#45d1af" />
+        <rect x="7.5" y="11.2" width="9" height="1.4" rx="0.4" fill="#ffffff" opacity={0.95} />
+      </svg>
+    );
+  }
   if (slug === "detail-post") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden {...props}>
@@ -434,6 +451,20 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
         <rect x="5.5" y="16.5" width="13" height="2.2" rx="0.6" fill="none" stroke={CARD_BLUE} strokeWidth={0.9} />
         <rect x="6" y="17.2" width="3.5" height="0.9" rx="0.3" fill="#3b82f6" />
         <rect x="12" y="17.2" width="5" height="0.9" rx="0.3" fill="#93c5fd" />
+      </svg>
+    );
+  }
+  if (slug === "bullet-list") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <rect x="3" y="3" width="18" height="18" rx="4" fill="#0f1a12" stroke="#84cc16" strokeWidth={1.2} />
+        <rect x="7" y="6.5" width="10" height="1.6" rx="0.5" fill="#84cc16" />
+        <rect x="7" y="10.5" width="2" height="2" rx="0.4" fill="#84cc16" />
+        <rect x="10.5" y="11.1" width="7.5" height="1.2" rx="0.4" fill="#f8fafc" />
+        <rect x="7" y="13.5" width="2" height="2" rx="0.4" fill="#84cc16" />
+        <rect x="10.5" y="14.1" width="7" height="1.2" rx="0.4" fill="#f8fafc" />
+        <rect x="7" y="16.5" width="2" height="2" rx="0.4" fill="#84cc16" />
+        <rect x="10.5" y="17.1" width="6.5" height="1.2" rx="0.4" fill="#f8fafc" />
       </svg>
     );
   }

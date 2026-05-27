@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 45,
+  "totalResources": 46,
   "categories": {
     "text": {
       "name": "Text",
@@ -205,6 +205,11 @@
           "type": "shape"
         },
         {
+          "name": "Sidebar Accent",
+          "file": "sidebar-accent.svg",
+          "type": "shape"
+        },
+        {
           "name": "Detail Post",
           "file": "detail-post.svg",
           "type": "shape"
@@ -212,6 +217,11 @@
         {
           "name": "Agenda",
           "file": "agenda.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Bullet List",
+          "file": "bullet-list.svg",
           "type": "shape"
         },
         {

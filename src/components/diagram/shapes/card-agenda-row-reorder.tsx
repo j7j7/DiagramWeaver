@@ -11,10 +11,8 @@ import React, {
 } from "react";
 import { GripVertical } from "lucide-react";
 import type { CardElementData } from "@/lib/card-types";
-import {
-  getAgendaRowIndex,
-  reorderAgendaRows,
-} from "@/lib/card-agenda";
+import { getAgendaRowIndex, reorderAgendaRows } from "@/lib/card-agenda";
+import { getBulletListRowIndex, reorderBulletListRows } from "@/lib/card-bullet-list";
 import { cn } from "@/lib/utils";
 
 function computeDropInsertIndex(
@@ -51,11 +49,12 @@ export function useAgendaRowReorder(): AgendaRowReorderContextValue | null {
   return useContext(AgendaRowReorderContext);
 }
 
-export function AgendaRowReorderProvider({
+export function CardRowReorderProvider({
   enabled,
   rowIds,
   cardRootElements,
   onPatch,
+  reorderRows,
   onDragSessionChange,
   children,
 }: {
@@ -63,6 +62,7 @@ export function AgendaRowReorderProvider({
   rowIds: readonly string[];
   cardRootElements: CardElementData;
   onPatch: (elements: CardElementData) => void;
+  reorderRows: (elements: CardElementData, fromIndex: number, toIndex: number) => CardElementData;
   onDragSessionChange?: (active: boolean) => void;
   children: React.ReactNode;
 }) {
@@ -94,8 +94,8 @@ export function AgendaRowReorderProvider({
     if (insert == null) return;
     const toIndex = toIndexAfterMove(drag.fromIndex, insert);
     if (drag.fromIndex === toIndex) return;
-    onPatch(reorderAgendaRows(cardRootElements, drag.fromIndex, toIndex));
-  }, [cardRootElements, onDragSessionChange, onPatch]);
+    onPatch(reorderRows(cardRootElements, drag.fromIndex, toIndex));
+  }, [cardRootElements, onDragSessionChange, onPatch, reorderRows]);
 
   const beginRowDrag = useCallback(
     (rowId: string, e: React.PointerEvent) => {
@@ -266,4 +266,24 @@ export function agendaRowIndexFromElements(
   rowId: string,
 ): number {
   return getAgendaRowIndex(elements, rowId);
+}
+
+/** Agenda cards — default reorder implementation. */
+export function AgendaRowReorderProvider(
+  props: Omit<React.ComponentProps<typeof CardRowReorderProvider>, "reorderRows">,
+) {
+  return <CardRowReorderProvider {...props} reorderRows={reorderAgendaRows} />;
+}
+
+export function bulletListRowIndexFromElements(
+  elements: CardElementData,
+  rowId: string,
+): number {
+  return getBulletListRowIndex(elements, rowId);
+}
+
+export function BulletListRowReorderProvider(
+  props: Omit<React.ComponentProps<typeof CardRowReorderProvider>, "reorderRows">,
+) {
+  return <CardRowReorderProvider {...props} reorderRows={reorderBulletListRows} />;
 }

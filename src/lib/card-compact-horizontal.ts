@@ -4,8 +4,10 @@ import { isDetailPostCard } from "@/lib/card-detail-post";
 import { isDashboardStatCard } from "@/lib/card-dashboard-stat";
 import { isListItemRowCard } from "@/lib/card-list-item";
 import { isAgendaCard } from "@/lib/card-agenda";
+import { isBulletListCard } from "@/lib/card-bullet-list";
 import { isProfileSocialCard } from "@/lib/card-profile-social";
 import { isProfileDiagonalSplitCard } from "@/lib/card-profile-diagonal-split";
+import { isSidebarAccentCard } from "@/lib/card-sidebar-accent";
 
 export const COMPACT_HORIZONTAL_TEMPLATE_ID = "compact-horizontal";
 export const COMPACT_AVATAR_ID = "avatar";
@@ -63,7 +65,9 @@ export function cardTemplateHasDedicatedPropertiesPanel(templateId: string | und
     isListItemRowCard(templateId) ||
     isDetailPostCard(templateId) ||
     isDashboardStatCard(templateId) ||
-    isAgendaCard(templateId)
+    isAgendaCard(templateId) ||
+    isBulletListCard(templateId) ||
+    isSidebarAccentCard(templateId)
   );
 }
 

@@ -17,6 +17,7 @@ import { isConnectorLineNodeType } from './utils';
 import { isCardNodeType, getCardTemplateIdFromNodeType } from './card-utils';
 import { applyThemeToCardElements } from './card-theme';
 import { AGENDA_TEMPLATE_ID } from './card-agenda';
+import { BULLET_LIST_TEMPLATE_ID } from './card-bullet-list';
 
 /**
  * Hue step per pie/bar/line series row and per item when multi-select hue staggering is on
@@ -1993,6 +1994,9 @@ class ThemeManager {
       };
       if (templateId === AGENDA_TEMPLATE_ID) {
         cardNode.agendaRowThemeHue = stepHueWithinCard;
+      }
+      if (templateId === BULLET_LIST_TEMPLATE_ID) {
+        cardNode.bulletListItemThemeHue = stepHueWithinCard;
       }
     }
 

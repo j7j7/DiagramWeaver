@@ -65,6 +65,15 @@ import {
   resolveCompactHorizontalTextLayout,
 } from "@/lib/card-compact-horizontal";
 import {
+  getSidebarAccentRegions,
+  isSidebarAccentBar,
+  parseSidebarAccentBarWidth,
+  resolveSidebarAccentBarLayout,
+  resolveSidebarAccentContentColLayout,
+  resolveSidebarAccentTextLayout,
+  SIDEBAR_ACCENT_COLOR_DEFAULT,
+} from "@/lib/card-sidebar-accent";
+import {
   isListItemRowCard,
   LIST_ITEM_INDICATOR_ID,
   parseListItemIndicatorCircle,
@@ -121,6 +130,29 @@ import {
   scaleAgendaRichTextRuns,
   type AgendaResizeMetrics,
 } from "@/lib/card-agenda";
+import {
+  addBulletListRow,
+  applyBulletListResizeLayout,
+  BULLET_LIST_ADD_ROW_LABEL_ID,
+  BULLET_LIST_MIN_ROWS,
+  BULLET_LIST_TEXT_SUFFIX,
+  BULLET_LIST_TITLE_ID,
+  bulletListItemThemeHueEnabled,
+  computeBulletListResizeMetrics,
+  getBulletListRows,
+  isBulletListAddRowId,
+  isBulletListCard,
+  isBulletListCubeId,
+  isBulletListRowId,
+  parseBulletListBulletShape,
+  parseBulletListBulletSize,
+  removeBulletListRow,
+  resolveBulletCubeColor,
+  resolveBulletListBulletBorderRadius,
+  scaleBulletListItemFontSize,
+  scaleBulletListTitleFontSize,
+  type BulletListResizeMetrics,
+} from "@/lib/card-bullet-list";
 import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
 import { extractTextStylingFromCardElement } from "@/lib/text-styling";
 import { useTheme } from "@/components/theme-provider";
@@ -141,6 +173,8 @@ import {
   AgendaRowReorderGrip,
   AgendaRowReorderProvider,
   agendaRowIndexFromElements,
+  bulletListRowIndexFromElements,
+  BulletListRowReorderProvider,
   useAgendaRowSectionReorder,
 } from "./card-agenda-row-reorder";
 import {
@@ -344,6 +378,21 @@ function tryAgendaAddRowClick(
   return true;
 }
 
+function tryBulletListAddRowClick(
+  elementId: string,
+  e: React.MouseEvent,
+  cardRootElements: CardElementData | undefined,
+  onCardElementsPatch?: (elements: CardElementData) => void,
+  themeHue = false,
+  hueStepDeg = 36,
+): boolean {
+  if (!isBulletListAddRowId(elementId) && elementId !== BULLET_LIST_ADD_ROW_LABEL_ID) return false;
+  if (!cardRootElements || !onCardElementsPatch) return false;
+  e.stopPropagation();
+  onCardElementsPatch(addBulletListRow(cardRootElements, { themeHue, hueStepDeg }));
+  return true;
+}
+
 function trySelectCardElement(
   e: React.MouseEvent,
   elementId: string,
@@ -406,6 +455,9 @@ interface CardElementRendererProps {
   agendaTableHeaderStyle?: CardElementData["style"];
   agendaDividersEnabled?: boolean;
   agendaResizeMetrics?: AgendaResizeMetrics | null;
+  bulletListItemThemeHue?: boolean;
+  bulletListRowIndexMap?: Map<string, number>;
+  bulletListResizeMetrics?: BulletListResizeMetrics | null;
 }
 
 function cardElementTextNode(base: DiagramNodeData, el: CardElementData): DiagramNodeData {
@@ -727,6 +779,9 @@ function CardElementRenderer({
   agendaTableHeaderStyle,
   agendaDividersEnabled = true,
   agendaResizeMetrics = null,
+  bulletListItemThemeHue = false,
+  bulletListRowIndexMap,
+  bulletListResizeMetrics = null,
 }: CardElementRendererProps) {
   const diagonalAccentClipId = `dw-diag-a-${nodeId}`;
   const diagonalBodyClipId = `dw-diag-b-${nodeId}`;
@@ -736,6 +791,10 @@ function CardElementRenderer({
     : undefined;
   const agendaRowCount =
     isAgendaCard(cardTemplateId) && cardRootElements ? getAgendaRows(cardRootElements).length : 0;
+  const bulletListRowCount =
+    isBulletListCard(cardTemplateId) && cardRootElements
+      ? getBulletListRows(cardRootElements).length
+      : 0;
   const showAgendaRowDelete =
     isAgendaCard(cardTemplateId) &&
     isAgendaRowId(element.id) &&
@@ -744,20 +803,45 @@ function CardElementRenderer({
     !!cardRootElements &&
     !!onCardElementsPatch &&
     agendaRowCount > AGENDA_MIN_ROWS;
+  const showBulletListRowDelete =
+    isBulletListCard(cardTemplateId) &&
+    isBulletListRowId(element.id) &&
+    cardNodeSelected &&
+    !isReadOnly &&
+    !!cardRootElements &&
+    !!onCardElementsPatch &&
+    bulletListRowCount > BULLET_LIST_MIN_ROWS;
   const showAgendaRowReorder =
     isAgendaCard(cardTemplateId) &&
     isAgendaRowId(element.id) &&
     cardNodeSelected &&
     !isReadOnly &&
     agendaRowCount > 1;
-  const agendaRowListIndex =
+  const showBulletListRowReorder =
+    isBulletListCard(cardTemplateId) &&
+    isBulletListRowId(element.id) &&
+    cardNodeSelected &&
+    !isReadOnly &&
+    bulletListRowCount > 1;
+  const showListRowDelete = showAgendaRowDelete || showBulletListRowDelete;
+  const showListRowReorder = showAgendaRowReorder || showBulletListRowReorder;
+  const listRowListIndex =
     showAgendaRowReorder && cardRootElements
       ? agendaRowIndexFromElements(cardRootElements, element.id)
-      : -1;
-  const rowReorder = useAgendaRowSectionReorder(element.id, agendaRowListIndex);
+      : showBulletListRowReorder && cardRootElements
+        ? bulletListRowIndexFromElements(cardRootElements, element.id)
+        : -1;
+  const rowReorder = useAgendaRowSectionReorder(element.id, listRowListIndex);
   const isAgendaAddRowSection = isAgendaCard(cardTemplateId) && isAgendaAddRowId(element.id);
+  const isBulletListAddRowSection =
+    isBulletListCard(cardTemplateId) && isBulletListAddRowId(element.id);
+  const isListAddRowSection = isAgendaAddRowSection || isBulletListAddRowSection;
 
   if (isAgendaCard(cardTemplateId) && isAgendaAddRowId(element.id)) {
+    if (isReadOnly || !cardNodeSelected) return null;
+  }
+
+  if (isBulletListCard(cardTemplateId) && isBulletListAddRowId(element.id)) {
     if (isReadOnly || !cardNodeSelected) return null;
   }
 
@@ -790,6 +874,7 @@ function CardElementRenderer({
           agendaResizeMetrics,
         ) ??
         resolveDetailPostTextLayout(element.id, cardTemplateId, element.layout) ??
+        resolveSidebarAccentTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveProfileFeatureTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveCompactHorizontalTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveListItemLabelLayout(element.id, cardTemplateId, element.layout, cardRootElements) ??
@@ -798,6 +883,7 @@ function CardElementRenderer({
         ? resolveProfileFeatureBodyLayout(element.id, cardTemplateId, element.layout) ??
           resolveProfileDiagonalTextStackLayout(element.id, cardTemplateId, element.layout) ??
           resolveCompactHorizontalTextColLayout(element.id, cardTemplateId, element.layout) ??
+          resolveSidebarAccentContentColLayout(element.id, cardTemplateId, element.layout) ??
           resolveDetailPostBodySectionLayout(element.id, cardTemplateId, element.layout) ??
           resolveDetailPostFooterSectionLayout(element.id, cardTemplateId, element.layout) ??
           resolveProfileSocialSectionLayout(element.id, cardTemplateId, element.layout)
@@ -805,7 +891,10 @@ function CardElementRenderer({
           ? resolveProfileDiagonalAvatarLayout(element.id, cardTemplateId, element.layout) ??
             resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ??
             element.layout
-          : element.layout;
+          : element.kind === "decor"
+            ? resolveSidebarAccentBarLayout(element.id, cardTemplateId, element.layout) ??
+              element.layout
+            : element.layout;
   const withAgendaLayout = (layout: CardElementData["layout"]) =>
     resolveAgendaEntriesSectionLayout(element.id, cardTemplateId, layout) ??
     resolveAgendaHorizontalDividerLayout(element.id, cardTemplateId, layout) ??
@@ -816,7 +905,11 @@ function CardElementRenderer({
   const effectiveLayout =
     isAgendaCard(cardTemplateId) && agendaResizeMetrics && element.kind === "section"
       ? applyAgendaResizeLayout(element.id, resolvedLayout, agendaResizeMetrics)
-      : resolvedLayout;
+      : isBulletListCard(cardTemplateId) &&
+          bulletListResizeMetrics &&
+          (element.kind === "section" || element.kind === "text")
+        ? applyBulletListResizeLayout(element.id, resolvedLayout, bulletListResizeMetrics)
+        : resolvedLayout;
   const effectiveStyle =
     element.kind === "text"
       ? resolveDetailPostCtaStyle(element.id, cardTemplateId, element.style)
@@ -915,7 +1008,7 @@ function CardElementRenderer({
       <div
         ref={(el) => {
           if (isRoot && cardRootRef) cardRootRef.current = el;
-          if (showAgendaRowReorder) rowReorder.setRowRef(el);
+          if (showListRowReorder) rowReorder.setRowRef(el);
         }}
         style={{
           ...layoutCss,
@@ -938,22 +1031,22 @@ function CardElementRenderer({
         data-dw-card-section={element.id}
         data-dw-card-element-id={element.id}
         data-dw-card-element-kind="section"
-        data-dw-card-action={isAgendaAddRowSection ? "" : undefined}
-        {...(showAgendaRowReorder ? rowReorder.rowSectionProps : {})}
+        data-dw-card-action={isListAddRowSection ? "" : undefined}
+        {...(showListRowReorder ? rowReorder.rowSectionProps : {})}
         className={cn(
           isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
-          isAgendaAddRowSection && "cursor-pointer hover:bg-primary/5",
-          (isAgendaAddRowSection || showAgendaRowDelete || showAgendaRowReorder) && "relative",
-          showAgendaRowDelete && "pr-6",
-          showAgendaRowReorder && "pl-5 touch-none",
-          showAgendaRowReorder && !rowReorder.isDragging && "cursor-grab",
+          isListAddRowSection && "cursor-pointer hover:bg-primary/5",
+          (isListAddRowSection || showListRowDelete || showListRowReorder) && "relative",
+          showListRowDelete && "pr-6",
+          showListRowReorder && "pl-5 touch-none",
+          showListRowReorder && !rowReorder.isDragging && "cursor-grab",
           rowReorder.isDragging && "opacity-50",
         )}
         onPointerDown={(e) => {
-          if (isAgendaAddRowSection) stopCardNodeDrag(e);
+          if (isListAddRowSection) stopCardNodeDrag(e);
           rowReorder.rowSectionProps.onPointerDown?.(e);
         }}
-        onMouseDown={isAgendaAddRowSection ? stopCardNodeDrag : undefined}
+        onMouseDown={isListAddRowSection ? stopCardNodeDrag : undefined}
         onClick={(e) => {
           if (
             tryAgendaAddRowClick(
@@ -966,14 +1059,25 @@ function CardElementRenderer({
             )
           )
             return;
+          if (
+            tryBulletListAddRowClick(
+              element.id,
+              e,
+              cardRootElements,
+              onCardElementsPatch,
+              bulletListItemThemeHue,
+              agendaHueStepDegProp,
+            )
+          )
+            return;
           trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect);
         }}
       >
         {meshLayer}
-        {showAgendaRowReorder && agendaRowListIndex >= 0 ? (
+        {showListRowReorder && listRowListIndex >= 0 ? (
           <>
-            <AgendaRowDropIndicator rowIndex={agendaRowListIndex} />
-            <AgendaRowDropIndicatorBottom rowIndex={agendaRowListIndex} />
+            <AgendaRowDropIndicator rowIndex={listRowListIndex} />
+            <AgendaRowDropIndicatorBottom rowIndex={listRowListIndex} />
             <AgendaRowReorderGrip rowId={element.id} />
           </>
         ) : null}
@@ -1015,9 +1119,12 @@ function CardElementRenderer({
             agendaTableHeaderStyle={agendaTableHeaderStyle}
             agendaDividersEnabled={agendaDividersEnabled}
             agendaResizeMetrics={agendaResizeMetrics}
+            bulletListItemThemeHue={bulletListItemThemeHue}
+            bulletListRowIndexMap={bulletListRowIndexMap}
+            bulletListResizeMetrics={bulletListResizeMetrics}
           />
         ))}
-        {showAgendaRowDelete ? (
+        {showListRowDelete ? (
           <button
             type="button"
             aria-label="Remove row"
@@ -1027,7 +1134,11 @@ function CardElementRenderer({
             onMouseDown={stopCardNodeDrag}
             onClick={(e) => {
               e.stopPropagation();
-              onCardElementsPatch!(removeAgendaRow(cardRootElements!, element.id));
+              if (showAgendaRowDelete) {
+                onCardElementsPatch!(removeAgendaRow(cardRootElements!, element.id));
+              } else if (showBulletListRowDelete) {
+                onCardElementsPatch!(removeBulletListRow(cardRootElements!, element.id));
+              }
             }}
           >
             <X className="h-3 w-3" strokeWidth={2} aria-hidden />
@@ -1084,6 +1195,67 @@ function CardElementRenderer({
         cardNodeSelected={cardNodeSelected}
         cardShellBorder={cardShellBorder}
         cardTemplateId={cardTemplateId}
+      />
+    );
+  }
+
+  if (element.kind === "decor" && isBulletListCubeId(element.id) && cardRootElements) {
+    const rowId = element.id.replace(/-cube$/, "");
+    const cubeRowIndex = bulletListRowIndexMap?.get(rowId) ?? 0;
+    const cubeColor = resolveBulletCubeColor(
+      cardRootElements,
+      cubeRowIndex,
+      element.style?.backgroundColor,
+      bulletListItemThemeHue,
+      agendaHueStepDegProp,
+    );
+    const cubeSize = parseBulletListBulletSize(element);
+    const bulletShape = parseBulletListBulletShape(element);
+    const borderRadius = resolveBulletListBulletBorderRadius(cubeSize, bulletShape);
+    const cubeMarginTop =
+      bulletListResizeMetrics != null
+        ? Math.max(1, 2 * bulletListResizeMetrics.paddingScale)
+        : 2;
+    return (
+      <div
+        aria-hidden
+        data-dw-card-element-id={element.id}
+        style={{
+          ...layoutCss,
+          width: cubeSize,
+          height: cubeSize,
+          minWidth: cubeSize,
+          flex: 0,
+          alignSelf: "flex-start",
+          marginTop: cubeMarginTop,
+          borderRadius,
+          backgroundColor: cubeColor,
+          boxSizing: "border-box",
+          ...popStyle,
+        }}
+      />
+    );
+  }
+
+  if (element.kind === "decor" && isSidebarAccentBar(element.id, cardTemplateId)) {
+    const { heading } = getSidebarAccentRegions(cardRootElements);
+    const barWidth = parseSidebarAccentBarWidth(element);
+    const accentColor = heading?.textColor ?? SIDEBAR_ACCENT_COLOR_DEFAULT;
+    return (
+      <div
+        aria-hidden
+        data-dw-card-element-id={element.id}
+        style={{
+          ...layoutCss,
+          width: barWidth,
+          minWidth: barWidth,
+          flex: 0,
+          alignSelf: "stretch",
+          borderRadius: 9999,
+          backgroundColor: accentColor,
+          boxSizing: "border-box",
+          ...popStyle,
+        }}
       />
     );
   }
@@ -1170,9 +1342,18 @@ function CardElementRenderer({
     if (!hasText && !isEditing && !fillRemaining) {
       return null;
     }
+    const isBulletListTitleText =
+      isBulletListCard(cardTemplateId) && element.id === BULLET_LIST_TITLE_ID;
+    const isBulletListItemText =
+      isBulletListCard(cardTemplateId) && element.id.endsWith(BULLET_LIST_TEXT_SUFFIX);
     const textNode = cardElementTextNode(node, element);
     if (isAgendaCard(cardTemplateId) && agendaResizeMetrics) {
       textNode.fontSize = scaleAgendaFontSize(element.fontSize, agendaResizeMetrics.scale);
+    }
+    if (isBulletListTitleText && bulletListResizeMetrics) {
+      textNode.fontSize = scaleBulletListTitleFontSize(element.fontSize, bulletListResizeMetrics);
+    } else if (isBulletListItemText && bulletListResizeMetrics) {
+      textNode.fontSize = scaleBulletListItemFontSize(element.fontSize, bulletListResizeMetrics);
     }
     const rawTextPad = effectiveLayout?.padding ?? [8, 12];
     const textPad =
@@ -1204,7 +1385,11 @@ function CardElementRenderer({
       fontSize:
         isAgendaCard(cardTemplateId) && agendaResizeMetrics
           ? scaleAgendaFontSize(element.fontSize, agendaResizeMetrics.scale)
-          : (element.fontSize ?? 12),
+          : isBulletListTitleText && bulletListResizeMetrics
+            ? scaleBulletListTitleFontSize(element.fontSize, bulletListResizeMetrics)
+            : isBulletListItemText && bulletListResizeMetrics
+              ? scaleBulletListItemFontSize(element.fontSize, bulletListResizeMetrics)
+              : (element.fontSize ?? 12),
       fontWeight: element.fontWeight as React.CSSProperties["fontWeight"],
       color: resolvedTextColor,
       lineHeight: element.lineHeight ?? 1.35,
@@ -1220,6 +1405,16 @@ function CardElementRenderer({
           }
         : {}),
       ...(isAgendaSessionCell ? { overflow: "hidden", minHeight: 0 } : {}),
+      ...(isBulletListItemText
+        ? {
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-start",
+            alignItems: "stretch",
+            minHeight: 0,
+            overflow: "hidden",
+          }
+        : {}),
       ...(fillRemaining
         ? { overflow: isEditing ? "auto" : (layoutCss.overflow ?? "hidden") }
         : {}),
@@ -1231,22 +1426,36 @@ function CardElementRenderer({
         data-dw-card-element-id={element.id}
         data-dw-card-element-kind="text"
         data-dw-card-action={
-          element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id) ? "" : undefined
+          element.id === AGENDA_ADD_ROW_LABEL_ID ||
+          isAgendaAddRowId(element.id) ||
+          element.id === BULLET_LIST_ADD_ROW_LABEL_ID ||
+          isBulletListAddRowId(element.id)
+            ? ""
+            : undefined
         }
         className={cn(
           isAgendaTimeCell ? "shrink-0" : "min-w-0",
           fillRemaining && "min-h-0",
           isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
-          (element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id)) &&
+          (element.id === AGENDA_ADD_ROW_LABEL_ID ||
+            isAgendaAddRowId(element.id) ||
+            element.id === BULLET_LIST_ADD_ROW_LABEL_ID ||
+            isBulletListAddRowId(element.id)) &&
             "cursor-pointer",
         )}
         onPointerDown={
-          element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id)
+          element.id === AGENDA_ADD_ROW_LABEL_ID ||
+          isAgendaAddRowId(element.id) ||
+          element.id === BULLET_LIST_ADD_ROW_LABEL_ID ||
+          isBulletListAddRowId(element.id)
             ? stopCardNodeDrag
             : undefined
         }
         onMouseDown={
-          element.id === AGENDA_ADD_ROW_LABEL_ID || isAgendaAddRowId(element.id)
+          element.id === AGENDA_ADD_ROW_LABEL_ID ||
+          isAgendaAddRowId(element.id) ||
+          element.id === BULLET_LIST_ADD_ROW_LABEL_ID ||
+          isBulletListAddRowId(element.id)
             ? stopCardNodeDrag
             : undefined
         }
@@ -1262,6 +1471,17 @@ function CardElementRenderer({
             )
           )
             return;
+          if (
+            tryBulletListAddRowClick(
+              element.id,
+              e,
+              cardRootElements,
+              onCardElementsPatch,
+              bulletListItemThemeHue,
+              agendaHueStepDegProp,
+            )
+          )
+            return;
           trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect);
         }}
       >
@@ -1270,6 +1490,7 @@ function CardElementRenderer({
           className={cn(
             "relative z-[1]",
             isAgendaTimeCell ? "shrink-0 whitespace-nowrap" : "min-w-0",
+            isBulletListItemText && "flex min-h-0 flex-1 flex-col justify-start",
             fillRemaining && "min-h-0 flex-1 overflow-hidden",
           )}
         >
@@ -1449,6 +1670,10 @@ export function CardShape(props: CardShapeProps) {
   const themesMenuHueStepDeg = useThemeMenuHueStepDeg();
   const globalMultiHue = useThemeMultiHueLayout();
   const agendaThemeHue = agendaRowThemeHueEnabled(nodeAny.agendaRowThemeHue, globalMultiHue);
+  const bulletListThemeHue = bulletListItemThemeHueEnabled(
+    nodeAny.bulletListItemThemeHue,
+    globalMultiHue,
+  );
   const agendaHueStep = themesMenuHueStepDeg;
   const agendaDividersEnabled = nodeAny.agendaDividersEnabled !== false;
   const agendaTableHeaderStyle = useMemo(
@@ -1461,9 +1686,19 @@ export function CardShape(props: CardShapeProps) {
     getAgendaRows(cardRoot).forEach((r, i) => m.set(r.id, i));
     return m;
   }, [cardRoot, resolvedTemplateId]);
+  const bulletListRowIndexMap = useMemo(() => {
+    if (!isBulletListCard(resolvedTemplateId) || !cardRoot) return undefined;
+    const m = new Map<string, number>();
+    getBulletListRows(cardRoot).forEach((r, i) => m.set(r.id, i));
+    return m;
+  }, [cardRoot, resolvedTemplateId]);
   const agendaResizeMetrics = useMemo(() => {
     if (!isAgendaCard(resolvedTemplateId)) return null;
     return computeAgendaResizeMetrics(w, h, cardShellInsetPx);
+  }, [resolvedTemplateId, w, h, cardShellInsetPx]);
+  const bulletListResizeMetrics = useMemo(() => {
+    if (!isBulletListCard(resolvedTemplateId)) return null;
+    return computeBulletListResizeMetrics(w, h, cardShellInsetPx);
   }, [resolvedTemplateId, w, h, cardShellInsetPx]);
 
   const innerTree = useMemo(() => {
@@ -1506,6 +1741,9 @@ export function CardShape(props: CardShapeProps) {
         agendaTableHeaderStyle={agendaTableHeaderStyle}
         agendaDividersEnabled={agendaDividersEnabled}
         agendaResizeMetrics={agendaResizeMetrics}
+        bulletListItemThemeHue={bulletListThemeHue}
+        bulletListRowIndexMap={bulletListRowIndexMap}
+        bulletListResizeMetrics={bulletListResizeMetrics}
       />
     );
   }, [
@@ -1535,12 +1773,15 @@ export function CardShape(props: CardShapeProps) {
     innerRadiusStr,
     staggerMap,
     agendaThemeHue,
+    bulletListThemeHue,
     agendaHueStep,
     isDarkTheme,
     agendaRowIndexMap,
+    bulletListRowIndexMap,
     agendaTableHeaderStyle,
     agendaDividersEnabled,
     agendaResizeMetrics,
+    bulletListResizeMetrics,
   ]);
 
   const shellBg =
@@ -1571,13 +1812,17 @@ export function CardShape(props: CardShapeProps) {
     if (!isAgendaCard(resolvedTemplateId) || !cardRoot) return [] as string[];
     return getAgendaRows(cardRoot).map((r) => r.id);
   }, [cardRoot, resolvedTemplateId]);
-  const agendaRowReorderEnabled =
-    isAgendaCard(resolvedTemplateId) &&
+  const bulletListRowIds = useMemo(() => {
+    if (!isBulletListCard(resolvedTemplateId) || !cardRoot) return [] as string[];
+    return getBulletListRows(cardRoot).map((r) => r.id);
+  }, [cardRoot, resolvedTemplateId]);
+  const listRowReorderEnabled =
     !!cardNodeSelected &&
     !isReadOnly &&
-    agendaRowIds.length > 1 &&
     !!cardRoot &&
-    !!onCardElementsPatch;
+    !!onCardElementsPatch &&
+    ((isAgendaCard(resolvedTemplateId) && agendaRowIds.length > 1) ||
+      (isBulletListCard(resolvedTemplateId) && bulletListRowIds.length > 1));
 
   const cardContentInner = (
     <div className="relative z-[1] flex h-full min-h-0 w-full min-w-0 flex-col">
@@ -1586,7 +1831,7 @@ export function CardShape(props: CardShapeProps) {
   );
 
   const cardContentLayer =
-    agendaRowReorderEnabled ? (
+    listRowReorderEnabled && isAgendaCard(resolvedTemplateId) ? (
       <AgendaRowReorderProvider
         enabled
         rowIds={agendaRowIds}
@@ -1596,6 +1841,16 @@ export function CardShape(props: CardShapeProps) {
       >
         {cardContentInner}
       </AgendaRowReorderProvider>
+    ) : listRowReorderEnabled && isBulletListCard(resolvedTemplateId) ? (
+      <BulletListRowReorderProvider
+        enabled
+        rowIds={bulletListRowIds}
+        cardRootElements={cardRoot}
+        onPatch={onCardElementsPatch}
+        onDragSessionChange={onHeroBoundaryDragSessionChange}
+      >
+        {cardContentInner}
+      </BulletListRowReorderProvider>
     ) : (
       cardContentInner
     );

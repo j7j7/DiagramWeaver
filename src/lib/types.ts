@@ -527,6 +527,9 @@ export interface DiagramNodeData {
   /** Agenda card: show divider lines between sections and rows (default true). */
   agendaDividersEnabled?: boolean;
 
+  /** Bullet list card: step hue per bullet cube (defaults to Themes menu multi-select hue setting). */
+  bulletListItemThemeHue?: boolean;
+
   /** UML class diagram compartments: name, attributes, methods in separate sections */
   umlClass?: {
     name: string;

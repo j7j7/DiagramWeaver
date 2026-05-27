@@ -1580,6 +1580,41 @@ export function ContextToolbar({
     ],
   );
 
+  const selectedBulletListItemThemeHue = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    return node?.bulletListItemThemeHue;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const handleBulletListItemThemeHueChange = useCallback(
+    (enabled: boolean) => {
+      if (!selectedItem?.id) return;
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) =>
+          n.id === selectedItem.id ? { ...n, bulletListItemThemeHue: enabled } : n,
+        ),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      const data = currentDiagramData ?? diagramData;
+      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
+      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+    },
+    [
+      selectedItem?.id,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      onItemUpdate,
+    ],
+  );
+
   const handleCardElementsChange = useCallback(
     (elements: CardElementData) => {
       if (!selectedItem?.id) return;
@@ -2658,6 +2693,8 @@ export function ContextToolbar({
                   onAgendaRowThemeHueChange={handleAgendaRowThemeHueChange}
                   agendaDividersEnabled={selectedAgendaDividersEnabled}
                   onAgendaDividersEnabledChange={handleAgendaDividersEnabledChange}
+                  bulletListItemThemeHue={selectedBulletListItemThemeHue}
+                  onBulletListItemThemeHueChange={handleBulletListItemThemeHueChange}
                   noIconBackground={(() => {
                     if (selectedCardIconElement?.iconRef) {
                       return !!selectedCardIconElement.iconRef.noIconBackground;

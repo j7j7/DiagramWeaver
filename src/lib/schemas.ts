@@ -563,6 +563,7 @@ export const DiagramNodeDataSchema = z.object({
   card: NodeCardSpecSchema.optional(),
   agendaRowThemeHue: z.boolean().optional(),
   agendaDividersEnabled: z.boolean().optional(),
+  bulletListItemThemeHue: z.boolean().optional(),
   umlClass: z.object({
     name: z.string(),
     attributes: z.array(z.string()),

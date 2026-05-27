@@ -4,6 +4,26 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-27 – Cards: Bullet List title size + resize behavior
+
+**Bullet List** title default **14px** (was 11). Rows stay equal height with top-aligned text/bullets; on vertical shrink, **padding/gaps compress** before item text shrinks (typography tracks width, min 10px items / 11px title). Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List visual styling panel wiring
+
+**Bullet List** registered in **`cardTemplateHasDedicatedPropertiesPanel`** so the **Card properties** accordion appears in Visual styling (circle bullet, size, hue, items). Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List circle bullet, size, vertical fill
+
+**Bullet List** card properties add **Circle bullet** toggle and **Bullet size** slider (4–24px). Rows stretch to fill the entries area on resize (same pattern as Agenda); title/row padding and typography scale with card size. Helpers in **`card-bullet-list.ts`**. Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List template
+
+New **Bullet List** card (`generic.card.bullet-list`) — dark shell, lime accent border/title, square **cube** bullets matching the heading color, white item text. Items support drag-reorder, add (`+ Add item`), and delete like Agenda. **Card properties**: accent color (title + bullets), item text color, **Step hue per bullet** toggle. Helpers in **`card-bullet-list.ts`**; cube decor + shared row reorder in **`card-shape.tsx`**. Palette glyph + **`bullet-list.svg`** / **`bullet-list.png`** in **`resource-generic.json`**. Patch bumped.
+
+### 2026-05-27 – Cards: Sidebar Accent template
+
+New **Sidebar Accent** card (`generic.card.sidebar-accent`) — dark navy→teal gradient shell, pill **accent bar** on the left whose color always matches **heading** text color, uppercase heading + white body. **Card properties**: sidebar thickness slider (3–20px), heading/sidebar color picker. Helpers in **`card-sidebar-accent.ts`**; accent bar rendered in **`card-shape.tsx`**. Palette glyph + **`sidebar-accent.svg`** / **`sidebar-accent.png`** in **`resource-generic.json`**. Patch bumped.
+
 ### 2026-05-27 – Top menubar: remove cursor position readout
 
 Removed live **Cursor: X/Y** display from **`TopMenuBar`**. Canvas still reports pointer activity for connection-animation idle pause; **`mousePosition`** state and prop chain dropped. Tutorial step text updated. Patch bumped.

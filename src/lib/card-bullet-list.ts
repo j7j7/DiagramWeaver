@@ -1,0 +1,792 @@
+import type { CardElementData, CardElementStyle, CardLayoutBox, CardTemplate } from "@/lib/card-types";
+import type { DiagramNodeData } from "@/lib/types";
+import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
+import { shiftHueOfColor, hueDeltaBetweenColors } from "@/lib/color-shift";
+import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
+
+export const BULLET_LIST_TEMPLATE_ID = "bullet-list";
+
+export const BULLET_LIST_TITLE_ID = "title";
+export const BULLET_LIST_ENTRIES_ID = "entries";
+export const BULLET_LIST_ADD_ROW_ID = "add-row";
+export const BULLET_LIST_ADD_ROW_LABEL_ID = "add-row-label";
+export const BULLET_LIST_ROW_PREFIX = "row-";
+export const BULLET_LIST_CUBE_SUFFIX = "-cube";
+export const BULLET_LIST_TEXT_SUFFIX = "-text";
+
+export const BULLET_LIST_MIN_ROWS = 1;
+export const BULLET_LIST_CUBE_SIZE_PX = 8;
+export const BULLET_SIZE_MIN = 4;
+export const BULLET_SIZE_MAX = 24;
+
+export const BULLET_LIST_TITLE_FONT_SIZE = 14;
+export const BULLET_LIST_ITEM_FONT_SIZE = 12;
+export const BULLET_LIST_TITLE_FONT_MIN = 11;
+export const BULLET_LIST_ITEM_FONT_MIN = 10;
+
+export type BulletListBulletShape = "square" | "circle";
+
+export const BULLET_LIST_DEFAULT_WIDTH = 200;
+export const BULLET_LIST_DEFAULT_HEIGHT = 240;
+export const BULLET_LIST_DEFAULT_CORNER_RADIUS = 0.12;
+
+export const BULLET_LIST_ACCENT_DEFAULT = "#84cc16";
+export const BULLET_LIST_ITEM_TEXT_DEFAULT = "#f8fafc";
+export const BULLET_LIST_BG_DEFAULT = "#0f1a12";
+export const BULLET_LIST_ADD_LABEL_DEFAULT = "#84cc16";
+
+/** Default drop preset — dark card, lime accent (matches mock-up). */
+export const BULLET_LIST_DEFAULT_THEME = {
+  accentColor: BULLET_LIST_ACCENT_DEFAULT,
+  itemTextColor: BULLET_LIST_ITEM_TEXT_DEFAULT,
+  backgroundColor: BULLET_LIST_BG_DEFAULT,
+  addRowTextColor: BULLET_LIST_ADD_LABEL_DEFAULT,
+  titleText: "TITLE HEADING",
+};
+
+export interface BulletListRowData {
+  id: string;
+  text: string;
+  cubeStyle?: CardElementStyle;
+}
+
+const DEFAULT_ROWS: Omit<BulletListRowData, "id">[] = [
+  { text: "Item one" },
+  { text: "Item two" },
+  { text: "Item three" },
+];
+
+export type BulletListResizeMetrics = {
+  /** Width-based scale for title/item typography and horizontal spacing. */
+  typographyScale: number;
+  /** Height ratio — compresses vertical padding/gaps when the card is shortened. */
+  paddingScale: number;
+  scaleW: number;
+  scaleH: number;
+};
+
+function clampBulletSize(n: number): number {
+  return Math.min(BULLET_SIZE_MAX, Math.max(BULLET_SIZE_MIN, Math.round(n)));
+}
+
+export function parseBulletListBulletSize(
+  cube: CardElementData | null | undefined,
+): number {
+  const w = cube?.layout?.width;
+  if (typeof w === "number" && Number.isFinite(w) && w > 0) {
+    return clampBulletSize(w);
+  }
+  return BULLET_LIST_CUBE_SIZE_PX;
+}
+
+export function parseBulletListBulletShape(
+  cube: CardElementData | null | undefined,
+): BulletListBulletShape {
+  return cube?.placeholder === "circle" ? "circle" : "square";
+}
+
+export function resolveBulletListBulletBorderRadius(
+  sizePx: number,
+  shape: BulletListBulletShape,
+): number {
+  return shape === "circle" ? sizePx / 2 : 1;
+}
+
+function getBulletListFirstCube(root: CardElementData | undefined): CardElementData | null {
+  const firstRow = root ? getBulletListRows(root)[0] : undefined;
+  return firstRow?.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX)) ?? null;
+}
+
+function readBulletListBulletConfig(root: CardElementData): {
+  size: number;
+  shape: BulletListBulletShape;
+} {
+  const cube = getBulletListFirstCube(root);
+  return {
+    size: parseBulletListBulletSize(cube),
+    shape: parseBulletListBulletShape(cube),
+  };
+}
+
+/** Uniform scale vs default drop size (200×240). Typography tracks width; padding tracks height. */
+export function computeBulletListResizeMetrics(
+  width: number,
+  height: number,
+  shellInsetPx = 0,
+): BulletListResizeMetrics {
+  const innerW = Math.max(1, width - shellInsetPx * 2);
+  const innerH = Math.max(1, height - shellInsetPx * 2);
+  const scaleW = innerW / BULLET_LIST_DEFAULT_WIDTH;
+  const scaleH = innerH / BULLET_LIST_DEFAULT_HEIGHT;
+  const typographyScale = Math.max(0.85, Math.min(1.15, scaleW));
+  const paddingScale = Math.max(0.12, Math.min(1, scaleH));
+  return { typographyScale, paddingScale, scaleW, scaleH };
+}
+
+export function scaleBulletListPadding(
+  padding: CardLayoutBox["padding"],
+  scale: number,
+): CardLayoutBox["padding"] {
+  if (padding == null) return padding;
+  if (typeof padding === "number") return padding * scale;
+  return padding.map((n) => n * scale) as CardLayoutBox["padding"];
+}
+
+export function scaleBulletListFontSize(size: number | undefined, scale: number, minPx = 6): number {
+  return Math.max(minPx, (size ?? 12) * scale);
+}
+
+export function scaleBulletListTitleFontSize(
+  size: number | undefined,
+  metrics: BulletListResizeMetrics,
+): number {
+  return scaleBulletListFontSize(
+    size ?? BULLET_LIST_TITLE_FONT_SIZE,
+    metrics.typographyScale,
+    BULLET_LIST_TITLE_FONT_MIN,
+  );
+}
+
+export function scaleBulletListItemFontSize(
+  size: number | undefined,
+  metrics: BulletListResizeMetrics,
+): number {
+  return scaleBulletListFontSize(
+    size ?? BULLET_LIST_ITEM_FONT_SIZE,
+    metrics.typographyScale,
+    BULLET_LIST_ITEM_FONT_MIN,
+  );
+}
+
+function scaleBulletListAxisPadding(
+  padding: CardLayoutBox["padding"],
+  typographyScale: number,
+  paddingScale: number,
+): CardLayoutBox["padding"] {
+  if (padding == null) return padding;
+  if (typeof padding === "number") return padding * paddingScale;
+  if (padding.length === 2) {
+    return [padding[0] * paddingScale, padding[1] * typographyScale] as [number, number];
+  }
+  if (padding.length === 4) {
+    return [
+      padding[0] * paddingScale,
+      padding[1] * typographyScale,
+      padding[2] * paddingScale,
+      padding[3] * typographyScale,
+    ] as [number, number, number, number];
+  }
+  return padding;
+}
+
+/** Stretch rows to fill entries height; compress vertical gaps before shrinking text. */
+export function applyBulletListResizeLayout(
+  elementId: string,
+  layout: CardElementData["layout"],
+  metrics: BulletListResizeMetrics,
+): CardElementData["layout"] {
+  const { typographyScale, paddingScale } = metrics;
+  let next = layout ?? {};
+
+  if (elementId === "root") {
+    next = {
+      ...next,
+      padding: scaleBulletListAxisPadding(
+        next.padding ?? ([12, 0, 8, 0] as [number, number, number, number]),
+        typographyScale,
+        paddingScale,
+      ),
+    };
+  }
+
+  if (elementId === BULLET_LIST_TITLE_ID) {
+    next = {
+      ...next,
+      padding: scaleBulletListAxisPadding(
+        next.padding ?? ([0, 14] as [number, number]),
+        typographyScale,
+        paddingScale,
+      ),
+      marginBottom: (next.marginBottom ?? 6) * paddingScale,
+    };
+  }
+
+  if (isBulletListRowId(elementId)) {
+    next = {
+      ...next,
+      flex: 1,
+      minHeight: 0,
+      alignItems: "start",
+      padding: scaleBulletListAxisPadding(
+        next.padding ?? ([4, 14] as [number, number]),
+        typographyScale,
+        paddingScale,
+      ),
+    };
+  }
+
+  if (elementId === BULLET_LIST_ADD_ROW_ID) {
+    next = {
+      ...next,
+      padding: scaleBulletListAxisPadding(
+        next.padding ?? ([6, 14] as [number, number]),
+        typographyScale,
+        paddingScale,
+      ),
+      marginTop: (next.marginTop ?? 2) * paddingScale,
+    };
+  }
+
+  if (elementId === BULLET_LIST_ADD_ROW_LABEL_ID) {
+    next = {
+      ...next,
+      padding: scaleBulletListAxisPadding(
+        next.padding ?? ([4, 8] as [number, number]),
+        typographyScale,
+        paddingScale,
+      ),
+    };
+  }
+
+  if (elementId.endsWith(BULLET_LIST_TEXT_SUFFIX)) {
+    next = {
+      ...next,
+      height: "100%",
+      minHeight: 0,
+      alignItems: "start",
+      justifyContent: "start",
+      padding: scaleBulletListAxisPadding(
+        next.padding ?? ([2, 0] as [number, number]),
+        typographyScale,
+        paddingScale,
+      ),
+    };
+  }
+
+  return next;
+}
+
+function bulletCube(
+  id: string,
+  accentColor: string,
+  size: number = BULLET_LIST_CUBE_SIZE_PX,
+  shape: BulletListBulletShape = "square",
+): CardElementData {
+  const borderRadius = resolveBulletListBulletBorderRadius(size, shape);
+  return {
+    id,
+    kind: "decor",
+    placeholder: shape === "circle" ? "circle" : "rect",
+    layout: {
+      width: size,
+      height: size,
+      flex: 0,
+      alignSelf: "start",
+      marginTop: 2,
+    },
+    style: {
+      backgroundColor: accentColor,
+      backgroundStyle: "solid",
+      borderRadius,
+    },
+  };
+}
+
+function bulletText(id: string, text: string, textColor: string): CardElementData {
+  return {
+    id,
+    kind: "text",
+    text,
+    editable: true,
+    fontSize: BULLET_LIST_ITEM_FONT_SIZE,
+    fontWeight: "400",
+    textColor,
+    layout: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: 0,
+      height: "100%",
+      padding: [2, 0] as [number, number],
+      justifyContent: "start",
+      alignItems: "start",
+    },
+    style: { backgroundStyle: "none" },
+  };
+}
+
+function bulletRowSection(
+  row: BulletListRowData,
+  accentColor: string,
+  itemTextColor: string,
+  bulletSize: number,
+  bulletShape: BulletListBulletShape,
+): CardElementData {
+  const borderRadius = resolveBulletListBulletBorderRadius(bulletSize, bulletShape);
+  return {
+    id: row.id,
+    kind: "section",
+    layout: {
+      flexDirection: "row",
+      width: "100%",
+      flex: 1,
+      minHeight: 0,
+      alignItems: "start",
+      gap: 10,
+      padding: [4, 14] as [number, number],
+    },
+    style: { backgroundStyle: "none" },
+    children: [
+      {
+        ...bulletCube(`${row.id}${BULLET_LIST_CUBE_SUFFIX}`, accentColor, bulletSize, bulletShape),
+        style: row.cubeStyle ?? {
+          backgroundColor: accentColor,
+          backgroundStyle: "solid",
+          borderRadius,
+        },
+        placeholder: bulletShape === "circle" ? "circle" : "rect",
+      },
+      bulletText(`${row.id}${BULLET_LIST_TEXT_SUFFIX}`, row.text, itemTextColor),
+    ],
+  };
+}
+
+function bulletAddRowButton(addLabelColor: string): CardElementData {
+  return {
+    id: BULLET_LIST_ADD_ROW_ID,
+    kind: "section",
+    layout: {
+      width: "100%",
+      flex: 0,
+      padding: [8, 14] as [number, number],
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 2,
+    },
+    style: { backgroundStyle: "none" },
+    children: [
+      {
+        id: BULLET_LIST_ADD_ROW_LABEL_ID,
+        kind: "text",
+        text: "+ Add item",
+        editable: false,
+        fontSize: 10,
+        fontWeight: "600",
+        textColor: addLabelColor,
+        layout: { flex: 0, padding: [4, 8], justifyContent: "center", alignItems: "center" },
+        style: { backgroundStyle: "none" },
+      },
+    ],
+  };
+}
+
+export function createBulletListRoot(
+  theme: typeof BULLET_LIST_DEFAULT_THEME = BULLET_LIST_DEFAULT_THEME,
+  rows: BulletListRowData[] = defaultStyledBulletListRows(theme),
+): CardElementData {
+  const entryChildren: CardElementData[] = rows.map((row) =>
+    bulletRowSection(row, theme.accentColor, theme.itemTextColor, BULLET_LIST_CUBE_SIZE_PX, "square"),
+  );
+  entryChildren.push(bulletAddRowButton(theme.addRowTextColor));
+
+  return {
+    id: "root",
+    kind: "section",
+    layout: {
+      flexDirection: "column",
+      width: "100%",
+      height: "100%",
+      gap: 0,
+      padding: [12, 0, 8, 0] as [number, number, number, number],
+      overflow: "hidden",
+    },
+    style: {
+      backgroundColor: theme.backgroundColor,
+      backgroundStyle: "solid",
+    },
+    children: [
+      {
+        id: BULLET_LIST_TITLE_ID,
+        kind: "text",
+        text: theme.titleText,
+        editable: true,
+        fontSize: BULLET_LIST_TITLE_FONT_SIZE,
+        fontWeight: "700",
+        textColor: theme.accentColor,
+        textTransform: "uppercase",
+        textJustify: "center",
+        layout: {
+          width: "100%",
+          flex: 0,
+          padding: [0, 14] as [number, number],
+          justifyContent: "center",
+          alignItems: "center",
+          marginBottom: 6,
+        },
+        style: { backgroundStyle: "none" },
+      },
+      {
+        id: BULLET_LIST_ENTRIES_ID,
+        kind: "section",
+        layout: {
+          flexDirection: "column",
+          width: "100%",
+          flex: 1,
+          minHeight: 0,
+          gap: 0,
+          padding: 0,
+          alignSelf: "stretch",
+        },
+        style: { backgroundStyle: "none" },
+        children: entryChildren,
+      },
+    ],
+  };
+}
+
+export function defaultStyledBulletListRows(
+  theme: typeof BULLET_LIST_DEFAULT_THEME = BULLET_LIST_DEFAULT_THEME,
+): BulletListRowData[] {
+  return DEFAULT_ROWS.map((r, i) => ({
+    ...r,
+    id: `${BULLET_LIST_ROW_PREFIX}${i + 1}`,
+    cubeStyle: {
+      backgroundColor: theme.accentColor,
+      backgroundStyle: "solid",
+      borderRadius: 1,
+    },
+  }));
+}
+
+export function createDefaultBulletListRoot(): CardElementData {
+  return createBulletListRoot();
+}
+
+export function createBulletListTemplate(): CardTemplate {
+  return {
+    id: BULLET_LIST_TEMPLATE_ID,
+    name: "Bullet List",
+    defaultWidth: BULLET_LIST_DEFAULT_WIDTH,
+    defaultHeight: BULLET_LIST_DEFAULT_HEIGHT,
+    cornerRadius: BULLET_LIST_DEFAULT_CORNER_RADIUS,
+    root: createDefaultBulletListRoot(),
+  };
+}
+
+export function isBulletListCard(templateId: string | undefined): boolean {
+  return templateId === BULLET_LIST_TEMPLATE_ID;
+}
+
+export function isBulletListRowId(elementId: string): boolean {
+  return /^row-\d+$/.test(elementId);
+}
+
+export function isBulletListCubeId(elementId: string): boolean {
+  return /^row-\d+-cube$/.test(elementId);
+}
+
+export function isBulletListAddRowId(elementId: string): boolean {
+  return elementId === BULLET_LIST_ADD_ROW_ID;
+}
+
+export function getBulletListEntriesSection(root: CardElementData | undefined): CardElementData | null {
+  if (!root?.children?.length) return null;
+  return root.children.find((c) => c.id === BULLET_LIST_ENTRIES_ID) ?? null;
+}
+
+export function getBulletListRows(root: CardElementData | undefined): CardElementData[] {
+  const entries = getBulletListEntriesSection(root);
+  if (!entries?.children?.length) return [];
+  return entries.children.filter((c) => c.kind === "section" && isBulletListRowId(c.id));
+}
+
+export function getBulletListAccentColor(root: CardElementData | undefined): string {
+  const title = root ? findCardElement(root, BULLET_LIST_TITLE_ID) : null;
+  return title?.textColor ?? BULLET_LIST_ACCENT_DEFAULT;
+}
+
+export function getBulletListItemTextColor(root: CardElementData | undefined): string {
+  const firstRow = getBulletListRows(root)[0];
+  if (!firstRow) return BULLET_LIST_ITEM_TEXT_DEFAULT;
+  const textEl = firstRow.children?.find((c) => c.id.endsWith(BULLET_LIST_TEXT_SUFFIX));
+  return textEl?.textColor ?? BULLET_LIST_ITEM_TEXT_DEFAULT;
+}
+
+export function parseBulletListRow(row: CardElementData): BulletListRowData {
+  const textEl = row.children?.find((c) => c.id.endsWith(BULLET_LIST_TEXT_SUFFIX));
+  const cubeEl = row.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX));
+  return {
+    id: row.id,
+    text: textEl?.text ?? "",
+    cubeStyle: cubeEl?.style ? { ...cubeEl.style } : undefined,
+  };
+}
+
+function nextBulletListRowId(rows: CardElementData[]): string {
+  let max = 0;
+  for (const row of rows) {
+    const n = Number.parseInt(row.id.slice(BULLET_LIST_ROW_PREFIX.length), 10);
+    if (Number.isFinite(n)) max = Math.max(max, n);
+  }
+  return `${BULLET_LIST_ROW_PREFIX}${max + 1}`;
+}
+
+function readAddRowLabelColor(root: CardElementData): string {
+  const addLabel = findCardElement(root, BULLET_LIST_ADD_ROW_LABEL_ID);
+  return addLabel?.textColor ?? BULLET_LIST_ADD_LABEL_DEFAULT;
+}
+
+export function getBulletListFirstCubeColor(root: CardElementData | undefined): string {
+  const firstRow = root ? getBulletListRows(root)[0] : undefined;
+  const cube = firstRow?.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX));
+  return cube?.style?.backgroundColor ?? getBulletListAccentColor(root);
+}
+
+export function resolveBulletCubeColor(
+  root: CardElementData,
+  rowIndex: number,
+  storedColor: string | undefined,
+  themeHue: boolean,
+  hueStepDeg: number,
+): string {
+  const accent = getBulletListAccentColor(root);
+  if (!themeHue) return accent;
+  const base = getBulletListFirstCubeColor(root);
+  const fill = storedColor ?? accent;
+  if (fill === base) {
+    return rowIndex === 0 ? base : shiftHueOfColor(base, rowIndex * hueStepDeg);
+  }
+  return fill;
+}
+
+export function inferBulletListHueStepDeg(
+  root: CardElementData,
+  themeHue: boolean,
+  fallbackDeg: number,
+): number {
+  const rows = getBulletListRows(root);
+  if (rows.length < 2) return fallbackDeg;
+
+  const deltas: number[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const prevColor = resolveBulletCubeColor(
+      root,
+      i - 1,
+      rows[i - 1]?.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX))?.style?.backgroundColor,
+      themeHue,
+      fallbackDeg,
+    );
+    const currColor = resolveBulletCubeColor(
+      root,
+      i,
+      rows[i]?.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX))?.style?.backgroundColor,
+      themeHue,
+      fallbackDeg,
+    );
+    deltas.push(hueDeltaBetweenColors(prevColor, currColor));
+  }
+
+  const nonTrivial = deltas.filter((d) => Math.abs(d) >= 0.25);
+  if (nonTrivial.length === 0) return fallbackDeg;
+  return nonTrivial.reduce((acc, d) => acc + d, 0) / nonTrivial.length;
+}
+
+function nextBulletCubeStyle(
+  root: CardElementData,
+  themeHue: boolean,
+  fallbackHueStepDeg: number,
+): CardElementStyle {
+  const rows = getBulletListRows(root);
+  const lastIndex = Math.max(0, rows.length - 1);
+  const last = rows[lastIndex];
+  const cubeEl = last?.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX));
+  const stepDeg = inferBulletListHueStepDeg(root, themeHue, fallbackHueStepDeg);
+  const prevFill = resolveBulletCubeColor(
+    root,
+    lastIndex,
+    cubeEl?.style?.backgroundColor,
+    themeHue,
+    fallbackHueStepDeg,
+  );
+  return {
+    backgroundStyle: cubeEl?.style?.backgroundStyle ?? "solid",
+    backgroundColor: shiftHueOfColor(prevFill, stepDeg),
+    borderRadius:
+      cubeEl?.style?.borderRadius ??
+      resolveBulletListBulletBorderRadius(
+        parseBulletListBulletSize(cubeEl),
+        parseBulletListBulletShape(cubeEl),
+      ),
+  };
+}
+
+function rebuildBulletListEntries(root: CardElementData, rows: BulletListRowData[]): CardElementData {
+  const accent = getBulletListAccentColor(root);
+  const itemTextColor = getBulletListItemTextColor(root);
+  const addRowLabelColor = readAddRowLabelColor(root);
+  const { size, shape } = readBulletListBulletConfig(root);
+  const entryChildren: CardElementData[] = rows.map((row) =>
+    bulletRowSection(row, accent, itemTextColor, size, shape),
+  );
+  entryChildren.push(bulletAddRowButton(addRowLabelColor));
+  return updateCardElementTree(root, BULLET_LIST_ENTRIES_ID, { children: entryChildren });
+}
+
+export function addBulletListRow(
+  elements: CardElementData,
+  options?: { hueStepDeg?: number; themeHue?: boolean },
+): CardElementData {
+  const rows = getBulletListRows(elements);
+  const newId = nextBulletListRowId(rows);
+  const parsed = rows.map(parseBulletListRow);
+  const hueStepDeg = options?.hueStepDeg ?? DIAGRAM_THEME_HUE_STEP_DEG;
+  const themeHue = options?.themeHue ?? false;
+  parsed.push({
+    id: newId,
+    text: "New item",
+    cubeStyle: themeHue ? nextBulletCubeStyle(elements, themeHue, hueStepDeg) : undefined,
+  });
+  return rebuildBulletListEntries(elements, parsed);
+}
+
+export function removeBulletListRow(elements: CardElementData, rowId: string): CardElementData {
+  const rows = getBulletListRows(elements);
+  if (rows.length <= BULLET_LIST_MIN_ROWS) return elements;
+  const parsed = rows.map(parseBulletListRow).filter((r) => r.id !== rowId);
+  return rebuildBulletListEntries(elements, parsed);
+}
+
+export function reorderBulletListRows(
+  elements: CardElementData,
+  fromIndex: number,
+  toIndex: number,
+): CardElementData {
+  const rows = getBulletListRows(elements);
+  if (
+    fromIndex === toIndex ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= rows.length ||
+    toIndex >= rows.length
+  ) {
+    return elements;
+  }
+  const parsed = rows.map(parseBulletListRow);
+  const [moved] = parsed.splice(fromIndex, 1);
+  parsed.splice(toIndex, 0, moved);
+  return rebuildBulletListEntries(elements, parsed);
+}
+
+export function getBulletListRowIndex(elements: CardElementData, rowId: string): number {
+  return getBulletListRows(elements).findIndex((r) => r.id === rowId);
+}
+
+/** Sync accent color to title, add-row label, and all cube fills. */
+export function applyBulletListAccentColor(elements: CardElementData, color: string): CardElementData {
+  let next = elements;
+  const title = findCardElement(next, BULLET_LIST_TITLE_ID);
+  if (title) {
+    next = updateCardElementTree(next, BULLET_LIST_TITLE_ID, { textColor: color });
+  }
+  const addLabel = findCardElement(next, BULLET_LIST_ADD_ROW_LABEL_ID);
+  if (addLabel) {
+    next = updateCardElementTree(next, BULLET_LIST_ADD_ROW_LABEL_ID, { textColor: color });
+  }
+  for (const row of getBulletListRows(next)) {
+    const cubeId = `${row.id}${BULLET_LIST_CUBE_SUFFIX}`;
+    const cube = findCardElement(next, cubeId);
+    if (cube) {
+      next = updateCardElementTree(next, cubeId, {
+        style: { ...cube.style, backgroundColor: color, backgroundStyle: "solid" },
+      });
+    }
+  }
+  return next;
+}
+
+export function applyBulletListItemTextColor(elements: CardElementData, color: string): CardElementData {
+  let next = elements;
+  for (const row of getBulletListRows(next)) {
+    const textId = `${row.id}${BULLET_LIST_TEXT_SUFFIX}`;
+    const textEl = findCardElement(next, textId);
+    if (textEl) {
+      next = updateCardElementTree(next, textId, { textColor: color });
+    }
+  }
+  return next;
+}
+
+export function applyBulletListBulletSize(elements: CardElementData, sizePx: number): CardElementData {
+  const size = clampBulletSize(sizePx);
+  const { shape } = readBulletListBulletConfig(elements);
+  const borderRadius = resolveBulletListBulletBorderRadius(size, shape);
+  let next = elements;
+  for (const row of getBulletListRows(next)) {
+    const cubeId = `${row.id}${BULLET_LIST_CUBE_SUFFIX}`;
+    const cube = findCardElement(next, cubeId);
+    if (!cube) continue;
+    next = updateCardElementTree(next, cubeId, {
+      layout: {
+        ...cube.layout,
+        width: size,
+        height: size,
+        flex: 0,
+        alignSelf: "start",
+        marginTop: cube.layout?.marginTop ?? 2,
+      },
+      style: { ...cube.style, borderRadius },
+    });
+  }
+  return next;
+}
+
+export function applyBulletListBulletShape(
+  elements: CardElementData,
+  shape: BulletListBulletShape,
+): CardElementData {
+  const { size } = readBulletListBulletConfig(elements);
+  const borderRadius = resolveBulletListBulletBorderRadius(size, shape);
+  let next = elements;
+  for (const row of getBulletListRows(next)) {
+    const cubeId = `${row.id}${BULLET_LIST_CUBE_SUFFIX}`;
+    const cube = findCardElement(next, cubeId);
+    if (!cube) continue;
+    next = updateCardElementTree(next, cubeId, {
+      placeholder: shape === "circle" ? "circle" : "rect",
+      style: { ...cube.style, borderRadius },
+    });
+  }
+  return next;
+}
+
+export function bulletListItemThemeHueEnabled(
+  nodeValue: boolean | undefined,
+  globalMultiHue: boolean,
+): boolean {
+  if (typeof nodeValue === "boolean") return nodeValue;
+  return globalMultiHue;
+}
+
+export function defaultBulletListPaletteNodeProps(): Partial<DiagramNodeData> {
+  return {
+    width: BULLET_LIST_DEFAULT_WIDTH,
+    height: BULLET_LIST_DEFAULT_HEIGHT,
+    borderStyle: "solid",
+    borderColors: [BULLET_LIST_ACCENT_DEFAULT, BULLET_LIST_ACCENT_DEFAULT],
+    borderWidth: 1,
+    backgroundStyle: "none",
+    shadow: true,
+    shadowColor: "#14532d",
+    shadowOpacity: 0.35,
+    shadowBlur: 6,
+    textColor: BULLET_LIST_ACCENT_DEFAULT,
+    textOpacity: 1,
+    textJustify: "center",
+    cornerRadius: BULLET_LIST_DEFAULT_CORNER_RADIUS,
+    borderColor: BULLET_LIST_ACCENT_DEFAULT,
+    lineStyle: "solid",
+    lineColor: BULLET_LIST_ACCENT_DEFAULT,
+    lineWidth: 2,
+    lineOpacity: 1,
+    bulletListItemThemeHue: false,
+  } as Partial<DiagramNodeData>;
+}
