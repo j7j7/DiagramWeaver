@@ -4,6 +4,10 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-27 – Cards: Bullet List default preset (cyan gradient)
+
+**Bullet List** palette drop defaults updated to **320×160**, **cyan gradient border** (`#06b6d4` → `#0891b2`), **lime outline line** (`#84cc16`, 2.5px), **dark cyan interior gradient** (`#0f172a` → `#164e63`), **#ecfeff** item text, **stepped bullet hues** (`bulletListItemThemeHue: true`), and per-row cube colors in **`card-bullet-list.ts`**. Palette glyph updated. Patch bumped.
+
 ### 2026-05-27 – Cards: text styling font family on card text elements
 
 **Text Styling** **font family** (and other typography fields) now apply to card **text/tag** cells: whole-card selection updates every text region via **`applyTextStylingToAllCardTextElements`**; sub-element selection still patches one cell; **Bullet List** routes non-split fields (including font family) to all text cells when the card is selected. **`mergeCardElementTextStylingOntoNode`** stops undefined element fields from wiping inherited node typography; **`card-shape`** passes **`fontFamily`** on text/tag wrappers. Patch bumped.

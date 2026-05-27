@@ -457,14 +457,14 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
   if (slug === "bullet-list") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden {...props}>
-        <rect x="3" y="3" width="18" height="18" rx="4" fill="#0f1a12" stroke="#84cc16" strokeWidth={1.2} />
-        <rect x="7" y="6.5" width="10" height="1.6" rx="0.5" fill="#84cc16" />
-        <rect x="7" y="10.5" width="2" height="2" rx="0.4" fill="#84cc16" />
-        <rect x="10.5" y="11.1" width="7.5" height="1.2" rx="0.4" fill="#f8fafc" />
-        <rect x="7" y="13.5" width="2" height="2" rx="0.4" fill="#84cc16" />
-        <rect x="10.5" y="14.1" width="7" height="1.2" rx="0.4" fill="#f8fafc" />
-        <rect x="7" y="16.5" width="2" height="2" rx="0.4" fill="#84cc16" />
-        <rect x="10.5" y="17.1" width="6.5" height="1.2" rx="0.4" fill="#f8fafc" />
+        <rect x="3" y="3" width="18" height="18" rx="4" fill="#0f172a" stroke="#06b6d4" strokeWidth={1.2} />
+        <rect x="7" y="6.5" width="10" height="1.6" rx="0.5" fill="#06b6d4" />
+        <rect x="7" y="10.5" width="2" height="2" rx="0.4" fill="#06b6d4" />
+        <rect x="10.5" y="11.1" width="7.5" height="1.2" rx="0.4" fill="#ecfeff" />
+        <rect x="7" y="13.5" width="2" height="2" rx="0.4" fill="#066ad4" />
+        <rect x="10.5" y="14.1" width="7" height="1.2" rx="0.4" fill="#ecfeff" />
+        <rect x="7" y="16.5" width="2" height="2" rx="0.4" fill="#061fd4" />
+        <rect x="10.5" y="17.1" width="6.5" height="1.2" rx="0.4" fill="#ecfeff" />
       </svg>
     );
   }

@@ -28,20 +28,30 @@ export const BULLET_LIST_ITEM_FONT_MIN = 10;
 
 export type BulletListBulletShape = "square" | "circle";
 
-export const BULLET_LIST_DEFAULT_WIDTH = 200;
-export const BULLET_LIST_DEFAULT_HEIGHT = 240;
+export const BULLET_LIST_DEFAULT_WIDTH = 320;
+export const BULLET_LIST_DEFAULT_HEIGHT = 160;
 export const BULLET_LIST_DEFAULT_CORNER_RADIUS = 0.12;
+export const BULLET_LIST_GRADIENT_ANGLE = 135;
+export const BULLET_LIST_LINE_WIDTH = 2.5;
 
-export const BULLET_LIST_ACCENT_DEFAULT = "#84cc16";
-export const BULLET_LIST_ITEM_TEXT_DEFAULT = "#f8fafc";
+export const BULLET_LIST_ACCENT_DEFAULT = "#06b6d4";
+export const BULLET_LIST_ITEM_TEXT_DEFAULT = "#ecfeff";
 export const BULLET_LIST_BG_DEFAULT = "#0f1a12";
-export const BULLET_LIST_ADD_LABEL_DEFAULT = "#84cc16";
+export const BULLET_LIST_BG_GRADIENT_COLORS = ["#0f172a", "#164e63"] as const;
+export const BULLET_LIST_ADD_LABEL_DEFAULT = "#06b6d4";
+export const BULLET_LIST_BORDER_COLOR = "#06b6d4";
+export const BULLET_LIST_BORDER_COLORS = ["#06b6d4", "#0891b2"] as const;
+export const BULLET_LIST_LINE_COLOR = "#84cc16";
+export const BULLET_LIST_DEFAULT_ROW_CUBE_COLORS = ["#06b6d4", "#066ad4", "#061fd4"] as const;
 
-/** Default drop preset — dark card, lime accent (matches mock-up). */
+/** Default drop preset — dark cyan gradient card with stepped bullet hues. */
 export const BULLET_LIST_DEFAULT_THEME = {
   accentColor: BULLET_LIST_ACCENT_DEFAULT,
   itemTextColor: BULLET_LIST_ITEM_TEXT_DEFAULT,
   backgroundColor: BULLET_LIST_BG_DEFAULT,
+  backgroundStyle: "gradient" as const,
+  backgroundColors: [...BULLET_LIST_BG_GRADIENT_COLORS] as [string, string],
+  gradientAngle: BULLET_LIST_GRADIENT_ANGLE,
   addRowTextColor: BULLET_LIST_ADD_LABEL_DEFAULT,
   titleText: "TITLE HEADING",
 };
@@ -406,7 +416,9 @@ export function createBulletListRoot(
     },
     style: {
       backgroundColor: theme.backgroundColor,
-      backgroundStyle: "solid",
+      backgroundStyle: theme.backgroundStyle,
+      backgroundColors: theme.backgroundColors,
+      gradientAngle: theme.gradientAngle,
     },
     children: [
       {
@@ -452,7 +464,7 @@ export function defaultStyledBulletListRows(
     ...r,
     id: `${BULLET_LIST_ROW_PREFIX}${i + 1}`,
     cubeStyle: {
-      backgroundColor: theme.accentColor,
+      backgroundColor: BULLET_LIST_DEFAULT_ROW_CUBE_COLORS[i] ?? theme.accentColor,
       backgroundStyle: "solid",
       borderRadius: 1,
     },
@@ -964,23 +976,25 @@ export function defaultBulletListPaletteNodeProps(): Partial<DiagramNodeData> {
   return {
     width: BULLET_LIST_DEFAULT_WIDTH,
     height: BULLET_LIST_DEFAULT_HEIGHT,
-    borderStyle: "solid",
-    borderColors: [BULLET_LIST_ACCENT_DEFAULT, BULLET_LIST_ACCENT_DEFAULT],
+    borderStyle: "gradient",
+    borderColors: [...BULLET_LIST_BORDER_COLORS],
     borderWidth: 1,
     backgroundStyle: "none",
+    backgroundOpacity: 1,
     shadow: true,
     shadowColor: "#14532d",
     shadowOpacity: 0.35,
     shadowBlur: 6,
-    textColor: BULLET_LIST_ACCENT_DEFAULT,
+    textColor: BULLET_LIST_ITEM_TEXT_DEFAULT,
     textOpacity: 1,
+    gradientAngle: BULLET_LIST_GRADIENT_ANGLE,
     textJustify: "center",
     cornerRadius: BULLET_LIST_DEFAULT_CORNER_RADIUS,
-    borderColor: BULLET_LIST_ACCENT_DEFAULT,
+    borderColor: BULLET_LIST_BORDER_COLOR,
     lineStyle: "solid",
-    lineColor: BULLET_LIST_ACCENT_DEFAULT,
-    lineWidth: 2,
+    lineColor: BULLET_LIST_LINE_COLOR,
+    lineWidth: BULLET_LIST_LINE_WIDTH,
     lineOpacity: 1,
-    bulletListItemThemeHue: false,
+    bulletListItemThemeHue: true,
   } as Partial<DiagramNodeData>;
 }
