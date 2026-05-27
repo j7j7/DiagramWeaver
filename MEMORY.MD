@@ -4,6 +4,10 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-28 – Cards: corner radius handle live preview
+
+On-screen **corner radius** drag on card node types now updates **`CardShape`** visually in real time via **`localCornerRadius`** (same pattern as rounded-rectangle / text-box-heading); **`onUpdate`** / undo still commit only on pointer release. Patch bumped.
+
 ### 2026-05-27 – Cards: Sidebar Accent default corner radius
 
 **Sidebar Accent** (`generic.card.sidebar-accent`) palette default **`cornerRadius`** set to **0.2** (was 0.08) in **`card-templates.ts`**. Patch bumped.

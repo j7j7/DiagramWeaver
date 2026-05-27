@@ -941,9 +941,14 @@ function DiagramNodeInner({
     } else if (nodeType === 'generic.object.rectangle' || nodeType?.endsWith('.rectangle')) {
       return <RectangleShape {...shapeProps} />;
     } else if (isCardNodeType(nodeType)) {
+      const cardVisualNode =
+        isDraggingCornerRadius && localCornerRadius !== null
+          ? { ...visualNode, cornerRadius: localCornerRadius }
+          : visualNode;
       return (
         <CardShape
           {...shapeProps}
+          node={cardVisualNode}
           isReadOnly={isReadOnly}
           cardEditElementId={cardEditElementId}
           isEditingCardElement={isEditingCardElement}
