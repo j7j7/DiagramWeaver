@@ -149,7 +149,9 @@ import {
   removeBulletListRow,
   resolveBulletCubeColor,
   resolveBulletListBulletBorderRadius,
-  scaleBulletListItemFontSize,
+  normalizeBulletListItemDisplayRuns,
+  resolveBulletListItemFontSizeForRender,
+  resolveBulletListTitleTextLayout,
   scaleBulletListTitleFontSize,
   type BulletListResizeMetrics,
 } from "@/lib/card-bullet-list";
@@ -364,6 +366,7 @@ function stopCardNodeDrag(e: React.SyntheticEvent) {
 }
 
 function tryAgendaAddRowClick(
+  cardTemplateId: string | undefined,
   elementId: string,
   e: React.MouseEvent,
   cardRootElements: CardElementData | undefined,
@@ -371,6 +374,7 @@ function tryAgendaAddRowClick(
   themeHue = false,
   hueStepDeg = 36,
 ): boolean {
+  if (!isAgendaCard(cardTemplateId)) return false;
   if (!isAgendaAddRowId(elementId) && elementId !== AGENDA_ADD_ROW_LABEL_ID) return false;
   if (!cardRootElements || !onCardElementsPatch) return false;
   e.stopPropagation();
@@ -379,6 +383,7 @@ function tryAgendaAddRowClick(
 }
 
 function tryBulletListAddRowClick(
+  cardTemplateId: string | undefined,
   elementId: string,
   e: React.MouseEvent,
   cardRootElements: CardElementData | undefined,
@@ -386,6 +391,7 @@ function tryBulletListAddRowClick(
   themeHue = false,
   hueStepDeg = 36,
 ): boolean {
+  if (!isBulletListCard(cardTemplateId)) return false;
   if (!isBulletListAddRowId(elementId) && elementId !== BULLET_LIST_ADD_ROW_LABEL_ID) return false;
   if (!cardRootElements || !onCardElementsPatch) return false;
   e.stopPropagation();
@@ -458,6 +464,7 @@ interface CardElementRendererProps {
   bulletListItemThemeHue?: boolean;
   bulletListRowIndexMap?: Map<string, number>;
   bulletListResizeMetrics?: BulletListResizeMetrics | null;
+  bulletListUniformItemFontSize?: number;
 }
 
 function cardElementTextNode(base: DiagramNodeData, el: CardElementData): DiagramNodeData {
@@ -782,6 +789,7 @@ function CardElementRenderer({
   bulletListItemThemeHue = false,
   bulletListRowIndexMap,
   bulletListResizeMetrics = null,
+  bulletListUniformItemFontSize,
 }: CardElementRendererProps) {
   const diagonalAccentClipId = `dw-diag-a-${nodeId}`;
   const diagonalBodyClipId = `dw-diag-b-${nodeId}`;
@@ -878,7 +886,8 @@ function CardElementRenderer({
         resolveProfileFeatureTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveCompactHorizontalTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveListItemLabelLayout(element.id, cardTemplateId, element.layout, cardRootElements) ??
-        resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout)
+        resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout) ??
+        resolveBulletListTitleTextLayout(element.id, cardTemplateId, element.layout)
       : element.kind === "section"
         ? resolveProfileFeatureBodyLayout(element.id, cardTemplateId, element.layout) ??
           resolveProfileDiagonalTextStackLayout(element.id, cardTemplateId, element.layout) ??
@@ -1050,6 +1059,7 @@ function CardElementRenderer({
         onClick={(e) => {
           if (
             tryAgendaAddRowClick(
+              cardTemplateId,
               element.id,
               e,
               cardRootElements,
@@ -1061,6 +1071,7 @@ function CardElementRenderer({
             return;
           if (
             tryBulletListAddRowClick(
+              cardTemplateId,
               element.id,
               e,
               cardRootElements,
@@ -1122,6 +1133,7 @@ function CardElementRenderer({
             bulletListItemThemeHue={bulletListItemThemeHue}
             bulletListRowIndexMap={bulletListRowIndexMap}
             bulletListResizeMetrics={bulletListResizeMetrics}
+            bulletListUniformItemFontSize={bulletListUniformItemFontSize}
           />
         ))}
         {showListRowDelete ? (
@@ -1212,10 +1224,6 @@ function CardElementRenderer({
     const cubeSize = parseBulletListBulletSize(element);
     const bulletShape = parseBulletListBulletShape(element);
     const borderRadius = resolveBulletListBulletBorderRadius(cubeSize, bulletShape);
-    const cubeMarginTop =
-      bulletListResizeMetrics != null
-        ? Math.max(1, 2 * bulletListResizeMetrics.paddingScale)
-        : 2;
     return (
       <div
         aria-hidden
@@ -1226,8 +1234,7 @@ function CardElementRenderer({
           height: cubeSize,
           minWidth: cubeSize,
           flex: 0,
-          alignSelf: "flex-start",
-          marginTop: cubeMarginTop,
+          alignSelf: "center",
           borderRadius,
           backgroundColor: cubeColor,
           boxSizing: "border-box",
@@ -1332,28 +1339,30 @@ function CardElementRenderer({
 
   if (element.kind === "text") {
     const isEditing = isEditingCardElement && cardEditElementId === element.id;
+    const isBulletListTitleText =
+      isBulletListCard(cardTemplateId) && element.id === BULLET_LIST_TITLE_ID;
+    const isBulletListItemText =
+      isBulletListCard(cardTemplateId) && element.id.endsWith(BULLET_LIST_TEXT_SUFFIX);
     const runs = element.richText ?? labelToRuns(element.text ?? "");
     const displayRuns =
       isAgendaCard(cardTemplateId) && agendaResizeMetrics
         ? scaleAgendaRichTextRuns(runs, agendaResizeMetrics.scale)
-        : runs;
+        : isBulletListItemText && bulletListUniformItemFontSize != null
+          ? normalizeBulletListItemDisplayRuns(runs)
+          : runs;
     const hasText = getPlainTextFromRuns(runs).trim().length > 0;
     const fillRemaining = effectiveLayout?.fillRemaining === true;
     if (!hasText && !isEditing && !fillRemaining) {
       return null;
     }
-    const isBulletListTitleText =
-      isBulletListCard(cardTemplateId) && element.id === BULLET_LIST_TITLE_ID;
-    const isBulletListItemText =
-      isBulletListCard(cardTemplateId) && element.id.endsWith(BULLET_LIST_TEXT_SUFFIX);
     const textNode = cardElementTextNode(node, element);
     if (isAgendaCard(cardTemplateId) && agendaResizeMetrics) {
       textNode.fontSize = scaleAgendaFontSize(element.fontSize, agendaResizeMetrics.scale);
     }
     if (isBulletListTitleText && bulletListResizeMetrics) {
       textNode.fontSize = scaleBulletListTitleFontSize(element.fontSize, bulletListResizeMetrics);
-    } else if (isBulletListItemText && bulletListResizeMetrics) {
-      textNode.fontSize = scaleBulletListItemFontSize(element.fontSize, bulletListResizeMetrics);
+    } else if (isBulletListItemText && bulletListUniformItemFontSize != null) {
+      textNode.fontSize = bulletListUniformItemFontSize;
     }
     const rawTextPad = effectiveLayout?.padding ?? [8, 12];
     const textPad =
@@ -1387,8 +1396,8 @@ function CardElementRenderer({
           ? scaleAgendaFontSize(element.fontSize, agendaResizeMetrics.scale)
           : isBulletListTitleText && bulletListResizeMetrics
             ? scaleBulletListTitleFontSize(element.fontSize, bulletListResizeMetrics)
-            : isBulletListItemText && bulletListResizeMetrics
-              ? scaleBulletListItemFontSize(element.fontSize, bulletListResizeMetrics)
+            : isBulletListItemText && bulletListUniformItemFontSize != null
+              ? bulletListUniformItemFontSize
               : (element.fontSize ?? 12),
       fontWeight: element.fontWeight as React.CSSProperties["fontWeight"],
       color: resolvedTextColor,
@@ -1411,8 +1420,17 @@ function CardElementRenderer({
             flexDirection: "column",
             justifyContent: "flex-start",
             alignItems: "stretch",
-            minHeight: 0,
-            overflow: "hidden",
+            flexShrink: 1,
+            minWidth: 0,
+          }
+        : {}),
+      ...(isBulletListTitleText
+        ? {
+            width: "100%",
+            alignSelf: "stretch",
+            flexDirection: "column",
+            alignItems: "stretch",
+            justifyContent: "flex-start",
           }
         : {}),
       ...(fillRemaining
@@ -1462,6 +1480,7 @@ function CardElementRenderer({
         onClick={(e) => {
           if (
             tryAgendaAddRowClick(
+              cardTemplateId,
               element.id,
               e,
               cardRootElements,
@@ -1473,6 +1492,7 @@ function CardElementRenderer({
             return;
           if (
             tryBulletListAddRowClick(
+              cardTemplateId,
               element.id,
               e,
               cardRootElements,
@@ -1490,7 +1510,8 @@ function CardElementRenderer({
           className={cn(
             "relative z-[1]",
             isAgendaTimeCell ? "shrink-0 whitespace-nowrap" : "min-w-0",
-            isBulletListItemText && "flex min-h-0 flex-1 flex-col justify-start",
+            isBulletListItemText && "flex min-w-0 flex-1 flex-col justify-start",
+            isBulletListTitleText && "w-full min-w-0 flex-1",
             fillRemaining && "min-h-0 flex-1 overflow-hidden",
           )}
         >
@@ -1700,6 +1721,10 @@ export function CardShape(props: CardShapeProps) {
     if (!isBulletListCard(resolvedTemplateId)) return null;
     return computeBulletListResizeMetrics(w, h, cardShellInsetPx);
   }, [resolvedTemplateId, w, h, cardShellInsetPx]);
+  const bulletListUniformItemFontSize = useMemo(() => {
+    if (!isBulletListCard(resolvedTemplateId) || !cardRoot) return undefined;
+    return resolveBulletListItemFontSizeForRender(cardRoot, bulletListResizeMetrics);
+  }, [cardRoot, resolvedTemplateId, bulletListResizeMetrics]);
 
   const innerTree = useMemo(() => {
     if (!cardRoot) return null;
@@ -1744,6 +1769,7 @@ export function CardShape(props: CardShapeProps) {
         bulletListItemThemeHue={bulletListThemeHue}
         bulletListRowIndexMap={bulletListRowIndexMap}
         bulletListResizeMetrics={bulletListResizeMetrics}
+        bulletListUniformItemFontSize={bulletListUniformItemFontSize}
       />
     );
   }, [
@@ -1782,6 +1808,7 @@ export function CardShape(props: CardShapeProps) {
     agendaDividersEnabled,
     agendaResizeMetrics,
     bulletListResizeMetrics,
+    bulletListUniformItemFontSize,
   ]);
 
   const shellBg =

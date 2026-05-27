@@ -1,5 +1,7 @@
 import type { CardElementData, CardElementStyle, CardLayoutBox, CardTemplate } from "@/lib/card-types";
-import type { DiagramNodeData } from "@/lib/types";
+import type { DiagramNodeData, RichTextRun } from "@/lib/types";
+import { flexJustifyToTextJustify } from "@/lib/card-layout";
+import { applyTextStylingToCardElement, extractTextStylingFromCardElement, type TextStyling } from "@/lib/text-styling";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 import { shiftHueOfColor, hueDeltaBetweenColors } from "@/lib/color-shift";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
@@ -201,7 +203,7 @@ export function applyBulletListResizeLayout(
 
   if (elementId === BULLET_LIST_TITLE_ID) {
     next = {
-      ...next,
+      ...mergeBulletListTitleBandLayout(next),
       padding: scaleBulletListAxisPadding(
         next.padding ?? ([0, 14] as [number, number]),
         typographyScale,
@@ -215,8 +217,8 @@ export function applyBulletListResizeLayout(
     next = {
       ...next,
       flex: 1,
-      minHeight: 0,
-      alignItems: "start",
+      minHeight: "auto",
+      alignItems: "center",
       padding: scaleBulletListAxisPadding(
         next.padding ?? ([4, 14] as [number, number]),
         typographyScale,
@@ -251,12 +253,10 @@ export function applyBulletListResizeLayout(
   if (elementId.endsWith(BULLET_LIST_TEXT_SUFFIX)) {
     next = {
       ...next,
-      height: "100%",
-      minHeight: 0,
       alignItems: "start",
       justifyContent: "start",
       padding: scaleBulletListAxisPadding(
-        next.padding ?? ([2, 0] as [number, number]),
+        next.padding ?? ([0, 0] as [number, number]),
         typographyScale,
         paddingScale,
       ),
@@ -264,6 +264,14 @@ export function applyBulletListResizeLayout(
   }
 
   return next;
+}
+
+export function getBulletListRowTextElement(
+  root: CardElementData,
+  rowId: string,
+): CardElementData | null {
+  const row = findCardElement(root, rowId);
+  return row?.children?.find((c) => c.id.endsWith(BULLET_LIST_TEXT_SUFFIX)) ?? null;
 }
 
 function bulletCube(
@@ -281,8 +289,7 @@ function bulletCube(
       width: size,
       height: size,
       flex: 0,
-      alignSelf: "start",
-      marginTop: 2,
+      alignSelf: "center",
     },
     style: {
       backgroundColor: accentColor,
@@ -304,9 +311,7 @@ function bulletText(id: string, text: string, textColor: string): CardElementDat
     layout: {
       flex: 1,
       minWidth: 0,
-      minHeight: 0,
-      height: "100%",
-      padding: [2, 0] as [number, number],
+      padding: [0, 0] as [number, number],
       justifyContent: "start",
       alignItems: "start",
     },
@@ -329,8 +334,8 @@ function bulletRowSection(
       flexDirection: "row",
       width: "100%",
       flex: 1,
-      minHeight: 0,
-      alignItems: "start",
+      minHeight: "auto",
+      alignItems: "center",
       gap: 10,
       padding: [4, 14] as [number, number],
     },
@@ -414,14 +419,11 @@ export function createBulletListRoot(
         textColor: theme.accentColor,
         textTransform: "uppercase",
         textJustify: "center",
-        layout: {
-          width: "100%",
+        layout: mergeBulletListTitleBandLayout({
           flex: 0,
           padding: [0, 14] as [number, number],
-          justifyContent: "center",
-          alignItems: "center",
           marginBottom: 6,
-        },
+        }),
         style: { backgroundStyle: "none" },
       },
       {
@@ -504,11 +506,176 @@ export function getBulletListAccentColor(root: CardElementData | undefined): str
   return title?.textColor ?? BULLET_LIST_ACCENT_DEFAULT;
 }
 
+export type BulletListTitleAlign = "left" | "center" | "right" | "full";
+
+const BULLET_LIST_TITLE_BAND_LAYOUT: Pick<
+  CardLayoutBox,
+  "width" | "alignSelf" | "alignItems" | "justifyContent"
+> = {
+  width: "100%",
+  alignSelf: "stretch",
+  alignItems: "stretch",
+  justifyContent: "start",
+};
+
+export function mergeBulletListTitleBandLayout(
+  layout: CardLayoutBox | undefined,
+): CardLayoutBox {
+  return { ...layout, ...BULLET_LIST_TITLE_BAND_LAYOUT };
+}
+
+/** Text styling modal + card properties — keeps full-width band; alignment via `textJustify`. */
+export function applyTextStylingPatchToBulletListTitle(
+  title: CardElementData,
+  styling: Partial<TextStyling>,
+): Partial<CardElementData> {
+  const patch = applyTextStylingToCardElement(title, styling);
+  if (Object.keys(patch).length === 0) return patch;
+  return {
+    ...patch,
+    layout: mergeBulletListTitleBandLayout({ ...title.layout, ...patch.layout }),
+  };
+}
+
+/** Text styling modal: orientation → title. */
+export const BULLET_LIST_MODAL_TITLE_STYLING_KEYS = ["textJustify"] as const satisfies readonly (keyof TextStyling)[];
+
+/** Text styling modal: case & spacing → all item rows. */
+export const BULLET_LIST_MODAL_ITEM_STYLING_KEYS = [
+  "textTransform",
+  "letterSpacing",
+  "lineHeight",
+] as const satisfies readonly (keyof TextStyling)[];
+
+function pickTextStylingKeys<K extends keyof TextStyling>(
+  styling: Partial<TextStyling>,
+  keys: readonly K[],
+): Partial<Pick<TextStyling, K>> {
+  const out: Partial<TextStyling> = {};
+  for (const key of keys) {
+    if (key in styling) (out as Record<string, unknown>)[key] = styling[key];
+  }
+  return out as Partial<Pick<TextStyling, K>>;
+}
+
+export function getBulletListTextStylingForModal(root: CardElementData): Partial<TextStyling> {
+  const title = findCardElement(root, BULLET_LIST_TITLE_ID);
+  const firstRow = getBulletListRows(root)[0];
+  const itemText = firstRow?.children?.find((c) => c.id.endsWith(BULLET_LIST_TEXT_SUFFIX));
+  const titleStyling = title ? extractTextStylingFromCardElement(title) : {};
+  const itemStyling = itemText ? extractTextStylingFromCardElement(itemText) : {};
+  return {
+    textJustify: titleStyling.textJustify ?? getBulletListTitleAlign(root),
+    textTransform: itemStyling.textTransform,
+    letterSpacing: itemStyling.letterSpacing,
+    lineHeight: itemStyling.lineHeight,
+  };
+}
+
+export function applyBulletListItemTextStyling(
+  elements: CardElementData,
+  styling: Partial<TextStyling>,
+): CardElementData {
+  const itemStyling = pickTextStylingKeys(styling, BULLET_LIST_MODAL_ITEM_STYLING_KEYS);
+  if (Object.keys(itemStyling).length === 0) return elements;
+  let next = elements;
+  for (const row of getBulletListRows(next)) {
+    const textEl = row.children?.find((c) => c.id.endsWith(BULLET_LIST_TEXT_SUFFIX));
+    if (!textEl) continue;
+    const patch = applyTextStylingToCardElement(textEl, itemStyling);
+    if (Object.keys(patch).length === 0) continue;
+    next = updateCardElementTree(next, textEl.id, patch);
+  }
+  return next;
+}
+
+/** Routes modal fields: title orientation vs item case/spacing. */
+export function applyBulletListTextStylingFromModal(
+  elements: CardElementData,
+  styling: Partial<TextStyling>,
+): CardElementData {
+  let next = elements;
+  const titleStyling = pickTextStylingKeys(styling, BULLET_LIST_MODAL_TITLE_STYLING_KEYS);
+  if (Object.keys(titleStyling).length > 0) {
+    const title = findCardElement(next, BULLET_LIST_TITLE_ID);
+    if (title) {
+      next = updateCardElementTree(
+        next,
+        BULLET_LIST_TITLE_ID,
+        applyTextStylingPatchToBulletListTitle(title, titleStyling),
+      );
+    }
+  }
+  return applyBulletListItemTextStyling(next, styling);
+}
+
+export function getBulletListTitleAlign(root: CardElementData | undefined): BulletListTitleAlign {
+  const title = root ? findCardElement(root, BULLET_LIST_TITLE_ID) : null;
+  if (title?.textJustify) return title.textJustify;
+  return flexJustifyToTextJustify(title?.layout?.justifyContent) ?? "center";
+}
+
+export function applyBulletListTitleAlign(
+  elements: CardElementData,
+  justify: BulletListTitleAlign,
+): CardElementData {
+  const title = findCardElement(elements, BULLET_LIST_TITLE_ID);
+  if (!title) return elements;
+  const patch = applyTextStylingPatchToBulletListTitle(title, { textJustify: justify });
+  return updateCardElementTree(elements, BULLET_LIST_TITLE_ID, patch);
+}
+
+/** Full-width title band — alignment comes from `textJustify`, not flex justify. */
+export function resolveBulletListTitleTextLayout(
+  elementId: string,
+  templateId: string | undefined,
+  layout: CardLayoutBox | undefined,
+): CardLayoutBox | undefined {
+  if (!isBulletListCard(templateId)) return layout;
+  if (elementId !== BULLET_LIST_TITLE_ID) return layout;
+  return mergeBulletListTitleBandLayout(layout);
+}
+
 export function getBulletListItemTextColor(root: CardElementData | undefined): string {
   const firstRow = getBulletListRows(root)[0];
   if (!firstRow) return BULLET_LIST_ITEM_TEXT_DEFAULT;
   const textEl = firstRow.children?.find((c) => c.id.endsWith(BULLET_LIST_TEXT_SUFFIX));
   return textEl?.textColor ?? BULLET_LIST_ITEM_TEXT_DEFAULT;
+}
+
+/** Canonical item font size — first row wins so every item renders at the same px size. */
+export function getBulletListItemFontSize(root: CardElementData | undefined): number {
+  const firstRow = getBulletListRows(root)[0];
+  const textEl = firstRow?.children?.find((c) => c.id.endsWith(BULLET_LIST_TEXT_SUFFIX));
+  return textEl?.fontSize ?? BULLET_LIST_ITEM_FONT_SIZE;
+}
+
+export function resolveBulletListItemFontSizeForRender(
+  root: CardElementData | undefined,
+  metrics: BulletListResizeMetrics | null,
+): number {
+  const base = getBulletListItemFontSize(root);
+  return metrics ? scaleBulletListItemFontSize(base, metrics) : base;
+}
+
+/** Strip per-line font sizes so wrapped / multi-line items match single-line items. */
+export function normalizeBulletListItemDisplayRuns(runs: RichTextRun[]): RichTextRun[] {
+  return runs.map(({ lineFontSize: _lineFontSize, ...run }) => run);
+}
+
+export function applyBulletListUniformItemFontSize(root: CardElementData): CardElementData {
+  const fontSize = getBulletListItemFontSize(root);
+  let next = root;
+  for (const row of getBulletListRows(root)) {
+    const textEl = row.children?.find((c) => c.id.endsWith(BULLET_LIST_TEXT_SUFFIX));
+    if (!textEl) continue;
+    const patch: Partial<CardElementData> = { fontSize };
+    if (textEl.richText?.length) {
+      patch.richText = normalizeBulletListItemDisplayRuns(textEl.richText);
+    }
+    next = updateCardElementTree(next, textEl.id, patch);
+  }
+  return next;
 }
 
 export function parseBulletListRow(row: CardElementData): BulletListRowData {
@@ -628,7 +795,8 @@ function rebuildBulletListEntries(root: CardElementData, rows: BulletListRowData
     bulletRowSection(row, accent, itemTextColor, size, shape),
   );
   entryChildren.push(bulletAddRowButton(addRowLabelColor));
-  return updateCardElementTree(root, BULLET_LIST_ENTRIES_ID, { children: entryChildren });
+  let next = updateCardElementTree(root, BULLET_LIST_ENTRIES_ID, { children: entryChildren });
+  return applyBulletListUniformItemFontSize(next);
 }
 
 export function addBulletListRow(
@@ -715,6 +883,32 @@ export function applyBulletListItemTextColor(elements: CardElementData, color: s
   return next;
 }
 
+/** Apply diagram theme accent to title, add-row label, bullets, and item body text. */
+export function applyBulletListThemeColors(
+  elements: CardElementData,
+  accentColor: string,
+  itemTextColor: string,
+  options?: { stepHueWithinCard?: boolean; hueStepDeg?: number },
+): CardElementData {
+  let next = applyBulletListAccentColor(elements, accentColor);
+  next = applyBulletListItemTextColor(next, itemTextColor);
+
+  if (options?.stepHueWithinCard) {
+    const step = options.hueStepDeg ?? DIAGRAM_THEME_HUE_STEP_DEG;
+    for (const [index, row] of getBulletListRows(next).entries()) {
+      const cubeId = `${row.id}${BULLET_LIST_CUBE_SUFFIX}`;
+      const cube = findCardElement(next, cubeId);
+      if (!cube) continue;
+      const fill = index === 0 ? accentColor : shiftHueOfColor(accentColor, index * step);
+      next = updateCardElementTree(next, cubeId, {
+        style: { ...cube.style, backgroundColor: fill, backgroundStyle: "solid" },
+      });
+    }
+  }
+
+  return next;
+}
+
 export function applyBulletListBulletSize(elements: CardElementData, sizePx: number): CardElementData {
   const size = clampBulletSize(sizePx);
   const { shape } = readBulletListBulletConfig(elements);
@@ -730,8 +924,7 @@ export function applyBulletListBulletSize(elements: CardElementData, sizePx: num
         width: size,
         height: size,
         flex: 0,
-        alignSelf: "start",
-        marginTop: cube.layout?.marginTop ?? 2,
+        alignSelf: "center",
       },
       style: { ...cube.style, borderRadius },
     });

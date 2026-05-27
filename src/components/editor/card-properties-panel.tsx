@@ -140,6 +140,7 @@ import {
   applyBulletListBulletShape,
   applyBulletListBulletSize,
   applyBulletListItemTextColor,
+  applyBulletListTitleAlign,
   BULLET_LIST_ITEM_TEXT_DEFAULT,
   BULLET_LIST_CUBE_SUFFIX,
   BULLET_SIZE_MAX,
@@ -147,11 +148,13 @@ import {
   getBulletListAccentColor,
   getBulletListItemTextColor,
   getBulletListRows,
+  getBulletListTitleAlign,
   isBulletListCard,
   parseBulletListRow,
   parseBulletListBulletShape,
   parseBulletListBulletSize,
   removeBulletListRow,
+  type BulletListTitleAlign,
 } from "@/lib/card-bullet-list";
 import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
 import { useThemeMultiHueLayout } from "@/hooks/use-theme-multi-hue-layout";
@@ -1261,14 +1264,42 @@ function BulletListCardProperties({
   );
   const bulletSize = parseBulletListBulletSize(firstCube);
   const bulletCircle = parseBulletListBulletShape(firstCube) === "circle";
+  const titleAlign = getBulletListTitleAlign(elements);
+  const titleAlignOptions: { value: BulletListTitleAlign; label: string }[] = [
+    { value: "left", label: "Left" },
+    { value: "center", label: "Center" },
+    { value: "right", label: "Right" },
+    { value: "full", label: "Aligned" },
+  ];
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Bullet list — centered title, bullets, and editable items that stretch to fill the card
-        height. Click <span className="font-medium">+ Add item</span> on the card or use the list
-        below. Card shell fill is under <span className="font-medium">Background</span> above.
+        Bullet list — title, bullets, and editable items that stretch to fill the card height. Click{" "}
+        <span className="font-medium">+ Add item</span> on the card or use the list below. Card shell
+        fill is under <span className="font-medium">Background</span> above.
       </p>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Title align</Label>
+        <Select
+          value={titleAlign}
+          onValueChange={(value) =>
+            onElementsChange(applyBulletListTitleAlign(elements, value as BulletListTitleAlign))
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {titleAlignOptions.map(({ value, label }) => (
+              <SelectItem key={value} value={value} className="text-sm">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="flex items-center justify-between gap-2">
         <Label className="text-sm text-muted-foreground">Circle bullet</Label>

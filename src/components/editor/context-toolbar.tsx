@@ -61,7 +61,7 @@ import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionDa
 import { buildIconBevelSampleNode } from '@/lib/icon-bevel';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
-import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode, extractTextStylingFromCardElement, applyTextStylingToCardElement } from '@/lib/text-styling';
+import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode, extractTextStylingFromCardElement, applyTextStylingToCardElement, type TextStyling } from '@/lib/text-styling';
 import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEFAULT_UML_CLASS_TEXT_STYLING } from '@/lib/uml-text-styling';
 import {
   cn,
@@ -86,6 +86,15 @@ import {
 } from '@/lib/card-theme';
 import { getCardTemplateIdFromNodeType } from '@/lib/card-utils';
 import type { CardElementData } from '@/lib/card-types';
+import {
+  applyTextStylingPatchToBulletListTitle,
+  applyBulletListTextStylingFromModal,
+  BULLET_LIST_MODAL_ITEM_STYLING_KEYS,
+  BULLET_LIST_MODAL_TITLE_STYLING_KEYS,
+  BULLET_LIST_TITLE_ID,
+  getBulletListTextStylingForModal,
+  isBulletListCard,
+} from '@/lib/card-bullet-list';
 import { supportsDiagramMeshGradient } from '@/lib/diagram-mesh-gradient-support';
 import { extractLineStylingFromNode, applyLineStylingToNode, syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
@@ -583,18 +592,24 @@ export function ContextToolbar({
 
   const getCurrentTextStyling = useMemo(() => {
     if (!selectedItem || !diagramData) return {};
-    if (
-      selectedCardElement &&
-      (selectedCardElement.kind === "text" || selectedCardElement.kind === "tag")
-    ) {
-      return extractTextStylingFromCardElement(selectedCardElement);
-    }
     let currentItem = selectedItem;
     if (selectedItemIds && selectedItemIds.size > 1) {
       if (isNode) {
         const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
         currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
       }
+    }
+    if (isNode) {
+      const node = currentItem as DiagramNodeData;
+      if (isBulletListCard(node.card?.templateId) && node.card?.elements) {
+        return getBulletListTextStylingForModal(node.card.elements);
+      }
+    }
+    if (
+      selectedCardElement &&
+      (selectedCardElement.kind === "text" || selectedCardElement.kind === "tag")
+    ) {
+      return extractTextStylingFromCardElement(selectedCardElement);
     }
     if (isNode) {
       return extractTextStylingFromNode(currentItem as any);
@@ -608,6 +623,49 @@ export function ContextToolbar({
     }
     return selectedCardElement;
   }, [selectedCardElement]);
+
+  const applyCardElementTextStylingPatch = useCallback(
+    (element: CardElementData, styling: Partial<TextStyling>) => {
+      const templateId = (selectedItem as DiagramNodeData | undefined)?.card?.templateId;
+      if (element.id === BULLET_LIST_TITLE_ID && isBulletListCard(templateId)) {
+        return applyTextStylingPatchToBulletListTitle(element, styling);
+      }
+      return applyTextStylingToCardElement(element, styling);
+    },
+    [selectedItem],
+  );
+
+  const applyBulletListNodeTextStyling = useCallback(
+    (node: DiagramNodeData, styling: Partial<TextStyling>): DiagramNodeData | null => {
+      if (!isBulletListCard(node.card?.templateId) || !node.card?.elements) return null;
+      let elements = applyBulletListTextStylingFromModal(node.card.elements, styling);
+
+      const splitKeys = new Set<string>([
+        ...BULLET_LIST_MODAL_TITLE_STYLING_KEYS,
+        ...BULLET_LIST_MODAL_ITEM_STYLING_KEYS,
+      ]);
+      const otherStyling = Object.fromEntries(
+        Object.entries(styling).filter(([key]) => !splitKeys.has(key)),
+      ) as Partial<TextStyling>;
+      if (
+        Object.keys(otherStyling).length > 0 &&
+        cardElementSelection &&
+        selectedCardElement &&
+        (selectedCardElement.kind === "text" || selectedCardElement.kind === "tag")
+      ) {
+        const patch = applyCardElementTextStylingPatch(selectedCardElement, otherStyling);
+        if (Object.keys(patch).length > 0) {
+          elements = updateCardElementTree(elements, cardElementSelection.elementId, patch);
+        }
+      }
+
+      return {
+        ...node,
+        card: { ...node.card, elements },
+      };
+    },
+    [applyCardElementTextStylingPatch, cardElementSelection, selectedCardElement],
+  );
 
   const handleCardElementChange = useCallback(
     (patch: Partial<CardElementData>) => {
@@ -1197,12 +1255,21 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
+      if (isNode) {
+        const data = currentDiagramData ?? diagramData;
+        const node = (data?.nodes.find((n) => n.id === selectedItem.id) ?? selectedItem) as DiagramNodeData;
+        const updatedBulletList = applyBulletListNodeTextStyling(node, styling);
+        if (updatedBulletList) {
+          onItemUpdate?.({ ...updatedBulletList, itemType: "node" } as SelectedItem);
+          return;
+        }
+      }
       if (
         cardElementSelection &&
         selectedCardElement &&
         (selectedCardElement.kind === "text" || selectedCardElement.kind === "tag")
       ) {
-        const patch = applyTextStylingToCardElement(selectedCardElement, styling);
+        const patch = applyCardElementTextStylingPatch(selectedCardElement, styling);
         if (Object.keys(patch).length > 0) {
           handleCardElementChange(patch);
         }
@@ -1290,13 +1357,27 @@ export function ContextToolbar({
       
       onDiagramDataUpdate(updatedDiagramData);
     } else {
+      if (isNode) {
+        const data = currentDiagramData ?? diagramData;
+        const node = (data?.nodes.find((n) => n.id === selectedItem.id) ?? selectedItem) as DiagramNodeData;
+        const updatedBulletList = applyBulletListNodeTextStyling(node, {
+          textJustify: "center",
+          textTransform: undefined,
+          letterSpacing: undefined,
+          lineHeight: undefined,
+        });
+        if (updatedBulletList) {
+          onItemUpdate?.({ ...updatedBulletList, itemType: "node" } as SelectedItem);
+          return;
+        }
+      }
       // Single item selection - existing logic
       if (
         cardElementSelection &&
         selectedCardElement &&
         (selectedCardElement.kind === "text" || selectedCardElement.kind === "tag")
       ) {
-        const patch = applyTextStylingToCardElement(selectedCardElement, defaultStyling);
+        const patch = applyCardElementTextStylingPatch(selectedCardElement, defaultStyling);
         if (Object.keys(patch).length > 0) {
           handleCardElementChange(patch);
         }

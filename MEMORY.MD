@@ -4,6 +4,50 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-27 – Cards: Bullet List text styling modal routing
+
+**Bullet List** text styling modal: **text justification** → title; **text transform / letter spacing / line height** → all item rows (`applyBulletListTextStylingFromModal`, `getBulletListTextStylingForModal`). Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List title + text styling modal
+
+**Bullet List** title text-styling (context toolbar modal) now uses **`applyTextStylingPatchToBulletListTitle`** — same full-width band + `textJustify` alignment as Card properties **Title align** (modal no longer writes flex `justifyContent` that shrink-wrapped the title). Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List title full-width alignment
+
+**Bullet List** title spans the card width (`alignSelf: stretch`, inner `w-full`); left/center/right/aligned use **`textJustify`** instead of flex `justifyContent` (which shrink-wrapped the text block). Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List title alignment
+
+**Bullet List** Card properties add **Title align** (left / center / right / aligned) via **`applyBulletListTitleAlign`** on the title element (`textJustify` + flex `justifyContent`). Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List multi-line row layout
+
+**Bullet List** rows size to wrapped item text (`minHeight: auto`, no `height: 100%` / clip on item text). Bullets **center on the full text block** via row `alignItems: center` (replacing first-line margin offset). Spacing between bullets varies with each row’s content height. Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List add-item no longer runs Agenda handler
+
+**Bullet List** and **Agenda** share element ids (`add-row`, `add-row-label`); add-row clicks now gate on **card template** so Bullet List **+ Add item** calls **`addBulletListRow`** only and keeps existing bullet rows. Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List theme accent on bullets
+
+**Bullet List** bullets, title, and add-row label now pick up the diagram theme **border/accent** color via **`applyBulletListThemeColors`** in **`applyThemeToCardElements`** (including stepped hues when multi-hue is on). Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List uniform item text size
+
+All **Bullet List** item rows share one **canonical font size** (first row); per-line `lineFontSize` in rich text is stripped at render and on edit so multi-line items match single-line items. Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List bullet optical alignment
+
+Bullet vertical offset uses **cap-height anchor** (36% em) instead of line-box center so cubes sit visually centered on item text. Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List bullet vertical alignment
+
+Bullet cubes/circles now **center on the first text line** (margin derived from item font size × line-height vs bullet size). Patch bumped.
+
+### 2026-05-27 – Cards: Bullet List bullet vertical alignment
+
+Bullet cubes/circles now **center on the first text line** (margin derived from item font size × line-height vs bullet size). Patch bumped.
+
 ### 2026-05-27 – Cards: Bullet List title size + resize behavior
 
 **Bullet List** title default **14px** (was 11). Rows stay equal height with top-aligned text/bullets; on vertical shrink, **padding/gaps compress** before item text shrinks (typography tracks width, min 10px items / 11px title). Patch bumped.

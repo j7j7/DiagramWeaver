@@ -22,6 +22,12 @@ import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { isCardNodeType, findCardElement, updateCardElementTree } from "@/lib/card-utils";
+import {
+  applyBulletListUniformItemFontSize,
+  BULLET_LIST_TEXT_SUFFIX,
+  isBulletListCard,
+  normalizeBulletListItemDisplayRuns,
+} from "@/lib/card-bullet-list";
 import { normalizeDashboardDecorIconRef } from "@/lib/card-dashboard-stat";
 import type { CardIconRef } from "@/lib/card-types";
 import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
@@ -1921,11 +1927,21 @@ function DiagramNodeInner({
         !isMultiSelected &&
         el &&
         (isTag ? nextPlain === (el.tag ?? "").trim() : JSON.stringify(normNew) === JSON.stringify(normPrev));
-      const elements = unchanged
+      const isBulletListItem =
+        !isTag &&
+        isBulletListCard(node.card.templateId) &&
+        elementId.endsWith(BULLET_LIST_TEXT_SUFFIX);
+      const richTextPatch = isBulletListItem
+        ? normalizeBulletListItemDisplayRuns(normNew)
+        : normNew;
+      let elements = unchanged
         ? node.card.elements
         : updateCardElementTree(node.card.elements, elementId, isTag
             ? { tag: nextPlain }
-            : { text: nextPlain, richText: normNew });
+            : { text: nextPlain, richText: richTextPatch });
+      if (!unchanged && isBulletListItem) {
+        elements = applyBulletListUniformItemFontSize(elements);
+      }
       onUpdate({
         ...node,
         card: { ...node.card, elements },

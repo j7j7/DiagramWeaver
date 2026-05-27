@@ -4,6 +4,11 @@ import type { VisualStyling } from "@/lib/visual-styling";
 import { multiplyLightnessOfColor, shiftHueOfColor } from "@/lib/color-shift";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
+import {
+  applyBulletListThemeColors,
+  BULLET_LIST_TEMPLATE_ID,
+  getBulletListItemTextColor,
+} from "@/lib/card-bullet-list";
 
 /** Profile Social theme apply — kept here to avoid card-theme ↔ card-profile-social import cycle. */
 const PROFILE_SOCIAL_TEMPLATE_ID = "profile-social";
@@ -217,6 +222,7 @@ export function applyThemeToCardElements(
   const bgId = getCardBackgroundElementId(templateId);
   const isProfileSocial = templateId === PROFILE_SOCIAL_TEMPLATE_ID;
   const isProfileDiagonalSplit = templateId === PROFILE_DIAGONAL_SPLIT_TEMPLATE_ID;
+  const isBulletList = templateId === BULLET_LIST_TEMPLATE_ID;
   const chipBase = colorProps.backgroundColor ?? colorProps.backgroundColors?.[0] ?? "#93c5fd";
   const accentBase =
     colorProps.backgroundColors?.[1] ??
@@ -346,13 +352,26 @@ export function applyThemeToCardElements(
     return el;
   });
 
-  if (colorProps.textColor) {
-    root = mapCardElementTree(root, (el) => {
-      if (el.kind === "text" || el.kind === "tag") {
-        return { ...el, textColor: colorProps.textColor };
-      }
-      return el;
-    });
+  if (colorProps.textColor || isBulletList) {
+    if (isBulletList) {
+      const bulletAccent =
+        colorProps.borderColors?.[0] ??
+        colorProps.borderColor ??
+        accentBase;
+      root = applyBulletListThemeColors(
+        root,
+        shiftHueOfColor(bulletAccent, hueShift),
+        colorProps.textColor ?? getBulletListItemTextColor(root),
+        { stepHueWithinCard: stepWithin, hueStepDeg: hueStep },
+      );
+    } else {
+      root = mapCardElementTree(root, (el) => {
+        if (el.kind === "text" || el.kind === "tag") {
+          return { ...el, textColor: colorProps.textColor };
+        }
+        return el;
+      });
+    }
   }
 
   return root;
