@@ -3,6 +3,31 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+
+### 2026-05-27 – Cards: dashboard-defaults SAVINGS preset
+
+**`dashboard-defaults`** palette drop now uses the lime **SAVINGS / 21.5 Hrs** workshop preset: **180×170**, white/sage border, lime gradient fill, Timer decor (left, 80×53%), Clock action chip, dark stone text + richText sizing. Patch bumped.
+
+### 2026-05-27 – Cards: dashboard action icon size from Icon styling
+
+Dashboard **action** glyph size now uses **`cardIconGlyphSizeStyle`** (**`nodeSize`**, **`iconSizeMode`**) like other card icon slots, relative to the full-card overlay. Removed redundant **Action icon size** slider from Card properties. Patch bumped.
+
+### 2026-05-27 – Cards: dashboard action icon card-relative placement, no slot background
+
+Dashboard **action** icon overlay now spans the **full card** so **Icon placement** is relative to the card container (not a fixed top-right circle). Removed the semi-transparent **circle background** and **Action icon fill** control; **Action icon size** still sets glyph px. Decor watermark unchanged. Patch bumped.
+
+### 2026-05-27 – Cards: dashboard action icon respects icon styling
+
+Dashboard stat **action** icon (top circle) used **`iconFillSlot`**, which forced full-bleed layout and skipped **opacity**, **remove background**, **placement**, and **size mode** from Icon styling. Action slot now uses the standard glyph layout path (decor watermark unchanged). Patch bumped.
+
+### 2026-05-27 – Cards: dashboard stat text double-click edit (inline pointer-events)
+
+Dashboard **header/body** pass-through left hovers falling to the **root gradient** (no **`cursor-text`**, no edit). Replaced Tailwind **`[&_*]:pointer-events-auto`** with inline **`dashboardStatEditablePointerStyle`** on **text**, **tag**, and **`title-col`** (**`pointerEvents: auto`**, **`position: relative`**, **`zIndex: 2`**). Decor icon drops unchanged. Patch bumped.
+
+### 2026-05-27 – Cards: palette defaults for all card templates
+
+Built-in card templates (**profile-feature**, **profile-diagonal-split**, **profile-social**, **detail-post**, **compact-horizontal**, **list-item-row**, four **dashboard-** stats) now match the configured workshop preset: template **sizes**, **element fills/gradients/text**, default **iconRef** slots, and per-type **shell** styling (border, shadow, line, text colour) via **`defaultCardPaletteNodeProps`** in **`card-templates.ts`** + **`canvas-operations`** palette drop. Patch bumped.
+
 ### 2026-05-26 – Presentation: agenda card shell exits with last content wave
 
 **Thin-divider tail:** With contiguous **`staggerMap`** from **`flattenCardElementsForSlideStaggerTiming`**, DFS can still end on **agenda divider sections** (`isAgendaDividerElement`)—e.g. after a **session** cell is omitted from timing in read-only playback. **`ShapeWrapper`** exit pop used **`size − 1`**, so the rounded shell/background waited for that **last divider wave** while content had already cascaded—subjectively a long pause (≈ extra cascade steps; ~2s on heavy cards near the slide budget). **`cardShellExitStaggerSegmentIndex`** trims trailing agenda dividers when resolving the shell’s stagger segment; **`CardShape`** uses it instead of **`staggerMap.size − 1`**. Patch bumped.
@@ -18,6 +43,7 @@ When the bottom playback bar is **hidden** (**Hide controls / fullscreen slide**
 ### 2026-05-26 – Presentation: prev/next chrome in minimal fullscreen (`PresentationPlayer`)
 
 When **`showPlaybackToolbar`** is false (viewer fullscreen), **top-right** shows a **row of three** matching **h-10 w-10** semi-transparent circular buttons: **ArrowLeft** (previous), **X** (exit), **ArrowRight** (next) — same **`bg-black/35` / `border-white/20`** styling as the lone exit control. Editor fullscreen with the full toolbar unchanged (exit only top-right). Patch bumped.
+
 
 ### 2026-05-26 – Cards: Agenda new row infers hue step from existing rows
 

@@ -85,17 +85,14 @@ import {
   DIAGONAL_SPLIT_CURVE_MAX,
 } from "@/lib/card-profile-diagonal-split";
 import {
-  applyDashboardActionSize,
   applyDashboardDecorIconOpacity,
   applyDashboardDecorSize,
   DECOR_OPACITY_MAX,
   DECOR_OPACITY_MIN,
   getDashboardStatRegions,
-  METRIC_ACTION_ID,
   METRIC_SUBTITLE_ID,
   METRIC_TITLE_ID,
   METRIC_VALUE_ID,
-  parseDashboardActionSize,
   parseDashboardDecorHeightPct,
   parseDashboardDecorIconOpacity,
   parseDashboardDecorWidthPct,
@@ -820,8 +817,7 @@ function DashboardStatCardProperties({
   elements: CardElementData;
   onElementsChange: (elements: CardElementData) => void;
 }) {
-  const { title, subtitle, value, action, decor } = getDashboardStatRegions(elements);
-  const actionSize = parseDashboardActionSize(action);
+  const { title, subtitle, value, decor } = getDashboardStatRegions(elements);
   const decorWidthPct = parseDashboardDecorWidthPct(decor);
   const decorHeightPct = parseDashboardDecorHeightPct(decor);
   const decorOpacity = parseDashboardDecorIconOpacity(decor);
@@ -833,25 +829,11 @@ function DashboardStatCardProperties({
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Dashboard stat card — gradient fill, title and value text, action icon top-right, decorative
-        watermark icon bottom-right (drop onto the bottom-right corner of the card, not the small top
-        circle). Use <span className="font-medium">Background</span> above for the card gradient.
+        Dashboard stat card — gradient fill, title and value text, action icon (placement and size via{" "}
+        <span className="font-medium">Icon styling</span>), decorative watermark icon bottom-right
+        (drop onto the bottom-right corner of the card). Use{" "}
+        <span className="font-medium">Background</span> above for the card gradient.
       </p>
-
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-2">
-          <Label className="text-sm text-muted-foreground">Action icon size</Label>
-          <span className="tabular-nums text-xs text-muted-foreground">{actionSize}px</span>
-        </div>
-        <Slider
-          min={18}
-          max={40}
-          step={1}
-          value={[actionSize]}
-          onValueChange={([v]) => onElementsChange(applyDashboardActionSize(elements, v))}
-          className="w-full"
-        />
-      </div>
 
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
@@ -904,14 +886,6 @@ function DashboardStatCardProperties({
           className="w-full"
         />
       </div>
-
-      {action ? (
-        <CardFillStyleControls
-          label="Action icon fill"
-          style={action.style}
-          onChange={(style) => setRegionStyle(METRIC_ACTION_ID, style)}
-        />
-      ) : null}
 
       {title ? (
         <CardFillStyleControls

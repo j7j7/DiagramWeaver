@@ -58,16 +58,19 @@ import {
   detailPostFooterUsesShellBorder,
 } from "@/lib/card-detail-post";
 import {
+  dashboardStatActionGlyphStyle,
   dashboardStatActionSlotStyle,
   dashboardStatDecorClipStyle,
   dashboardStatDecorIconImageStyle,
   dashboardStatDecorIconWrapStyle,
   dashboardStatDecorSlotStyle,
   dashboardStatDecorUsesWhiteFilter,
-  dashboardStatSectionClassName,
+  dashboardStatEditablePointerStyle,
   dashboardStatSectionStyle,
+  isDashboardStatActionIcon,
   isDashboardStatCard,
   parseDashboardDecorIconOpacity,
+  resolveDashboardStatActionLayout,
   resolveDashboardStatDecorLayout,
 } from "@/lib/card-dashboard-stat";
 import {
@@ -465,6 +468,7 @@ function CardIconSlot({
   cardTemplateId?: string;
 }) {
   const effectiveLayout =
+    resolveDashboardStatActionLayout(element.id, cardTemplateId, element.layout) ??
     resolveDashboardStatDecorLayout(element.id, cardTemplateId, element.layout) ??
     resolveProfileDiagonalAvatarLayout(element.id, cardTemplateId, element.layout) ??
     resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ??
@@ -478,6 +482,8 @@ function CardIconSlot({
   const isCircle = element.placeholder === "circle" || element.style?.borderRadius === 999;
   const isSelected = cardSelectedElementId === element.id;
   const fillSlot = element.iconFillSlot ?? element.placeholder === "circle";
+  const isDashboardActionIcon = isDashboardStatActionIcon(element.id, cardTemplateId);
+  const useFillSlotGlyphLayout = fillSlot && !isDashboardActionIcon;
   const useShellBorder =
     !!element.matchCardBorder && !!cardShellBorder && cardShellBorder.width > 0;
   const slotStyleCss = mergeCardShellBorderStyle(styleCss, useShellBorder, cardShellBorder);
@@ -507,7 +513,10 @@ function CardIconSlot({
       drop: (item) => {
         if (!item.type) return;
         let iconRef = iconDragItemToCardIconRef({ ...item, type: item.type });
-        if ((element.iconFillSlot ?? element.placeholder === "circle") || element.iconDecorGradient) {
+        const forceNoIconBackground =
+          element.iconDecorGradient ||
+          ((element.iconFillSlot ?? element.placeholder === "circle") && !isDashboardActionIcon);
+        if (forceNoIconBackground) {
           iconRef = { ...iconRef, noIconBackground: true };
         }
         onCardIconDrop?.(element.id, iconRef);
@@ -517,7 +526,7 @@ function CardIconSlot({
         canDrop: monitor.canDrop(),
       }),
     }),
-    [element.id, isReadOnly, onCardIconDrop],
+    [element.id, element.iconDecorGradient, element.iconFillSlot, element.placeholder, isDashboardActionIcon, isReadOnly, onCardIconDrop],
   );
 
   const ref = useCallback(
@@ -529,11 +538,11 @@ function CardIconSlot({
 
   const iconRef = element.iconRef;
   const popStyle = elementPopStyle(staggerIndex, popAnimIn, popAnimOut, cardSlideStagger);
-  const placement = element.iconPlacement ?? "center";
+  const placement = element.iconPlacement ?? (isDashboardActionIcon ? "top-right" : "center");
   const { style: placementStyle } = cardIconPlacementToAbsoluteStyle(placement);
   const iconSizeMode = iconRef?.iconSizeMode;
   const noIconBackground = iconRef?.noIconBackground ?? false;
-  const hideIconTile = noIconBackground || fillSlot;
+  const hideIconTile = isDashboardActionIcon || noIconBackground || (fillSlot && !isDashboardActionIcon);
   const rawIconOpacity = iconRef?.iconOpacity;
   const iconGlyphOpacity = element.iconDecorGradient
     ? parseDashboardDecorIconOpacity(element)
@@ -555,21 +564,29 @@ function CardIconSlot({
       data-dw-card-has-icon={iconRef ? "true" : undefined}
       className={cn(
         "relative flex shrink-0",
-        !isDecorWatermark && "overflow-hidden",
+        !isDecorWatermark && !isDashboardActionIcon && "overflow-hidden",
         (isDecorWatermark || isDiagonalAvatar) && "pointer-events-auto",
+        isDashboardActionIcon && "pointer-events-none overflow-visible",
         isOver && canDrop && "ring-2 ring-blue-500 ring-inset",
         isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
       )}
       style={{
         ...layoutCss,
-        ...slotStyleCss,
+        ...(isDashboardActionIcon
+          ? {
+              backgroundImage: "none",
+              backgroundColor: "transparent",
+              border: "none",
+              boxShadow: "none",
+            }
+          : slotStyleCss),
         ...slotShadowCss,
         ...popStyle,
         ...decorOverlayStyle,
         ...actionOverlayStyle,
         ...diagonalAvatarStyle,
         ...cardIconSlotContainerStyle(iconSizeMode),
-        borderRadius: isCircle ? "50%" : slotStyleCss.borderRadius,
+        borderRadius: isDashboardActionIcon ? undefined : isCircle ? "50%" : slotStyleCss.borderRadius,
         boxSizing: "border-box",
       }}
       onClick={(e) =>
@@ -601,15 +618,20 @@ function CardIconSlot({
         ) : (
           <div
             className={cn(
-              fillSlot ? "absolute inset-0" : "absolute shrink-0",
+              useFillSlotGlyphLayout ? "absolute inset-0" : "absolute shrink-0",
               "flex items-center justify-center overflow-hidden",
-              fillSlot && isCircle && "rounded-full",
+              useFillSlotGlyphLayout && isCircle && "rounded-full",
               !hideIconTile && "rounded-lg shadow-md bg-card dw-icon-container border",
               !hideIconTile && isSelected && !isReadOnly && "border-primary",
+              isDashboardActionIcon && "pointer-events-auto",
             )}
             data-dw-card-icon-glyph
             style={{
-              ...(fillSlot ? {} : { ...placementStyle, ...cardIconGlyphSizeStyle(iconRef.nodeSize, iconSizeMode, fillSlot) }),
+              ...(isDashboardActionIcon
+                ? dashboardStatActionGlyphStyle(element, iconRef, placement)
+                : useFillSlotGlyphLayout
+                  ? {}
+                  : { ...placementStyle, ...cardIconGlyphSizeStyle(iconRef.nodeSize, iconSizeMode, useFillSlotGlyphLayout) }),
               containerType: "size",
             }}
           >
@@ -626,10 +648,21 @@ function CardIconSlot({
               imageOptions={iconRef.imageOptions}
               width="100%"
               height="100%"
-              className={cn("h-full w-full", fillSlot ? "object-cover" : "object-contain")}
+              className={cn("h-full w-full", useFillSlotGlyphLayout ? "object-cover" : "object-contain")}
+              style={
+                typeof rawIconOpacity === "number" && Number.isFinite(rawIconOpacity)
+                  ? { opacity: iconGlyphOpacity }
+                  : undefined
+              }
             />
           </div>
         )
+      ) : isDashboardActionIcon ? (
+        <div
+          className="pointer-events-auto absolute shrink-0"
+          aria-hidden
+          style={dashboardStatActionGlyphStyle(element, undefined, placement)}
+        />
       ) : element.placeholder === "rect" || element.placeholder === "circle" || element.iconDecorGradient ? null : (
         <span className="flex h-full w-full items-center justify-center text-[10px] text-white/70">
           Drop icon
@@ -786,7 +819,7 @@ function CardElementRenderer({
     cardShellBorder.width > 0;
   const sectionStyleCss = mergeCardShellBorderStyle(styleCss, sectionUsesShellBorder, cardShellBorder);
   const dashboardSectionStyle = dashboardStatSectionStyle(element.id, cardTemplateId);
-  const dashboardSectionClass = dashboardStatSectionClassName(element.id, cardTemplateId);
+  const dashboardEditablePointerStyle = dashboardStatEditablePointerStyle(cardTemplateId, element);
   const dashboardRootStyle =
     isRoot && isDashboardStatCard(cardTemplateId) ? { position: "relative" as const } : undefined;
 
@@ -863,6 +896,7 @@ function CardElementRenderer({
           ...sectionStyleCss,
           ...agendaTableHeaderBottomRule,
           ...dashboardSectionStyle,
+          ...dashboardEditablePointerStyle,
           ...dashboardRootStyle,
           ...diagonalRootStyle,
           ...diagonalBodyStyle,
@@ -881,7 +915,6 @@ function CardElementRenderer({
         data-dw-card-action={isAgendaAddRowSection ? "" : undefined}
         {...(showAgendaRowReorder ? rowReorder.rowSectionProps : {})}
         className={cn(
-          dashboardSectionClass,
           isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
           isAgendaAddRowSection && "cursor-pointer hover:bg-primary/5",
           (isAgendaAddRowSection || showAgendaRowDelete || showAgendaRowReorder) && "relative",
@@ -1058,11 +1091,12 @@ function CardElementRenderer({
           ...layoutCss,
           ...styleCss,
           ...popStyle,
+          ...dashboardEditablePointerStyle,
           fontSize: element.fontSize ?? 10,
           color: element.textColor ?? "#1e40af",
           padding: layoutCss.padding ?? "4px 10px",
           boxSizing: "border-box",
-          position: needsRelative ? "relative" : undefined,
+          position: needsRelative ? "relative" : dashboardEditablePointerStyle?.position,
         }}
         className={cn(
           "inline-flex min-w-0 items-center font-medium",
@@ -1138,6 +1172,7 @@ function CardElementRenderer({
       ...layoutCss,
       ...styleCss,
       ...popStyle,
+      ...dashboardEditablePointerStyle,
       ...socialTextStyle,
       ...agendaTimeStyle,
       fontSize:
@@ -1150,7 +1185,7 @@ function CardElementRenderer({
       wordBreak: isAgendaTimeCell ? "keep-all" : "break-word",
       padding: cardLayoutToCss({ padding: textPad }).padding,
       boxSizing: "border-box",
-      position: needsRelative ? "relative" : undefined,
+      position: needsRelative ? "relative" : dashboardEditablePointerStyle?.position,
       ...(isAgendaTimeCell
         ? {
             flexShrink: 0,

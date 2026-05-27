@@ -1,5 +1,13 @@
 import type { CSSProperties } from "react";
-import type { CardElementData, CardElementStyle, CardIconRef, CardLayoutBox, CardTemplate } from "@/lib/card-types";
+import type {
+  CardElementData,
+  CardElementStyle,
+  CardIconPlacement,
+  CardIconRef,
+  CardLayoutBox,
+  CardTemplate,
+} from "@/lib/card-types";
+import { cardIconGlyphSizeStyle, cardIconPlacementToAbsoluteStyle } from "@/lib/card-icon-layout";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 
 export const DASHBOARD_STAT_TEMPLATE_PREFIX = "dashboard-";
@@ -10,6 +18,13 @@ export const METRIC_VALUE_ID = "metric-value";
 export const METRIC_ACTION_ID = "metric-action";
 export const METRIC_DECOR_ID = "metric-decor";
 export const METRIC_BODY_ID = "metric-body";
+
+export function isDashboardStatActionIcon(
+  elementId: string,
+  templateId: string | undefined,
+): boolean {
+  return isDashboardStatCard(templateId) && elementId === METRIC_ACTION_ID;
+}
 
 const DEFAULT_ACTION_SIZE = 26;
 const MIN_ACTION_SIZE = 18;
@@ -168,13 +183,20 @@ export function dashboardStatSectionStyle(
   return { position: "relative", zIndex: 1, pointerEvents: "none" };
 }
 
-export function dashboardStatSectionClassName(
-  elementId: string,
+/** Restore hit-testing for editable regions under pass-through header/body (inline — Tailwind descendant selectors are unreliable here). */
+export function dashboardStatEditablePointerStyle(
   templateId: string | undefined,
-): string | undefined {
+  element: Pick<CardElementData, "id" | "kind">,
+): CSSProperties | undefined {
   if (!isDashboardStatCard(templateId)) return undefined;
-  if (elementId !== "header" && elementId !== METRIC_BODY_ID) return undefined;
-  return "[&>*]:pointer-events-auto";
+  if (element.kind === "text" || element.kind === "tag") {
+    return { pointerEvents: "auto", position: "relative", zIndex: 2 };
+  }
+  // Title/subtitle sit in a nested section under header, not as direct header children.
+  if (element.kind === "section" && element.id === "title-col") {
+    return { pointerEvents: "auto", position: "relative", zIndex: 2 };
+  }
+  return undefined;
 }
 
 export function dashboardStatDecorSlotStyle(
@@ -197,7 +219,28 @@ export function dashboardStatDecorSlotStyle(
   };
 }
 
-/** Action circle — absolute top-right on the card, above pass-through header/body layers. */
+/** Action icon overlay — full card bounds; glyph placement is relative to this box. */
+export function resolveDashboardStatActionLayout(
+  elementId: string,
+  templateId: string | undefined,
+  layout: CardLayoutBox | undefined,
+): CardLayoutBox | undefined {
+  if (!isDashboardStatCard(templateId) || elementId !== METRIC_ACTION_ID) return layout;
+  return { ...layout, width: "100%", height: "100%", flex: 0 };
+}
+
+/** Glyph position/size within the full-card action overlay (uses icon styling nodeSize + iconSizeMode). */
+export function dashboardStatActionGlyphStyle(
+  element: CardElementData,
+  iconRef: CardIconRef | undefined,
+  placement: CardIconPlacement = "top-right",
+): CSSProperties {
+  const placementCss = cardIconPlacementToAbsoluteStyle(placement).style;
+  const sizeCss = cardIconGlyphSizeStyle(iconRef?.nodeSize, iconRef?.iconSizeMode, false);
+  return { ...placementCss, ...sizeCss, pointerEvents: "auto" };
+}
+
+/** Action icon — absolute full-card overlay; pass-through except on the glyph. */
 export function dashboardStatActionSlotStyle(
   elementId: string,
   templateId: string | undefined,
@@ -205,10 +248,11 @@ export function dashboardStatActionSlotStyle(
   if (!isDashboardStatCard(templateId) || elementId !== METRIC_ACTION_ID) return undefined;
   return {
     position: "absolute",
-    top: 0,
-    right: 0,
+    inset: 0,
+    width: "100%",
+    height: "100%",
     zIndex: 3,
-    pointerEvents: "auto",
+    pointerEvents: "none",
   };
 }
 
@@ -313,6 +357,8 @@ export function createDashboardStatTemplate(config: {
   subtitle?: string;
   value: string;
   valueFontSize?: number;
+  decorIconRef?: CardIconRef;
+  actionIconRef?: CardIconRef;
 }): CardTemplate {
   const titleColChildren: CardElementData[] = [
     {
@@ -422,18 +468,15 @@ export function createDashboardStatTemplate(config: {
             flex: 0,
           },
           style: { backgroundStyle: "none" },
+          iconRef: config.decorIconRef ? { ...config.decorIconRef } : undefined,
         },
         {
           id: METRIC_ACTION_ID,
           kind: "icon-slot",
+          iconPlacement: "top-right",
           layout: { width: DEFAULT_ACTION_SIZE, height: DEFAULT_ACTION_SIZE, flex: 0 },
-          style: {
-            backgroundColor: "rgba(255,255,255,0.22)",
-            backgroundStyle: "solid",
-            borderRadius: 999,
-          },
-          placeholder: "circle",
-          iconFillSlot: true,
+          style: { backgroundStyle: "none" },
+          iconRef: config.actionIconRef ? { ...config.actionIconRef } : undefined,
         },
       ],
     },
