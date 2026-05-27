@@ -26,6 +26,8 @@ import {
   isProfileHeroSplitCard,
   parseProfileHeroHeightPct,
   PROFILE_HERO_ID,
+  resolveProfileFeatureBodyLayout,
+  resolveProfileFeatureTextLayout,
 } from "@/lib/card-profile";
 import {
   resolveProfileSocialAvatarLayout,
@@ -51,12 +53,23 @@ import {
   resolveProfileDiagonalTextStackLayout,
 } from "@/lib/card-profile-diagonal-split";
 import {
-  resolveDetailPostBodyLine2Layout,
   resolveDetailPostBodySectionLayout,
   resolveDetailPostCtaStyle,
+  resolveDetailPostFooterSectionLayout,
   resolveDetailPostFooterStyle,
+  resolveDetailPostTextLayout,
   detailPostFooterUsesShellBorder,
 } from "@/lib/card-detail-post";
+import {
+  resolveCompactHorizontalTextColLayout,
+  resolveCompactHorizontalTextLayout,
+} from "@/lib/card-compact-horizontal";
+import {
+  isListItemRowCard,
+  LIST_ITEM_INDICATOR_ID,
+  parseListItemIndicatorCircle,
+  resolveListItemLabelLayout,
+} from "@/lib/card-list-item";
 import {
   dashboardStatActionGlyphStyle,
   dashboardStatActionSlotStyle,
@@ -480,6 +493,10 @@ function CardIconSlot({
   const rawStyleCss = cardElementStyleToCss(element.style);
   const { styleCss, meshLayer } = cardElementBackgroundLayers(element, rawStyleCss);
   const isCircle = element.placeholder === "circle" || element.style?.borderRadius === 999;
+  const listItemPlainIcon =
+    isListItemRowCard(cardTemplateId) &&
+    element.id === LIST_ITEM_INDICATOR_ID &&
+    !parseListItemIndicatorCircle(element);
   const isSelected = cardSelectedElementId === element.id;
   const fillSlot = element.iconFillSlot ?? element.placeholder === "circle";
   const isDashboardActionIcon = isDashboardStatActionIcon(element.id, cardTemplateId);
@@ -515,6 +532,7 @@ function CardIconSlot({
         let iconRef = iconDragItemToCardIconRef({ ...item, type: item.type });
         const forceNoIconBackground =
           element.iconDecorGradient ||
+          listItemPlainIcon ||
           ((element.iconFillSlot ?? element.placeholder === "circle") && !isDashboardActionIcon);
         if (forceNoIconBackground) {
           iconRef = { ...iconRef, noIconBackground: true };
@@ -526,7 +544,7 @@ function CardIconSlot({
         canDrop: monitor.canDrop(),
       }),
     }),
-    [element.id, element.iconDecorGradient, element.iconFillSlot, element.placeholder, isDashboardActionIcon, isReadOnly, onCardIconDrop],
+    [element.id, element.iconDecorGradient, element.iconFillSlot, element.placeholder, cardTemplateId, isDashboardActionIcon, isReadOnly, listItemPlainIcon, onCardIconDrop],
   );
 
   const ref = useCallback(
@@ -541,7 +559,7 @@ function CardIconSlot({
   const placement = element.iconPlacement ?? (isDashboardActionIcon ? "top-right" : "center");
   const { style: placementStyle } = cardIconPlacementToAbsoluteStyle(placement);
   const iconSizeMode = iconRef?.iconSizeMode;
-  const noIconBackground = iconRef?.noIconBackground ?? false;
+  const noIconBackground = (iconRef?.noIconBackground ?? false) || listItemPlainIcon;
   const hideIconTile = isDashboardActionIcon || noIconBackground || (fillSlot && !isDashboardActionIcon);
   const rawIconOpacity = iconRef?.iconOpacity;
   const iconGlyphOpacity = element.iconDecorGradient
@@ -564,7 +582,7 @@ function CardIconSlot({
       data-dw-card-has-icon={iconRef ? "true" : undefined}
       className={cn(
         "relative flex shrink-0",
-        !isDecorWatermark && !isDashboardActionIcon && "overflow-hidden",
+        !isDecorWatermark && !isDashboardActionIcon && fillSlot && "overflow-hidden",
         (isDecorWatermark || isDiagonalAvatar) && "pointer-events-auto",
         isDashboardActionIcon && "pointer-events-none overflow-visible",
         isOver && canDrop && "ring-2 ring-blue-500 ring-inset",
@@ -572,7 +590,7 @@ function CardIconSlot({
       )}
       style={{
         ...layoutCss,
-        ...(isDashboardActionIcon
+        ...(isDashboardActionIcon || listItemPlainIcon
           ? {
               backgroundImage: "none",
               backgroundColor: "transparent",
@@ -586,7 +604,7 @@ function CardIconSlot({
         ...actionOverlayStyle,
         ...diagonalAvatarStyle,
         ...cardIconSlotContainerStyle(iconSizeMode),
-        borderRadius: isDashboardActionIcon ? undefined : isCircle ? "50%" : slotStyleCss.borderRadius,
+        borderRadius: isDashboardActionIcon || listItemPlainIcon ? undefined : isCircle ? "50%" : slotStyleCss.borderRadius,
         boxSizing: "border-box",
       }}
       onClick={(e) =>
@@ -621,8 +639,8 @@ function CardIconSlot({
               useFillSlotGlyphLayout ? "absolute inset-0" : "absolute shrink-0",
               "flex items-center justify-center overflow-hidden",
               useFillSlotGlyphLayout && isCircle && "rounded-full",
-              !hideIconTile && "rounded-lg shadow-md bg-card dw-icon-container border",
-              !hideIconTile && isSelected && !isReadOnly && "border-primary",
+              !hideIconTile && !listItemPlainIcon && "rounded-lg shadow-md bg-card dw-icon-container border",
+              !hideIconTile && !listItemPlainIcon && isSelected && !isReadOnly && "border-primary",
               isDashboardActionIcon && "pointer-events-auto",
             )}
             data-dw-card-icon-glyph
@@ -755,6 +773,8 @@ function CardElementRenderer({
     return null;
   }
 
+  if (element.hidden) return null;
+
   const baseLayout =
     element.kind === "text"
       ? resolveAgendaSessionCellLayout(
@@ -769,11 +789,17 @@ function CardElementRenderer({
           element.layout,
           agendaResizeMetrics,
         ) ??
-        resolveDetailPostBodyLine2Layout(element.id, cardTemplateId, element.layout) ??
+        resolveDetailPostTextLayout(element.id, cardTemplateId, element.layout) ??
+        resolveProfileFeatureTextLayout(element.id, cardTemplateId, element.layout) ??
+        resolveCompactHorizontalTextLayout(element.id, cardTemplateId, element.layout) ??
+        resolveListItemLabelLayout(element.id, cardTemplateId, element.layout, cardRootElements) ??
         resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout)
       : element.kind === "section"
-        ? resolveProfileDiagonalTextStackLayout(element.id, cardTemplateId, element.layout) ??
+        ? resolveProfileFeatureBodyLayout(element.id, cardTemplateId, element.layout) ??
+          resolveProfileDiagonalTextStackLayout(element.id, cardTemplateId, element.layout) ??
+          resolveCompactHorizontalTextColLayout(element.id, cardTemplateId, element.layout) ??
           resolveDetailPostBodySectionLayout(element.id, cardTemplateId, element.layout) ??
+          resolveDetailPostFooterSectionLayout(element.id, cardTemplateId, element.layout) ??
           resolveProfileSocialSectionLayout(element.id, cardTemplateId, element.layout)
         : element.kind === "icon-slot"
           ? resolveProfileDiagonalAvatarLayout(element.id, cardTemplateId, element.layout) ??

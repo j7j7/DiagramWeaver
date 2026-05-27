@@ -130,6 +130,8 @@ export interface CardElementData {
   textVerticalPosition?: "top" | "middle" | "bottom";
   /** Agenda row — draw highlight border around the row section. */
   highlighted?: boolean;
+  /** When true, element is omitted from layout/render (e.g. list-item drag handle). */
+  hidden?: boolean;
 }
 
 export interface CardTemplate {

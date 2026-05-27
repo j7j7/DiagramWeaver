@@ -45,6 +45,10 @@ import {
   getListItemRowRegions,
   parseListItemIndicatorSize,
   applyListItemIndicatorSize,
+  parseListItemIndicatorCircle,
+  applyListItemIndicatorCircle,
+  parseListItemDragHandleEnabled,
+  applyListItemDragHandleEnabled,
   updateListItemElementStyle,
   LIST_ITEM_INDICATOR_ID,
   LIST_ITEM_LABEL_ID,
@@ -611,6 +615,8 @@ function ListItemRowCardProperties({
 }) {
   const { indicator, label } = getListItemRowRegions(elements);
   const indicatorSize = parseListItemIndicatorSize(indicator);
+  const indicatorCircle = parseListItemIndicatorCircle(indicator);
+  const dragHandleEnabled = parseListItemDragHandleEnabled(elements);
 
   const setRegionStyle = (elementId: string, style: CardElementStyle) => {
     onElementsChange(updateListItemElementStyle(elements, elementId, style));
@@ -621,32 +627,56 @@ function ListItemRowCardProperties({
       <p className="text-xs text-muted-foreground">
         List item row — indicator on the left, label in the middle, drag handle on the right. Use{" "}
         <span className="font-medium">Background</span> above for the row fill. Drop an icon onto the
-        circle on the canvas; it fills the circle by default.
+        indicator on the canvas.
       </p>
 
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-sm text-muted-foreground">Circle border (match card)</Label>
+        <Label className="text-sm text-muted-foreground">Drag handle</Label>
         <Switch
-          checked={indicator?.matchCardBorder ?? false}
+          checked={dragHandleEnabled}
           onCheckedChange={(checked) =>
-            onElementsChange(
-              updateCardElementTree(elements, LIST_ITEM_INDICATOR_ID, { matchCardBorder: checked }),
-            )
+            onElementsChange(applyListItemDragHandleEnabled(elements, checked))
           }
         />
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-sm text-muted-foreground">Circle shadow</Label>
+        <Label className="text-sm text-muted-foreground">Circle indicator</Label>
         <Switch
-          checked={indicator?.iconSlotShadow ?? false}
+          checked={indicatorCircle}
           onCheckedChange={(checked) =>
-            onElementsChange(
-              updateCardElementTree(elements, LIST_ITEM_INDICATOR_ID, { iconSlotShadow: checked }),
-            )
+            onElementsChange(applyListItemIndicatorCircle(elements, checked))
           }
         />
       </div>
+
+      {indicatorCircle ? (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-sm text-muted-foreground">Circle border (match card)</Label>
+            <Switch
+              checked={indicator?.matchCardBorder ?? false}
+              onCheckedChange={(checked) =>
+                onElementsChange(
+                  updateCardElementTree(elements, LIST_ITEM_INDICATOR_ID, { matchCardBorder: checked }),
+                )
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-sm text-muted-foreground">Circle shadow</Label>
+            <Switch
+              checked={indicator?.iconSlotShadow ?? false}
+              onCheckedChange={(checked) =>
+                onElementsChange(
+                  updateCardElementTree(elements, LIST_ITEM_INDICATOR_ID, { iconSlotShadow: checked }),
+                )
+              }
+            />
+          </div>
+        </>
+      ) : null}
 
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
@@ -663,7 +693,7 @@ function ListItemRowCardProperties({
         />
       </div>
 
-      {indicator ? (
+      {indicatorCircle && indicator ? (
         <CardFillStyleControls
           label="Indicator fill"
           style={indicator.style}

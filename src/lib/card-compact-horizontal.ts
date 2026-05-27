@@ -1,4 +1,4 @@
-import type { CardElementData, CardElementStyle } from "@/lib/card-types";
+import type { CardElementData, CardElementStyle, CardLayoutBox } from "@/lib/card-types";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 import { isDetailPostCard } from "@/lib/card-detail-post";
 import { isDashboardStatCard } from "@/lib/card-dashboard-stat";
@@ -16,6 +16,39 @@ export const COMPACT_STATUS_ID = "status";
 const DEFAULT_AVATAR_SIZE = 44;
 const MIN_AVATAR_SIZE = 28;
 const MAX_AVATAR_SIZE = 72;
+
+const COMPACT_TEXT_SEGMENT_PADDING: CardLayoutBox["padding"] = [4, 10];
+
+/** Name and status segments share the full text column width. */
+export function resolveCompactHorizontalTextLayout(
+  elementId: string,
+  templateId: string | undefined,
+  layout: CardLayoutBox | undefined,
+): CardLayoutBox | undefined {
+  if (!isCompactHorizontalCard(templateId)) return layout;
+  if (elementId !== COMPACT_NAME_ID && elementId !== COMPACT_STATUS_ID) return layout;
+  return {
+    ...layout,
+    width: "100%",
+    alignSelf: "stretch",
+    padding: layout?.padding ?? COMPACT_TEXT_SEGMENT_PADDING,
+  };
+}
+
+export function resolveCompactHorizontalTextColLayout(
+  elementId: string,
+  templateId: string | undefined,
+  layout: CardLayoutBox | undefined,
+): CardLayoutBox | undefined {
+  if (!isCompactHorizontalCard(templateId) || elementId !== COMPACT_TEXT_COL_ID) return layout;
+  return {
+    ...layout,
+    flexDirection: layout?.flexDirection ?? "column",
+    flex: layout?.flex ?? 1,
+    minWidth: 0,
+    alignItems: "stretch",
+  };
+}
 
 export function isCompactHorizontalCard(templateId: string | undefined): boolean {
   return templateId === COMPACT_HORIZONTAL_TEMPLATE_ID;

@@ -4,6 +4,26 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-27 – Cards: List Item Row default preset
+
+**List Item Row** template + palette drop defaults updated to workshop preset: **250×40**, pill **`cornerRadius`**, violet gradient shell border, Shield icon (**29px**, no circle mask), gradient label segment, drag handle on. Patch bumped.
+
+### 2026-05-27 – Cards: List Item Row circle indicator toggle
+
+**List Item Row** **Card properties** adds **Drag handle** and **Circle indicator** toggles — drag handle off hides the six-dot grip and the label segment spans to the container edge with **`[8, 12]`** padding; circle off shows the icon glyph only (no circle mask or rounded tile). Helpers in **`card-list-item.ts`**; plain-icon rendering in **`CardIconSlot`**. Patch bumped.
+
+### 2026-05-27 – Cards: Compact Horizontal full-width text segments
+
+**Compact Horizontal** name and status text regions now share the same full **text-col** width with matching **`[4, 10]`** padding; layout resolvers in **`card-compact-horizontal.ts`** apply to existing cards on canvas. Patch bumped.
+
+### 2026-05-27 – Cards: Detail Post full-width text segments
+
+**Detail Post** headline, both body lines, and **Call to action** now share the same full-width horizontal bounds with **`[8, 12]`** segment padding. Footer section padding removed so the CTA aligns with body segments; **`resolveDetailPostTextLayout`** applies to existing cards on canvas. Patch bumped.
+
+### 2026-05-27 – Cards: Profile Feature title/subtitle full-width segments
+
+**Profile Feature** title and subtitle text regions now span the full **body** width (edge-to-edge in the lower section); internal **`[8, 12]`** padding stays on each segment. Body side padding removed so segment fills align with the container; layout resolvers in **`card-profile.ts`** apply to existing cards on canvas. Patch bumped.
+
 ### 2026-05-27 – Cards: dashboard-defaults SAVINGS preset
 
 **`dashboard-defaults`** palette drop now uses the lime **SAVINGS / 21.5 Hrs** workshop preset: **180×170**, white/sage border, lime gradient fill, Timer decor (left, 80×53%), Clock action chip, dark stone text + richText sizing. Patch bumped.

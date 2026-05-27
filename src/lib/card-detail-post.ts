@@ -14,6 +14,8 @@ const DEFAULT_HEADER_ICON_SIZE = 28;
 const MIN_HEADER_ICON_SIZE = 20;
 const MAX_HEADER_ICON_SIZE = 48;
 
+const DETAIL_POST_TEXT_SEGMENT_PADDING: CardLayoutBox["padding"] = [8, 12];
+
 export function isDetailPostCard(templateId: string | undefined): boolean {
   return templateId === DETAIL_POST_TEMPLATE_ID;
 }
@@ -94,27 +96,59 @@ export function updateDetailPostElementStyle(
   });
 }
 
-/** Flex-filler layout for body line 2 — also applied at render for legacy cards missing it. */
+/** Headline, body lines, and CTA share full-width segments with consistent padding. */
+export function resolveDetailPostTextLayout(
+  elementId: string,
+  templateId: string | undefined,
+  layout: CardLayoutBox | undefined,
+): CardLayoutBox | undefined {
+  if (templateId !== DETAIL_POST_TEMPLATE_ID) return layout;
+
+  if (elementId === DETAIL_POST_BODY_LINE_2_ID) {
+    return {
+      padding: DETAIL_POST_TEXT_SEGMENT_PADDING,
+      ...layout,
+      width: "100%",
+      flex: 1,
+      minHeight: 0,
+      flexDirection: "column",
+      justifyContent: "start",
+      alignSelf: "stretch",
+      fillRemaining: true,
+      overflow: "hidden",
+    };
+  }
+
+  if (elementId === DETAIL_POST_HEADLINE_ID || elementId === DETAIL_POST_BODY_LINE_1_ID) {
+    return {
+      ...layout,
+      width: "100%",
+      alignSelf: "stretch",
+      padding: layout?.padding ?? DETAIL_POST_TEXT_SEGMENT_PADDING,
+    };
+  }
+
+  if (elementId === DETAIL_POST_CTA_ID) {
+    return {
+      ...layout,
+      width: "100%",
+      alignSelf: "stretch",
+      padding: layout?.padding ?? DETAIL_POST_TEXT_SEGMENT_PADDING,
+      alignItems: layout?.alignItems ?? "center",
+      justifyContent: layout?.justifyContent ?? "center",
+    };
+  }
+
+  return layout;
+}
+
+/** @deprecated use resolveDetailPostTextLayout */
 export function resolveDetailPostBodyLine2Layout(
   elementId: string,
   templateId: string | undefined,
   layout: CardLayoutBox | undefined,
 ): CardLayoutBox | undefined {
-  if (templateId !== DETAIL_POST_TEMPLATE_ID || elementId !== DETAIL_POST_BODY_LINE_2_ID) {
-    return layout;
-  }
-  return {
-    padding: [8, 12],
-    ...layout,
-    width: "95%",
-    flex: 1,
-    minHeight: 0,
-    flexDirection: "column",
-    justifyContent: "start",
-    alignSelf: "start",
-    fillRemaining: true,
-    overflow: "hidden",
-  };
+  return resolveDetailPostTextLayout(elementId, templateId, layout);
 }
 
 /** Body column must shrink/grow in the card shell for line 2 to fill remaining space. */
@@ -132,6 +166,23 @@ export function resolveDetailPostBodySectionLayout(
     flex: layout?.flex ?? 1,
     width: layout?.width ?? "100%",
     minHeight: 0,
+  };
+}
+
+/** Footer holds the CTA at the same horizontal bounds as body text segments. */
+export function resolveDetailPostFooterSectionLayout(
+  elementId: string,
+  templateId: string | undefined,
+  layout: CardLayoutBox | undefined,
+): CardLayoutBox | undefined {
+  if (templateId !== DETAIL_POST_TEMPLATE_ID || elementId !== DETAIL_POST_FOOTER_ID) {
+    return layout;
+  }
+  return {
+    ...layout,
+    width: layout?.width ?? "100%",
+    flex: layout?.flex ?? 0,
+    padding: 0,
   };
 }
 

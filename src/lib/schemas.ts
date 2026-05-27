@@ -161,6 +161,7 @@ const CardElementDataSchema: z.ZodType<import('./card-types').CardElementData> =
     textJustify: z.enum(['left', 'center', 'right', 'full']).optional(),
     textVerticalPosition: z.enum(['top', 'middle', 'bottom']).optional(),
     highlighted: z.boolean().optional(),
+    hidden: z.boolean().optional(),
   })
 );
 

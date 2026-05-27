@@ -1,4 +1,4 @@
-import type { CardElementData, CardElementStyle } from "@/lib/card-types";
+import type { CardElementData, CardElementStyle, CardLayoutBox } from "@/lib/card-types";
 import type { VisualStyling } from "@/lib/visual-styling";
 import {
   CARD_BACKGROUND_VISUAL_KEYS,
@@ -47,6 +47,40 @@ export function isProfileFeatureCard(templateId: string | undefined): boolean {
 /** Profile Feature + Profile Social share hero/body split drag handle. */
 export function isProfileHeroSplitCard(templateId: string | undefined): boolean {
   return templateId === PROFILE_CARD_TEMPLATE_ID || templateId === "profile-social";
+}
+
+const PROFILE_TEXT_SEGMENT_PADDING: CardLayoutBox["padding"] = [8, 12];
+
+/** Title/subtitle bars span the full body width; padding lives on each segment. */
+export function resolveProfileFeatureBodyLayout(
+  elementId: string,
+  templateId: string | undefined,
+  layout: CardLayoutBox | undefined,
+): CardLayoutBox | undefined {
+  if (!isProfileFeatureCard(templateId) || elementId !== PROFILE_BODY_ID) return layout;
+  return {
+    ...layout,
+    flexDirection: layout?.flexDirection ?? "column",
+    width: layout?.width ?? "100%",
+    minHeight: 0,
+    padding: 0,
+    gap: layout?.gap ?? 0,
+  };
+}
+
+export function resolveProfileFeatureTextLayout(
+  elementId: string,
+  templateId: string | undefined,
+  layout: CardLayoutBox | undefined,
+): CardLayoutBox | undefined {
+  if (!isProfileFeatureCard(templateId)) return layout;
+  if (elementId !== PROFILE_TITLE_ID && elementId !== PROFILE_SUBTITLE_ID) return layout;
+  return {
+    ...layout,
+    width: "100%",
+    alignSelf: "stretch",
+    padding: layout?.padding ?? PROFILE_TEXT_SEGMENT_PADDING,
+  };
 }
 
 export function getProfileCardRegions(root: CardElementData | undefined): {
