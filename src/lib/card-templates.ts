@@ -570,7 +570,7 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
     name: "Sidebar Accent",
     defaultWidth: 240,
     defaultHeight: 96,
-    cornerRadius: 0.08,
+    cornerRadius: 0.2,
     root: {
       id: "root",
       kind: "section",
@@ -1068,7 +1068,7 @@ const CARD_PALETTE_NODE_DEFAULTS = {
     textOpacity: 1,
     gradientAngle: 135,
     textJustify: "left",
-    cornerRadius: 0.08,
+    cornerRadius: 0.2,
     borderColor: "#2dd4bf",
   },
   "detail-post": {

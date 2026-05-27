@@ -4,6 +4,10 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-27 – Cards: Sidebar Accent default corner radius
+
+**Sidebar Accent** (`generic.card.sidebar-accent`) palette default **`cornerRadius`** set to **0.2** (was 0.08) in **`card-templates.ts`**. Patch bumped.
+
 ### 2026-05-27 – Cards: Bullet List default preset (cyan gradient)
 
 **Bullet List** palette drop defaults updated to **320×160**, **cyan gradient border** (`#06b6d4` → `#0891b2`), **lime outline line** (`#84cc16`, 2.5px), **dark cyan interior gradient** (`#0f172a` → `#164e63`), **#ecfeff** item text, **stepped bullet hues** (`bulletListItemThemeHue: true`), and per-row cube colors in **`card-bullet-list.ts`**. Palette glyph updated. Patch bumped.
