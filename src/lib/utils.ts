@@ -156,3 +156,31 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType?.endsWith('.arrowhead') ||
          nodeType?.endsWith('.chevron');
 }
+
+/** Decode a `data:` URL to a Blob without `fetch` (avoids failures on large PNG data URLs). */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const commaIndex = dataUrl.indexOf(',');
+  if (commaIndex === -1) {
+    throw new TypeError('Invalid data URL');
+  }
+  const header = dataUrl.slice(0, commaIndex);
+  const payload = dataUrl.slice(commaIndex + 1);
+  const mimeMatch = /^data:([^;,]+)/.exec(header);
+  const mime = mimeMatch?.[1] ?? 'application/octet-stream';
+
+  if (/;base64/i.test(header)) {
+    const binary = atob(payload);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  }
+
+  const decoded = decodeURIComponent(payload);
+  const bytes = new Uint8Array(decoded.length);
+  for (let i = 0; i < decoded.length; i++) {
+    bytes[i] = decoded.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+}

@@ -1,11 +1,10 @@
 import React, { useLayoutEffect, useMemo, useRef } from "react";
-import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath, closestTOnConnectionPath } from "../diagram/bezier-connection";
+import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath } from "../diagram/bezier-connection";
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
 import {
   computeOrthogonalRoute,
   computeOrthogonalRoutesBatch,
   getPointOnOrthogonalPath,
-  closestTOnOrthogonalPath,
   buildObstacleCatalog,
   obstaclesForEndpoints,
   appendInteriorObstaclesForPreferredEdges,
@@ -53,7 +52,7 @@ interface CanvasConnectionsProps {
   onConnectionUpdate?: (from: string, to: string, updates: Record<string, unknown>, connectionId?: string) => void;
   /** Called when a waypoint needs to be added */
   onConnectionWaypointAdd?: (from: string, to: string, connectionId?: string) => void;
-  /** Double-click on a connection: insert a node at the nearest point on the path (editor only). */
+  /** Double-click on a connection opens the connection properties modal (editor only). */
   onConnectionInsertNode?: (connection: DiagramConnectionData, connectionIndex: number, diagramPoint: { x: number; y: number }) => void;
   /** When set, only render connections whose index is in this set (for order-aware layering) */
   connectionIndices?: Set<number>;
@@ -1200,53 +1199,13 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           onContextMenu: handleConnectionContextMenuEdge,
         };
 
-        const handleConnectionDoubleClick =
-          !isReadOnly && onConnectionInsertNode && transform && canvasRef?.current && edge.from !== edge.to
-            ? (_connection: DiagramConnectionData, event: React.MouseEvent) => {
-                const el = canvasRef.current;
-                if (!el) return;
-                event.stopPropagation();
-                event.preventDefault();
-                const rect = el.getBoundingClientRect();
-                const px = (event.clientX - rect.left - transform.x) / transform.k;
-                const py = (event.clientY - rect.top - transform.y) / transform.k;
-                let insertAbs: { x: number; y: number };
-                if (connStyle === "orthogonal") {
-                  const route = orthogonalRouteMap.get(index);
-                  if (!route || !(route.totalLength > 0)) return;
-                  const t = closestTOnOrthogonalPath(px, py, route.points, route.totalLength);
-                  insertAbs = getPointOnOrthogonalPath(t, route.points, route.totalLength);
-                } else {
-                  const t = closestTOnConnectionPath(
-                    px,
-                    py,
-                    fromX,
-                    fromY,
-                    toX,
-                    toY,
-                    fromAngle,
-                    toAngle,
-                    curvature,
-                    enhancedEdge.waypoints,
-                  );
-                  insertAbs = getPointOnConnectionPath(
-                    t,
-                    fromX,
-                    fromY,
-                    toX,
-                    toY,
-                    fromAngle,
-                    toAngle,
-                    curvature,
-                    enhancedEdge.waypoints,
-                  );
-                }
-                onConnectionInsertNode(enhancedEdge as DiagramConnectionData, index, {
-                  x: snapToGrid(insertAbs.x),
-                  y: snapToGrid(insertAbs.y),
-                });
-              }
-            : undefined;
+        const handleConnectionDoubleClick = !isReadOnly
+          ? (_connection: DiagramConnectionData, event: React.MouseEvent) => {
+              event.stopPropagation();
+              event.preventDefault();
+              handleConnectionContextMenuEdge(event, enhancedEdge as DiagramConnectionData);
+            }
+          : undefined;
 
         const simulationFilter = (() => {
           const parts: string[] = [];

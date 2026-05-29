@@ -11,6 +11,7 @@ import {
   safeClone,
 } from "@/lib/diagram-editor/editor-support";
 import { projectVisibleDiagram } from "@/lib/presentation-delta";
+import { dataUrlToBlob } from "@/lib/utils";
 import { getPresentationDeltaMode, resolvePresentationSlideDiagrams } from "@/lib/presentation-slide-chain";
 
 export interface CreateDiagramExportHandlersParams {
@@ -170,7 +171,7 @@ export function createDiagramExportHandlers({
             fitContent: true,
             unionDiagrams,
           });
-          const blob = await (await fetch(dataUrl)).blob();
+          const blob = dataUrlToBlob(dataUrl);
           blobs.push({ slideNumber: slideNum, blob });
         }
       } catch (err) {

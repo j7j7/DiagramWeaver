@@ -4,6 +4,15 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-29 – Connection double-click opens properties modal
+Double-click on a connection line previously **inserted a rectangle node** on the path (`handleConnectionInsertNode`) and showed **“1 item(s) assigned to layer”**. **`canvas-connections.tsx`** now routes double-click through the same handler as right-click → **`ConnectionContextModal`**. Patch bumped.
+
+### 2026-05-29 – Context toolbar: hooks order when selecting a connection
+**`context-toolbar.tsx`**: Card/agenda **`useMemo`** / **`useCallback`** hooks were placed **after** the **`itemType === 'edge'`** early return, so selecting a connection (e.g. double-click → select edge) changed hook count vs a node selection → React Rules of Hooks crash. Hooks moved **above** all early returns. Patch bumped.
+
+### 2026-05-29 – PNG export: data URL → Blob without fetch
+Multi-slide PNG export (and File System Access save path) used **`fetch(dataUrl)`** to build blobs; large PNG data URLs often throw **Failed to fetch**. **`dataUrlToBlob`** in **`utils.ts`** decodes base64 directly; **`diagram-editor-export-handlers`** + **`use-canvas-export`** use it. Patch bumped.
+
 ### 2026-05-29 – Chart data: global variable expressions
 Chart **Value** fields (pie, ring, bar, line) accept **`%varname%`** placeholders and basic math (`+`, `-`, `*`, `/`, parentheses). Variables resolve from **`globalProperties`**; **`10%`** parses as **0.1**; non-numeric values error. Expressions persist as **`valueExpr`** / **`valuesExpr`** in JSON and re-evaluate at render time. Chart data modal shows live preview or error; invalid saves are blocked. Patch bumped.
 

@@ -15,6 +15,7 @@ import {
   type ContentBounds,
 } from '@/lib/presentation-viewport-fit';
 import { toPngWithDiagramExportFixes, toPngWithDotGridTransform } from '@/lib/html-to-image-fit-png';
+import { dataUrlToBlob } from '@/lib/utils';
 
 interface UseCanvasExportOptions {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -317,7 +318,7 @@ export function useCanvasExport({
               accept: { 'image/png': ['.png'] }
             }]
           });
-          const blob = await (await fetch(dataUrl)).blob();
+          const blob = dataUrlToBlob(dataUrl);
           const writable = await handle.createWritable();
           await writable.write(blob);
           await writable.close();

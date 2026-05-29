@@ -930,6 +930,154 @@ export function ContextToolbar({
     openExternalUrlInNewTab(normalized);
   }, [selectedItem, toast]);
 
+  const selectedCardNodeElements = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    return node?.card?.elements;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const selectedCardTemplateId = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    return node?.card?.templateId;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const selectedAgendaRowThemeHue = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    return node?.agendaRowThemeHue;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const handleAgendaRowThemeHueChange = useCallback(
+    (enabled: boolean) => {
+      if (!selectedItem?.id) return;
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) =>
+          n.id === selectedItem.id ? { ...n, agendaRowThemeHue: enabled } : n,
+        ),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      const data = currentDiagramData ?? diagramData;
+      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
+      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+    },
+    [
+      selectedItem?.id,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      onItemUpdate,
+    ],
+  );
+
+  const selectedAgendaDividersEnabled = useMemo(() => {
+    if (!selectedItem || !isNode) return true;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    return node?.agendaDividersEnabled !== false;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const handleAgendaDividersEnabledChange = useCallback(
+    (enabled: boolean) => {
+      if (!selectedItem?.id) return;
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) =>
+          n.id === selectedItem.id ? { ...n, agendaDividersEnabled: enabled } : n,
+        ),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      const data = currentDiagramData ?? diagramData;
+      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
+      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+    },
+    [
+      selectedItem?.id,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      onItemUpdate,
+    ],
+  );
+
+  const selectedBulletListItemThemeHue = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    return node?.bulletListItemThemeHue;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const handleBulletListItemThemeHueChange = useCallback(
+    (enabled: boolean) => {
+      if (!selectedItem?.id) return;
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) =>
+          n.id === selectedItem.id ? { ...n, bulletListItemThemeHue: enabled } : n,
+        ),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      const data = currentDiagramData ?? diagramData;
+      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
+      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+    },
+    [
+      selectedItem?.id,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      onItemUpdate,
+    ],
+  );
+
+  const handleCardElementsChange = useCallback(
+    (elements: CardElementData) => {
+      if (!selectedItem?.id) return;
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (n.id !== selectedItem.id || !n.card) return n;
+          return { ...n, card: { ...n.card, elements } };
+        }),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      const data = currentDiagramData ?? diagramData;
+      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
+      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+    },
+    [
+      selectedItem?.id,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      onItemUpdate,
+    ],
+  );
+
   if (!selectedItem) {
     return null;
   }
@@ -1627,154 +1775,6 @@ export function ContextToolbar({
       );
     }
   };
-
-  const selectedCardNodeElements = useMemo(() => {
-    if (!selectedItem || !isNode) return undefined;
-    const data = currentDiagramData ?? diagramData;
-    const node = data?.nodes.find((n) => n.id === selectedItem.id);
-    return node?.card?.elements;
-  }, [selectedItem, isNode, currentDiagramData, diagramData]);
-
-  const selectedCardTemplateId = useMemo(() => {
-    if (!selectedItem || !isNode) return undefined;
-    const data = currentDiagramData ?? diagramData;
-    const node = data?.nodes.find((n) => n.id === selectedItem.id);
-    return node?.card?.templateId;
-  }, [selectedItem, isNode, currentDiagramData, diagramData]);
-
-  const selectedAgendaRowThemeHue = useMemo(() => {
-    if (!selectedItem || !isNode) return undefined;
-    const data = currentDiagramData ?? diagramData;
-    const node = data?.nodes.find((n) => n.id === selectedItem.id);
-    return node?.agendaRowThemeHue;
-  }, [selectedItem, isNode, currentDiagramData, diagramData]);
-
-  const handleAgendaRowThemeHueChange = useCallback(
-    (enabled: boolean) => {
-      if (!selectedItem?.id) return;
-      const applyPatch = (prev: DiagramData): DiagramData => ({
-        ...prev,
-        nodes: prev.nodes.map((n) =>
-          n.id === selectedItem.id ? { ...n, agendaRowThemeHue: enabled } : n,
-        ),
-      });
-      if (onCurrentDiagramDataUpdate) {
-        onCurrentDiagramDataUpdate(applyPatch);
-      } else if (onDiagramDataUpdate && diagramData) {
-        onDiagramDataUpdate(applyPatch(diagramData));
-      }
-      const data = currentDiagramData ?? diagramData;
-      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
-      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
-    },
-    [
-      selectedItem?.id,
-      onCurrentDiagramDataUpdate,
-      onDiagramDataUpdate,
-      diagramData,
-      currentDiagramData,
-      onItemUpdate,
-    ],
-  );
-
-  const selectedAgendaDividersEnabled = useMemo(() => {
-    if (!selectedItem || !isNode) return true;
-    const data = currentDiagramData ?? diagramData;
-    const node = data?.nodes.find((n) => n.id === selectedItem.id);
-    return node?.agendaDividersEnabled !== false;
-  }, [selectedItem, isNode, currentDiagramData, diagramData]);
-
-  const handleAgendaDividersEnabledChange = useCallback(
-    (enabled: boolean) => {
-      if (!selectedItem?.id) return;
-      const applyPatch = (prev: DiagramData): DiagramData => ({
-        ...prev,
-        nodes: prev.nodes.map((n) =>
-          n.id === selectedItem.id ? { ...n, agendaDividersEnabled: enabled } : n,
-        ),
-      });
-      if (onCurrentDiagramDataUpdate) {
-        onCurrentDiagramDataUpdate(applyPatch);
-      } else if (onDiagramDataUpdate && diagramData) {
-        onDiagramDataUpdate(applyPatch(diagramData));
-      }
-      const data = currentDiagramData ?? diagramData;
-      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
-      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
-    },
-    [
-      selectedItem?.id,
-      onCurrentDiagramDataUpdate,
-      onDiagramDataUpdate,
-      diagramData,
-      currentDiagramData,
-      onItemUpdate,
-    ],
-  );
-
-  const selectedBulletListItemThemeHue = useMemo(() => {
-    if (!selectedItem || !isNode) return undefined;
-    const data = currentDiagramData ?? diagramData;
-    const node = data?.nodes.find((n) => n.id === selectedItem.id);
-    return node?.bulletListItemThemeHue;
-  }, [selectedItem, isNode, currentDiagramData, diagramData]);
-
-  const handleBulletListItemThemeHueChange = useCallback(
-    (enabled: boolean) => {
-      if (!selectedItem?.id) return;
-      const applyPatch = (prev: DiagramData): DiagramData => ({
-        ...prev,
-        nodes: prev.nodes.map((n) =>
-          n.id === selectedItem.id ? { ...n, bulletListItemThemeHue: enabled } : n,
-        ),
-      });
-      if (onCurrentDiagramDataUpdate) {
-        onCurrentDiagramDataUpdate(applyPatch);
-      } else if (onDiagramDataUpdate && diagramData) {
-        onDiagramDataUpdate(applyPatch(diagramData));
-      }
-      const data = currentDiagramData ?? diagramData;
-      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
-      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
-    },
-    [
-      selectedItem?.id,
-      onCurrentDiagramDataUpdate,
-      onDiagramDataUpdate,
-      diagramData,
-      currentDiagramData,
-      onItemUpdate,
-    ],
-  );
-
-  const handleCardElementsChange = useCallback(
-    (elements: CardElementData) => {
-      if (!selectedItem?.id) return;
-      const applyPatch = (prev: DiagramData): DiagramData => ({
-        ...prev,
-        nodes: prev.nodes.map((n) => {
-          if (n.id !== selectedItem.id || !n.card) return n;
-          return { ...n, card: { ...n.card, elements } };
-        }),
-      });
-      if (onCurrentDiagramDataUpdate) {
-        onCurrentDiagramDataUpdate(applyPatch);
-      } else if (onDiagramDataUpdate && diagramData) {
-        onDiagramDataUpdate(applyPatch(diagramData));
-      }
-      const data = currentDiagramData ?? diagramData;
-      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
-      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
-    },
-    [
-      selectedItem?.id,
-      onCurrentDiagramDataUpdate,
-      onDiagramDataUpdate,
-      diagramData,
-      currentDiagramData,
-      onItemUpdate,
-    ],
-  );
 
   const handleLineStylingChange = (styling: any) => {
     // Check if multiple items are selected
