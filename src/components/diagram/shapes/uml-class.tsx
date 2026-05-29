@@ -22,6 +22,8 @@ import {
   getTextColorForBackground,
 } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
+import { resolveGlobalVariables } from "@/lib/global-properties";
+import { useGlobalProperties } from "../global-properties-context";
 import { UML_NAME_HEIGHT, UML_LINE_HEIGHT } from "@/lib/uml-utils";
 
 type CompartmentKey = "name" | "attributes" | "methods";
@@ -89,10 +91,15 @@ export function UmlClassShape({
   const height = overrideHeight ?? node.height ?? 120;
   const styles = getShapeStyles(node);
   const slideShapeShadowMode = useSlideShapeShadowTransitionMode();
+  const globalProperties = useGlobalProperties();
 
-  const name = uml?.name ?? label.split("\n")[0] ?? "";
-  const attributes = uml?.attributes ?? [];
-  const methods = uml?.methods ?? [];
+  const rawName = uml?.name ?? label.split("\n")[0] ?? "";
+  const rawAttributes = uml?.attributes ?? [];
+  const rawMethods = uml?.methods ?? [];
+
+  const name = resolveGlobalVariables(rawName, globalProperties);
+  const attributes = rawAttributes.map((line: string) => resolveGlobalVariables(line, globalProperties));
+  const methods = rawMethods.map((line: string) => resolveGlobalVariables(line, globalProperties));
 
   const [editingCompartment, setEditingCompartment] = useState<CompartmentKey | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -275,7 +282,7 @@ export function UmlClassShape({
         <div
           className={`relative z-[1] flex items-center justify-center px-2 shrink-0 ${canEdit ? "cursor-text" : ""}`}
           style={{ height: UML_NAME_HEIGHT, minHeight: UML_NAME_HEIGHT }}
-          onDoubleClick={handleDoubleClick("name", displayName)}
+          onDoubleClick={handleDoubleClick("name", rawName || "name")}
         >
           {editingCompartment === "name" ? (
             <input
@@ -306,7 +313,7 @@ export function UmlClassShape({
         <div
           className={`relative z-[1] flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
           style={{ height: displayAttributes.length * UML_LINE_HEIGHT, minHeight: displayAttributes.length * UML_LINE_HEIGHT }}
-          onDoubleClick={handleDoubleClick("attributes", displayAttributes.join("\n"))}
+          onDoubleClick={handleDoubleClick("attributes", (rawAttributes.length > 0 ? rawAttributes : ["attributes"]).join("\n"))}
         >
           {editingCompartment === "attributes" ? (
             <textarea
@@ -340,7 +347,7 @@ export function UmlClassShape({
         <div
           className={`relative z-[1] flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
           style={{ height: displayMethods.length * UML_LINE_HEIGHT, minHeight: displayMethods.length * UML_LINE_HEIGHT }}
-          onDoubleClick={handleDoubleClick("methods", displayMethods.join("\n"))}
+          onDoubleClick={handleDoubleClick("methods", (rawMethods.length > 0 ? rawMethods : ["methods"]).join("\n"))}
         >
           {editingCompartment === "methods" ? (
             <textarea

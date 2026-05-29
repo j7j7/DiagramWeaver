@@ -816,6 +816,8 @@ const DiagramDataSchemaInner = z.object({
   recentColors: z.array(z.string()).optional(),
   /** Optional canvas viewport background (CSS colour string) */
   canvasBackgroundColor: z.string().optional(),
+  /** Diagram-wide dynamic text variables: `%key%` in labels resolves to these values at display time */
+  globalProperties: z.record(z.string(), z.string()).optional(),
   viewState: DiagramViewStateSchema,
 });
 

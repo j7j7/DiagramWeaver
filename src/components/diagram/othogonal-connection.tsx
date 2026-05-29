@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useCallback } from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { DiagramConnectionData } from "@/lib/types";
+import { useResolvedGlobalText } from "./global-properties-context";
 import {
   computeOrthogonalRoute,
   getPointOnOrthogonalPath,
@@ -464,7 +465,8 @@ function OrthogonalConnectionInner({
   );
 
   // Text label logic
-  const textLabel = connectionData?.text;
+  const rawTextLabel = connectionData?.text;
+  const textLabel = useResolvedGlobalText(rawTextLabel);
   const textPosition = (connectionData?.textPosition ?? 50) / 100; // 0-1
   const textPoint = useMemo(
     () => (textLabel ? getPointOnOrthogonalPath(textPosition, route.points, route.totalLength) : null),

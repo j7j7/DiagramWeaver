@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-29 – Global diagram variables (`%varname%`)
+Diagram JSON may include **`globalProperties`**: a map of variable names to values. Any text on the canvas (labels, rich text, tags, connection labels, card cells, UML compartments, timeline entries, etc.) can reference **`%name%`**; values resolve at **display time** only (stored labels stay as templates). **Properties** panel lists add/edit/delete when nothing is selected; viewer is read-only. Patch bumped.
+
 ### 2026-05-29 – Right-click during active text edit: browser menu (spell-check)
 **`handleNodeContextMenu`** / zone / timeline handlers again skip **`preventDefault`** when **`isEventFromEditableElement`** (uses **`HTMLElement.isContentEditable`** walk, not attribute-only). **`TextboxRichEditor`** stops context-menu propagation without preventing default. App context menu (Copy / Simulation / Delete) still applies when **not** in an input, textarea, or contenteditable session. Patch bumped.
 

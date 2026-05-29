@@ -3,6 +3,7 @@
 import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
 import React from "react";
 import { useTheme } from "@/components/theme-provider";
+import { useResolvedGlobalText } from "./global-properties-context";
 import { measureNodeDims } from "@/components/editor/canvas-constants";
 import { isIconOrEmojiType, isShapeNodeType, isGenericObjectOrChartShapeType } from "@/lib/utils";
 import { getIconTileAnchorSize } from "@/lib/icon-bevel";
@@ -1589,7 +1590,8 @@ export function calculateBezierControlPoints(fromX: number, fromY: number, toX: 
 // Helper function to render connection text separately
 export function BezierConnectionText({ connectionData, from, to, connectionColor }: BezierConnectionTextProps) {
   const { resolvedTheme } = useTheme();
-  if (!connectionData?.text) return null;
+  const text = useResolvedGlobalText(connectionData?.text);
+  if (!text) return null;
 
   const connectionTextShadow = resolvedTheme === "dark"
     ? "0 0 3px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.9), 1px 1px 4px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.9), 1px -1px 4px rgba(0,0,0,0.9), -1px 1px 4px rgba(0,0,0,0.9)"
@@ -1676,8 +1678,6 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     to ?? { lineColor: undefined }
   ).cStart;
 
-  const text = connectionData.text;
-  
   // Split text by explicit line breaks (\n) and also handle long text
   const explicitLines = text.split('\n');
   const lines: string[] = [];

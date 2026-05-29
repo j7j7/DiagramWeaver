@@ -156,6 +156,8 @@ import {
   type BulletListResizeMetrics,
 } from "@/lib/card-bullet-list";
 import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
+import { resolveGlobalVariablesInRuns } from "@/lib/global-properties";
+import { useGlobalProperties } from "../global-properties-context";
 import { mergeCardElementTextStylingOntoNode } from "@/lib/text-styling";
 import { useTheme } from "@/components/theme-provider";
 import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
@@ -784,6 +786,7 @@ function CardElementRenderer({
   bulletListResizeMetrics = null,
   bulletListUniformItemFontSize,
 }: CardElementRendererProps) {
+  const globalProperties = useGlobalProperties();
   const diagonalAccentClipId = `dw-diag-a-${nodeId}`;
   const diagonalBodyClipId = `dw-diag-b-${nodeId}`;
   const agendaRowIndex = agendaRowIndexMap?.get(element.id) ?? 0;
@@ -1275,7 +1278,10 @@ function CardElementRenderer({
   if (element.kind === "tag") {
     const isEditing = isEditingCardElement && cardEditElementId === element.id;
     const runs = labelToRuns(element.tag ?? "");
-    const hasText = getPlainTextFromRuns(runs).trim().length > 0;
+    const displayRuns = isEditing
+      ? (cardEditRuns ?? runs)
+      : resolveGlobalVariablesInRuns(runs, globalProperties);
+    const hasText = getPlainTextFromRuns(isEditing ? runs : displayRuns).trim().length > 0;
     if (!hasText && !isEditing) {
       return null;
     }
@@ -1317,7 +1323,7 @@ function CardElementRenderer({
           ) : (
             <TextboxRichDisplay
               node={tagNode}
-              runs={runs}
+              runs={displayRuns}
               onDoubleClick={(e) => {
                 e.stopPropagation();
                 if (element.editable !== false && !isReadOnly) {
@@ -1338,13 +1344,16 @@ function CardElementRenderer({
     const isBulletListItemText =
       isBulletListCard(cardTemplateId) && element.id.endsWith(BULLET_LIST_TEXT_SUFFIX);
     const runs = element.richText ?? labelToRuns(element.text ?? "");
-    const displayRuns =
+    const scaledRuns =
       isAgendaCard(cardTemplateId) && agendaResizeMetrics
         ? scaleAgendaRichTextRuns(runs, agendaResizeMetrics.scale)
         : isBulletListItemText && bulletListUniformItemFontSize != null
           ? normalizeBulletListItemDisplayRuns(runs)
           : runs;
-    const hasText = getPlainTextFromRuns(runs).trim().length > 0;
+    const displayRuns = isEditing
+      ? scaledRuns
+      : resolveGlobalVariablesInRuns(scaledRuns, globalProperties);
+    const hasText = getPlainTextFromRuns(isEditing ? runs : displayRuns).trim().length > 0;
     const fillRemaining = effectiveLayout?.fillRemaining === true;
     if (!hasText && !isEditing && !fillRemaining) {
       return null;

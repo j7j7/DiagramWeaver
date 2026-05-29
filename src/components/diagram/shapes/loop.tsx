@@ -3,6 +3,7 @@
 import React from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { DiagramNodeData } from "@/lib/types";
+import { useResolvedGlobalText } from "../global-properties-context";
 import { extractTextStylingFromNode, getSvgTextOutlineProps, getTextEffectsShadowCss } from "@/lib/text-styling";
 
 interface LoopShapeProps {
@@ -22,6 +23,7 @@ interface LoopShapeProps {
  */
 export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu, slideColorTransition }: LoopShapeProps) {
   const { resolvedTheme } = useTheme();
+  const displayLabel = useResolvedGlobalText(node.label);
   const width = node.width ?? 60;
   const height = node.height ?? 80;
 
@@ -40,7 +42,7 @@ export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   // Cubic bezier: from top-left (0,0) to bottom-left (0, height), bulging to the right
   const pathD = `M 0 0 C ${width} 0, ${width} ${height}, 0 ${height}`;
 
-  const label = node.label || '';
+  const label = displayLabel || '';
   const textStyling = extractTextStylingFromNode(node);
   const textColor = textStyling.textColor || lineColor;
   const fontSize = textStyling.fontSize || 12;

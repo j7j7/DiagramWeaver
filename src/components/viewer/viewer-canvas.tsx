@@ -8,6 +8,7 @@ import { calculateLayout } from "../editor/canvas-layout-utils";
 import { useCanvasTransform, type Transform } from "@/hooks/use-canvas-transform";
 import { CanvasConnections } from "../editor/canvas-connections";
 import { CanvasConnectionText } from "../editor/canvas-connection-text";
+import { GlobalPropertiesProvider } from "../diagram/global-properties-context";
 import { type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
 import { CanvasRulers } from "../editor/canvas-rulers";
 import {
@@ -419,6 +420,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
       )}
 
         {/* Canvas content */}
+      <GlobalPropertiesProvider globalProperties={diagramData.globalProperties}>
       <div
         data-diagram-layer
         className={cn("absolute", showDotGrid && "dot-grid")}
@@ -627,6 +629,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
           </>
         )}
       </div>
+      </GlobalPropertiesProvider>
     </div>
     </>
   );

@@ -3,6 +3,7 @@
 import React from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { DiagramNodeData } from "@/lib/types";
+import { useResolvedGlobalText } from "../global-properties-context";
 import { extractTextStylingFromNode, getSvgTextOutlineProps, getTextEffectsShadowCss } from "@/lib/text-styling";
 import {
   connectorLinePathD,
@@ -116,6 +117,7 @@ function normalizeTwoColors(value: unknown, fallbackA: string, fallbackB: string
 
 export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu, slideColorTransition }: LineShapeProps) {
   const { resolvedTheme } = useTheme();
+  const displayLabel = useResolvedGlobalText(node.label);
   const vertices = getConnectorLineVertices(node as DiagramNodeData & { __localStartPos?: { x: number; y: number }; __localEndPos?: { x: number; y: number }; __localControlPoints?: { x: number; y: number }[] });
   const startPos = vertices[0];
   const endPos = vertices[vertices.length - 1];
@@ -271,7 +273,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   
   const capSize = 10;
   const padding = capSize * 3;
-  const textPadding = node.label ? 30 : 0;
+  const textPadding = displayLabel ? 30 : 0;
   const strokeExtentPad = actualStrokeWidth / 2 + 4;
   const absPad = padding + textPadding + strokeExtentPad;
   const expanded = curveBoundsExpanded(vertices, absPad, linePathStyle, lineSmoothJoints);
@@ -312,7 +314,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const finalTextY = textY + textOffsetY;
   
   // Process text (split by newlines and handle long lines)
-  const label = node.label || '';
+  const label = displayLabel || '';
   const explicitLines = label.split('\n');
   const textLines: string[] = [];
   

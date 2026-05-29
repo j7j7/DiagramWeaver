@@ -1153,6 +1153,8 @@ export interface DiagramData {
   viewState?: DiagramViewState;
   /** Optional viewport background (hex/rgba); omitted = theme `bg-background` */
   canvasBackgroundColor?: string;
+  /** Diagram-wide `%varname%` placeholders resolved at display time (not in stored labels). */
+  globalProperties?: Record<string, string>;
 }
 
 /** @deprecated Zones removed - kept only for flatten-on-import of legacy JSON */

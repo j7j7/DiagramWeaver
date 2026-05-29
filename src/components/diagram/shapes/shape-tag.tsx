@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
+import { useResolvedGlobalText } from "../global-properties-context";
 import { getTagPositionClasses } from "./shape-utils";
 
 interface ShapeTagProps {
@@ -25,6 +26,7 @@ export function ShapeTag({
   onTagDoubleClick,
 }: ShapeTagProps) {
   const tagInputRef = useRef<HTMLInputElement>(null);
+  const displayTag = useResolvedGlobalText(tag);
 
   if (!tag || !tag.trim()) {
     return null;
@@ -57,7 +59,7 @@ export function ShapeTag({
           onDoubleClick={onTagDoubleClick}
           className="cursor-text"
         >
-          {tag}
+          {displayTag}
         </span>
       )}
     </div>

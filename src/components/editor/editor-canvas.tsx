@@ -49,6 +49,7 @@ import { CanvasConnections } from "./canvas-connections";
 import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
+import { GlobalPropertiesProvider } from "../diagram/global-properties-context";
 import { getItemGroup } from "@/lib/grouping-utils";
 import {
   generateConnectionId,
@@ -2578,6 +2579,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               and scaled) based on pan/zoom state. The transform CSS property
               applies pan (x, y) and zoom (scale k) transformations.
           */}
+          <GlobalPropertiesProvider globalProperties={diagramData.globalProperties}>
           <div
             data-diagram-layer
             className={cn("relative", showDotGrid && "dot-grid")}
@@ -3279,6 +3281,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               transform={transform}
             />
           </div>
+          </GlobalPropertiesProvider>
 
           {/* ====================================================================
               SELECTION RECTANGLE OVERLAY

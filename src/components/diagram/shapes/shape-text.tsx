@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { labelToRuns } from "@/lib/rich-text";
+import { resolveGlobalVariablesInRuns } from "@/lib/global-properties";
+import { useGlobalProperties } from "../global-properties-context";
 import { TextboxRichEditor } from "../textbox-rich-editor";
 import { TextboxRichDisplay } from "../textbox-rich-display";
 import {
@@ -36,6 +38,7 @@ export function ShapeText({
   onLabelDoubleClick,
   passThroughPointerEvents = false,
 }: ShapeTextProps) {
+  const globalProperties = useGlobalProperties();
   const nodeAny = node as any;
   const verticalPosition = nodeAny.textVerticalPosition;
   const textPosition = nodeAny.textPosition;
@@ -84,7 +87,11 @@ export function ShapeText({
   const isHexagon = node.type === "generic.object.hexagon" || node.type?.endsWith(".hexagon");
   const narrowShapeClass = isKite || isHexagon ? " max-w-[70%] mx-auto min-w-0" : "";
 
-  const displayRuns = node.richLabel ?? labelToRuns(node.label);
+  const displayRuns = useMemo(() => {
+    const raw = node.richLabel ?? labelToRuns(label);
+    if (isEditingLabel) return editRuns;
+    return resolveGlobalVariablesInRuns(raw, globalProperties);
+  }, [node.richLabel, label, isEditingLabel, editRuns, globalProperties]);
   const ptShell = passThroughPointerEvents && !isEditingLabel ? " pointer-events-none" : "";
 
   // Render text inside the shape (middle position)

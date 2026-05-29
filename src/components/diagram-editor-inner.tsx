@@ -785,6 +785,12 @@ export function DiagramEditorInner({
                     collapsed={rightPanelCollapsed}
                     onToggleCollapse={() => setRightPanelCollapsed((prev: boolean) => !prev)}
                     isReadOnly={isReadOnly}
+                    onGlobalPropertiesChange={(globalProperties) => {
+                      setCurrentDiagramData((prevData: DiagramData) => ({
+                        ...prevData,
+                        globalProperties,
+                      }));
+                    }}
                   />
                   )}
                   

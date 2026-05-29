@@ -18,6 +18,8 @@ import {
 } from "@/lib/icon-bevel";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-text";
+import { resolveGlobalVariables, resolveGlobalVariablesInRuns } from "@/lib/global-properties";
+import { useGlobalProperties } from "./global-properties-context";
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
@@ -589,6 +591,37 @@ function DiagramNodeInner({
   const timelineSegPopInId = `${timelineSlidePopBase}In`;
   const timelineSegPopOutId = `${timelineSlidePopBase}Out`;
 
+  const globalProperties = useGlobalProperties();
+  const displayLabel = useMemo(
+    () => resolveGlobalVariables(node.label || "", globalProperties),
+    [node.label, globalProperties],
+  );
+  const displayTag = useMemo(
+    () => resolveGlobalVariables(node.tag || "", globalProperties),
+    [node.tag, globalProperties],
+  );
+  const displayInfo = useMemo(
+    () => resolveGlobalVariables(node.info || "", globalProperties),
+    [node.info, globalProperties],
+  );
+  const resolveEntryPlain = useCallback(
+    (entry: { label?: string; richLabel?: RichTextRun[] }) => {
+      const raw = entry.richLabel?.length
+        ? getPlainTextFromRuns(entry.richLabel)
+        : entry.label ?? "";
+      return resolveGlobalVariables(raw, globalProperties);
+    },
+    [globalProperties],
+  );
+  const displayRichLabelRuns = useMemo(
+    () =>
+      resolveGlobalVariablesInRuns(
+        node.richLabel ?? labelToRuns(node.label),
+        globalProperties,
+      ),
+    [node.richLabel, node.label, globalProperties],
+  );
+
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -883,7 +916,7 @@ function DiagramNodeInner({
       slideColorTransition,
       overrideWidth: typeof displayWidth === 'number' ? displayWidth : undefined,
       overrideHeight: typeof displayHeight === 'number' ? displayHeight : undefined,
-      tag: nodeAny.tag,
+      tag: isEditingTag ? nodeAny.tag : displayTag,
       tagPosition: nodeAny.tagPosition,
       isEditingTag,
       editTagText,
@@ -894,7 +927,7 @@ function DiagramNodeInner({
       onTagSubmit: handleTagSubmit,
       onTagKeyDown: handleTagKeyDown,
       onTagDoubleClick: handleTagDoubleClick,
-      label: node.label || '',
+      label: isEditingLabel ? (node.label || "") : displayLabel,
       isEditingLabel,
       editRuns,
       onRichLabelSubmit: handleRichLabelSubmit,
@@ -1489,7 +1522,7 @@ function DiagramNodeInner({
           <div className={`w-full flex-1 flex flex-col min-h-0 ${getVerticalJustifyClass(nodeAny.textVerticalPosition)} ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}>
             <TextboxRichDisplay
               node={visualNode}
-              runs={node.richLabel ?? labelToRuns(node.label)}
+              runs={displayRichLabelRuns}
               onDoubleClick={handleLabelDoubleClick}
             />
           </div>
@@ -1697,7 +1730,7 @@ function DiagramNodeInner({
             } : getTextStylingForNode(node)}
             onClick={(e) => e.stopPropagation()}
           />
-        ) : node.label ? (
+        ) : displayLabel ? (
           <p
             className={cn(
               "text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5",
@@ -1721,7 +1754,7 @@ function DiagramNodeInner({
             }}
             onDoubleClick={handleLabelDoubleClick}
           >
-            {node.label}
+            {displayLabel}
           </p>
         ) : null}
       </div>
@@ -1839,7 +1872,7 @@ function DiagramNodeInner({
   const highlightPulseUsesShapeSilhouette =
     iconBevelHighlightSilhouette ||
     (!isLineNode && !isTimelineNode && isHighlightPulseShapeSilhouetteType(node.type));
-  const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
+  const nodeHeight = calculateNodeHeight(displayLabel || '', node.type, node.sizeMode, node.height);
   const iconNodeDims = isIconNode ? measureNodeDims(node as any) : null;
 
   const timelineEntryEditRuns = useMemo(() => {
@@ -3408,9 +3441,7 @@ function DiagramNodeInner({
                         ghost.width,
                         ghost.height,
                       );
-                      const entryPlain = ghost.entry.richLabel?.length
-                        ? getPlainTextFromRuns(ghost.entry.richLabel)
-                        : ghost.entry.label ?? "";
+                      const entryPlain = resolveEntryPlain(ghost.entry);
                       return (
                         <div
                           key={`tl-exit-${ghost.entry.id}`}
@@ -3477,9 +3508,7 @@ function DiagramNodeInner({
                         b.width,
                         b.height,
                       );
-                      const entryPlain = entry.richLabel?.length
-                        ? getPlainTextFromRuns(entry.richLabel)
-                        : entry.label ?? "";
+                      const entryPlain = resolveEntryPlain(entry);
                       const cardSelected =
                         (timelineSelectedEntryIds && timelineSelectedEntryIds.size > 0
                           ? timelineSelectedEntryIds.has(entry.id)
@@ -3611,7 +3640,7 @@ function DiagramNodeInner({
             align="center"
             className="w-64 bg-popover text-popover-foreground shadow-xl border-accent"
           >
-            <p className="text-sm whitespace-pre-wrap">{node.info}</p>
+            <p className="text-sm whitespace-pre-wrap">{displayInfo}</p>
           </PopoverContent>
         )}
        </Popover>

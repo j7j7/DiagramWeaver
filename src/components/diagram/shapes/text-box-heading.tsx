@@ -6,6 +6,8 @@ import { ShapeWrapper } from "./shape-wrapper";
 import { getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 import { labelToRuns } from "@/lib/rich-text";
+import { resolveGlobalVariablesInRuns } from "@/lib/global-properties";
+import { useGlobalProperties } from "../global-properties-context";
 import { TextboxRichEditor } from "../textbox-rich-editor";
 import { TextboxRichDisplay } from "../textbox-rich-display";
 import {
@@ -154,9 +156,25 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
 
   const edge: HeadingEdge = previewEdge ?? nodeAny.headingEdge ?? "top";
 
+  const globalProperties = useGlobalProperties();
   const headingRuns = useMemo(
     () => nodeAny.richHeadingLabel ?? labelToRuns(nodeAny.headingLabel ?? ""),
     [nodeAny.richHeadingLabel, nodeAny.headingLabel]
+  );
+  const displayHeadingRuns = useMemo(
+    () =>
+      isEditingHeading
+        ? editHeadingRuns
+        : resolveGlobalVariablesInRuns(headingRuns, globalProperties),
+    [isEditingHeading, editHeadingRuns, headingRuns, globalProperties],
+  );
+  const displayBodyRuns = useMemo(
+    () =>
+      resolveGlobalVariablesInRuns(
+        node.richLabel ?? labelToRuns(node.label ?? ""),
+        globalProperties,
+      ),
+    [node.richLabel, node.label, globalProperties],
   );
 
   const headingTextColorResolved = nodeAny.headingTextColor ?? "#ffffff";
@@ -169,7 +187,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
     textVerticalPosition: "middle",
   };
 
-  const runsForStripMeasure = isEditingHeading ? editHeadingRuns : headingRuns;
+  const runsForStripMeasure = isEditingHeading ? editHeadingRuns : displayHeadingRuns;
 
   const stripThick = (() => {
     const minR = Math.min(rx, ry) * 1.2;
@@ -525,7 +543,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
                   >
                     <TextboxRichDisplay
                       node={headingNode}
-                      runs={headingRuns}
+                      runs={displayHeadingRuns}
                       onDoubleClick={handleHeadingDoubleClick}
                       suppressHoverBackground
                     />
@@ -552,7 +570,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
             >
               <TextboxRichDisplay
                 node={headingNode}
-                runs={headingRuns}
+                runs={displayHeadingRuns}
                 onDoubleClick={handleHeadingDoubleClick}
                 suppressHoverBackground
               />
@@ -587,7 +605,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
             >
               <TextboxRichDisplay
                 node={node}
-                runs={node.richLabel ?? labelToRuns(node.label ?? "")}
+                runs={displayBodyRuns}
                 onDoubleClick={rest.onLabelDoubleClick}
               />
             </div>

@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeExternalUrl, openExternalUrlInNewTab } from "@/lib/url-utils";
+import { normalizeGlobalPropertyKey, collectUsedGlobalVariableNames } from "@/lib/global-properties";
 import { CustomIconPreviewEditor } from "@/components/editor/custom-icon-preview-editor";
 import { DEFAULT_CUSTOM_IMAGE_OPTIONS, normalizeCustomImageOptions, normalizeHttpImageUrl, validateCustomImageUrl } from "@/lib/custom-icon-utils";
 import type { SelectedItem } from "../diagram-editor";
@@ -30,6 +31,7 @@ interface PropertiesPanelProps {
   isReadOnly?: boolean;
   /** Narrower collapsed strip (e.g. viewer overlay rail); icon-only, no side label. */
   narrowCollapsed?: boolean;
+  onGlobalPropertiesChange?: (globalProperties: Record<string, string>) => void;
 }
 
 const HIDDEN_METADATA_PREFIXES = ["simulation:"];
@@ -66,6 +68,7 @@ export function PropertiesPanel({
   onToggleCollapse,
   isReadOnly = false,
   narrowCollapsed = false,
+  onGlobalPropertiesChange,
 }: PropertiesPanelProps) {
   const { toast } = useToast();
   const usedMetadataKeys = useMemo(
@@ -80,6 +83,18 @@ export function PropertiesPanel({
   const [customIconUrlDraft, setCustomIconUrlDraft] = useState("");
   const [customIconError, setCustomIconError] = useState<string | null>(null);
   const [customIconLoading, setCustomIconLoading] = useState(false);
+  const [editingGlobalKey, setEditingGlobalKey] = useState<string | null>(null);
+  const [editingGlobalDraft, setEditingGlobalDraft] = useState<{ key: string; value: string } | null>(null);
+  const [newGlobalKeyValue, setNewGlobalKeyValue] = useState<{ key: string; value: string }>({
+    key: "",
+    value: "",
+  });
+
+  const globalProperties = diagramData?.globalProperties ?? {};
+  const usedGlobalVariableNames = useMemo(
+    () => collectUsedGlobalVariableNames(diagramData),
+    [diagramData],
+  );
 
   const metaData =
     selectedItem && "metaData" in selectedItem
@@ -180,6 +195,88 @@ export function PropertiesPanel({
     [selectedItem, metaData, handleMetaDataChange, isReadOnly]
   );
 
+  const handleGlobalPropertiesChange = useCallback(
+    (next: Record<string, string>) => {
+      if (isReadOnly || !onGlobalPropertiesChange) return;
+      onGlobalPropertiesChange(next);
+    },
+    [isReadOnly, onGlobalPropertiesChange],
+  );
+
+  const handleAddGlobalProperty = useCallback(() => {
+    const normalizedKey = normalizeGlobalPropertyKey(newGlobalKeyValue.key);
+    if (!normalizedKey) {
+      toast({
+        title: "Invalid variable name",
+        description: "Use letters, numbers, and underscores only (e.g. name, company_name).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (globalProperties[normalizedKey] !== undefined) {
+      toast({
+        title: "Variable already exists",
+        description: `%${normalizedKey}% is already defined.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    handleGlobalPropertiesChange({
+      ...globalProperties,
+      [normalizedKey]: newGlobalKeyValue.value,
+    });
+    setNewGlobalKeyValue({ key: "", value: "" });
+    setEditingGlobalKey(null);
+  }, [newGlobalKeyValue, globalProperties, handleGlobalPropertiesChange, toast]);
+
+  const handleUpdateGlobalProperty = useCallback(
+    (oldKey: string, newKey: string, newValue: string) => {
+      const normalizedKey = normalizeGlobalPropertyKey(newKey);
+      if (!normalizedKey) {
+        toast({
+          title: "Invalid variable name",
+          description: "Use letters, numbers, and underscores only.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const next = { ...globalProperties };
+      delete next[oldKey];
+      if (normalizedKey !== oldKey && next[normalizedKey] !== undefined) {
+        toast({
+          title: "Variable already exists",
+          description: `%${normalizedKey}% is already defined.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      next[normalizedKey] = newValue;
+      handleGlobalPropertiesChange(next);
+      setEditingGlobalKey(null);
+      setEditingGlobalDraft(null);
+    },
+    [globalProperties, handleGlobalPropertiesChange, toast],
+  );
+
+  const handleStartGlobalEdit = useCallback(
+    (key: string) => {
+      setEditingGlobalKey(key);
+      setEditingGlobalDraft({ key, value: globalProperties[key] ?? "" });
+    },
+    [globalProperties],
+  );
+
+  const handleRemoveGlobalProperty = useCallback(
+    (key: string) => {
+      const next = { ...globalProperties };
+      delete next[key];
+      handleGlobalPropertiesChange(next);
+      setEditingGlobalKey(null);
+      setEditingGlobalDraft(null);
+    },
+    [globalProperties, handleGlobalPropertiesChange],
+  );
+
   const handleLinkChange = useCallback(
     (nextLinkUrl: string) => {
       if (!selectedItem || selectedItem.itemType !== "node" || isReadOnly) return;
@@ -247,6 +344,14 @@ export function PropertiesPanel({
     setEditingDraft(null);
     setNewKeyValue({ key: "", value: "" });
     setCustomIconError(null);
+  }, [selectedItem?.id]);
+
+  React.useEffect(() => {
+    if (selectedItem) {
+      setEditingGlobalKey(null);
+      setEditingGlobalDraft(null);
+      setNewGlobalKeyValue({ key: "", value: "" });
+    }
   }, [selectedItem?.id]);
 
   React.useEffect(() => {
@@ -321,8 +426,203 @@ export function PropertiesPanel({
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-4 space-y-4">
           {!selectedItem ? (
-            <div className="text-sm text-muted-foreground py-8 text-center">
-              Select an item to view and edit its properties.
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  Define diagram variables and use them in any text as{" "}
+                  <span className="font-mono text-foreground">%name%</span>.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Global variables</Label>
+                  {!isReadOnly && onGlobalPropertiesChange && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2"
+                      onClick={() => setEditingGlobalKey("__new__")}
+                      aria-label="Add global variable"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <datalist id="global-variable-name-suggestions">
+                    {usedGlobalVariableNames.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+
+                  {editingGlobalKey === "__new__" && !isReadOnly && onGlobalPropertiesChange && (
+                    <div className="flex gap-2 items-end p-2 rounded-md bg-muted/50">
+                      <div className="flex-1 space-y-1">
+                        <Input
+                          placeholder="name"
+                          value={newGlobalKeyValue.key}
+                          onChange={(e) =>
+                            setNewGlobalKeyValue((p) => ({ ...p, key: e.target.value }))
+                          }
+                          className="h-8 text-sm font-mono"
+                          list="global-variable-name-suggestions"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleAddGlobalProperty();
+                            if (e.key === "Escape") setEditingGlobalKey(null);
+                          }}
+                        />
+                        <Input
+                          placeholder="Joe Bloggs"
+                          value={newGlobalKeyValue.value}
+                          onChange={(e) =>
+                            setNewGlobalKeyValue((p) => ({ ...p, value: e.target.value }))
+                          }
+                          className="h-8 text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleAddGlobalProperty();
+                            if (e.key === "Escape") setEditingGlobalKey(null);
+                          }}
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => setEditingGlobalKey(null)}
+                        aria-label="Cancel add"
+                      >
+                        <X className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="h-8 shrink-0"
+                        onClick={handleAddGlobalProperty}
+                        disabled={!newGlobalKeyValue.key.trim()}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  )}
+
+                  {Object.entries(globalProperties).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="flex gap-2 items-start p-2 rounded-md border bg-background"
+                    >
+                      {editingGlobalKey === key && editingGlobalDraft ? (
+                        <div className="flex flex-col gap-3 w-full min-w-0 flex-1 p-3 rounded-md bg-muted/50 border-2 border-border">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-medium text-foreground">Name</Label>
+                            <Input
+                              value={editingGlobalDraft.key}
+                              onChange={(e) =>
+                                setEditingGlobalDraft((p) =>
+                                  p ? { ...p, key: e.target.value } : null,
+                                )
+                              }
+                              className="h-8 text-sm font-mono"
+                              placeholder="Variable name"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleUpdateGlobalProperty(key, editingGlobalDraft.key, editingGlobalDraft.value);
+                                }
+                                if (e.key === "Escape") {
+                                  setEditingGlobalKey(null);
+                                  setEditingGlobalDraft(null);
+                                }
+                              }}
+                              autoFocus
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-medium text-foreground">Value</Label>
+                            <Textarea
+                              value={editingGlobalDraft.value}
+                              onChange={(e) =>
+                                setEditingGlobalDraft((p) =>
+                                  p ? { ...p, value: e.target.value } : null,
+                                )
+                              }
+                              className="min-h-[2.5rem] py-1.5 text-sm w-full min-w-0 border-border bg-background resize-y"
+                              placeholder="Value"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleUpdateGlobalProperty(key, editingGlobalDraft.key, editingGlobalDraft.value);
+                                }
+                                if (e.key === "Escape") {
+                                  setEditingGlobalKey(null);
+                                  setEditingGlobalDraft(null);
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="flex justify-end">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="h-8"
+                              onClick={() =>
+                                handleUpdateGlobalProperty(key, editingGlobalDraft.key, editingGlobalDraft.value)
+                              }
+                            >
+                              Done
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex-1 min-w-0">
+                            <div
+                              className="text-xs font-medium font-mono text-muted-foreground truncate"
+                              title={key}
+                            >
+                              %{key}%
+                            </div>
+                            <div className="text-sm break-words" title={value}>
+                              {value || "—"}
+                            </div>
+                          </div>
+                          {!isReadOnly && onGlobalPropertiesChange && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0"
+                                onClick={() => handleStartGlobalEdit(key)}
+                                aria-label="Edit global variable"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                                onClick={() => handleRemoveGlobalProperty(key)}
+                                aria-label="Remove global variable"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
+
+                  {Object.keys(globalProperties).length === 0 &&
+                    editingGlobalKey !== "__new__" && (
+                      <div className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-md">
+                        {isReadOnly || !onGlobalPropertiesChange
+                          ? "No global variables defined."
+                          : "No variables yet. Click + to add one."}
+                      </div>
+                    )}
+                </div>
+              </div>
             </div>
           ) : (
             <>
