@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-29 – Presentation play: minimal draggable bottom toolbar
+**`presentation-player`**: Removed slide icon + title from the playback bar; **`n / m`** counter only. Bar background **`bg-card/10`** with light border/blur; controls **`opacity-70`** (hover **`opacity-100`**). Toolbar is **horizontally draggable** along the bottom (grab empty bar / counter area; buttons stay clickable) and **clamped** to viewport margins on drag and resize. Patch bumped.
+
 ### 2026-05-29 – Connection double-click opens properties modal
 Double-click on a connection line previously **inserted a rectangle node** on the path (`handleConnectionInsertNode`) and showed **“1 item(s) assigned to layer”**. **`canvas-connections.tsx`** now routes double-click through the same handler as right-click → **`ConnectionContextModal`**. Patch bumped.
 
