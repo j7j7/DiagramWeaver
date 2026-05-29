@@ -1193,6 +1193,7 @@ export function BarChartShape(props: BarChartShapeProps) {
                 >
                   <input
                     type="text"
+                    spellCheck
                     className="m-0 box-border min-w-0 max-w-full shrink-0 bg-transparent shadow-none focus:outline-none focus:ring-0"
                     style={svgForeignObjectInlineInputStyle({
                       fontSize: fs,
@@ -1481,6 +1482,7 @@ export function BarChartShape(props: BarChartShapeProps) {
                 >
                   <input
                     type="text"
+                    spellCheck
                     className="m-0 box-border min-w-0 max-w-full bg-transparent shadow-none focus:outline-none focus:ring-0"
                     style={svgForeignObjectInlineInputStyle({
                       fontSize: catFs,
@@ -1553,6 +1555,7 @@ export function BarChartShape(props: BarChartShapeProps) {
               >
                 <input
                   type="text"
+                  spellCheck
                   className="m-0 box-border min-w-0 max-w-full bg-transparent text-right shadow-none focus:outline-none focus:ring-0"
                   style={svgForeignObjectInlineInputStyle({
                     fontSize: catFs,
@@ -1674,6 +1677,7 @@ export function BarChartShape(props: BarChartShapeProps) {
                 >
                   <input
                     type="text"
+                    spellCheck
                     className="m-0 box-border min-w-0 max-w-full bg-transparent shadow-none focus:outline-none focus:ring-0"
                     style={svgForeignObjectInlineInputStyle({
                       fontSize: legFont,

@@ -281,6 +281,7 @@ export function UmlClassShape({
             <input
               ref={inputRef as React.RefObject<HTMLInputElement>}
               type="text"
+              spellCheck
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onBlur={handleCompartmentSubmit}
@@ -310,6 +311,7 @@ export function UmlClassShape({
           {editingCompartment === "attributes" ? (
             <textarea
               ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+              spellCheck
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onBlur={handleCompartmentSubmit}
@@ -343,6 +345,7 @@ export function UmlClassShape({
           {editingCompartment === "methods" ? (
             <textarea
               ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+              spellCheck
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onBlur={handleCompartmentSubmit}

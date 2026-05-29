@@ -31,6 +31,7 @@ import {
 import { normalizeDashboardDecorIconRef } from "@/lib/card-dashboard-stat";
 import type { CardIconRef } from "@/lib/card-types";
 import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
+import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { snapToGrid, snapDimensionToGrid, snapIconLabelWidthToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
@@ -1672,6 +1673,7 @@ function DiagramNodeInner({
             ref={inputRef}
             id={`node-input-${node.id}`}
             type="text"
+            spellCheck
             value={editText}
             onChange={(e) => {
               plainLabelEditDirtyRef.current = true;
@@ -3530,6 +3532,7 @@ function DiagramNodeInner({
                           onContextMenu={
                             onTimelineEntryContextMenu && !isReadOnly
                               ? (ev) => {
+                                  if (isEventFromEditableElement(ev)) return;
                                   ev.stopPropagation();
                                   ev.preventDefault();
                                   onTimelineEntryContextMenu(ev, node, entry.id);

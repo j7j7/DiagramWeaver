@@ -475,6 +475,7 @@ export function PieChartShape(props: PieChartShapeProps) {
               >
                 <input
                   type="text"
+                  spellCheck
                   className="m-0 box-border min-w-0 max-w-full bg-transparent shadow-none focus:outline-none focus:ring-0"
                   style={svgForeignObjectInlineInputStyle({
                     fontSize: labelFontSizePx,

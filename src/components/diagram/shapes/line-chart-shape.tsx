@@ -407,6 +407,7 @@ export function LineChartShape(props: LineChartShapeProps) {
               >
                 <input
                   type="text"
+                  spellCheck
                   className="m-0 box-border min-w-0 max-w-full bg-transparent shadow-none focus:outline-none focus:ring-0"
                   style={svgForeignObjectInlineInputStyle({
                     fontSize: catFs,
@@ -540,6 +541,7 @@ export function LineChartShape(props: LineChartShapeProps) {
                 >
                   <input
                     type="text"
+                    spellCheck
                     className="m-0 box-border min-w-0 max-w-full bg-transparent shadow-none focus:outline-none focus:ring-0"
                     style={svgForeignObjectInlineInputStyle({
                       fontSize: legFont,

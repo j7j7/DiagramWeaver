@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-29 – Right-click during active text edit: browser menu (spell-check)
+**`handleNodeContextMenu`** / zone / timeline handlers again skip **`preventDefault`** when **`isEventFromEditableElement`** (uses **`HTMLElement.isContentEditable`** walk, not attribute-only). **`TextboxRichEditor`** stops context-menu propagation without preventing default. App context menu (Copy / Simulation / Delete) still applies when **not** in an input, textarea, or contenteditable session. Patch bumped.
+
+### 2026-05-29 – Native browser spell-check on text entry
+**`Input`** / **`Textarea`** default **`spellCheck`** on for text/search fields (off for **`inputMode` decimal/numeric** and non-text types). **`TextboxRichEditor`** **`contentEditable`**, canvas inline labels/tags, chart label editors, UML compartments, tab/breadcrumb rename, and card tag fields opt in. No external spell service — uses the browser dictionary only. Patch bumped.
+
 ### 2026-05-29 – Presentation play: fade-out lines omitted from edge spread
 Slide **`slideFadeOut`** connections (opacity → 0) are **excluded from `edgeGroups`** and anchor spread — spread follows **target slide** slots only (e.g. **3→2** + **2→1** stay at **2** while **1→2** fades; no transient **3**-way spread). Fading reverse-pair leg borrows appearing partner index when on the same edge. Patch bumped.
 

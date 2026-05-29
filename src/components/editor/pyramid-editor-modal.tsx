@@ -538,7 +538,6 @@ export function PyramidEditorModal({ x, y, visible, onClose, node, onSave, isRea
                             rows={3}
                             className="min-h-[4.5rem] resize-y text-xs"
                             disabled={isReadOnly}
-                            spellCheck
                           />
                           <p className="text-[10px] text-muted-foreground">
                             Line breaks show on the pyramid. Use Enter while editing on-canvas to add lines (Ctrl/Cmd+Enter

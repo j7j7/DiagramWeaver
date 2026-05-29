@@ -43,6 +43,7 @@ export function ShapeTag({
         <input
           ref={tagInputRef}
           type="text"
+          spellCheck
           value={editTagText}
           onChange={(e) => onTagTextChange(e.target.value)}
           onBlur={onTagSubmit}

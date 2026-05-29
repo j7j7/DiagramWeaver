@@ -422,6 +422,7 @@ export function JsonEditorPanel({
           <div className="flex items-center gap-1 min-w-0 max-w-full">
             <input
               type="search"
+              spellCheck
               value={jsonFindQuery}
               onChange={(e) => setJsonFindQuery(e.target.value)}
               onKeyDown={(e) => {

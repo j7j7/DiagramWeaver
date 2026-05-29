@@ -98,6 +98,7 @@ export function DiagramBreadcrumb({
               <input
                 ref={inputRef}
                 type="text"
+                spellCheck
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 onBlur={commitRename}

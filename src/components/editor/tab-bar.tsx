@@ -144,6 +144,7 @@ export function TabBar({
             <input
               ref={renameInputRef}
               type="text"
+              spellCheck
               value={editDraft}
               onChange={(e) => setEditDraft(e.target.value)}
               className={cn(

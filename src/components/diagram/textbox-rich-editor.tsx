@@ -424,7 +424,9 @@ export function TextboxRichEditor({
       <div
         ref={editorRef}
         contentEditable
+        spellCheck
         suppressContentEditableWarning
+        onContextMenu={(e) => e.stopPropagation()}
         onBlur={handleBlur}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {

@@ -1771,6 +1771,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   );
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
+    if (isEventFromEditableElement(e)) return;
     e.stopPropagation();
     e.preventDefault();
     setSimulationMenuState(null);
@@ -1824,6 +1825,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const handleTimelineEntryContextMenu = useCallback(
     (e: React.MouseEvent, node: DiagramNodeData, entryId: string) => {
+      if (isEventFromEditableElement(e)) return;
       e.stopPropagation();
       e.preventDefault();
       setSimulationMenuState(null);
@@ -1855,6 +1857,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const handleTimelineSpineContextMenu = useCallback(
     (e: React.MouseEvent, node: DiagramNodeData, arcRatio: number) => {
+      if (isEventFromEditableElement(e)) return;
       e.stopPropagation();
       e.preventDefault();
       setSimulationMenuState(null);
@@ -1950,6 +1953,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, handleSimulationElementPrimaryClick]);
 
   const handleZoneContextMenu = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
+    if (isEventFromEditableElement(e)) return;
     e.stopPropagation();
     e.preventDefault();
     setSimulationMenuState(null);

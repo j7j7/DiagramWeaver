@@ -16,17 +16,21 @@ export function isEventFromEditableElement(
   const target = e.target;
   if (!target || !(target instanceof Node)) return false;
 
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-    return true;
+  let el: Element | null =
+    target instanceof Element ? target : target.parentElement;
+
+  while (el) {
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      return !el.disabled;
+    }
+    if (el instanceof HTMLElement && el.isContentEditable) {
+      return true;
+    }
+    if (el.closest?.(".cm-editor") || el.classList?.contains("cm-focused")) {
+      return true;
+    }
+    el = el.parentElement;
   }
-
-  const el: Element | null =
-    target instanceof Element ? target : (target as Node).parentElement;
-  if (!el) return false;
-
-  if (el.getAttribute?.("contenteditable") === "true") return true;
-  if (el.closest?.("[contenteditable=\"true\"]")) return true;
-  if (el.closest?.(".cm-editor") || (el as HTMLElement).classList?.contains("cm-focused")) return true;
 
   return false;
 }

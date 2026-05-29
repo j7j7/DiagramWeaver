@@ -920,7 +920,6 @@ export function TimelineBarEditorModal({
                                 rows={3}
                                 className="min-h-[4.5rem] resize-y text-xs"
                                 disabled={isReadOnly}
-                                spellCheck
                               />
                               <p className="text-[10px] text-muted-foreground">
                                 Line breaks show in the bar (same as pyramid tiers). Inline edit: Enter adds a line; Ctrl/Cmd+Enter
