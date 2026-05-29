@@ -62,7 +62,7 @@ Assets live under [`public/marketing/`](public/marketing/) and render below on G
 | Azure | Microsoft Azure (46 resources) |
 | GCP | Google Cloud Platform (38 resources) |
 | Kubernetes | K8s resources (24 resources) |
-| Generic | Objects, shapes, charts (pie, bar, line), devices, text (resource counts vary by catalog) |
+| Generic | Objects, shapes, charts (pie, ring, bar, line), **cards**, devices, text (resource counts vary by catalog) |
 | Programming | Languages, frameworks, flowcharts (75 resources) |
 | On-Premise | Servers, databases, monitoring (66 resources) |
 
@@ -77,12 +77,24 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 ### Node Types
 
 - **Shapes**: Rectangle, circle, square, triangle, star, cloud, point, trapezoid, parallelogram, hexagon, pentagon, octagon, kite, jigsaw, chevron, arrow, rounded-rectangle
-- **Charts** (Generic → Object): **Pie**, **bar**, and **line** chart nodes (`generic.chart.*`) with a **Chart data** editor (series, colors, grids, legend, labels). Drag handles on the canvas adjust values (pie wedges, bar cells, line points); optional **Lock segment values** prevents drag edits while still allowing the modal. See `docs/charts.md`.
+- **Charts** (Generic → Object): **Pie**, **ring**, **bar**, and **line** chart nodes (`generic.chart.*`) with a **Chart data** editor (series, colors, grids, legend, labels). **Value** fields accept plain numbers or **expressions** using diagram **`%variables%`** and basic math (`+`, `-`, `*`, `/`, parentheses)—e.g. `%sales%-%tax%` with global `sales=45` and `tax=0.10` → **44.9**; **`10%`** parses as **0.1**. Live preview and validation in the modal; expressions re-evaluate when global variables change. Drag handles on the canvas adjust values (pie wedges, ring segments, bar cells, line points); optional **Lock segment values** prevents drag edits while still allowing the modal. See `docs/charts.md`.
+- **Cards** (Generic → Object): Composite **card** nodes (`generic.card.*`)—profile layouts, dashboard stats, agenda schedules, bullet lists, list rows, detail posts, and more. Multi-region layouts with inline text edit, icon drop targets, and a **Card** section in Visual styling. See **Cards** below.
 - **Line** (standalone connector / polyline, distinct from chart **line** series): Drag endpoints (blue/green handles); insert bend points along the path. Choose **straight** (polyline; optional smoothed corners at vertices) or **curved** (smooth spline through interior points). When start and end meet, geometry **closes** so you can treat it like a filled **custom outline**. Caps (none, arrow, dot, square), thickness, solid/dashed/dotted stroke, color or gradient styling where enabled
-- **Textbox**: Rich text with bold/italic/underline and bullet/numbered lists
+- **Textbox**: Rich text with bold/italic/underline and bullet/numbered lists; **native browser spell-check** on text fields and in-canvas label editors (dictionary is the browser’s—no external service)
 - **Label**: Text labels with styling
 - **Resource Icons**: Cloud provider and on-premise resources with 80×80 icons
 - **Lucide Icons & Emojis**: Standard symbols from the Icons section
+
+### Cards
+
+Composite **card** nodes (`generic.card.*`) from the Generic palette—structured layouts made of text regions, tags, icons, and dividers rather than a single label.
+
+- **Templates**: Profile (feature, social, diagonal split), **Agenda** (date header + schedule rows), **Bullet list**, **Sidebar accent**, **List item row**, **Detail post**, **Compact horizontal**, and **Dashboard stat** cards (score, ranking, incentives, defaults)—each with palette defaults and a wireframe glyph
+- **Card properties** (Visual styling → **Card** when a card is selected): Template-specific controls—e.g. agenda row add/remove/reorder and column align; bullet list accent, bullet size/shape, stepped row hues; sidebar accent bar thickness; dashboard icon slots and decor; profile hero split and avatar sizing
+- **On-canvas editing**: Double-click text cells to edit inline; **Agenda** and **Bullet list** support add-row actions, row delete, and **drag-to-reorder** rows on the canvas; icon slots accept palette icons via drag-and-drop
+- **Styling integration**: **Text Styling** and **Visual Styling** toolbar panels apply to card text/tag cells (whole card or selected sub-element); **Themes** can recolor shells, accents, and stepped row hues
+- **Resize**: Card typography and spacing scale with node size; corner-radius handle on supported templates (live preview while dragging)
+- **Presentations**: Card shells and inner elements can **stagger** in/out on slide transitions (aligned with other slide animation timing)
 
 ### Connections
 
@@ -163,7 +175,9 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 ### Presentation mode
 
 - **Decks & slides**: Build **presentation decks** where each **slide** stores a **diagram delta** (and optional layer visibility and connection-animation state) on top of the diagram
-- **Edit vs play**: Edit deck structure and slide content in the editor; **play** fullscreen with slide transitions (nodes, layers, connections—including chart segment staggers and connection timing)
+- **Edit vs play**: Edit deck structure and slide content in the editor; **play** fullscreen with slide transitions (nodes, layers, connections—including chart segment staggers, **card** element staggers, and connection timing)
+- **Playback controls**: Fullscreen player includes **previous/next** slide controls (minimal chrome when the toolbar is hidden)
+- **Connection transitions**: Appearing and disappearing connections **fade** (opacity-only—no vertical slide); anchor spreading stays stable when connections **swap direction** on a shared edge or **fade out** while others persist
 - **Emphasis**: Slide transitions reveal or move diagram elements between slides; pair them with **Effects** highlight glow on nodes (optional stagger across the slide) and **connection animations** so presentations can progressively spotlight structure and flows—without replacing spoken narrative
 - **Docs**: See `docs/PRESENTATION-MODE.md` for the data model and behavior
 
@@ -173,7 +187,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 - **URL Parameters**: `?json=` (base64-encoded diagram) or `?url=` (URL to fetch JSON from a remote host)
 - **Controls**: Zoom in/out, Fit to View, Properties panel toggle, metadata popup toggle, animation toggle
 - **Connection Animations**: Same animated shapes as editor; Show animations for selected only (downstream chain)
-- **Selection**: Click nodes or connections to view name, type, and metadata in the Properties panel
+- **Selection**: Click nodes or connections to view name, type, and metadata in the Properties panel; with nothing selected, view **global variables** (read-only)
 - **Metadata Popups**: After selecting an item that has **`metaData`**, a compact **attributes** popup sits beside it (toggle in controls); **hover the popup** to expand truncated rows or scroll longer lists
 - **Layers Panel**: When diagram has 2+ layers, toggle layer visibility (eye/eye-off)
 - **Limits**: 5MB JSON max; 10s timeout for remote `url=` fetch
@@ -202,11 +216,17 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 ### Metadata
 
 - **`metaData`**: Optional key/value pairs (e.g. `"IP Address": "192.168.1.1"`) on nodes, connections, and groupings
-- **Properties Panel**: Right panel shows selected item name, type, and metadata; add/edit/remove via UI (Edit → Toggle Properties)
+- **Properties Panel**: Right panel shows selected item name, type, and metadata; add/edit/remove via UI (Edit → Toggle Properties). With **no selection**, edit diagram-wide **global variables** (`%varname%` placeholders used across labels, connections, charts, etc.)
 - **Metadata Popup**: Anchored beside the selected node or connection when **`metaData`** exists; hover the popup to expand clipped values—enable via **Edit → Enable Properties** (or viewer toolbar toggle)
 - **Key Suggestions**: Input suggests previously used keys across the diagram for consistent property names
 - **JSON Storage**: Stored in diagram JSON as `metaData: { "Key": "value", ... }`; export/import preserves metadata
 - **Viewer**: Properties panel and popup available in read-only mode
+
+### Global variables
+
+- **`globalProperties`**: Diagram-wide name → value map stored in JSON (per diagram level, including sub-diagrams). Use **`%varname%`** placeholders in **any displayed text**—labels, rich text, tags, connection labels, card cells, UML compartments, timeline entries, chart value expressions, and more. Stored text keeps the template (e.g. `Hello %name%`); substitution happens at **display time** only
+- **Properties panel**: When **nothing is selected**, the right **Properties** panel lists global variables—add, edit, or delete entries (editor). Names are alphanumeric/underscore; values are shown as **`%name%`** → value. Viewer is read-only
+- **Chart values**: In **Chart data**, series **Value** fields (and comma-separated bar/line lists) can reference globals and evaluate math—invalid or non-numeric variable values show an error in the modal and on the chart
 
 ### Theme
 
