@@ -1248,7 +1248,7 @@ export function TopMenuBar({
               <TooltipTrigger asChild>
                 <Button
                   size="sm"
-                  variant="secondary"
+                  variant="default"
                   className="h-8 w-8 px-0"
                   onClick={presentationToolbar.onEnterPlayMode}
                   disabled={isReadOnly || !presentationActiveDeck}

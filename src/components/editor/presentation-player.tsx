@@ -89,6 +89,7 @@ export function PresentationPlayer({
   playbackTransformRef.current = playbackTransform;
   const skipPlaybackCameraLerpRef = React.useRef(true);
   const prevUseSlideZoomRef = React.useRef(useSlideZoom);
+  const playbackCameraLerpCleanupRef = React.useRef<(() => void) | null>(null);
 
   const totalSlides = slides.length;
   const safeIndex = Math.min(Math.max(currentIndex, 0), Math.max(totalSlides - 1, 0));
@@ -167,56 +168,27 @@ export function PresentationPlayer({
     return slideDiagrams.map((d) => pruneConnectionsToVisibleNodes(d));
   }, [slideDiagrams]);
 
-  const applyViewerUnionFit = React.useCallback(() => {
-    if (typeof window === 'undefined') return;
-    if (slideDiagramsForUnionFit.length === 0) return;
-    const t = computeUnionFitTransformForDiagrams(
-      slideDiagramsForUnionFit,
-      window.innerWidth,
-      window.innerHeight
-    );
-    if (t) setPlaybackTransform(t);
-  }, [slideDiagramsForUnionFit]);
+  const cancelPlaybackCameraLerp = React.useCallback(() => {
+    playbackCameraLerpCleanupRef.current?.();
+    playbackCameraLerpCleanupRef.current = null;
+  }, []);
 
-  React.useLayoutEffect(() => {
-    if (!open || slideDiagramsForUnionFit.length === 0) return;
-    if (useSlideZoom) return;
-    applyViewerUnionFit();
-  }, [open, slideDiagramsForUnionFit, applyViewerUnionFit, useSlideZoom]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const onResize = () => {
-      if (!useSlideZoom) applyViewerUnionFit();
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [open, applyViewerUnionFit, useSlideZoom]);
-
-  React.useEffect(() => {
-    if (!open) {
-      skipPlaybackCameraLerpRef.current = true;
-    }
-  }, [open]);
-
-  React.useEffect(() => {
-    if (useSlideZoom && !prevUseSlideZoomRef.current) {
-      skipPlaybackCameraLerpRef.current = true;
-    }
-    prevUseSlideZoomRef.current = useSlideZoom;
-  }, [useSlideZoom]);
-
-  React.useEffect(() => {
-    if (!open || !currentSlide || !renderedDiagram) return;
-    if (!useSlideZoom) return;
-    if (typeof window === 'undefined') return;
-
+  const computeTargetPlaybackTransform = React.useCallback((): Transform | null => {
+    if (typeof window === 'undefined') return null;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const target = computeSlidePlaybackTransform(currentSlide, renderedDiagram, vw, vh);
-    if (!target) return;
+    if (useSlideZoom) {
+      if (!currentSlide || !renderedDiagram) return null;
+      return computeSlidePlaybackTransform(currentSlide, renderedDiagram, vw, vh);
+    }
+    if (slideDiagramsForUnionFit.length === 0) return null;
+    return computeUnionFitTransformForDiagrams(slideDiagramsForUnionFit, vw, vh);
+  }, [useSlideZoom, currentSlide, renderedDiagram, slideDiagramsForUnionFit]);
 
-    if (skipPlaybackCameraLerpRef.current) {
+  const animatePlaybackTransformTo = React.useCallback((target: Transform, instant = false) => {
+    cancelPlaybackCameraLerp();
+
+    if (instant || skipPlaybackCameraLerpRef.current) {
       setPlaybackTransform(target);
       skipPlaybackCameraLerpRef.current = false;
       return;
@@ -232,27 +204,74 @@ export function PresentationPlayer({
       const elapsed = now - startTime;
       const u = Math.min(1, elapsed / PLAYBACK_CAMERA_DURATION_MS);
       const e = easeOut(u);
-      const next = {
+      setPlaybackTransform({
         x: start.x + (target.x - start.x) * e,
         y: start.y + (target.y - start.y) * e,
         k: start.k + (target.k - start.k) * e,
-      };
-      setPlaybackTransform(next);
+      });
       if (u < 1) requestAnimationFrame(tick);
     };
+
     requestAnimationFrame(tick);
-    return () => {
+    playbackCameraLerpCleanupRef.current = () => {
       alive = false;
     };
+  }, [cancelPlaybackCameraLerp]);
+
+  const applyPlaybackCamera = React.useCallback(
+    (instant = false) => {
+      const target = computeTargetPlaybackTransform();
+      if (!target) return;
+      animatePlaybackTransformTo(target, instant);
+    },
+    [animatePlaybackTransformTo, computeTargetPlaybackTransform]
+  );
+
+  React.useEffect(() => {
+    if (!open) return;
+    applyPlaybackCamera();
+    return cancelPlaybackCameraLerp;
   }, [
     open,
     useSlideZoom,
+    safeIndex,
     currentSlide?.id,
     currentSlide?.autoZoomLevel,
     currentSlide?.viewPanX,
     currentSlide?.viewPanY,
     renderedDiagram,
+    slideDiagramsForUnionFit,
+    applyPlaybackCamera,
+    cancelPlaybackCameraLerp,
   ]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onResize = () => {
+      if (useSlideZoom) return;
+      skipPlaybackCameraLerpRef.current = true;
+      applyPlaybackCamera(true);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [open, applyPlaybackCamera, useSlideZoom]);
+
+  React.useEffect(() => {
+    if (!open) {
+      skipPlaybackCameraLerpRef.current = true;
+      cancelPlaybackCameraLerp();
+    }
+  }, [open, cancelPlaybackCameraLerp]);
+
+  React.useEffect(() => {
+    if (useSlideZoom && !prevUseSlideZoomRef.current) {
+      skipPlaybackCameraLerpRef.current = true;
+    }
+    if (!useSlideZoom && prevUseSlideZoomRef.current) {
+      skipPlaybackCameraLerpRef.current = true;
+    }
+    prevUseSlideZoomRef.current = useSlideZoom;
+  }, [useSlideZoom]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -585,16 +604,6 @@ export function PresentationPlayer({
                   {totalSlides > 0 ? safeIndex + 1 : 0} / {totalSlides}
                 </span>
 
-                <label className="flex h-8 cursor-pointer select-none items-center gap-2 rounded-md border border-border/30 bg-muted/30 px-2 text-xs text-foreground opacity-70 hover:opacity-100">
-                  <input
-                    type="checkbox"
-                    className="h-3.5 w-3.5 rounded border-border"
-                    checked={useSlideZoom}
-                    onChange={(e) => setUseSlideZoom(e.target.checked)}
-                  />
-                  Use slide zoom
-                </label>
-
                 <div className="flex items-center gap-1">
                   <Button size="sm" variant="secondary" className={cn(playbackControlBtnClass, 'gap-1 px-2')} onClick={goPrevious} disabled={totalSlides === 0}>
                     <ChevronLeft className="h-4 w-4" />
@@ -624,13 +633,23 @@ export function PresentationPlayer({
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-80 space-y-3">
+                      <label className="flex cursor-pointer items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 rounded border-border"
+                          checked={useSlideZoom}
+                          onChange={(e) => setUseSlideZoom(e.target.checked)}
+                        />
+                        Use slide zoom
+                      </label>
+
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-8 w-full justify-start gap-2"
                         onClick={() => {
-                          applyViewerUnionFit();
                           setUseSlideZoom(false);
+                          skipPlaybackCameraLerpRef.current = true;
                         }}
                         disabled={slideDiagramsForUnionFit.length === 0}
                       >

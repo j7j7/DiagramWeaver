@@ -152,6 +152,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
   const [isClient, setIsClient] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; transform: Transform } | null>(null);
+  const rightClickPanningRef = useRef(false);
+  const rightClickDidPanRef = useRef(false);
   const hasFittedToViewRef = useRef(false);
 
   // Canvas transform (pan/zoom)
@@ -216,14 +218,24 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
     };
   }, [handleFitToView, onFitToView]);
 
-  // Handle mouse drag for panning (only when clicking background, not nodes/connections)
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only left mouse button
-    const target = e.target as HTMLElement;
+  // Handle mouse drag for panning (left or right button on empty canvas background)
+  const isViewerBackgroundPanTarget = useCallback((target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
     const bgEl = target.closest?.("[data-viewer-background]");
-    const isBackground = bgEl === target;
-    if (!isBackground) return; // Click on node/connection - let selection handle it
-    onItemSelect?.(null); // Clear selection when clicking background
+    return bgEl === target;
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0 && e.button !== 2) return;
+    if (!isViewerBackgroundPanTarget(e.target)) return;
+    if (e.button === 0) {
+      onItemSelect?.(null);
+    }
+    if (e.button === 2) {
+      e.preventDefault();
+      rightClickPanningRef.current = true;
+      rightClickDidPanRef.current = false;
+    }
     setIsDragging(true);
     dragStartRef.current = {
       x: e.clientX,
@@ -231,14 +243,17 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
       transform: { ...transform },
     };
     e.preventDefault();
-  }, [transform, onItemSelect]);
+  }, [transform, onItemSelect, isViewerBackgroundPanTarget]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging || !dragStartRef.current) return;
-    
+    if (rightClickPanningRef.current) {
+      rightClickDidPanRef.current = true;
+    }
+
     const deltaX = e.clientX - dragStartRef.current.x;
     const deltaY = e.clientY - dragStartRef.current.y;
-    
+
     setTransform({
       x: dragStartRef.current.transform.x + deltaX,
       y: dragStartRef.current.transform.y + deltaY,
@@ -247,9 +262,22 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
   }, [isDragging, setTransform]);
 
   const handleMouseUp = useCallback(() => {
+    if (rightClickPanningRef.current) {
+      rightClickPanningRef.current = false;
+    }
     setIsDragging(false);
     dragStartRef.current = null;
   }, []);
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (isViewerBackgroundPanTarget(e.target) || rightClickDidPanRef.current) {
+        e.preventDefault();
+        rightClickDidPanRef.current = false;
+      }
+    },
+    [isViewerBackgroundPanTarget]
+  );
 
   // Handle zoom in/out
   const handleZoomIn = useCallback(() => {
@@ -409,6 +437,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onContextMenu={handleContextMenu}
     >
       {/* Rulers */}
       {showRulers && (
