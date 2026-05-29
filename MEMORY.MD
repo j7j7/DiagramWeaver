@@ -7,6 +7,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 ### 2026-05-29 – Editor play mode button: orange primary background
 **`top-menu-bar`**: Presentation **Enter play mode** icon button uses **`variant="default"`** (`bg-primary`) instead of secondary so it matches the app orange theme. Patch bumped.
 
+### 2026-05-29 – Viewer slides: play-mode auto zoom camera
+**`/viewer`** embedded slide mode uses shared **`usePresentationPlaybackCamera`**: union **auto zoom** (fit all slides in deck), **lerp back** after manual pan/zoom on **Prev/Next**, instant snap on open/deck change/resize/host resize. Same hook as **`presentation-player`**. Patch bumped.
+
+### 2026-05-29 – Viewer `/viewer` slides toolbar matches play mode
+**`viewer-presentation-bar`**: Same minimal transparent playback bar as **`presentation-player`** — **`n / m`** counter only (no slide icon/title), **`bg-card/10`**, **`opacity-70`** controls, horizontal drag with viewport clamp. Shared styles + **`useDraggablePlaybackBar`** hook. Patch bumped.
+
 ### 2026-05-29 – Presentation play / viewer: right-drag pan
 **`viewer-canvas`**: Empty-canvas pan now accepts **right-click drag** as well as left-click (same as editor). Suppresses the browser context menu on background pan / after a right-drag. Patch bumped.
 

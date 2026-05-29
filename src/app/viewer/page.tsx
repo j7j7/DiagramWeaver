@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -20,11 +20,11 @@ import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getPresentationDeltaMode, resolvePresentationSlideDiagrams } from "@/lib/presentation-slide-chain";
 import {
-  computeUnionFitTransformForDiagrams,
   getElementVisibleViewportSize,
   pruneConnectionsToVisibleNodes,
 } from "@/lib/presentation-viewport-fit";
 import { usePresentationSlideView } from "@/hooks/use-presentation-slide-view";
+import { usePresentationPlaybackCamera } from "@/hooks/use-presentation-playback-camera";
 import { cn } from "@/lib/utils";
 import type { DiagramData, DiagramNodeData, LayersConfig, PresentationDeck } from "@/lib/types";
 import type { Transform } from "@/hooks/use-canvas-transform";
@@ -174,6 +174,11 @@ function ViewerPageContent() {
     activeViewerPresentationDeck?.id,
   ]);
 
+  const slideDiagramsForViewerUnionFit = useMemo(() => {
+    if (!slideDiagramsForViewerPresentation?.length) return [];
+    return slideDiagramsForViewerPresentation.map((d) => pruneConnectionsToVisibleNodes(d));
+  }, [slideDiagramsForViewerPresentation]);
+
   const slidePresentationView = usePresentationSlideView({
     enabled: presentationEligible && !presentationPlayerOpen,
     slides: viewerSlidesUnified,
@@ -258,26 +263,19 @@ function ViewerPageContent() {
     };
   }, [diagramData, propertiesPanelVisible, rightPanelCollapsed]);
 
-  const applyEmbeddedPresentationUnionFit = useCallback(() => {
-    if (!presentationEligible || presentationPlayerOpen) return;
-    const diagrams = slideDiagramsForViewerPresentation;
-    if (!diagrams?.length) return;
-    const { w, h } = presentationUnionHostSize;
-    if (w <= 0 || h <= 0) return;
-    const pruned = diagrams.map((d) => pruneConnectionsToVisibleNodes(d));
-    const t = computeUnionFitTransformForDiagrams(pruned, w, h);
-    if (t) setPresentationTransform(t);
-  }, [
-    presentationPlayerOpen,
-    presentationEligible,
-    slideDiagramsForViewerPresentation,
-    presentationUnionHostSize.w,
-    presentationUnionHostSize.h,
-  ]);
-
-  useLayoutEffect(() => {
-    applyEmbeddedPresentationUnionFit();
-  }, [applyEmbeddedPresentationUnionFit]);
+  usePresentationPlaybackCamera({
+    enabled: presentationEligible && !presentationPlayerOpen,
+    useSlideZoom: false,
+    slideIndex: slidePresentationView.safeIndex,
+    currentSlide: slidePresentationView.currentSlide,
+    renderedDiagram: slidePresentationView.renderedDiagram,
+    slideDiagramsForUnionFit: slideDiagramsForViewerUnionFit,
+    viewportWidth: presentationUnionHostSize.w,
+    viewportHeight: presentationUnionHostSize.h,
+    transform: presentationTransform,
+    setTransform: setPresentationTransform,
+    instantApplyRevision: activeViewerPresentationDeck?.id,
+  });
 
   useEffect(() => {
     async function loadDiagram() {
@@ -645,7 +643,6 @@ function ViewerPageContent() {
                   activeDeckId={activeViewerPresentationDeck.id}
                   onDeckChange={handleViewerPresentationDeckChange}
                   slideIndex={slidePresentationView.safeIndex}
-                  slideTitle={slidePresentationView.currentSlide?.title}
                   totalSlides={slidePresentationView.totalSlides}
                   onPrevious={() =>
                     setPresentationSlideIndex(

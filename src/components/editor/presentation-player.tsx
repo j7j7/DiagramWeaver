@@ -28,21 +28,16 @@ import type { Transform } from '@/hooks/use-canvas-transform';
 import { useSlideTransition } from '@/hooks/use-slide-transition';
 import { isEventFromEditableElement } from '@/lib/keyboard-utils';
 import {
-  computeSlidePlaybackTransform,
-  computeUnionFitTransformForDiagrams,
   pruneConnectionsToVisibleNodes,
 } from '@/lib/presentation-viewport-fit';
 import { cn } from '@/lib/utils';
-
-const PLAYBACK_CAMERA_DURATION_MS = 300;
-const PLAYBACK_BAR_BOTTOM_PX = 16;
-const PLAYBACK_BAR_EDGE_MARGIN_PX = 16;
-
-function clampPlaybackBarLeft(left: number, barWidth: number, viewportWidth: number): number {
-  const minLeft = PLAYBACK_BAR_EDGE_MARGIN_PX;
-  const maxLeft = Math.max(minLeft, viewportWidth - barWidth - PLAYBACK_BAR_EDGE_MARGIN_PX);
-  return Math.min(maxLeft, Math.max(minLeft, left));
-}
+import {
+  presentationPlaybackBarClassName,
+  presentationPlaybackControlBtnClass,
+  presentationPlaybackCounterClass,
+  useDraggablePlaybackBar,
+} from '@/hooks/use-draggable-playback-bar';
+import { usePresentationPlaybackCamera } from '@/hooks/use-presentation-playback-camera';
 
 const SLIDE_IMAGE_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="%23000000"/><text x="640" y="360" text-anchor="middle" dominant-baseline="middle" fill="%23d1d5db" font-family="Arial, sans-serif" font-size="28">Slide</text></svg>';
 
@@ -76,20 +71,8 @@ export function PresentationPlayer({
   const [autoPlaySeconds, setAutoPlaySeconds] = React.useState(4);
   const [manualZoomPercentDraft, setManualZoomPercentDraft] = React.useState('100');
   const [panelHidden, setPanelHidden] = React.useState(false);
-  const [playbackBarLeft, setPlaybackBarLeft] = React.useState<number | null>(null);
-  const playbackBarRef = React.useRef<HTMLDivElement>(null);
-  const playbackBarDragRef = React.useRef<{
-    pointerId: number;
-    startX: number;
-    startLeft: number;
-  } | null>(null);
   const [previousSlideIndex, setPreviousSlideIndex] = React.useState(currentIndex);
   const [previousDiagram, setPreviousDiagram] = React.useState<DiagramData | null>(null);
-  const playbackTransformRef = React.useRef(playbackTransform);
-  playbackTransformRef.current = playbackTransform;
-  const skipPlaybackCameraLerpRef = React.useRef(true);
-  const prevUseSlideZoomRef = React.useRef(useSlideZoom);
-  const playbackCameraLerpCleanupRef = React.useRef<(() => void) | null>(null);
 
   const totalSlides = slides.length;
   const safeIndex = Math.min(Math.max(currentIndex, 0), Math.max(totalSlides - 1, 0));
@@ -168,110 +151,18 @@ export function PresentationPlayer({
     return slideDiagrams.map((d) => pruneConnectionsToVisibleNodes(d));
   }, [slideDiagrams]);
 
-  const cancelPlaybackCameraLerp = React.useCallback(() => {
-    playbackCameraLerpCleanupRef.current?.();
-    playbackCameraLerpCleanupRef.current = null;
-  }, []);
-
-  const computeTargetPlaybackTransform = React.useCallback((): Transform | null => {
-    if (typeof window === 'undefined') return null;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    if (useSlideZoom) {
-      if (!currentSlide || !renderedDiagram) return null;
-      return computeSlidePlaybackTransform(currentSlide, renderedDiagram, vw, vh);
-    }
-    if (slideDiagramsForUnionFit.length === 0) return null;
-    return computeUnionFitTransformForDiagrams(slideDiagramsForUnionFit, vw, vh);
-  }, [useSlideZoom, currentSlide, renderedDiagram, slideDiagramsForUnionFit]);
-
-  const animatePlaybackTransformTo = React.useCallback((target: Transform, instant = false) => {
-    cancelPlaybackCameraLerp();
-
-    if (instant || skipPlaybackCameraLerpRef.current) {
-      setPlaybackTransform(target);
-      skipPlaybackCameraLerpRef.current = false;
-      return;
-    }
-
-    const start = { ...playbackTransformRef.current };
-    let alive = true;
-    const easeOut = (t: number) => 1 - (1 - t) ** 3;
-    const startTime = performance.now();
-
-    const tick = (now: number) => {
-      if (!alive) return;
-      const elapsed = now - startTime;
-      const u = Math.min(1, elapsed / PLAYBACK_CAMERA_DURATION_MS);
-      const e = easeOut(u);
-      setPlaybackTransform({
-        x: start.x + (target.x - start.x) * e,
-        y: start.y + (target.y - start.y) * e,
-        k: start.k + (target.k - start.k) * e,
-      });
-      if (u < 1) requestAnimationFrame(tick);
-    };
-
-    requestAnimationFrame(tick);
-    playbackCameraLerpCleanupRef.current = () => {
-      alive = false;
-    };
-  }, [cancelPlaybackCameraLerp]);
-
-  const applyPlaybackCamera = React.useCallback(
-    (instant = false) => {
-      const target = computeTargetPlaybackTransform();
-      if (!target) return;
-      animatePlaybackTransformTo(target, instant);
-    },
-    [animatePlaybackTransformTo, computeTargetPlaybackTransform]
-  );
-
-  React.useEffect(() => {
-    if (!open) return;
-    applyPlaybackCamera();
-    return cancelPlaybackCameraLerp;
-  }, [
-    open,
+  const { skipNextLerp } = usePresentationPlaybackCamera({
+    enabled: open,
     useSlideZoom,
-    safeIndex,
-    currentSlide?.id,
-    currentSlide?.autoZoomLevel,
-    currentSlide?.viewPanX,
-    currentSlide?.viewPanY,
+    slideIndex: safeIndex,
+    currentSlide,
     renderedDiagram,
     slideDiagramsForUnionFit,
-    applyPlaybackCamera,
-    cancelPlaybackCameraLerp,
-  ]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const onResize = () => {
-      if (useSlideZoom) return;
-      skipPlaybackCameraLerpRef.current = true;
-      applyPlaybackCamera(true);
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [open, applyPlaybackCamera, useSlideZoom]);
-
-  React.useEffect(() => {
-    if (!open) {
-      skipPlaybackCameraLerpRef.current = true;
-      cancelPlaybackCameraLerp();
-    }
-  }, [open, cancelPlaybackCameraLerp]);
-
-  React.useEffect(() => {
-    if (useSlideZoom && !prevUseSlideZoomRef.current) {
-      skipPlaybackCameraLerpRef.current = true;
-    }
-    if (!useSlideZoom && prevUseSlideZoomRef.current) {
-      skipPlaybackCameraLerpRef.current = true;
-    }
-    prevUseSlideZoomRef.current = useSlideZoom;
-  }, [useSlideZoom]);
+    viewportWidth: 0,
+    viewportHeight: 0,
+    transform: playbackTransform,
+    setTransform: setPlaybackTransform,
+  });
 
   React.useEffect(() => {
     if (!open) return;
@@ -348,101 +239,11 @@ export function PresentationPlayer({
 
   const presentationShellBackgroundColor = renderedDiagram?.canvasBackgroundColor?.trim() || '#000000';
 
-  const syncPlaybackBarLeft = React.useCallback((nextLeft?: number) => {
-    const bar = playbackBarRef.current;
-    if (!bar || typeof window === 'undefined') return;
-    const barWidth = bar.offsetWidth;
-    if (barWidth <= 0) return;
-    setPlaybackBarLeft((prev) => {
-      const baseLeft =
-        nextLeft ??
-        prev ??
-        (window.innerWidth - barWidth) / 2;
-      return clampPlaybackBarLeft(baseLeft, barWidth, window.innerWidth);
+  const { barRef: playbackBarRef, barStyle: playbackBarStyle, pointerHandlers: playbackBarPointerHandlers } =
+    useDraggablePlaybackBar({
+      enabled: open && showPlaybackToolbar,
+      layoutRevision: `${panelHidden}-${safeIndex}-${totalSlides}`,
     });
-  }, []);
-
-  React.useLayoutEffect(() => {
-    if (!open || !showPlaybackToolbar) return;
-    syncPlaybackBarLeft();
-  }, [open, showPlaybackToolbar, panelHidden, safeIndex, totalSlides, syncPlaybackBarLeft]);
-
-  React.useEffect(() => {
-    if (!open || !showPlaybackToolbar) return;
-    const onResize = () => syncPlaybackBarLeft();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [open, showPlaybackToolbar, syncPlaybackBarLeft]);
-
-  React.useEffect(() => {
-    if (!open) {
-      setPlaybackBarLeft(null);
-      playbackBarDragRef.current = null;
-    }
-  }, [open]);
-
-  const isPlaybackBarDragTarget = React.useCallback((target: EventTarget | null) => {
-    if (!(target instanceof HTMLElement)) return false;
-    return !target.closest('button, input, label, [role="button"], a');
-  }, []);
-
-  const handlePlaybackBarPointerDown = React.useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0 || !isPlaybackBarDragTarget(event.target)) return;
-      const bar = playbackBarRef.current;
-      if (!bar) return;
-      const rect = bar.getBoundingClientRect();
-      const startLeft = playbackBarLeft ?? rect.left;
-      playbackBarDragRef.current = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startLeft,
-      };
-      event.currentTarget.setPointerCapture(event.pointerId);
-      event.preventDefault();
-    },
-    [isPlaybackBarDragTarget, playbackBarLeft]
-  );
-
-  const handlePlaybackBarPointerMove = React.useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      const drag = playbackBarDragRef.current;
-      if (!drag || drag.pointerId !== event.pointerId) return;
-      const bar = playbackBarRef.current;
-      if (!bar) return;
-      const deltaX = event.clientX - drag.startX;
-      syncPlaybackBarLeft(drag.startLeft + deltaX);
-    },
-    [syncPlaybackBarLeft]
-  );
-
-  const handlePlaybackBarPointerUp = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const drag = playbackBarDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    playbackBarDragRef.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  }, []);
-
-  const playbackBarStyle = React.useMemo((): React.CSSProperties => {
-    if (playbackBarLeft === null) {
-      return {
-        bottom: PLAYBACK_BAR_BOTTOM_PX,
-        left: '50%',
-        transform: 'translateX(-50%)',
-      };
-    }
-    return {
-      bottom: PLAYBACK_BAR_BOTTOM_PX,
-      left: playbackBarLeft,
-    };
-  }, [playbackBarLeft]);
-
-  const playbackBarClassName =
-    'pointer-events-auto fixed z-[60] flex max-w-[min(920px,calc(100vw-2rem))] cursor-grab touch-none flex-wrap items-center gap-2 rounded-lg border border-border/20 bg-card/10 px-3 py-2 text-foreground shadow-sm backdrop-blur-[2px] active:cursor-grabbing';
-
-  const playbackControlBtnClass = 'h-8 opacity-70 hover:opacity-100';
 
   const minimalFullscreenChromeBtnClass =
     'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/50 disabled:pointer-events-none disabled:opacity-40';
@@ -552,12 +353,9 @@ export function PresentationPlayer({
             (panelHidden ? (
               <div
                 ref={playbackBarRef}
-                className={playbackBarClassName}
+                className={presentationPlaybackBarClassName}
                 style={playbackBarStyle}
-                onPointerDown={handlePlaybackBarPointerDown}
-                onPointerMove={handlePlaybackBarPointerMove}
-                onPointerUp={handlePlaybackBarPointerUp}
-                onPointerCancel={handlePlaybackBarPointerUp}
+                {...playbackBarPointerHandlers}
               >
                 <button
                   type="button"
@@ -572,7 +370,7 @@ export function PresentationPlayer({
                 <Button
                   variant="outline"
                   size="sm"
-                  className={cn(playbackControlBtnClass, 'border border-border/30 bg-muted/40 px-3 py-1.5 shadow-sm backdrop-blur-[2px] hover:bg-muted/55')}
+                  className={cn(presentationPlaybackControlBtnClass, 'border border-border/30 bg-muted/40 px-3 py-1.5 shadow-sm backdrop-blur-[2px] hover:bg-muted/55')}
                   onClick={() => setPanelHidden(false)}
                   title="Show controls"
                   aria-label="Show controls"
@@ -593,30 +391,27 @@ export function PresentationPlayer({
             ) : (
               <div
                 ref={playbackBarRef}
-                className={playbackBarClassName}
+                className={presentationPlaybackBarClassName}
                 style={playbackBarStyle}
-                onPointerDown={handlePlaybackBarPointerDown}
-                onPointerMove={handlePlaybackBarPointerMove}
-                onPointerUp={handlePlaybackBarPointerUp}
-                onPointerCancel={handlePlaybackBarPointerUp}
+                {...playbackBarPointerHandlers}
               >
-                <span className="shrink-0 rounded border border-border/30 bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground opacity-70">
+                <span className={presentationPlaybackCounterClass}>
                   {totalSlides > 0 ? safeIndex + 1 : 0} / {totalSlides}
                 </span>
 
                 <div className="flex items-center gap-1">
-                  <Button size="sm" variant="secondary" className={cn(playbackControlBtnClass, 'gap-1 px-2')} onClick={goPrevious} disabled={totalSlides === 0}>
+                  <Button size="sm" variant="secondary" className={cn(presentationPlaybackControlBtnClass, 'gap-1 px-2')} onClick={goPrevious} disabled={totalSlides === 0}>
                     <ChevronLeft className="h-4 w-4" />
                     <span className="hidden sm:inline">Prev</span>
                   </Button>
-                  <Button size="sm" variant="secondary" className={cn(playbackControlBtnClass, 'gap-1 px-2')} onClick={goNext} disabled={totalSlides === 0}>
+                  <Button size="sm" variant="secondary" className={cn(presentationPlaybackControlBtnClass, 'gap-1 px-2')} onClick={goNext} disabled={totalSlides === 0}>
                     <span className="hidden sm:inline">Next</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className={cn(playbackControlBtnClass, 'gap-1 px-2')}
+                    className={cn(presentationPlaybackControlBtnClass, 'gap-1 px-2')}
                     onClick={() => setPanelHidden(true)}
                     disabled={totalSlides === 0}
                     title="Hide controls (fullscreen slide)"
@@ -628,7 +423,7 @@ export function PresentationPlayer({
 
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button size="sm" variant="outline" className={cn(playbackControlBtnClass, 'w-8 shrink-0 px-0')} title="More playback options" aria-label="More playback options">
+                      <Button size="sm" variant="outline" className={cn(presentationPlaybackControlBtnClass, 'w-8 shrink-0 px-0')} title="More playback options" aria-label="More playback options">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
@@ -649,7 +444,7 @@ export function PresentationPlayer({
                         className="h-8 w-full justify-start gap-2"
                         onClick={() => {
                           setUseSlideZoom(false);
-                          skipPlaybackCameraLerpRef.current = true;
+                          skipNextLerp();
                         }}
                         disabled={slideDiagramsForUnionFit.length === 0}
                       >

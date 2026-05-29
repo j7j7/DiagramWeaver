@@ -209,8 +209,8 @@ export function ViewerControls({
                 "rounded-md p-2 transition-colors hover:bg-accent",
                 !animationConnectionsEnabled && "opacity-50"
               )}
-              title={animationConnectionsEnabled ? "Disable all animations (Wave)" : "Enable all animations (Wave)"}
-              aria-label={animationConnectionsEnabled ? "Disable all animations (Wave)" : "Enable all animations (Wave)"}
+              title={animationConnectionsEnabled ? "Disable all animations" : "Enable all animations"}
+              aria-label={animationConnectionsEnabled ? "Disable all animations" : "Enable all animations"}
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -230,8 +230,8 @@ export function ViewerControls({
                 showAnimationsForSelectedOnly && "bg-accent",
                 !animationConnectionsEnabled && "cursor-not-allowed opacity-50"
               )}
-              title={showAnimationsForSelectedOnly ? "Show all animations" : "Show animations from selected element only (Clock)"}
-              aria-label={showAnimationsForSelectedOnly ? "Show all animations" : "Show animations from selected element only (Clock)"}
+              title={showAnimationsForSelectedOnly ? "Show all animations" : "Show animations from selected element only"}
+              aria-label={showAnimationsForSelectedOnly ? "Show all animations" : "Show animations from selected element only"}
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
@@ -252,8 +252,8 @@ export function ViewerControls({
                 animationToggleOnClickEnabled && "bg-accent",
                 !animationConnectionsEnabled && "cursor-not-allowed opacity-50"
               )}
-              title={animationToggleOnClickEnabled ? "Disable click-to-toggle animations (Mic)" : "Enable click-to-toggle: click elements to toggle their animations on/off (Mic)"}
-              aria-label={animationToggleOnClickEnabled ? "Disable click-to-toggle animations (Mic)" : "Enable click-to-toggle: click elements to toggle their animations on/off (Mic)"}
+              title={animationToggleOnClickEnabled ? "Disable click-to-toggle animations" : "Enable click-to-toggle: click elements to toggle their animations on/off"}
+              aria-label={animationToggleOnClickEnabled ? "Disable click-to-toggle animations" : "Enable click-to-toggle: click elements to toggle their animations on/off"}
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
