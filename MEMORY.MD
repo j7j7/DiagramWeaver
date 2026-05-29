@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-29 – Presentation play: connection fade only (no vertical slide)
+**`use-slide-transition`**: Connection appear/disappear no longer applies **`translateY(30px)`** — opacity-only fade via **`slideConnectionFadeTransition`**, matching layer-animation connection behavior. Patch bumped.
+
 ### 2026-05-28 – Cards: corner radius handle live preview
 
 On-screen **corner radius** drag on card node types now updates **`CardShape`** visually in real time via **`localCornerRadius`** (same pattern as rounded-rectangle / text-box-heading); **`onUpdate`** / undo still commit only on pointer release. Patch bumped.

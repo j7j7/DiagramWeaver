@@ -161,6 +161,12 @@ function slideMotionTransition(easing: string, durationMs: number = TRANSITION_D
   return `opacity ${t}ms ${easing}, transform ${t}ms ${easing}`;
 }
 
+/** Connection appear/disappear: opacity only (no vertical slide). */
+function slideConnectionFadeTransition(easing: string, durationMs: number = TRANSITION_DURATION_MS): string {
+  const t = durationMs;
+  return `opacity ${t}ms ${easing}`;
+}
+
 function connKey(conn: DiagramConnectionData): string {
   return (conn as any).id || `${conn.from}\u2192${conn.to}`;
 }
@@ -557,8 +563,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       const opacityStart = isAppearing ? 0 : 1;
       const opacityEnd = isDisappearing ? 0 : 1;
  
-      const translateYStart = isAppearing ? 30 : 0;
-      const translateYEnd = isDisappearing ? 30 : 0;
+      const translateYStart = 0;
+      const translateYEnd = 0;
 
       const easing = isAppearing ? EASE_OUT : (isDisappearing ? EASE_IN : EASE_IN_OUT);
 
@@ -590,7 +596,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           opacityStart: 1,
           opacityEnd: 0,
           translateYStart: 0,
-          translateYEnd: 30,
+          translateYEnd: 0,
           easing: EASE_IN,
           slideEndpointMove: {
             fromDx,
@@ -1025,16 +1031,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           continue;
         }
 
-        const transformY = style.translateYStart;
-
-        const transform = transformY !== 0
-          ? `translateY(${transformY}px)`
-          : undefined;
-
         next.set(connKeyVal, {
           opacity: style.opacityStart,
           transition: 'none',
-          transform,
         });
       }
       return next;
@@ -1220,7 +1219,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                     }))
                   : undefined;
               if (sm.geomLockToPrev) {
-                const transition = slideMotionTransition(style.easing, motionDurationMs);
+                const transition = slideConnectionFadeTransition(style.easing, motionDurationMs);
                 next.set(connKeyVal, {
                   opacity: style.opacityEnd,
                   transition,
@@ -1232,10 +1231,6 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                     toDy: sm.toDy,
                   },
                   slideWaypointOffsets,
-                  transform:
-                    style.translateYEnd !== 0
-                      ? `translateY(${style.translateYEnd}px)`
-                      : undefined,
                 });
                 continue;
               }
@@ -1254,18 +1249,12 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               continue;
             }
 
-            const transition = slideMotionTransition(style.easing, motionDurationMs);
-            const transformY = style.translateYEnd;
-
-            const transform = transformY !== 0
-              ? `translateY(${transformY}px)`
-              : undefined;
+            const transition = slideConnectionFadeTransition(style.easing, motionDurationMs);
 
             next.set(connKeyVal, {
               opacity: style.opacityEnd,
               transition,
               transitionDelayMs: connDelayFor(connKeyVal),
-              transform,
             });
           }
           return next;
