@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-29 – Presentation play: fade-out lines omitted from edge spread
+Slide **`slideFadeOut`** connections (opacity → 0) are **excluded from `edgeGroups`** and anchor spread — spread follows **target slide** slots only (e.g. **3→2** + **2→1** stay at **2** while **1→2** fades; no transient **3**-way spread). Fading reverse-pair leg borrows appearing partner index when on the same edge. Patch bumped.
+
+### 2026-05-29 – Presentation play: reverse-pair anchor collapse (not solo-all)
+Slide fade transitions tag **`reversePairConnKey`** when **A→B** disappears and **B→A** appears. **`canvas-connections`** collapses that pair to **one anchor slot per shared edge**; persistent connections on the same edge (e.g. **1→3** + **3→2** while **1→2** ↔ **2→1** swaps) still spread as **2**. Replaces blanket **`soloEdgeAnchors`**. Patch bumped.
+
 ### 2026-05-29 – Presentation play: connection fade only (no vertical slide)
 **`use-slide-transition`**: Connection appear/disappear no longer applies **`translateY(30px)`** — opacity-only fade via **`slideConnectionFadeTransition`**, matching layer-animation connection behavior. Patch bumped.
 

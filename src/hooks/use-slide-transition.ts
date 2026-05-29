@@ -37,6 +37,10 @@ export interface SlideTransitionStyle {
   slideEndpointOffset?: { fromDx: number; fromDy: number; toDx: number; toDy: number };
   /** Interpolated manual waypoints (same length on prev/current slide). */
   slideWaypointOffsets?: Array<{ dx: number; dy: number }>;
+  /** Appearing/disappearing reverse replacement (A→B out + B→A in). */
+  reversePairConnKey?: string;
+  /** Slide fade-out — omit from per-edge anchor spread (target slide defines slot count). */
+  slideFadeOut?: boolean;
   visualColorMerge?: Record<string, unknown>;
   visualColorMergeTransition?: string;
   /** Stack "from" and "to" visual fields and animate top layer opacity (gradients). */
@@ -165,6 +169,41 @@ function slideMotionTransition(easing: string, durationMs: number = TRANSITION_D
 function slideConnectionFadeTransition(easing: string, durationMs: number = TRANSITION_DURATION_MS): string {
   const t = durationMs;
   return `opacity ${t}ms ${easing}`;
+}
+
+/** Fade transitions: tag reverse replacement pairs so canvas can collapse duplicate anchor slots. */
+function buildSlideReversePairKeys(
+  connKeyStyles: Map<string, { opacityStart: number; opacityEnd: number }>,
+  prevConnsMap: Map<string, DiagramConnectionData>,
+  currConnsMap: Map<string, DiagramConnectionData>,
+): Map<string, string> {
+  const pairs = new Map<string, string>();
+  for (const connKeyVal of connKeyStyles.keys()) {
+    const style = connKeyStyles.get(connKeyVal)!;
+    if (style.opacityStart === style.opacityEnd) continue;
+    const prevConn = prevConnsMap.get(connKeyVal);
+    const currConn = currConnsMap.get(connKeyVal);
+    if (!prevConn || currConn) continue;
+    const revKey = connKey({ from: prevConn.to, to: prevConn.from } as DiagramConnectionData);
+    if (currConnsMap.has(revKey) && !prevConnsMap.has(revKey)) {
+      pairs.set(connKeyVal, revKey);
+      pairs.set(revKey, connKeyVal);
+    }
+  }
+  return pairs;
+}
+
+function slideConnFadeExtras(
+  connKeyVal: string,
+  style: { opacityStart: number; opacityEnd: number },
+  reversePairKeys: Map<string, string>,
+): Pick<SlideTransitionStyle, 'reversePairConnKey' | 'slideFadeOut'> {
+  if (style.opacityStart === style.opacityEnd) return {};
+  const extras: Pick<SlideTransitionStyle, 'reversePairConnKey' | 'slideFadeOut'> = {};
+  if (style.opacityEnd === 0) extras.slideFadeOut = true;
+  const pair = reversePairKeys.get(connKeyVal);
+  if (pair) extras.reversePairConnKey = pair;
+  return extras;
 }
 
 function connKey(conn: DiagramConnectionData): string {
@@ -667,6 +706,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       return;
     }
 
+    const reversePairKeys = buildSlideReversePairKeys(connKeyStyles, prevConnsMap, currConnsMap);
+
     const baseDelays = buildStaggerDelaysForSlideTransition(
       new Set(nodeIdStyles.keys()),
       new Set(connKeyStyles.keys()),
@@ -1027,6 +1068,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               toDy: sm.toDy,
             },
             slideWaypointOffsets,
+            ...slideConnFadeExtras(connKeyVal, style, reversePairKeys),
           });
           continue;
         }
@@ -1034,6 +1076,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         next.set(connKeyVal, {
           opacity: style.opacityStart,
           transition: 'none',
+          ...slideConnFadeExtras(connKeyVal, style, reversePairKeys),
         });
       }
       return next;
@@ -1231,6 +1274,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                     toDy: sm.toDy,
                   },
                   slideWaypointOffsets,
+                  ...slideConnFadeExtras(connKeyVal, style, reversePairKeys),
                 });
                 continue;
               }
@@ -1255,6 +1299,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               opacity: style.opacityEnd,
               transition,
               transitionDelayMs: connDelayFor(connKeyVal),
+              ...slideConnFadeExtras(connKeyVal, style, reversePairKeys),
             });
           }
           return next;

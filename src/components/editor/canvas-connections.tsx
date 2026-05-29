@@ -83,6 +83,9 @@ interface CanvasConnectionsProps {
     transitionDelayMs?: number;
     slideEndpointOffset?: { fromDx: number; fromDy: number; toDx: number; toDy: number };
     slideWaypointOffsets?: Array<{ dx: number; dy: number }>;
+    /** Slide fade-out — excluded from edge spread; reverse pair links appearing replacement. */
+    slideFadeOut?: boolean;
+    reversePairConnKey?: string;
   }>;
   /** Key function for connection lookup (from useLayerAnimation.connectionKey) */
   connectionKey?: (conn: DiagramConnectionData) => string;
@@ -122,6 +125,50 @@ interface CanvasConnectionsProps {
    * that share an endpoint with a dragged id recompute as you drag.
    */
   unrelatedConnectionRoutingDragIdsKey?: string;
+}
+
+type EdgeGroupEntry = { conn: DiagramConnectionData; connIndex: number };
+
+/** Drop slide fade-out lines from anchor spread — target slide connection set defines slot count. */
+function effectiveEdgeGroupForAnchor(
+  items: EdgeGroupEntry[],
+  connectionKey: (c: DiagramConnectionData) => string,
+  connectionAnimationStyles?: Map<string, { slideFadeOut?: boolean }>,
+): EdgeGroupEntry[] {
+  if (!connectionAnimationStyles) return items;
+  return items.filter((item) => !connectionAnimationStyles.get(connectionKey(item.conn))?.slideFadeOut);
+}
+
+function resolveEdgeAnchorSpread(
+  items: EdgeGroupEntry[],
+  connIndex: number,
+  connectionKey: (c: DiagramConnectionData) => string,
+  connectionAnimationStyles?: Map<string, { slideFadeOut?: boolean; reversePairConnKey?: string }>,
+  currentConn?: DiagramConnectionData,
+): { connectionIndex: number; totalConnections: number } {
+  const effective = connectionKey
+    ? effectiveEdgeGroupForAnchor(items, connectionKey, connectionAnimationStyles)
+    : items;
+
+  const currentKey = currentConn && connectionKey ? connectionKey(currentConn) : undefined;
+  const currentStyle = currentKey ? connectionAnimationStyles?.get(currentKey) : undefined;
+
+  if (currentStyle?.slideFadeOut) {
+    const partnerKey = currentStyle.reversePairConnKey;
+    if (partnerKey) {
+      const partnerIdx = effective.findIndex((item) => connectionKey(item.conn) === partnerKey);
+      if (partnerIdx >= 0) {
+        return { connectionIndex: partnerIdx, totalConnections: effective.length > 0 ? effective.length : 1 };
+      }
+    }
+    return { connectionIndex: 0, totalConnections: effective.length > 0 ? effective.length : 1 };
+  }
+
+  const edgeIndex = effective.findIndex((item) => item.connIndex === connIndex);
+  return {
+    connectionIndex: edgeIndex >= 0 ? edgeIndex : 0,
+    totalConnections: effective.length > 0 ? effective.length : 1,
+  };
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -340,6 +387,11 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     const edgeGroupsInner = new Map<string, any[]>();
 
     (diagramData.connections || []).forEach((conn: any, connIndex: number) => {
+      if (connectionKey) {
+        const stableKey = connectionKey(conn);
+        if (connectionAnimationStyles?.get(stableKey)?.slideFadeOut) return;
+      }
+
       const fromItem = nodesById[conn.from] || zonesById[conn.from];
       const toItem = nodesById[conn.to] || zonesById[conn.to];
       if (!fromItem || !toItem) return;
@@ -453,14 +505,27 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === index);
     const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === index);
 
+    const fromEdgeSpread = connectionKey
+      ? resolveEdgeAnchorSpread(fromEdgeConnections, index, connectionKey, connectionAnimationStyles, edge)
+      : {
+          connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
+          totalConnections: fromEdgeConnections.length > 0 ? fromEdgeConnections.length : 1,
+        };
+    const toEdgeSpread = connectionKey
+      ? resolveEdgeAnchorSpread(toEdgeConnections, index, connectionKey, connectionAnimationStyles, edge)
+      : {
+          connectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
+          totalConnections: toEdgeConnections.length > 0 ? toEdgeConnections.length : 1,
+        };
+
     let enhancedEdge: any = {
       ...edge,
       fromPreferredExit: edges.fromEdge,
       toPreferredEntry: edges.toEdge,
-      connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
-      totalConnections: fromEdgeConnections.length > 0 ? fromEdgeConnections.length : 1,
-      toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
-      toTotalConnections: toEdgeConnections.length > 0 ? toEdgeConnections.length : 1,
+      connectionIndex: fromEdgeSpread.connectionIndex,
+      totalConnections: fromEdgeSpread.totalConnections,
+      toConnectionIndex: toEdgeSpread.connectionIndex,
+      toTotalConnections: toEdgeSpread.totalConnections,
     };
     if (slideWpOff && enhancedEdge.waypoints?.length) {
       enhancedEdge = {
@@ -887,16 +952,27 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const toEdgeTotal = toEdgeConnections.length;
         
         // Update edge with per-edge connection distribution info
+        const fromEdgeSpread = connectionKey
+          ? resolveEdgeAnchorSpread(fromEdgeConnections, index, connectionKey, connectionAnimationStyles, edge)
+          : {
+              connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
+              totalConnections: fromEdgeTotal > 0 ? fromEdgeTotal : 1,
+            };
+        const toEdgeSpread = connectionKey
+          ? resolveEdgeAnchorSpread(toEdgeConnections, index, connectionKey, connectionAnimationStyles, edge)
+          : {
+              connectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
+              totalConnections: toEdgeTotal > 0 ? toEdgeTotal : 1,
+            };
+
         enhancedEdge = {
           ...edge,
           fromPreferredExit: edges.fromEdge,
           toPreferredEntry: edges.toEdge,
-          // Use from edge info for from node
-          connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
-          totalConnections: fromEdgeTotal > 0 ? fromEdgeTotal : 1,
-          // Store to edge info separately for the "to" node
-          toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
-          toTotalConnections: toEdgeTotal > 0 ? toEdgeTotal : 1,
+          connectionIndex: fromEdgeSpread.connectionIndex,
+          totalConnections: fromEdgeSpread.totalConnections,
+          toConnectionIndex: toEdgeSpread.connectionIndex,
+          toTotalConnections: toEdgeSpread.totalConnections,
         };
         if (slideWpOff && enhancedEdge.waypoints?.length) {
           enhancedEdge = {
@@ -1329,14 +1405,27 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === index);
       const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === index);
       
+      const fromEdgeSpreadToolbar = connectionKey
+        ? resolveEdgeAnchorSpread(fromEdgeConnections, index, connectionKey, connectionAnimationStyles, edge)
+        : {
+            connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
+            totalConnections: fromEdgeConnections.length > 0 ? fromEdgeConnections.length : 1,
+          };
+      const toEdgeSpreadToolbar = connectionKey
+        ? resolveEdgeAnchorSpread(toEdgeConnections, index, connectionKey, connectionAnimationStyles, edge)
+        : {
+            connectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
+            totalConnections: toEdgeConnections.length > 0 ? toEdgeConnections.length : 1,
+          };
+
       let enhancedEdge: any = {
         ...edge,
         fromPreferredExit: edges.fromEdge,
         toPreferredEntry: edges.toEdge,
-        connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
-        totalConnections: fromEdgeConnections.length > 0 ? fromEdgeConnections.length : 1,
-        toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
-        toTotalConnections: toEdgeConnections.length > 0 ? toEdgeConnections.length : 1,
+        connectionIndex: fromEdgeSpreadToolbar.connectionIndex,
+        totalConnections: fromEdgeSpreadToolbar.totalConnections,
+        toConnectionIndex: toEdgeSpreadToolbar.connectionIndex,
+        toTotalConnections: toEdgeSpreadToolbar.totalConnections,
       };
       if (slideWpOffToolbar && enhancedEdge.waypoints?.length) {
         enhancedEdge = {
