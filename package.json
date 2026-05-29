@@ -7,7 +7,7 @@
     "prebuild": "node scripts/bump-build.mjs",
     "dev": "next dev --turbopack -H 0.0.0.0 -p 9003",
     "dev:test": "next dev --turbopack -H 0.0.0.0 -p 9004",
-    "build": "NODE_ENV=production next build",
+    "build": "next build",
     "start": "npm run serve:static",
     "serve:static": "npx --yes serve@14 out -l 9003",
     "lint": "eslint .",
