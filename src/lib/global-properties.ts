@@ -86,6 +86,14 @@ export function collectUsedGlobalVariableNames(
       scanRuns(entry.richLabel);
     });
     scanCardElements((node as { cardElements?: unknown }).cardElements);
+    const chartSeries = (node.chart as { series?: Array<{ valueExpr?: string; valuesExpr?: string }> } | undefined)?.series;
+    chartSeries?.forEach((row) => {
+      scan(row.valueExpr);
+      scan(row.valuesExpr);
+      if (row.valuesExpr) {
+        row.valuesExpr.split(/[,;\n]+/).forEach((part) => scan(part.trim()));
+      }
+    });
   }
   for (const conn of data.connections ?? []) {
     scan(conn.text);

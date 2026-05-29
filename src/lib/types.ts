@@ -54,6 +54,8 @@ export interface ChartSeriesItem {
   id?: string;
   name: string;
   value: number;
+  /** Optional expression (`%var%`, math); re-evaluated at display time. */
+  valueExpr?: string;
   /** When `fillStyle` is solid or omitted with a color, used as slice fill. */
   color?: string;
   /** Label text color on the slice (defaults in renderer when unset). */
@@ -78,6 +80,8 @@ export interface ChartRingSeriesItem {
   name: string;
   /** Relative arc size vs other segments (same semantics as pie `value`). */
   value: number;
+  /** Optional expression (`%var%`, math); re-evaluated at display time. */
+  valueExpr?: string;
   color?: string;
   labelColor?: string;
   fillStyle?: ChartSliceFillStyle;
@@ -103,6 +107,8 @@ export interface ChartBarSegmentItem {
   name: string;
   /** Per-category magnitudes; shorter arrays pad with 0 at the end when rendering. */
   values: number[];
+  /** Optional comma-separated value expressions (`%var%`, math); re-evaluated at display time. */
+  valuesExpr?: string;
   /** Bar: segment fill when `fillStyle` is solid/omitted. Line chart: stroke (and dots); with `fillStyle: 'none'`, area is unfilled but this still sets the line color. */
   color?: string;
   labelColor?: string;

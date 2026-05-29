@@ -4,6 +4,8 @@ import React, { useEffect, useId, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { DiagramNodeData, NodeChartSpec, NodeChartSpecLine, RichTextRun } from "@/lib/types";
 import { lerpNodeChartForSlide } from "@/lib/chart-slide-lerp";
+import { resolveChartSpecForDisplay } from "@/lib/chart-value-expr";
+import { useGlobalProperties } from "../global-properties-context";
 import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
@@ -153,7 +155,8 @@ export function LineChartShape(props: LineChartShapeProps) {
           series: [],
         } as NodeChartSpecLine);
 
-  const chart = useMemo(() => {
+  const globalProperties = useGlobalProperties();
+  const chartLerped = useMemo(() => {
     if (
       presentationChartLerpFromJson == null ||
       presentationChartLerpU == null ||
@@ -169,6 +172,14 @@ export function LineChartShape(props: LineChartShapeProps) {
       return chartBase;
     }
   }, [chartBase, presentationChartLerpFromJson, presentationChartLerpU]);
+
+  const { chart, chartValueErrors } = useMemo(() => {
+    const resolved = resolveChartSpecForDisplay(chartLerped, globalProperties);
+    return {
+      chart: resolved.chart as NodeChartSpecLine,
+      chartValueErrors: resolved.errors,
+    };
+  }, [chartLerped, globalProperties]);
 
   const model = buildLineChartLayout(chart, { vbW: VB_W, vbH: VB_H });
   const vbH = model.vbH;
@@ -936,6 +947,11 @@ export function LineChartShape(props: LineChartShapeProps) {
       {valueLabels}
       {catLabelsEls}
       {legendEls}
+      {chartValueErrors.length > 0 ? (
+        <text x={1} y={vbH - 1} fill="#dc2626" fontSize={2.2} style={{ pointerEvents: "none" }}>
+          {chartValueErrors[0].error}
+        </text>
+      ) : null}
     </>
   );
 

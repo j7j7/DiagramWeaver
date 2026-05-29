@@ -4,6 +4,8 @@ import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { DiagramNodeData, NodeChartSpec, NodeChartSpecPie, RichTextRun } from "@/lib/types";
 import { lerpNodeChartForSlide } from "@/lib/chart-slide-lerp";
+import { resolveChartSpecForDisplay } from "@/lib/chart-value-expr";
+import { useGlobalProperties } from "../global-properties-context";
 import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
@@ -98,7 +100,8 @@ export function PieChartShape(props: PieChartShapeProps) {
   const chartRaw = node.chart;
   const pieChartBase: NodeChartSpecPie | undefined =
     chartRaw?.kind === "pie" ? chartRaw : undefined;
-  const pieChart = useMemo(() => {
+  const globalProperties = useGlobalProperties();
+  const pieChartLerped = useMemo(() => {
     if (!pieChartBase) return undefined;
     if (
       presentationChartLerpFromJson == null ||
@@ -115,6 +118,15 @@ export function PieChartShape(props: PieChartShapeProps) {
       return pieChartBase;
     }
   }, [pieChartBase, presentationChartLerpFromJson, presentationChartLerpU]);
+
+  const { chart: pieChart, chartValueErrors } = useMemo(() => {
+    if (!pieChartLerped) return { chart: undefined, chartValueErrors: [] as const };
+    const resolved = resolveChartSpecForDisplay(pieChartLerped, globalProperties);
+    return {
+      chart: resolved.chart as NodeChartSpecPie,
+      chartValueErrors: resolved.errors,
+    };
+  }, [pieChartLerped, globalProperties]);
   const series = pieChart?.series;
   const { slices, rDraw } = pieSlicesForSvg(VB_CX, VB_CY, VB_R, series, {
     segmentGapDeg: pieChart?.segmentGapDeg,
@@ -598,6 +610,11 @@ export function PieChartShape(props: PieChartShapeProps) {
     <>
       {defs}
       {svgShadow ? <g filter={`url(#${filterId})`}>{pieSlicesAndLabels}</g> : pieSlicesAndLabels}
+      {chartValueErrors.length > 0 ? (
+        <text x={1} y={59} fill="#dc2626" fontSize={2.2} style={{ pointerEvents: "none" }}>
+          {chartValueErrors[0].error}
+        </text>
+      ) : null}
     </>
   );
 

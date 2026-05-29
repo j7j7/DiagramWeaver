@@ -904,6 +904,7 @@ export function DiagramEditorInner({
               setChartDataEditorModal({ visible: false, x: 0, y: 0, itemId: '' });
             }}
             isReadOnly={isReadOnly}
+            globalProperties={currentDiagramData.globalProperties}
           />,
           document.body
         )}

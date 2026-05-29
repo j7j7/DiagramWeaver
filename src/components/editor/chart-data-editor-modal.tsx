@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import type { ConnectDragSource } from "react-dnd";
 import Draggable from "react-draggable";
@@ -40,6 +40,15 @@ import {
   formatChartValueForEdit,
   roundChartDataValue,
 } from "@/lib/chart-node";
+import {
+  chartValueForEditorDisplay,
+  chartValuesStrForEditorDisplay,
+  parseChartScalarForSave,
+  parseChartValuesListForSave,
+  previewChartValueInput,
+  splitChartValuesList,
+} from "@/lib/chart-value-expr";
+import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -179,19 +188,29 @@ interface RingModalEditRow {
 const CHART_SLICE_REORDER_TYPE = "dw-chart-slice-reorder";
 const CHART_BAR_SEGMENT_REORDER_TYPE = "dw-chart-bar-segment-reorder";
 
-function parseBarValuesList(raw: string, targetLen: number): number[] {
-  const parts = String(raw ?? "")
-    .split(/[,;\n]+/)
-    .map((x) => x.trim())
-    .filter(Boolean);
-  const nums = parts.map((p) => {
-    const n = Number(p.replace(/,/g, "."));
-    return roundChartDataValue(Number.isFinite(n) ? Math.max(0, n) : 0);
-  });
-  const out = nums.slice();
-  while (out.length < targetLen) out.push(0);
-  if (out.length > targetLen) out.length = targetLen;
-  return out;
+function ChartValueInputHint({
+  valueStr,
+  globalProperties,
+}: {
+  valueStr: string;
+  globalProperties?: Record<string, string>;
+}) {
+  const hint = useMemo(
+    () => previewChartValueInput(valueStr, globalProperties),
+    [valueStr, globalProperties],
+  );
+  if (!hint) return null;
+  const isError = !hint.startsWith("=");
+  return (
+    <p
+      className={cn(
+        "text-[10px] leading-tight break-words",
+        isError ? "text-destructive" : "text-muted-foreground",
+      )}
+    >
+      {hint}
+    </p>
+  );
 }
 
 interface BarEditRow {
@@ -330,6 +349,7 @@ interface ChartDataEditorModalProps {
   node: DiagramNodeData | null;
   onSave: (nodeId: string, chart: NodeChartSpec) => void;
   isReadOnly?: boolean;
+  globalProperties?: Record<string, string>;
 }
 
 export function ChartDataEditorModal({
@@ -340,7 +360,9 @@ export function ChartDataEditorModal({
   node,
   onSave,
   isReadOnly = false,
+  globalProperties,
 }: ChartDataEditorModalProps) {
+  const { toast } = useToast();
   const panelRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -404,9 +426,7 @@ export function ChartDataEditorModal({
           return {
             id: s.id || newChartSliceId(),
             name: s.name,
-            valuesStr: (s.values ?? [])
-              .map((v) => formatChartValueForEdit(typeof v === "number" ? v : Number(v)))
-              .join(", "),
+            valuesStr: chartValuesStrForEditorDisplay(s.values ?? [], s.valuesExpr),
             fillStyle: fs,
             color: s.color ?? "",
             gradientColor1: gc?.[0] ?? "",
@@ -489,9 +509,7 @@ export function ChartDataEditorModal({
           return {
             id: s.id || newChartSliceId(),
             name: s.name,
-            valuesStr: (s.values ?? [])
-              .map((v) => formatChartValueForEdit(typeof v === "number" ? v : Number(v)))
-              .join(", "),
+            valuesStr: chartValuesStrForEditorDisplay(s.values ?? [], s.valuesExpr),
             fillStyle: fs,
             color: s.color ?? "",
             gradientColor1: gc?.[0] ?? "",
@@ -561,7 +579,10 @@ export function ChartDataEditorModal({
           return {
             id: s.id || newChartSliceId(),
             name: s.name,
-            valueStr: formatChartValueForEdit(typeof s.value === "number" ? s.value : Number(s.value)),
+            valueStr: chartValueForEditorDisplay(
+              typeof s.value === "number" ? s.value : Number(s.value),
+              s.valueExpr,
+            ),
             fillStyle: fs,
             color: s.color ?? "",
             gradientColor1: gc?.[0] ?? "",
@@ -657,7 +678,10 @@ export function ChartDataEditorModal({
         return {
           id: s.id || newChartSliceId(),
           name: s.name,
-          valueStr: formatChartValueForEdit(typeof s.value === "number" ? s.value : Number(s.value)),
+          valueStr: chartValueForEditorDisplay(
+            typeof s.value === "number" ? s.value : Number(s.value),
+            s.valueExpr,
+          ),
           fillStyle: fs,
           color: s.color ?? "",
           gradientColor1: gc?.[0] ?? "",
@@ -855,30 +879,40 @@ export function ChartDataEditorModal({
     const isLine = node.type === "generic.chart.line" || node.chart?.kind === "line";
     const isRing = node.type === "generic.chart.ring" || node.chart?.kind === "ring";
 
+    const failSave = (message: string) => {
+      toast({
+        title: "Invalid chart value",
+        description: message,
+        variant: "destructive",
+      });
+    };
+
     if (isLine) {
       const labelParts = categoryLabelsStr
         .split(/[,;\n]+/)
         .map((s) => s.trim())
         .filter(Boolean);
-      const rawLens = barRows.map((r) =>
-        String(r.valuesStr ?? "")
-          .split(/[,;\n]+/)
-          .map((x) => x.trim())
-          .filter(Boolean).length
-      );
+      const rawLens = barRows.map((r) => splitChartValuesList(String(r.valuesStr ?? "")).length);
       const maxCat = Math.max(1, labelParts.length, ...rawLens, 0);
       if (barRows.length === 0) {
         onSave(node.id, randomLineChartSpec());
         onClose();
         return;
       }
-      const series: ChartBarSegmentItem[] = barRows.map((r, i) => {
-        const vals = parseBarValuesList(r.valuesStr, maxCat);
+      const series: ChartBarSegmentItem[] = [];
+      for (let i = 0; i < barRows.length; i++) {
+        const r = barRows[i];
+        const parsed = parseChartValuesListForSave(String(r.valuesStr ?? ""), maxCat, globalProperties);
+        if (!parsed.ok) {
+          failSave(`${(r.name ?? "").trim() || `Series ${i + 1}`}: ${parsed.error}`);
+          return;
+        }
         const name = (r.name ?? "").trim() || `Series ${i + 1}`;
         const base: ChartBarSegmentItem = {
           id: r.id || newChartSliceId(),
           name,
-          values: vals,
+          values: parsed.values,
+          ...(parsed.valuesExpr ? { valuesExpr: parsed.valuesExpr } : {}),
         };
         if (r.labelColor.trim()) base.labelColor = r.labelColor.trim();
         const lfsRaw = Number(String(r.labelFontSizeStr ?? "").trim().replace(/,/g, "."));
@@ -888,7 +922,8 @@ export function ChartDataEditorModal({
         if (r.fillStyle === "none") {
           base.fillStyle = "none";
           if (r.color.trim()) base.color = r.color.trim();
-          return base;
+          series.push(base);
+          continue;
         }
         if (r.fillStyle === "gradient") {
           base.fillStyle = "gradient";
@@ -896,12 +931,13 @@ export function ChartDataEditorModal({
           const g2 = r.gradientColor2.trim();
           const fb = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
           base.gradientColors = [g1 || fb, g2 || g1 || fb] as [string, string];
-          return base;
+          series.push(base);
+          continue;
         }
         base.fillStyle = "solid";
         if (r.color.trim()) base.color = r.color.trim();
-        return base;
-      });
+        series.push(base);
+      }
       const lineChart: NodeChartSpecLine = {
         kind: "line",
         series,
@@ -948,25 +984,27 @@ export function ChartDataEditorModal({
         .split(/[,;\n]+/)
         .map((s) => s.trim())
         .filter(Boolean);
-      const rawLens = barRows.map((r) =>
-        String(r.valuesStr ?? "")
-          .split(/[,;\n]+/)
-          .map((x) => x.trim())
-          .filter(Boolean).length
-      );
+      const rawLens = barRows.map((r) => splitChartValuesList(String(r.valuesStr ?? "")).length);
       const maxCat = Math.max(1, labelParts.length, ...rawLens, 0);
       if (barRows.length === 0) {
         onSave(node.id, defaultBarChartSpec());
         onClose();
         return;
       }
-      const series: ChartBarSegmentItem[] = barRows.map((r, i) => {
-        const vals = parseBarValuesList(r.valuesStr, maxCat);
+      const series: ChartBarSegmentItem[] = [];
+      for (let i = 0; i < barRows.length; i++) {
+        const r = barRows[i];
+        const parsed = parseChartValuesListForSave(String(r.valuesStr ?? ""), maxCat, globalProperties);
+        if (!parsed.ok) {
+          failSave(`${(r.name ?? "").trim() || `Segment ${i + 1}`}: ${parsed.error}`);
+          return;
+        }
         const name = (r.name ?? "").trim() || `Segment ${i + 1}`;
         const base: ChartBarSegmentItem = {
           id: r.id || newChartSliceId(),
           name,
-          values: vals,
+          values: parsed.values,
+          ...(parsed.valuesExpr ? { valuesExpr: parsed.valuesExpr } : {}),
         };
         if (r.labelColor.trim()) base.labelColor = r.labelColor.trim();
         const lfsRaw = Number(String(r.labelFontSizeStr ?? "").trim().replace(/,/g, "."));
@@ -976,7 +1014,8 @@ export function ChartDataEditorModal({
         if (r.fillStyle === "none") {
           base.fillStyle = "none";
           if (r.color.trim()) base.color = r.color.trim();
-          return base;
+          series.push(base);
+          continue;
         }
         if (r.fillStyle === "gradient") {
           base.fillStyle = "gradient";
@@ -984,12 +1023,13 @@ export function ChartDataEditorModal({
           const g2 = r.gradientColor2.trim();
           const fb = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
           base.gradientColors = [g1 || fb, g2 || g1 || fb] as [string, string];
-          return base;
+          series.push(base);
+          continue;
         }
         base.fillStyle = "solid";
         if (r.color.trim()) base.color = r.color.trim();
-        return base;
-      });
+        series.push(base);
+      }
       const barChart: NodeChartSpecBar = {
         kind: "bar",
         series,
@@ -1035,11 +1075,21 @@ export function ChartDataEditorModal({
         onClose();
         return;
       }
-      const series: ChartRingSeriesItem[] = ringRows.map((r, i) => {
-        const raw = Number(String(r.valueStr).replace(/,/g, "."));
-        const value = roundChartDataValue(Number.isFinite(raw) ? Math.max(0, raw) : 0);
+      const series: ChartRingSeriesItem[] = [];
+      for (let i = 0; i < ringRows.length; i++) {
+        const r = ringRows[i];
+        const parsed = parseChartScalarForSave(String(r.valueStr ?? ""), globalProperties);
+        if (!parsed.ok) {
+          failSave(`${(r.name ?? "").trim() || `Segment ${i + 1}`}: ${parsed.error}`);
+          return;
+        }
         const name = (r.name ?? "").trim() || `Segment ${i + 1}`;
-        const row: ChartRingSeriesItem = { id: r.id || newChartSliceId(), name, value };
+        const row: ChartRingSeriesItem = {
+          id: r.id || newChartSliceId(),
+          name,
+          value: parsed.value,
+          ...(parsed.valueExpr ? { valueExpr: parsed.valueExpr } : {}),
+        };
         if (r.labelColor.trim()) row.labelColor = r.labelColor.trim();
         const lfsRaw = Number(String(r.labelFontSizeStr ?? "").trim().replace(/,/g, "."));
         if (Number.isFinite(lfsRaw) && lfsRaw > 0) {
@@ -1062,7 +1112,8 @@ export function ChartDataEditorModal({
         }
         if (r.fillStyle === "none") {
           row.fillStyle = "none";
-          return row;
+          series.push(row);
+          continue;
         }
         if (r.fillStyle === "gradient") {
           row.fillStyle = "gradient";
@@ -1070,12 +1121,13 @@ export function ChartDataEditorModal({
           const g2 = r.gradientColor2.trim();
           const fb = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
           row.gradientColors = [g1 || fb, g2 || g1 || fb] as [string, string];
-          return row;
+          series.push(row);
+          continue;
         }
         row.fillStyle = "solid";
         if (r.color.trim()) row.color = r.color.trim();
-        return row;
-      });
+        series.push(row);
+      }
       const ringChartSaved: NodeChartSpecRing = {
         kind: "ring",
         series,
@@ -1092,14 +1144,20 @@ export function ChartDataEditorModal({
       return;
     }
 
-    const cleaned: ChartSeriesItem[] = rows.map((r, i) => {
-      const raw = Number(String(r.valueStr).replace(/,/g, "."));
-      const value = roundChartDataValue(Number.isFinite(raw) ? Math.max(0, raw) : 0);
+    const cleaned: ChartSeriesItem[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const parsed = parseChartScalarForSave(String(r.valueStr ?? ""), globalProperties);
+      if (!parsed.ok) {
+        failSave(`${(r.name ?? "").trim() || `Series ${i + 1}`}: ${parsed.error}`);
+        return;
+      }
       const name = (r.name ?? "").trim() || `Series ${i + 1}`;
       const base: ChartSeriesItem = {
         id: r.id || newChartSliceId(),
         name,
-        value,
+        value: parsed.value,
+        ...(parsed.valueExpr ? { valueExpr: parsed.valueExpr } : {}),
       };
       if (r.labelColor.trim()) base.labelColor = r.labelColor.trim();
       const lfsRaw = Number(String(r.labelFontSizeStr ?? "").trim().replace(/,/g, "."));
@@ -1116,7 +1174,8 @@ export function ChartDataEditorModal({
 
       if (r.fillStyle === "none") {
         base.fillStyle = "none";
-        return base;
+        cleaned.push(base);
+        continue;
       }
       if (r.fillStyle === "gradient") {
         base.fillStyle = "gradient";
@@ -1124,12 +1183,13 @@ export function ChartDataEditorModal({
         const g2 = r.gradientColor2.trim();
         const fb = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
         base.gradientColors = [g1 || fb, (g2 || g1 || fb)] as [string, string];
-        return base;
+        cleaned.push(base);
+        continue;
       }
       base.fillStyle = "solid";
       if (r.color.trim()) base.color = r.color.trim();
-      return base;
-    });
+      cleaned.push(base);
+    }
     if (cleaned.length === 0) {
       onSave(node.id, defaultPieChartSpec());
       onClose();
@@ -1828,10 +1888,11 @@ export function ChartDataEditorModal({
                                   <Input
                                     value={row.valuesStr}
                                     onChange={(e) => updateBarRow(i, { valuesStr: e.target.value })}
-                                    placeholder="10, 20, 30, 40"
+                                    placeholder="45, %sales%-%tax%"
                                     className="h-8 text-xs font-mono"
                                     disabled={isReadOnly}
                                   />
+                                  <ChartValueInputHint valueStr={row.valuesStr} globalProperties={globalProperties} />
                                 </div>
                                 <div
                                   className={`grid grid-cols-2 gap-2 items-end ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
@@ -2232,9 +2293,10 @@ export function ChartDataEditorModal({
                                         inputMode="decimal"
                                         value={row.valueStr}
                                         onChange={(e) => updateRingRow(i, { valueStr: e.target.value })}
-                                        className="h-8 text-xs"
+                                        className="h-8 text-xs font-mono"
                                         disabled={isReadOnly}
                                       />
+                                      <ChartValueInputHint valueStr={row.valueStr} globalProperties={globalProperties} />
                                     </div>
                                     <div className="space-y-1">
                                       <Label className="text-[10px] text-muted-foreground">Fill mode</Label>
@@ -2623,9 +2685,10 @@ export function ChartDataEditorModal({
                               inputMode="decimal"
                               value={row.valueStr}
                               onChange={(e) => updateRow(i, { valueStr: e.target.value })}
-                              className="h-8 text-xs"
+                              className="h-8 text-xs font-mono"
                               disabled={isReadOnly}
                             />
+                            <ChartValueInputHint valueStr={row.valueStr} globalProperties={globalProperties} />
                           </div>
                           <div className="space-y-1 min-w-0">
                             <Label className="text-[10px] text-muted-foreground">Slice fill</Label>

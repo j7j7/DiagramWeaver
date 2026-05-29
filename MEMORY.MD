@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-05-29 – Chart data: global variable expressions
+Chart **Value** fields (pie, ring, bar, line) accept **`%varname%`** placeholders and basic math (`+`, `-`, `*`, `/`, parentheses). Variables resolve from **`globalProperties`**; **`10%`** parses as **0.1**; non-numeric values error. Expressions persist as **`valueExpr`** / **`valuesExpr`** in JSON and re-evaluate at render time. Chart data modal shows live preview or error; invalid saves are blocked. Patch bumped.
+
 ### 2026-05-29 – Global diagram variables (`%varname%`)
 Diagram JSON may include **`globalProperties`**: a map of variable names to values. Any text on the canvas (labels, rich text, tags, connection labels, card cells, UML compartments, timeline entries, etc.) can reference **`%name%`**; values resolve at **display time** only (stored labels stay as templates). **Properties** panel lists add/edit/delete when nothing is selected; viewer is read-only. Patch bumped.
 
