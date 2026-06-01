@@ -532,6 +532,9 @@ export interface DiagramNodeData {
   /** Slide border / base frame for `generic.border.*` template nodes. */
   border?: NodeBorderSpec;
 
+  /** Custom vector path geometry for `generic.object.vector-path` nodes. */
+  vectorPath?: import("@/lib/vector-path-types").VectorPathSpec;
+
   /** Agenda card: step row background hues (defaults to Themes menu multi-select hue setting). */
   agendaRowThemeHue?: boolean;
   /** Agenda card: show divider lines between sections and rows (default true). */

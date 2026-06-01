@@ -183,6 +183,20 @@ const NodeBorderSpecSchema = z.object({
   rolePaints: z.record(z.string(), BorderRolePaintSchema).optional(),
 });
 
+const VectorPathRingSchema = z.object({
+  points: z.array(
+    z.object({
+      x: z.number(),
+      y: z.number(),
+      id: z.string().optional(),
+    }),
+  ),
+});
+
+const VectorPathSpecSchema = z.object({
+  rings: z.array(VectorPathRingSchema),
+});
+
 const ChartPieSeriesRowSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
@@ -578,6 +592,7 @@ export const DiagramNodeDataSchema = z.object({
   chart: z.preprocess(normalizeChartField, NodeChartSpecSchema).optional(),
   card: NodeCardSpecSchema.optional(),
   border: NodeBorderSpecSchema.optional(),
+  vectorPath: VectorPathSpecSchema.optional(),
   agendaRowThemeHue: z.boolean().optional(),
   agendaDividersEnabled: z.boolean().optional(),
   bulletListItemThemeHue: z.boolean().optional(),

@@ -25,6 +25,12 @@ import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { isCardNodeType, findCardElement, updateCardElementTree } from "@/lib/card-utils";
 import { isBorderNodeType } from "@/lib/border-utils";
+import { isVectorPathNodeType } from "@/lib/vector-path-utils";
+import type { VectorPathRing } from "@/lib/vector-path-types";
+import {
+  flattenRingsToVertexList,
+  updateVectorPathPoint,
+} from "@/lib/vector-path-utils";
 import { cardNodeCornerRadiusNorm } from "@/lib/card-presentation";
 import {
   applyBulletListUniformItemFontSize,
@@ -82,6 +88,7 @@ import {
   PyramidShape,
   CardShape,
   BorderShape,
+  VectorPathShape,
 } from "./shapes";
 import {
   SlideShapeShadowTransitionProvider,
@@ -690,6 +697,23 @@ function DiagramNodeInner({
     up: (e: PointerEvent) => void;
   } | null>(null);
 
+  const isVectorPathNode = isVectorPathNodeType(node.type);
+  const [localVectorRings, setLocalVectorRings] = useState<VectorPathRing[] | null>(null);
+  const [isDraggingVectorVertex, setIsDraggingVectorVertex] = useState(false);
+  const [vectorVertexIndex, setVectorVertexIndex] = useState<number | null>(null);
+  const vectorVertexDragRef = useRef<{
+    clientX: number;
+    clientY: number;
+    vertexIndex: number;
+    initialRings: VectorPathRing[];
+    flatMeta: ReturnType<typeof flattenRingsToVertexList>;
+  } | null>(null);
+  const latestVectorRingsRef = useRef<VectorPathRing[] | null>(null);
+  const vectorVertexDocListenersRef = useRef<{
+    move: (e: PointerEvent) => void;
+    up: (e: PointerEvent) => void;
+  } | null>(null);
+
   const timelineEntryPointerDownRef = useRef<(e: React.PointerEvent, entryId: string) => void>(() => {});
   const timelineCardClickSuppressRef = useRef(false);
   /** Card drag / card resize: blocks react-dnd on timeline wrapper (`mousedown` bubbles after `pointerdown`). */
@@ -705,7 +729,18 @@ function DiagramNodeInner({
     }
   }, []);
 
+  const removeVectorVertexDocListeners = useCallback(() => {
+    const L = vectorVertexDocListenersRef.current;
+    if (L) {
+      document.removeEventListener("pointermove", L.move, true);
+      document.removeEventListener("pointerup", L.up, true);
+      document.removeEventListener("pointercancel", L.up, true);
+      vectorVertexDocListenersRef.current = null;
+    }
+  }, []);
+
   useEffect(() => () => removeLineVertexDocListeners(), [removeLineVertexDocListeners]);
+  useEffect(() => () => removeVectorVertexDocListeners(), [removeVectorVertexDocListeners]);
   /** While true, line/bar chart value drag is active — react-dnd must not move the node. */
   const chartValueDragInteractionRef = useRef(false);
   /** Plain (icon) label input: avoids multi-select blur syncing when the draft was not edited. */
@@ -1142,6 +1177,12 @@ function DiagramNodeInner({
           onDraggingChange={onDraggingChange}
         />
       );
+    } else if (isVectorPathNodeType(nodeType)) {
+      const vpathNode =
+        localVectorRings != null
+          ? { ...visualNode, vectorPath: { rings: localVectorRings } }
+          : visualNode;
+      return <VectorPathShape {...shapeProps} node={vpathNode} localRings={localVectorRings} />;
     } else if (nodeType === 'generic.object.circle' || nodeType?.endsWith('.circle')) {
       return <CircleShape {...shapeProps} />;
     } else if (nodeType === 'generic.chart.bar') {
@@ -2467,6 +2508,19 @@ function DiagramNodeInner({
     spineLikeNode,
   ]);
 
+  const syncVectorPathKey = JSON.stringify(node.vectorPath?.rings ?? []);
+
+  useEffect(() => {
+    if (!isDraggingVectorVertex && isVectorPathNode) {
+      const rings = node.vectorPath?.rings ?? [];
+      setLocalVectorRings((prev) => {
+        const key = JSON.stringify(rings);
+        if (prev && JSON.stringify(prev) === key) return prev;
+        return rings.length ? rings.map((r) => ({ points: r.points.map((p) => ({ ...p })) })) : null;
+      });
+    }
+  }, [node.id, syncVectorPathKey, isDraggingVectorVertex, isVectorPathNode]);
+
   /** Line nodes only render `position:absolute` SVG children — `width/height: auto` collapses the box to 0×0, so hits never reach the line. */
   const lineLiveLayoutDims = useMemo(() => {
     if (!isLineNode) return null;
@@ -2894,6 +2948,118 @@ function DiagramNodeInner({
       onConnectorLineVertexFocus,
       handleLineVertexDragMove,
       handleLineVertexDragEnd,
+    ],
+  );
+
+  const beginRealVectorVertexDrag = useCallback(
+    (e: Pick<PointerEvent, "clientX" | "clientY">, vertexIndex: number) => {
+      const rings = localVectorRings ?? node.vectorPath?.rings ?? [];
+      const flatMeta = flattenRingsToVertexList(rings);
+      if (vertexIndex < 0 || vertexIndex >= flatMeta.length) return;
+      setIsDraggingVectorVertex(true);
+      setVectorVertexIndex(vertexIndex);
+      onDraggingChange?.(true);
+      const initialRings = rings.map((r) => ({ points: r.points.map((p) => ({ ...p })) }));
+      vectorVertexDragRef.current = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        vertexIndex,
+        initialRings,
+        flatMeta,
+      };
+      latestVectorRingsRef.current = initialRings;
+    },
+    [localVectorRings, node.vectorPath?.rings, onDraggingChange],
+  );
+
+  const handleVectorVertexDragMove = useCallback(
+    (e: Pick<MouseEvent, "clientX" | "clientY">) => {
+      const drag = vectorVertexDragRef.current;
+      if (!drag) return;
+      let deltaX = e.clientX - drag.clientX;
+      let deltaY = e.clientY - drag.clientY;
+      if (transform) {
+        deltaX = deltaX / transform.k;
+        deltaY = deltaY / transform.k;
+      }
+      const meta = drag.flatMeta[drag.vertexIndex];
+      if (!meta) return;
+      const init = drag.initialRings[meta.ringIndex]?.points[meta.pointIndex];
+      if (!init) return;
+      const rot = node.rotation ?? 0;
+      if (rot) {
+        const rad = (-rot * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const rdx = deltaX * cos - deltaY * sin;
+        const rdy = deltaX * sin + deltaY * cos;
+        deltaX = rdx;
+        deltaY = rdy;
+      }
+      const localX = snapToGrid(init.x + deltaX);
+      const localY = snapToGrid(init.y + deltaY);
+      const next = updateVectorPathPoint(drag.initialRings, meta.ringIndex, meta.pointIndex, localX, localY);
+      latestVectorRingsRef.current = next;
+      setLocalVectorRings(next);
+    },
+    [transform, node.rotation],
+  );
+
+  const handleVectorVertexDragEnd = useCallback(() => {
+    if (onUpdate && vectorVertexDragRef.current) {
+      const nextRings = latestVectorRingsRef.current ?? localVectorRings ?? node.vectorPath?.rings ?? [];
+      onUpdate({
+        ...node,
+        vectorPath: { rings: nextRings },
+      });
+      latestVectorRingsRef.current = null;
+    }
+    onDraggingChange?.(false);
+    setIsDraggingVectorVertex(false);
+    setVectorVertexIndex(null);
+    vectorVertexDragRef.current = null;
+  }, [onUpdate, node, localVectorRings, onDraggingChange]);
+
+  const handleVectorVertexPointerDown = useCallback(
+    (e: React.PointerEvent | React.MouseEvent, vertexIndex: number) => {
+      if (isReadOnly) {
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      removeVectorVertexDocListeners();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      let phase: "pending" | "drag" = "pending";
+      const onMove = (ev: PointerEvent) => {
+        if (phase === "pending") {
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 5) {
+            phase = "drag";
+            beginRealVectorVertexDrag(ev, vertexIndex);
+          }
+          return;
+        }
+        handleVectorVertexDragMove(ev);
+      };
+      const onUp = (ev: PointerEvent) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        removeVectorVertexDocListeners();
+        if (phase === "drag") handleVectorVertexDragEnd();
+      };
+      document.addEventListener("pointermove", onMove, true);
+      document.addEventListener("pointerup", onUp, true);
+      document.addEventListener("pointercancel", onUp, true);
+      vectorVertexDocListenersRef.current = { move: onMove, up: onUp };
+    },
+    [
+      isReadOnly,
+      removeVectorVertexDocListeners,
+      beginRealVectorVertexDrag,
+      handleVectorVertexDragMove,
+      handleVectorVertexDragEnd,
     ],
   );
 
@@ -3790,6 +3956,27 @@ function DiagramNodeInner({
              nodeX={handleNodeX}
              nodeY={handleNodeY}
              onVertexPointerDown={handleLineVertexPointerDown}
+             disabled={false}
+             zIndexClass="z-[120]"
+           />
+         );
+       })()}
+
+       {!isReadOnly && isVectorPathNode && isSelected && !isMultiSelected && (() => {
+         const rings = localVectorRings ?? node.vectorPath?.rings ?? [];
+         const nx = node.x ?? 0;
+         const ny = node.y ?? 0;
+         const flat = flattenRingsToVertexList(rings);
+         const vertices = flat.map((p) => ({ x: nx + p.x, y: ny + p.y }));
+         if (vertices.length === 0) return null;
+         return (
+           <LineVertexHandles
+             visible={true}
+             activeVertexIndex={vectorVertexIndex}
+             vertices={vertices}
+             nodeX={nx}
+             nodeY={ny}
+             onVertexPointerDown={handleVectorVertexPointerDown}
              disabled={false}
              zIndexClass="z-[120]"
            />

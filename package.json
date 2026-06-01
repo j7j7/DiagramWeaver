@@ -1,6 +1,6 @@
 {
   "name": "nextn",
-  "version": "0.1.872",
+  "version": "0.1.873",
   "private": true,
   "scripts": {
     "predev": "node scripts/bump-build.mjs",
@@ -57,6 +57,7 @@
     "js-yaml": "^4.1.1",
     "lucide-react": "^0.562.0",
     "next": "^16.1.6",
+    "polygon-clipping": "^0.15.7",
     "react": "^19.2.3",
     "react-day-picker": "^9.13.0",
     "react-dnd": "^16.0.1",

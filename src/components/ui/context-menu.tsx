@@ -6,7 +6,9 @@ import { isChartNodeType } from '@/lib/chart-node';
 import { isTimelineBarNodeType } from '@/lib/timeline-bar';
 import { isSegmentedRectangleNodeType } from '@/lib/segmented-rectangle';
 import { isPyramidNodeType } from '@/lib/pyramid';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical, Shapes, ClipboardPaste, AlignHorizontalSpaceAround, Pin } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity, ArrowLeftRight, FlipVertical, Shapes, ClipboardPaste, AlignHorizontalSpaceAround, Pin, Combine } from 'lucide-react';
+import type { ShapeBooleanOperation } from '@/lib/vector-path-types';
+import { SHAPE_BOOLEAN_OPERATION_LABELS } from '@/lib/vector-path-types';
 import type { PasteSpecialAspect } from '@/lib/paste-special-properties';
 
 
@@ -120,6 +122,9 @@ interface ContextMenuProps {
   /** Card icon-slot: menu opened from an assigned icon inside a card */
   cardIconContext?: boolean;
   onRemoveCardIcon?: () => void;
+  /** 2+ closed shapes selected — boolean combine submenu */
+  canBooleanCombine?: boolean;
+  onBooleanCombine?: (operation: "union" | "subtract" | "intersect" | "exclude") => void;
 }
 
 // Connector-only lines hide root label/text tooling; timeline keeps Text actions like shapes.
@@ -224,12 +229,15 @@ export function ContextMenu({
   onChangeCardTemplate,
   cardIconContext = false,
   onRemoveCardIcon,
+  canBooleanCombine = false,
+  onBooleanCombine,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
   const [renderOrderSubmenuOpen, setRenderOrderSubmenuOpen] = useState(false);
   const [layoutOrderSubmenuOpen, setLayoutOrderSubmenuOpen] = useState(false);
   const [shapeSubmenuOpen, setShapeSubmenuOpen] = useState(false);
+  const [booleanSubmenuOpen, setBooleanSubmenuOpen] = useState(false);
   const [cardTemplateSubmenuOpen, setCardTemplateSubmenuOpen] = useState(false);
   const [pasteSpecialSubmenuOpen, setPasteSpecialSubmenuOpen] = useState(false);
 
@@ -239,6 +247,7 @@ export function ContextMenu({
       setRenderOrderSubmenuOpen(false);
       setLayoutOrderSubmenuOpen(false);
       setShapeSubmenuOpen(false);
+      setBooleanSubmenuOpen(false);
       setCardTemplateSubmenuOpen(false);
       setPasteSpecialSubmenuOpen(false);
     }
@@ -587,6 +596,47 @@ export function ContextMenu({
                     }}
                   >
                     {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+      {itemType === 'node' && canBooleanCombine && onBooleanCombine && (
+          <div className="relative">
+            <button
+              type="button"
+              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+              onMouseEnter={() => setBooleanSubmenuOpen(true)}
+              onMouseLeave={() => setBooleanSubmenuOpen(false)}
+            >
+              <Combine className="w-4 h-4 shrink-0" />
+              Combine shapes
+              <ChevronRight className="w-4 h-4 ml-auto shrink-0" />
+            </button>
+            {booleanSubmenuOpen && (
+              <div
+                className={cn(
+                  "absolute left-full top-0 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[200px]",
+                  "animate-in fade-in-0 zoom-in-95",
+                )}
+                style={{ marginLeft: "0px" }}
+                onMouseEnter={() => setBooleanSubmenuOpen(true)}
+                onMouseLeave={() => setBooleanSubmenuOpen(false)}
+              >
+                {(Object.keys(SHAPE_BOOLEAN_OPERATION_LABELS) as ShapeBooleanOperation[]).map((op) => (
+                  <button
+                    key={op}
+                    type="button"
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      onBooleanCombine(op);
+                      setBooleanSubmenuOpen(false);
+                      onClose();
+                    }}
+                  >
+                    {SHAPE_BOOLEAN_OPERATION_LABELS[op]}
                   </button>
                 ))}
               </div>

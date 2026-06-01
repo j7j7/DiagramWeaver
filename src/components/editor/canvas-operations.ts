@@ -25,6 +25,7 @@ import {
   isShapeNodeType,
   isTimelineNodeType,
 } from "@/lib/utils";
+import { isVectorPathNodeType, scaleVectorPathRings } from "@/lib/vector-path-utils";
 import { TIMELINE_DEFAULT_SPINE_LENGTH_PX, TIMELINE_NODE_TYPE } from "@/lib/timeline-layout";
 import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
@@ -476,6 +477,13 @@ export function useCanvasOperations({
           };
           if (newX !== undefined) updates.x = snapToGrid(newX);
           if (newY !== undefined) updates.y = snapToGrid(newY);
+          if (isVectorPathNodeType(node.type) && node.vectorPath?.rings?.length) {
+            const oldW = node.width ?? finalWidth;
+            const oldH = node.height ?? finalHeight;
+            updates.vectorPath = {
+              rings: scaleVectorPathRings(node.vectorPath.rings, oldW, oldH, finalWidth, finalHeight),
+            };
+          }
           return { ...node, ...updates };
         }
         return node;

@@ -133,6 +133,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType === 'generic.object.jigsaw' ||
          nodeType === 'generic.object.arrowhead' ||
          nodeType === 'generic.object.chevron' ||
+         nodeType === 'generic.object.vector-path' ||
          nodeType?.endsWith('.square') ||
          nodeType?.endsWith('.circle') ||
          nodeType?.endsWith('.point') ||
@@ -155,7 +156,8 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType?.endsWith('.octagon') ||
          nodeType?.endsWith('.jigsaw') ||
          nodeType?.endsWith('.arrowhead') ||
-         nodeType?.endsWith('.chevron');
+         nodeType?.endsWith('.chevron') ||
+         nodeType?.endsWith('.vector-path');
 }
 
 /** Decode a `data:` URL to a Blob without `fetch` (avoids failures on large PNG data URLs). */

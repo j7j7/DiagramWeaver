@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-01 – Vector shape boolean combine (union / subtract / intersect / exclude)
+**`generic.object.vector-path`** stores custom polygon rings on **`DiagramNodeData.vectorPath`**. Select 2+ closed shapes (circle, rectangle, triangle, etc.), right-click → **Combine shapes** → Union, Subtract (cut), Intersect, or Exclude. Result is a single vector node with fill/border styling from the primary (right-clicked) shape; vertices are draggable when selected. **`polygon-clipping`** + **`shape-to-polygon.ts`** / **`vector-path-boolean.ts`**. Patch bumped.
+
 ### 2026-06-01 – Borders: Swoop Blue Layers template
 New **`swoop-blue-layers`** border — four stacked **circle-band** layers on the left (full-height vertical strips with large-radius circular right edges, deep → pale blue gradients), semi-transparent **center band**, layered drop shadows; six color roles (solid/gradient). Palette SVG/PNG; **`totalResources`** 55→56. Patch bumped.
 

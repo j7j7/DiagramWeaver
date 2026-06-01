@@ -84,6 +84,9 @@ import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isTimelineNodeType } from "@/lib/utils";
 import { shapeSwapMenuOptions, swapDiagramNodeObjectKind, type SwappableObjectKind } from "@/lib/shape-type-swap";
+import { canBooleanCombineNodes } from "@/lib/shape-to-polygon";
+import { combineShapeNodes } from "@/lib/vector-path-boolean";
+import type { ShapeBooleanOperation } from "@/lib/vector-path-types";
 import { cardTemplateSwapMenuOptions, swapCardTemplate } from "@/lib/card-template-swap";
 import { isCardNodeType, findCardElement, updateCardElementTree, resolveCardIconSlotFromPoint } from "@/lib/card-utils";
 import { normalizeDashboardDecorIconRef } from "@/lib/card-dashboard-stat";
@@ -1503,6 +1506,50 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const canAutoNumberLabels = useMemo(
     () => collectObjectIdsInSelectionOrder(selectedItemIds, diagramData).length >= 2,
     [selectedItemIds, diagramData]
+  );
+
+  const canBooleanCombine = useMemo(() => {
+    if (selectedItemIds.size < 2) return false;
+    const nodes = Array.from(selectedItemIds)
+      .map((id) => diagramData.nodes.find((n) => n.id === id))
+      .filter((n): n is DiagramNodeData => !!n);
+    return canBooleanCombineNodes(nodes);
+  }, [selectedItemIds, diagramData.nodes]);
+
+  const handleBooleanCombine = useCallback(
+    (operation: ShapeBooleanOperation) => {
+      const nodeIds = Array.from(selectedItemIds).filter((id) =>
+        diagramData.nodes.some((n) => n.id === id),
+      );
+      if (nodeIds.length < 2) return;
+      const primaryId = contextMenu.itemId && selectedItemIds.has(contextMenu.itemId)
+        ? contextMenu.itemId
+        : nodeIds[0];
+      const result = combineShapeNodes(diagramData, nodeIds, operation, primaryId);
+      if (!result) {
+        toast({
+          title: "Combine failed",
+          description: "The operation produced no shape. Try a different combination.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setDiagramData(result.diagram);
+      onItemSelect(
+        { ...result.diagram.nodes.find((n) => n.id === result.resultNodeId)!, itemType: "node" },
+        false,
+      );
+      setSelectedItemIds(new Set([result.resultNodeId]));
+    },
+    [
+      selectedItemIds,
+      diagramData,
+      contextMenu.itemId,
+      setDiagramData,
+      onItemSelect,
+      setSelectedItemIds,
+      toast,
+    ],
   );
 
   const handleAutoNumberLabels = useCallback(() => {
@@ -3907,6 +3954,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               }));
               closeContextMenu();
             }}
+            canBooleanCombine={canBooleanCombine}
+            onBooleanCombine={handleBooleanCombine}
             cardTemplateChangeOptions={cardTemplateSwapMenuOptions(
               diagramData.nodes.find((n) => n.id === contextMenu.itemId)?.type,
             )}
