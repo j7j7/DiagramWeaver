@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 46,
+  "totalResources": 56,
   "categories": {
     "text": {
       "name": "Text",
@@ -247,6 +247,62 @@
         {
           "name": "Dashboard Defaults",
           "file": "dashboard-defaults.svg",
+          "type": "shape"
+        }
+      ]
+    },
+    "borders": {
+      "name": "Borders",
+      "path": "generic/borders",
+      "resources": [
+        {
+          "name": "Corner Diagonal Accent",
+          "file": "corner-diagonal-accent.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Corner Blue Layers",
+          "file": "corner-blue-layers.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Bar Chamfer Accent",
+          "file": "bar-chamfer-accent.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Wave Teal",
+          "file": "wave-teal.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Circle Warm",
+          "file": "circle-warm.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Frame Triangle",
+          "file": "frame-triangle.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Curve Gold Frame",
+          "file": "curve-gold-frame.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Crystal Poly",
+          "file": "crystal-poly.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Rounded Arrow Stack",
+          "file": "rounded-arrow-stack.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Swoop Blue Layers",
+          "file": "swoop-blue-layers.svg",
           "type": "shape"
         }
       ]

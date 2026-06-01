@@ -155,6 +155,6 @@ export function isIconPaletteDragItem(item: { type?: string }): boolean {
   return (
     t.startsWith("generic.icon.") ||
     t.startsWith("generic.emoji.") ||
-    (!!t && t.split(".").length >= 3 && !t.startsWith("generic.object.") && !t.startsWith("generic.card.") && !t.startsWith("generic.chart.") && !t.startsWith("generic.text."))
+    (!!t && t.split(".").length >= 3 && !t.startsWith("generic.object.") && !t.startsWith("generic.card.") && !t.startsWith("generic.border.") && !t.startsWith("generic.chart.") && !t.startsWith("generic.text."))
   );
 }

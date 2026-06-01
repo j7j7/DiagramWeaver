@@ -165,6 +165,7 @@ function getCategoryTintClasses(categoryKey: string): string {
     iot: 'bg-lime-500/5 border-lime-500/10',
     object: 'bg-slate-500/5 border-slate-500/10',
     cards: 'bg-sky-500/5 border-sky-500/10',
+    borders: 'bg-teal-500/5 border-teal-500/10',
   };
   return tints[categoryKey] || 'bg-muted/5 border-muted/10';
 }
@@ -462,6 +463,14 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
       return (
         <span className="inline-flex items-center justify-center">
           <ResourceIcon type={`generic.card.${slug}`} className="w-6 h-6" />
+        </span>
+      );
+    }
+    if (provider === 'generic' && category === 'borders' && resource.name) {
+      const slug = resource.name.replace(/\s+/g, '-').toLowerCase();
+      return (
+        <span className="inline-flex items-center justify-center">
+          <ResourceIcon type={`generic.border.${slug}`} className="w-6 h-6" />
         </span>
       );
     }

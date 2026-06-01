@@ -24,6 +24,7 @@ import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { isCardNodeType, findCardElement, updateCardElementTree } from "@/lib/card-utils";
+import { isBorderNodeType } from "@/lib/border-utils";
 import { cardNodeCornerRadiusNorm } from "@/lib/card-presentation";
 import {
   applyBulletListUniformItemFontSize,
@@ -80,6 +81,7 @@ import {
   SegmentedRectangleShape,
   PyramidShape,
   CardShape,
+  BorderShape,
 } from "./shapes";
 import {
   SlideShapeShadowTransitionProvider,
@@ -980,6 +982,8 @@ function DiagramNodeInner({
       );
     } else if (nodeType === 'generic.object.rectangle' || nodeType?.endsWith('.rectangle')) {
       return <RectangleShape {...shapeProps} />;
+    } else if (isBorderNodeType(nodeType)) {
+      return <BorderShape {...shapeProps} />;
     } else if (isCardNodeType(nodeType)) {
       const cardVisualNode =
         isDraggingCornerRadius && localCornerRadius !== null

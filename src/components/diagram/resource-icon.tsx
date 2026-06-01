@@ -10,6 +10,7 @@ import type { CustomImageOptions } from "@/lib/types";
 import { isConnectorLineNodeType } from "@/lib/utils";
 import { isChartNodeType } from "@/lib/chart-node";
 import { CLOUD_SHAPE_PATH_D, CLOUD_SHAPE_VIEW_BOX, isPaletteVectorCloudType } from "@/lib/cloud-shape";
+import { BorderPaletteGlyph } from "@/components/diagram/shapes/border-art";
 
 /** Palette JSON lists Text Box Heading under `generic.text` but runtime type is `generic.object.text-box-heading`. */
 function isTextBoxHeadingRuntimeType(type: string | undefined): boolean {
@@ -859,6 +860,10 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   }
   if (type === "generic.chart.ring") {
     return <ChartPaletteRingGlyph {...props} />;
+  }
+
+  if (type?.startsWith("generic.border.")) {
+    return <BorderPaletteGlyph type={type} {...props} />;
   }
 
   if (type?.startsWith("generic.card.")) {

@@ -77,6 +77,9 @@ import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/l
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
 import { findCardElement, isCardNodeType, updateCardElementTree } from '@/lib/card-utils';
+import { getBorderTemplateIdFromNodeType, isBorderNodeType } from '@/lib/border-utils';
+import { patchBorderSpec } from '@/lib/border-template-swap';
+import type { NodeBorderSpec } from '@/lib/border-types';
 import { cardIconVisualStyling, partitionCardIconVisualStylingPatch } from '@/lib/card-icon-styling';
 import { CARD_ICON_PLACEMENTS } from '@/lib/card-icon-layout';
 import {
@@ -944,6 +947,22 @@ export function ContextToolbar({
     return node?.card?.templateId;
   }, [selectedItem, isNode, currentDiagramData, diagramData]);
 
+  const selectedBorderSpec = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    if (!node || !isBorderNodeType(node.type)) return undefined;
+    return node.border;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const selectedBorderTemplateId = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    if (!node || !isBorderNodeType(node.type)) return undefined;
+    return node.border?.templateId ?? getBorderTemplateIdFromNodeType(node.type) ?? undefined;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
   const selectedAgendaRowThemeHue = useMemo(() => {
     if (!selectedItem || !isNode) return undefined;
     const data = currentDiagramData ?? diagramData;
@@ -1057,6 +1076,35 @@ export function ContextToolbar({
         nodes: prev.nodes.map((n) => {
           if (n.id !== selectedItem.id || !n.card) return n;
           return { ...n, card: { ...n.card, elements } };
+        }),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      const data = currentDiagramData ?? diagramData;
+      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
+      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+    },
+    [
+      selectedItem?.id,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      onItemUpdate,
+    ],
+  );
+
+  const handleBorderChange = useCallback(
+    (patch: Partial<NodeBorderSpec>) => {
+      if (!selectedItem?.id) return;
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (n.id !== selectedItem.id || !isBorderNodeType(n.type)) return n;
+          return patchBorderSpec(n, patch);
         }),
       });
       if (onCurrentDiagramDataUpdate) {
@@ -2827,6 +2875,10 @@ export function ContextToolbar({
                   onAgendaDividersEnabledChange={handleAgendaDividersEnabledChange}
                   bulletListItemThemeHue={selectedBulletListItemThemeHue}
                   onBulletListItemThemeHueChange={handleBulletListItemThemeHueChange}
+                  isBorderNode={isBorderNodeType((selectedItem as DiagramNodeData)?.type)}
+                  borderTemplateId={selectedBorderTemplateId}
+                  border={selectedBorderSpec}
+                  onBorderChange={handleBorderChange}
                   noIconBackground={(() => {
                     if (selectedCardIconElement?.iconRef) {
                       return !!selectedCardIconElement.iconRef.noIconBackground;

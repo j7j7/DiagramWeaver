@@ -170,6 +170,19 @@ const NodeCardSpecSchema = z.object({
   elements: CardElementDataSchema,
 });
 
+const BorderRolePaintSchema = z.object({
+  style: z.enum(["solid", "gradient"]).optional(),
+  color: z.string().optional(),
+  colors: z.tuple([z.string(), z.string()]).optional(),
+  angle: z.number().optional(),
+});
+
+const NodeBorderSpecSchema = z.object({
+  templateId: z.string(),
+  colorMode: z.enum(["light", "dark"]).optional(),
+  rolePaints: z.record(z.string(), BorderRolePaintSchema).optional(),
+});
+
 const ChartPieSeriesRowSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
@@ -564,6 +577,7 @@ export const DiagramNodeDataSchema = z.object({
 
   chart: z.preprocess(normalizeChartField, NodeChartSpecSchema).optional(),
   card: NodeCardSpecSchema.optional(),
+  border: NodeBorderSpecSchema.optional(),
   agendaRowThemeHue: z.boolean().optional(),
   agendaDividersEnabled: z.boolean().optional(),
   bulletListItemThemeHue: z.boolean().optional(),

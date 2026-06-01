@@ -1,0 +1,32 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sbl-deep" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A337E"/>
+      <stop offset="100%" stop-color="#0f2557"/>
+    </linearGradient>
+    <linearGradient id="sbl-mid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5DA7E3"/>
+      <stop offset="100%" stop-color="#3d8fd4"/>
+    </linearGradient>
+    <linearGradient id="sbl-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A9DDF3"/>
+      <stop offset="100%" stop-color="#7ec8eb"/>
+    </linearGradient>
+    <linearGradient id="sbl-pale" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E1F1F8"/>
+      <stop offset="100%" stop-color="#c5e4f5"/>
+    </linearGradient>
+    <filter id="sbl-layer-shadow" x="-15%" y="-10%" width="130%" height="120%">
+      <feDropShadow dx="0.2" dy="0.12" stdDeviation="0.22" flood-color="#475569" flood-opacity="0.22"/>
+    </filter>
+    <filter id="sbl-pale-shadow" x="-25%" y="-15%" width="150%" height="130%">
+      <feDropShadow dx="0.45" dy="0.2" stdDeviation="0.55" flood-color="#64748b" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  <rect width="24" height="24" fill="#FFFFFF"/>
+  <rect x="0" y="10.4" width="24" height="3.6" fill="#A9DDF3" opacity="0.16"/>
+  <path d="M 0 0 L 0 24 L 0.00 24 A 14.00 14.00 0 1 1 0.00 0 Z" fill="url(#sbl-deep)"/>
+  <path d="M 0.00 0 A 15.50 15.50 0 1 1 0.00 24 A 14.00 14.00 0 1 0 0.00 0 Z" fill="url(#sbl-mid)" filter="url(#sbl-layer-shadow)"/>
+  <path d="M 0.00 0 A 17.50 17.50 0 1 1 0.00 24 A 15.50 15.50 0 1 0 0.00 0 Z" fill="url(#sbl-light)" filter="url(#sbl-layer-shadow)"/>
+  <path d="M 0.00 0 A 20.00 20.00 0 1 1 0.00 24 A 17.50 17.50 0 1 0 0.00 0 Z" fill="url(#sbl-pale)" filter="url(#sbl-pale-shadow)"/>
+</svg>

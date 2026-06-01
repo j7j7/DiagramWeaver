@@ -4,7 +4,24 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
-### 2026-06-01 – Ten bright + ten more dark built-in themes
+### 2026-06-01 – Borders: Swoop Blue Layers template
+New **`swoop-blue-layers`** border — four stacked **circle-band** layers on the left (full-height vertical strips with large-radius circular right edges, deep → pale blue gradients), semi-transparent **center band**, layered drop shadows; six color roles (solid/gradient). Palette SVG/PNG; **`totalResources`** 55→56. Patch bumped.
+
+### 2026-06-01 – Borders: Rounded Arrow Stack template
+New **`rounded-arrow-stack`** border from reference slide — left stack of three **rounded** right triangles (yellow / coral / red), purple arrow point, soft gray top wash; white gutters preserved via layout constants. **`border-rounded-path.ts`** fillets polygon corners. Six gradient-capable color roles in properties panel. Palette SVG/PNG added; **`totalResources`** 54→55. Patch bumped.
+
+### 2026-06-01 – Borders: Curve Gold Frame + Crystal Poly; gradient color roles
+Two new templates matching corporate slide references — **`curve-gold-frame`** (navy bars, gold inset frame, curved corner swooshes) and **`crystal-poly`** (pastel frame, low-poly crystal clusters). All eight borders use **color roles** with **solid or linear gradient** fills via **`border-roles.ts`**, **`border-paint.tsx`**, and per-role controls in **`BorderPropertiesPanel`**. Palette SVG/PNG added; **`totalResources`** 52→54. Patch bumped.
+
+### 2026-06-01 – Borders: properties panel + light/dark color themes
+**`BorderPropertiesPanel`** in visual styling (template swap + **Light/Dark** color theme). Per-template palettes in **`border-theme-colors.ts`**; **`BorderArtContent`** reads **`node.border.colorMode`**. Generic shape **Border/Background** sections hidden for border nodes. **`patchBorderSpec`** / **`swapBorderTemplate`** in **`border-template-swap.ts`**. Patch bumped.
+
+### 2026-06-01 – Borders: `generic.border.*` wired (6 templates)
+Slide border object type (**`generic.border.{templateId}`**) — registry in **`border-templates.ts`**, **`NodeBorderSpec`** on **`DiagramNodeData`**, **`BorderShape`** + shared **`BorderArtContent`** / **`BorderPaletteGlyph`**. Palette **Generic → Borders** drops **960×540** frames (sent to back of stack, no random theme). Templates: corner-diagonal-accent, corner-blue-layers, bar-chamfer-accent, wave-teal, circle-warm, frame-triangle. Patch bumped.
+
+### 2026-06-01 – Borders: palette SVG/PNG thumbnails (6 starters)
+New **`public/resources/generic/borders/`** category with six slide-border starter templates — wireframe **24×24 SVG** + **48px PNG** each: **`corner-diagonal-accent`**, **`corner-blue-layers`**, **`bar-chamfer-accent`**, **`wave-teal`**, **`circle-warm`**, **`frame-triangle`**. **`resource-generic.json`** **Borders** category added (**`totalResources`** 46→52). Runtime **`generic.border.*`** — see entry above.
+
 **`builtin-bright-themes.ts`**: 10 light mesh themes (Paper Lantern → Cotton Candy Cloud) with varied borders — **none**, **dotted**, **solid**, and **gradient** rims; all use **mesh gradient** fills (first bright mesh presets in the catalog). **`builtin-dark-themes.ts`**: 10 additional dark themes (Void Garden → Phantom Circuit) with borderless, dotted, solid, and prismatic gradient frames. Merged into **`DEFAULT_THEMES`**. Patch bumped.
 
 ### 2026-06-01 – Twenty built-in dark mesh themes

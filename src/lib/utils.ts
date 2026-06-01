@@ -53,7 +53,7 @@ export function isDiagramEmojiTileNodeType(type: string | undefined, iconType?: 
 
 /** Diagram object + chart nodes: use shape bounding / connection geometry, not icon-in-box layout. */
 export function isGenericObjectOrChartShapeType(type: string | undefined): boolean {
-  return !!(type?.startsWith('generic.object.') || type?.startsWith('generic.chart.') || type?.startsWith('generic.card.'))
+  return !!(type?.startsWith('generic.object.') || type?.startsWith('generic.chart.') || type?.startsWith('generic.card.') || type?.startsWith('generic.border.'))
 }
 
 /**
@@ -106,6 +106,7 @@ export function isShapeNodeType(nodeType: string): boolean {
   if (isIconOrEmojiType(nodeType)) return false
   if (isChartNodeType(nodeType)) return true
   if (nodeType?.startsWith('generic.card.')) return true
+  if (nodeType?.startsWith('generic.border.')) return true
   return nodeType === 'generic.object.timeline' ||
          nodeType === 'generic.object.square' ||
          nodeType === 'generic.object.circle' ||

@@ -1,0 +1,19 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cgf-primary" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#000066"/>
+      <stop offset="100%" stop-color="#001a99"/>
+    </linearGradient>
+    <linearGradient id="cgf-accent" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFB800"/>
+      <stop offset="100%" stop-color="#FFD54F"/>
+    </linearGradient>
+  </defs>
+  <rect width="24" height="24" fill="#FFFFFF"/>
+  <rect x="0" y="0" width="24" height="2.8" fill="url(#cgf-primary)"/>
+  <rect x="0" y="21.2" width="24" height="2.8" fill="url(#cgf-primary)"/>
+  <path d="M24,0 L24,10 C17.5,10 15,6.5 15,2.8 L24,2.8 Z" fill="url(#cgf-primary)"/>
+  <path d="M0,24 L0,14 C6.5,14 9,17.5 9,21.2 L0,21.2 Z" fill="url(#cgf-primary)"/>
+  <rect x="1.1" y="2.8" width="21.8" height="18.4" fill="none" stroke="url(#cgf-accent)" stroke-width="0.45"/>
+  <rect x="1.6" y="3.3" width="20.8" height="17.4" fill="#FFFFFF"/>
+</svg>

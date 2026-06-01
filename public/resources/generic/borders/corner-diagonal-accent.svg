@@ -1,0 +1,11 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="24" height="24" fill="#FFFFFF"/>
+  <!-- bottom-left navy corner -->
+  <polygon points="0,24 0,8 16,24" fill="#002060"/>
+  <!-- bottom-left gold stripe -->
+  <polygon points="0,21 0,13 10,23" fill="#FFC000"/>
+  <!-- top-right gold corner -->
+  <polygon points="24,0 8,0 24,16" fill="#FFC000"/>
+  <!-- top-right navy stripe -->
+  <polygon points="24,3 14,0 24,11" fill="#002060"/>
+</svg>

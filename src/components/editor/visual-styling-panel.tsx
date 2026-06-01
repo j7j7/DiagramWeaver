@@ -49,7 +49,9 @@ import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
 import type { CardElementData } from "@/lib/card-types";
 import { CardPropertiesPanel } from "./card-properties-panel";
+import { BorderPropertiesPanel } from "./border-properties-panel";
 import { cardTemplateHasDedicatedPropertiesPanel } from "@/lib/card-compact-horizontal";
+import type { NodeBorderSpec } from "@/lib/border-types";
 
 /** Native steppers steal horizontal space on short inputs and clip fractional values (Chrome/Safari/Firefox). */
 const NUMBER_INPUT_NO_SPINNER =
@@ -401,6 +403,11 @@ interface VisualStylingPanelProps {
   onAgendaDividersEnabledChange?: (enabled: boolean) => void;
   bulletListItemThemeHue?: boolean;
   onBulletListItemThemeHueChange?: (enabled: boolean) => void;
+  /** Selected slide border template node. */
+  isBorderNode?: boolean;
+  borderTemplateId?: string;
+  border?: NodeBorderSpec;
+  onBorderChange?: (patch: Partial<NodeBorderSpec>) => void;
   footer?: React.ReactNode;
 }
 
@@ -528,7 +535,7 @@ function IconBevelMatchColorPreview({
   );
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, footer }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -1042,6 +1049,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </Select>
               </StylingAccordionSection>
 
+              {!isBorderNode ? (
               <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Border" dotClassName="bg-amber-500" outerClassName="border-amber-200/50 bg-amber-50/50">
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div className="space-y-1">
@@ -1159,7 +1167,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   </div>
                 )}
               </StylingAccordionSection>
+              ) : null}
 
+              {!isBorderNode ? (
               <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Background" dotClassName="bg-emerald-500" outerClassName="border-emerald-200/50 bg-emerald-50/50">
                 {isCardNode ? (
                   <p className="mb-2 text-xs text-muted-foreground">
@@ -1426,6 +1436,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   </div>
                 )}
               </StylingAccordionSection>
+              ) : null}
 
               {isProgressBar ? (
                 <StylingAccordionSection
@@ -1734,6 +1745,21 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       </div>
                     </div>
                   ) : null}
+                </StylingAccordionSection>
+              ) : null}
+
+              {isBorderNode && onBorderChange ? (
+                <StylingAccordionSection
+                  defaultOpen={accordionDefaultOpen}
+                  title="Border properties"
+                  dotClassName="bg-teal-500"
+                  outerClassName="border-teal-200/50 bg-teal-50/50"
+                >
+                  <BorderPropertiesPanel
+                    borderTemplateId={borderTemplateId}
+                    border={border}
+                    onBorderChange={onBorderChange}
+                  />
                 </StylingAccordionSection>
               ) : null}
 

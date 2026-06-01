@@ -1,4 +1,5 @@
 import type { NodeCardSpec } from "@/lib/card-types";
+import type { NodeBorderSpec } from "@/lib/border-types";
 
 /** Rich text run - segment with optional bold/italic/underline/list and per-line formatting */
 export interface RichTextRun {
@@ -527,6 +528,9 @@ export interface DiagramNodeData {
 
   /** Composite card layout for `generic.card.*` template nodes. */
   card?: NodeCardSpec;
+
+  /** Slide border / base frame for `generic.border.*` template nodes. */
+  border?: NodeBorderSpec;
 
   /** Agenda card: step row background hues (defaults to Themes menu multi-select hue setting). */
   agendaRowThemeHue?: boolean;

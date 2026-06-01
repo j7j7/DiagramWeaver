@@ -1,0 +1,11 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="24" height="24" fill="#FFFFFF"/>
+  <!-- top navy bar -->
+  <rect x="0" y="0" width="24" height="2.2" fill="#002060"/>
+  <!-- top-left yellow chamfer -->
+  <polygon points="0,0 6.5,0 4.5,2.2 0,2.2" fill="#FFC000"/>
+  <!-- bottom navy bar -->
+  <rect x="0" y="21.8" width="24" height="2.2" fill="#002060"/>
+  <!-- bottom-right yellow chamfer -->
+  <polygon points="24,24 17.5,24 19.5,21.8 24,21.8" fill="#FFC000"/>
+</svg>

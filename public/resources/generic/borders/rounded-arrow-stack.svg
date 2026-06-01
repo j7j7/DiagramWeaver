@@ -1,0 +1,26 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ras-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5C842"/>
+      <stop offset="100%" stop-color="#F0A830"/>
+    </linearGradient>
+    <linearGradient id="ras-mid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F08B72"/>
+      <stop offset="100%" stop-color="#E87055"/>
+    </linearGradient>
+    <linearGradient id="ras-bot" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0424B"/>
+      <stop offset="100%" stop-color="#C62828"/>
+    </linearGradient>
+    <linearGradient id="ras-point" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8E4585"/>
+      <stop offset="100%" stop-color="#5B2C6F"/>
+    </linearGradient>
+  </defs>
+  <rect width="24" height="24" fill="#FFFFFF"/>
+  <path d="M 0.850 0.000 L 14.750 0.000 Q 14.750 0.000 14.750 0.000 L 18.965 7.865 Q 19.150 8.150 18.865 8.335 L 0.850 10.895 Q 0.000 11.450 0.000 10.600 L 0.000 0.850 Q 0.000 0.000 0.850 0.000 Z" fill="#E8E8E8"/>
+  <path d="M 0.748 0.748 L 3.880 0.748 Q 4.312 0.748 4.312 1.180 L 1.180 6.792 Q 0.748 7.224 0.748 6.792 L 0.748 0.748 Z" fill="url(#ras-top)"/>
+  <path d="M 0.748 7.800 L 3.880 7.800 Q 4.312 7.800 4.312 8.232 L 1.180 14.312 Q 0.748 14.744 0.748 14.312 L 0.748 7.800 Z" fill="url(#ras-mid)"/>
+  <path d="M 0.748 15.320 L 3.880 15.320 Q 4.312 15.320 4.312 15.752 L 1.180 22.992 Q 0.748 23.424 0.748 22.992 L 0.748 15.320 Z" fill="url(#ras-bot)"/>
+  <path d="M 4.520 5.410 L 12.418 10.738 Q 12.850 11.100 12.418 11.462 L 4.520 16.790 Q 4.160 17.150 4.160 16.790 L 4.160 5.410 Q 4.160 5.050 4.520 5.410 Z" fill="url(#ras-point)"/>
+</svg>

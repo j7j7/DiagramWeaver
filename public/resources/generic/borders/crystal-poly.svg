@@ -1,0 +1,31 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cp-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="cp-mid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="cp-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#0c2d6b"/>
+    </linearGradient>
+  </defs>
+  <rect width="24" height="24" fill="#DDEBFA"/>
+  <rect x="2" y="2" width="20" height="20" fill="#FFFFFF"/>
+  <polygon points="0,24 0,17 7,24" fill="url(#cp-dark)"/>
+  <polygon points="0,17 5,15 7,24" fill="url(#cp-mid)"/>
+  <polygon points="5,15 9,19 7,24" fill="url(#cp-light)"/>
+  <polygon points="0,13 5,15 0,17" fill="url(#cp-mid)"/>
+  <polygon points="9,19 13,22 7,24" fill="url(#cp-dark)"/>
+  <polygon points="5,15 11,13 9,19" fill="url(#cp-light)"/>
+  <polygon points="11,13 15,17 9,19" fill="url(#cp-mid)"/>
+  <polygon points="0,9 5,15 0,13" fill="url(#cp-light)"/>
+  <polygon points="24,0 17,0 24,6" fill="url(#cp-dark)"/>
+  <polygon points="17,0 19,4 24,6" fill="url(#cp-mid)"/>
+  <polygon points="19,4 15,5 24,9" fill="url(#cp-light)"/>
+  <polygon points="15,5 13,2 17,0" fill="url(#cp-light)"/>
+  <polygon points="13,2 10,5 15,5" fill="url(#cp-mid)"/>
+</svg>

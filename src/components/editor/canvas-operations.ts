@@ -30,6 +30,11 @@ import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { defaultPaletteSegmentedRectangleNodeProps } from "@/lib/segmented-rectangle";
 import { getCardTemplateIdFromNodeType, createInitialCardSpec } from "@/lib/card-utils";
+import {
+  getBorderTemplateIdFromNodeType,
+  createInitialBorderSpec,
+} from "@/lib/border-utils";
+import { getBorderTemplate, defaultBorderPaletteNodeProps } from "@/lib/border-templates";
 import { AGENDA_TEMPLATE_ID, defaultAgendaPaletteNodeProps } from "@/lib/card-agenda";
 import {
   BULLET_LIST_TEMPLATE_ID,
@@ -143,6 +148,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.chart.pie' ||
                                 itemType?.startsWith('generic.chart.') ||
                                 itemType?.startsWith('generic.card.') ||
+                                itemType?.startsWith('generic.border.') ||
                                 isConnectorLineNodeType(itemType) ||
                                 itemType?.endsWith('.square') ||
                                 itemType?.endsWith('.circle') ||
@@ -183,8 +189,9 @@ export function useCanvasOperations({
         !defaultTextLabelsEnabled;
 
       if (!existingNode) {
+        const borderTemplateId = getBorderTemplateIdFromNodeType(itemType);
         const shouldApplyShapeTheme =
-          isShapeResource && itemType !== "generic.object.point" && !isFromScratchPad;
+          isShapeResource && itemType !== "generic.object.point" && !isFromScratchPad && !borderTemplateId;
         const randomBuiltInTheme = shouldApplyShapeTheme ? pickRandomBuiltInTheme() : null;
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
@@ -197,6 +204,7 @@ export function useCanvasOperations({
         }
         const cardTemplateId = getCardTemplateIdFromNodeType(itemType);
         const cardTemplate = cardTemplateId ? getCardTemplate(cardTemplateId) : undefined;
+        const borderTemplate = borderTemplateId ? getBorderTemplate(borderTemplateId) : undefined;
         let newNode: DiagramNodeData = {
           id: newNodeId,
           type: itemType,
@@ -232,6 +240,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.line' ? 470 :
              itemType === 'generic.chart.bar' ? 380 :
              itemType === 'generic.chart.ring' ? 410 :
+             borderTemplate ? borderTemplate.defaultWidth :
              cardTemplate ? cardTemplate.defaultWidth :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(240, 40) : undefined, // Initial width - 100% wider than before (was 120)
@@ -252,6 +261,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.line' ? 320 :
              itemType === 'generic.chart.bar' ? 280 :
              itemType === 'generic.chart.ring' ? 320 :
+             borderTemplate ? borderTemplate.defaultHeight :
              cardTemplate ? cardTemplate.defaultHeight :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(80, 40) : undefined, // Initial height - same as textbox for plain text
@@ -355,6 +365,10 @@ export function useCanvasOperations({
             !isFromScratchPad && {
             chart: defaultChartSpecForNodeType(itemType),
           }),
+          ...(borderTemplateId && !isFromScratchPad && {
+            ...defaultBorderPaletteNodeProps(borderTemplateId),
+            border: createInitialBorderSpec(borderTemplateId),
+          }),
           ...(cardTemplateId && !isFromScratchPad && (
             cardTemplateId === AGENDA_TEMPLATE_ID
               ? {
@@ -399,7 +413,11 @@ export function useCanvasOperations({
         ) {
           newNode = themeManager.applyThemeToItem(newNode, randomBuiltInTheme) as DiagramNodeData;
         }
-        newNodes.push(newNode);
+        if (borderTemplateId) {
+          newNodes.unshift(newNode);
+        } else {
+          newNodes.push(newNode);
+        }
         newItemId = newNode.id;
       }
       
