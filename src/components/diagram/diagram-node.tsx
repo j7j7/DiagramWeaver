@@ -339,6 +339,10 @@ interface DiagramNodeProps {
     timelineEnterStaggerOrder?: readonly string[];
     chartLerpU?: number;
     chartLerpFromJson?: string;
+    /** Play / slide transitions: lerp card box width/height in px (not CSS scale). */
+    cardSizeLerpU?: number;
+    cardSizeLerpFromWidth?: number;
+    cardSizeLerpFromHeight?: number;
   };
   /** When node has subDiagramId, double-click navigates to sub-diagram instead of editing label */
   onSubDiagramDoubleClick?: (node: DiagramNodeData) => void;
@@ -979,10 +983,14 @@ function DiagramNodeInner({
         isDraggingCornerRadius && localCornerRadius !== null
           ? { ...visualNode, cornerRadius: localCornerRadius }
           : visualNode;
+      const cardRenderNode =
+        cardLerpedBox != null
+          ? { ...cardVisualNode, width: cardLerpedBox.width, height: cardLerpedBox.height }
+          : cardVisualNode;
       return (
         <CardShape
           {...shapeProps}
-          node={cardVisualNode}
+          node={cardRenderNode}
           isReadOnly={isReadOnly}
           cardEditElementId={cardEditElementId}
           isEditingCardElement={isEditingCardElement}
@@ -2019,17 +2027,53 @@ function DiagramNodeInner({
   );
 
   const rotation = (node as any).rotation || 0;
+
+  const cardSizeLerpActive =
+    isCardNode &&
+    animationStyle?.cardSizeLerpU != null &&
+    animationStyle.cardSizeLerpU < 1 - 1e-9 &&
+    animationStyle.cardSizeLerpFromWidth != null &&
+    animationStyle.cardSizeLerpFromHeight != null;
+
+  const cardLerpedBox = useMemo(() => {
+    if (!cardSizeLerpActive) return null;
+    const u = animationStyle!.cardSizeLerpU!;
+    const fromW = animationStyle!.cardSizeLerpFromWidth!;
+    const fromH = animationStyle!.cardSizeLerpFromHeight!;
+    const toW = node.width ?? 160;
+    const toH = node.height ?? 120;
+    return {
+      width: fromW + (toW - fromW) * u,
+      height: fromH + (toH - fromH) * u,
+    };
+  }, [
+    cardSizeLerpActive,
+    animationStyle?.cardSizeLerpU,
+    animationStyle?.cardSizeLerpFromWidth,
+    animationStyle?.cardSizeLerpFromHeight,
+    node.width,
+    node.height,
+  ]);
+
   // During resize, use local dimensions for instant visual feedback
-  const displayWidth = resizeDimensions ? resizeDimensions.width : (
-    isShapeNode ? (node.width || 60) :
-    isRichTextBoxLike ? (node.sizeMode === 'custom' && node.width ? node.width : undefined) :
-    undefined
-  );
-  const displayHeight = resizeDimensions ? resizeDimensions.height : (
-    isShapeNode ? (node.height || 60) :
-    (isRichTextBoxLike && node.sizeMode === 'custom') ? (node.height || 40) :
-    undefined
-  );
+  const displayWidth = resizeDimensions
+    ? resizeDimensions.width
+    : cardLerpedBox
+      ? cardLerpedBox.width
+      : isShapeNode
+        ? (node.width || 60)
+        : isRichTextBoxLike
+          ? (node.sizeMode === "custom" && node.width ? node.width : undefined)
+          : undefined;
+  const displayHeight = resizeDimensions
+    ? resizeDimensions.height
+    : cardLerpedBox
+      ? cardLerpedBox.height
+      : isShapeNode
+        ? (node.height || 60)
+        : isRichTextBoxLike && node.sizeMode === "custom"
+          ? (node.height || 40)
+          : undefined;
   const positionXForHighlight = resizePosition?.x ?? node.x;
   const positionYForHighlight = resizePosition?.y ?? node.y;
   const highlightAnimStyle = useMemo(
@@ -3303,12 +3347,12 @@ function DiagramNodeInner({
                  (node.sizeMode === 'custom' && node.width ? node.width : 'auto') :
                  (iconNodeDims ? iconNodeDims.width : NODE_WIDTH))),
          minWidth: spineLikeNode ? 0 : // Lines don't need min width
-                   (resizeDimensions ? (isShapeNode ? 20 : isRichTextBoxLike ? 40 : 80) : // During resize: allow shrinking to match new dimensions (like textbox)
+                   (resizeDimensions || cardSizeLerpActive ? (isShapeNode ? 20 : isRichTextBoxLike ? 40 : 80) : // During resize: allow shrinking to match new dimensions (like textbox)
                     isShapeNode ? (node.width || 60) :
                     isRichTextBoxLike ? 40 :
                    isRotatableNode ? 80 : (isIconNode ? (iconNodeDims?.width ?? getNodeSizeDimensions((node as any).nodeSize).container) : NODE_WIDTH)),
          maxWidth: spineLikeNode ? 'none' : // Lines don't need max width
-                   (resizeDimensions ? 'none' : // During resize: allow growing without constraint
+                   (resizeDimensions || cardSizeLerpActive ? 'none' : // During resize: allow growing without constraint
                     isShapeNode ? (node.width || 60) :
                     isRichTextBoxLike ? (node.sizeMode === 'custom' ? 'none' : 400) :
                    isRotatableNode ? 200 : (isIconNode ? 400 : NODE_WIDTH)),

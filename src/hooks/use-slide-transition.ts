@@ -66,6 +66,11 @@ export interface SlideTransitionStyle {
   chartLerpU?: number;
   /** `JSON.stringify(prev.chart)` when lerping. */
   chartLerpFromJson?: string;
+  /** 0–1 eased progress for card width/height (actual px, not CSS scale). */
+  cardSizeLerpU?: number;
+  /** Previous-slide dimensions when {@link cardSizeLerpU} is set. */
+  cardSizeLerpFromWidth?: number;
+  cardSizeLerpFromHeight?: number;
 }
 
 interface SlideNodeAnimStyle {
@@ -107,6 +112,7 @@ interface SlideNodeAnimStyle {
   suppressCardOuterMotion?: boolean;
   isAppearingCard?: boolean;
   isDisappearingCard?: boolean;
+  cardSizeLerpEligible?: boolean;
 }
 
 interface SlideAnimation {
@@ -531,6 +537,16 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         translateYEnd = 0;
       }
 
+      /** Cards suppress outer scale; animate width/height in px so corners and flex layout stay crisp. */
+      const cardSizeLerpEligible = Boolean(
+        isCardNode &&
+          prevNode &&
+          currNode &&
+          !isAppearing &&
+          !isDisappearing &&
+          (prevWidth !== currWidth || prevHeight !== currHeight),
+      );
+
       const needsNodeTransition =
         isAppearing ||
         isDisappearing ||
@@ -583,6 +599,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         suppressCardOuterMotion,
         isAppearingCard,
         isDisappearingCard,
+        cardSizeLerpEligible,
       });
 
       if (isDisappearing) {
@@ -1004,6 +1021,13 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           style.chartLerpEligible && style.chartLerpFromJson
             ? { chartLerpU: 0, chartLerpFromJson: style.chartLerpFromJson }
             : {};
+        const cardSizeLerpFields = style.cardSizeLerpEligible
+          ? {
+              cardSizeLerpU: 0,
+              cardSizeLerpFromWidth: style.widthStart,
+              cardSizeLerpFromHeight: style.heightStart,
+            }
+          : {};
 
         if (style.hasVisualColorChange && style.useVisualColorCrossfade) {
           next.set(nodeId, {
@@ -1022,6 +1046,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             ...(cardSlideStagger ? { cardSlideStagger } : {}),
             ...tlCardPatch,
             ...chartLerpFields,
+            ...cardSizeLerpFields,
           });
         } else {
           next.set(nodeId, {
@@ -1038,6 +1063,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             ...(cardSlideStagger ? { cardSlideStagger } : {}),
             ...tlCardPatch,
             ...chartLerpFields,
+            ...cardSizeLerpFields,
           });
         }
       }
@@ -1193,6 +1219,13 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               style.chartLerpEligible && style.chartLerpFromJson
                 ? { chartLerpU: 0, chartLerpFromJson: style.chartLerpFromJson }
                 : {};
+            const cardSizeLerpFields = style.cardSizeLerpEligible
+              ? {
+                  cardSizeLerpU: 0,
+                  cardSizeLerpFromWidth: style.widthStart,
+                  cardSizeLerpFromHeight: style.heightStart,
+                }
+              : {};
 
             if (style.hasVisualColorChange && style.useVisualColorCrossfade) {
               next.set(nodeId, {
@@ -1212,6 +1245,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 ...(cardSlideStagger ? { cardSlideStagger } : {}),
                 ...tlCardPatch,
                 ...chartLerpFields,
+                ...cardSizeLerpFields,
               });
             } else if (style.hasVisualColorChange) {
               // Keep previous-slide colors but enable transition on paint props; next rAF applies end colors.
@@ -1228,6 +1262,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 ...(cardSlideStagger ? { cardSlideStagger } : {}),
                 ...tlCardPatch,
                 ...chartLerpFields,
+                ...cardSizeLerpFields,
               });
             } else {
               next.set(nodeId, {
@@ -1241,6 +1276,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 ...(cardSlideStagger ? { cardSlideStagger } : {}),
                 ...tlCardPatch,
                 ...chartLerpFields,
+                ...cardSizeLerpFields,
               });
             }
           }
@@ -1428,7 +1464,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     if (animations.length === 0) return;
 
     const anim = animations[0];
-    const hasLerp = [...anim.nodeIdStyles.values()].some((s) => s.chartLerpEligible);
+    const hasLerp = [...anim.nodeIdStyles.values()].some(
+      (s) => s.chartLerpEligible || s.cardSizeLerpEligible,
+    );
     if (!hasLerp) return;
 
     const tick = () => {
@@ -1447,7 +1485,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       setNodeStyles((prev) => {
         const next = new Map(prev);
         for (const [nodeId, st] of active.nodeIdStyles) {
-          if (!st.chartLerpEligible || !st.chartLerpFromJson) continue;
+          const chartLerp = st.chartLerpEligible && st.chartLerpFromJson;
+          const cardSizeLerp = st.cardSizeLerpEligible;
+          if (!chartLerp && !cardSizeLerp) continue;
           const existing = next.get(nodeId);
           if (!existing) continue;
           const delayMs = nodeDelays.get(nodeId) ?? 0;
@@ -1456,8 +1496,16 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           const p = easeSlideTransitionInOut(u);
           next.set(nodeId, {
             ...existing,
-            chartLerpU: p,
-            chartLerpFromJson: st.chartLerpFromJson,
+            ...(chartLerp
+              ? { chartLerpU: p, chartLerpFromJson: st.chartLerpFromJson }
+              : {}),
+            ...(cardSizeLerp
+              ? {
+                  cardSizeLerpU: p,
+                  cardSizeLerpFromWidth: st.widthStart,
+                  cardSizeLerpFromHeight: st.heightStart,
+                }
+              : {}),
           });
         }
         return next;
@@ -1513,6 +1561,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               timelineEnterStaggerOrder: undefined,
               chartLerpU: undefined,
               chartLerpFromJson: undefined,
+              cardSizeLerpU: undefined,
+              cardSizeLerpFromWidth: undefined,
+              cardSizeLerpFromHeight: undefined,
             });
           }
         }

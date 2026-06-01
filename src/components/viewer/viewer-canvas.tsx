@@ -76,6 +76,9 @@ interface ViewerCanvasProps {
     timelineEnterStaggerOrder?: readonly string[];
     chartLerpU?: number;
     chartLerpFromJson?: string;
+    cardSizeLerpU?: number;
+    cardSizeLerpFromWidth?: number;
+    cardSizeLerpFromHeight?: number;
   }>;
   /** Connection transition styles for slide transitions */
   connectionTransitionStyles?: Map<string, {
