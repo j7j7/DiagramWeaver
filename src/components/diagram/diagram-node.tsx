@@ -29,8 +29,11 @@ import { isVectorPathNodeType } from "@/lib/vector-path-utils";
 import type { VectorPathRing } from "@/lib/vector-path-types";
 import {
   flattenRingsToVertexList,
-  updateVectorPathPoint,
+  refitVectorPathFromCanvasRings,
+  refitVectorPathNodeBounds,
+  vectorPathRingsToCanvas,
 } from "@/lib/vector-path-utils";
+import type { VectorPathCanvasRing } from "@/lib/vector-path-utils";
 import { cardNodeCornerRadiusNorm } from "@/lib/card-presentation";
 import {
   applyBulletListUniformItemFontSize,
@@ -699,14 +702,21 @@ function DiagramNodeInner({
 
   const isVectorPathNode = isVectorPathNodeType(node.type);
   const [localVectorRings, setLocalVectorRings] = useState<VectorPathRing[] | null>(null);
+  const [localVectorNodeBox, setLocalVectorNodeBox] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [isDraggingVectorVertex, setIsDraggingVectorVertex] = useState(false);
   const [vectorVertexIndex, setVectorVertexIndex] = useState<number | null>(null);
   const vectorVertexDragRef = useRef<{
     clientX: number;
     clientY: number;
     vertexIndex: number;
-    initialRings: VectorPathRing[];
+    initialCanvasRings: VectorPathCanvasRing[];
     flatMeta: ReturnType<typeof flattenRingsToVertexList>;
+    initialCanvasVertex: { x: number; y: number };
   } | null>(null);
   const latestVectorRingsRef = useRef<VectorPathRing[] | null>(null);
   const vectorVertexDocListenersRef = useRef<{
@@ -2114,11 +2124,38 @@ function DiagramNodeInner({
     node.cornerRadius,
   ]);
 
+  const syncVectorPathKey = JSON.stringify(node.vectorPath?.rings ?? []);
+
+  const vectorPathLayout = useMemo(() => {
+    if (!isVectorPathNode) return null;
+    const rings = localVectorRings ?? node.vectorPath?.rings ?? [];
+    if (!rings.length) return null;
+    if (localVectorNodeBox) {
+      return { ...localVectorNodeBox, rings };
+    }
+    return refitVectorPathNodeBounds(node, rings, { force: isDraggingVectorVertex });
+  }, [
+    isVectorPathNode,
+    localVectorRings,
+    localVectorNodeBox,
+    node,
+    syncVectorPathKey,
+    isDraggingVectorVertex,
+    node.borderWidth,
+    node.borderStyle,
+    node.x,
+    node.y,
+    node.width,
+    node.height,
+  ]);
+
   // During resize, use local dimensions for instant visual feedback
   const displayWidth = resizeDimensions
     ? resizeDimensions.width
     : cardLerpedBox
       ? cardLerpedBox.width
+      : isVectorPathNode && vectorPathLayout
+        ? vectorPathLayout.width
       : isShapeNode
         ? (node.width || 60)
         : isRichTextBoxLike
@@ -2128,11 +2165,21 @@ function DiagramNodeInner({
     ? resizeDimensions.height
     : cardLerpedBox
       ? cardLerpedBox.height
+      : isVectorPathNode && vectorPathLayout
+        ? vectorPathLayout.height
       : isShapeNode
         ? (node.height || 60)
         : isRichTextBoxLike && node.sizeMode === "custom"
           ? (node.height || 40)
           : undefined;
+  const displayNodeX =
+    isVectorPathNode && vectorPathLayout && !resizePosition
+      ? vectorPathLayout.x
+      : resizePosition?.x ?? node.x;
+  const displayNodeY =
+    isVectorPathNode && vectorPathLayout && !resizePosition
+      ? vectorPathLayout.y
+      : resizePosition?.y ?? node.y;
   const positionXForHighlight = resizePosition?.x ?? node.x;
   const positionYForHighlight = resizePosition?.y ?? node.y;
   const highlightAnimStyle = useMemo(
@@ -2508,8 +2555,6 @@ function DiagramNodeInner({
     spineLikeNode,
   ]);
 
-  const syncVectorPathKey = JSON.stringify(node.vectorPath?.rings ?? []);
-
   useEffect(() => {
     if (!isDraggingVectorVertex && isVectorPathNode) {
       const rings = node.vectorPath?.rings ?? [];
@@ -2518,6 +2563,7 @@ function DiagramNodeInner({
         if (prev && JSON.stringify(prev) === key) return prev;
         return rings.length ? rings.map((r) => ({ points: r.points.map((p) => ({ ...p })) })) : null;
       });
+      setLocalVectorNodeBox(null);
     }
   }, [node.id, syncVectorPathKey, isDraggingVectorVertex, isVectorPathNode]);
 
@@ -2956,20 +3002,28 @@ function DiagramNodeInner({
       const rings = localVectorRings ?? node.vectorPath?.rings ?? [];
       const flatMeta = flattenRingsToVertexList(rings);
       if (vertexIndex < 0 || vertexIndex >= flatMeta.length) return;
+      const nx = vectorPathLayout?.x ?? node.x ?? 0;
+      const ny = vectorPathLayout?.y ?? node.y ?? 0;
+      const initialCanvasRings = vectorPathRingsToCanvas(rings, nx, ny);
+      const meta = flatMeta[vertexIndex];
+      const initCanvas = {
+        x: nx + meta.x,
+        y: ny + meta.y,
+      };
       setIsDraggingVectorVertex(true);
       setVectorVertexIndex(vertexIndex);
       onDraggingChange?.(true);
-      const initialRings = rings.map((r) => ({ points: r.points.map((p) => ({ ...p })) }));
       vectorVertexDragRef.current = {
         clientX: e.clientX,
         clientY: e.clientY,
         vertexIndex,
-        initialRings,
+        initialCanvasRings,
         flatMeta,
+        initialCanvasVertex: initCanvas,
       };
-      latestVectorRingsRef.current = initialRings;
+      latestVectorRingsRef.current = rings;
     },
-    [localVectorRings, node.vectorPath?.rings, onDraggingChange],
+    [localVectorRings, node, vectorPathLayout, onDraggingChange],
   );
 
   const handleVectorVertexDragMove = useCallback(
@@ -2982,10 +3036,6 @@ function DiagramNodeInner({
         deltaX = deltaX / transform.k;
         deltaY = deltaY / transform.k;
       }
-      const meta = drag.flatMeta[drag.vertexIndex];
-      if (!meta) return;
-      const init = drag.initialRings[meta.ringIndex]?.points[meta.pointIndex];
-      if (!init) return;
       const rot = node.rotation ?? 0;
       if (rot) {
         const rad = (-rot * Math.PI) / 180;
@@ -2996,29 +3046,60 @@ function DiagramNodeInner({
         deltaX = rdx;
         deltaY = rdy;
       }
-      const localX = snapToGrid(init.x + deltaX);
-      const localY = snapToGrid(init.y + deltaY);
-      const next = updateVectorPathPoint(drag.initialRings, meta.ringIndex, meta.pointIndex, localX, localY);
-      latestVectorRingsRef.current = next;
-      setLocalVectorRings(next);
+      const meta = drag.flatMeta[drag.vertexIndex];
+      if (!meta) return;
+      const canvasX = snapToGrid(drag.initialCanvasVertex.x + deltaX);
+      const canvasY = snapToGrid(drag.initialCanvasVertex.y + deltaY);
+      const nextCanvasRings = drag.initialCanvasRings.map((ring, ri) =>
+        ring.map((p, pi) =>
+          ri === meta.ringIndex && pi === meta.pointIndex ? { ...p, x: canvasX, y: canvasY } : p,
+        ),
+      );
+      const fitted = refitVectorPathFromCanvasRings(nextCanvasRings, node);
+      if (!fitted) return;
+      latestVectorRingsRef.current = fitted.rings;
+      setLocalVectorRings(fitted.rings);
+      setLocalVectorNodeBox({
+        x: fitted.x,
+        y: fitted.y,
+        width: fitted.width,
+        height: fitted.height,
+      });
     },
-    [transform, node.rotation],
+    [transform, node],
   );
 
   const handleVectorVertexDragEnd = useCallback(() => {
     if (onUpdate && vectorVertexDragRef.current) {
-      const nextRings = latestVectorRingsRef.current ?? localVectorRings ?? node.vectorPath?.rings ?? [];
+      const rings = latestVectorRingsRef.current ?? localVectorRings ?? node.vectorPath?.rings ?? [];
+      const fitted =
+        localVectorNodeBox && rings.length
+          ? { ...localVectorNodeBox, rings }
+          : refitVectorPathNodeBounds(node, rings, { force: true }) ?? {
+              x: node.x ?? 0,
+              y: node.y ?? 0,
+              width: node.width ?? 80,
+              height: node.height ?? 50,
+              rings,
+            };
       onUpdate({
         ...node,
-        vectorPath: { rings: nextRings },
+        x: fitted.x,
+        y: fitted.y,
+        width: fitted.width,
+        height: fitted.height,
+        sizeMode: "custom",
+        vectorPath: { rings: fitted.rings },
       });
+      setLocalVectorRings(fitted.rings);
+      setLocalVectorNodeBox(null);
       latestVectorRingsRef.current = null;
     }
     onDraggingChange?.(false);
     setIsDraggingVectorVertex(false);
     setVectorVertexIndex(null);
     vectorVertexDragRef.current = null;
-  }, [onUpdate, node, localVectorRings, onDraggingChange]);
+  }, [onUpdate, node, localVectorRings, localVectorNodeBox, onDraggingChange]);
 
   const handleVectorVertexPointerDown = useCallback(
     (e: React.PointerEvent | React.MouseEvent, vertexIndex: number) => {
@@ -3517,10 +3598,10 @@ function DiagramNodeInner({
         // For top/left resize, use resizePosition for instant feedback
         left: spineLikeNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.x
-          : (resizePosition?.x ?? node.x) + (touchDragOffsetDiag?.x ?? 0),
+          : (displayNodeX ?? node.x) + (touchDragOffsetDiag?.x ?? 0),
         top: spineLikeNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.y
-          : (resizePosition?.y ?? node.y) + (touchDragOffsetDiag?.y ?? 0),
+          : (displayNodeY ?? node.y) + (touchDragOffsetDiag?.y ?? 0),
          width: spineLikeNode
            ? (isTimelineNode
                ? timelineLiveLayoutDims?.width
@@ -3963,9 +4044,10 @@ function DiagramNodeInner({
        })()}
 
        {!isReadOnly && isVectorPathNode && isSelected && !isMultiSelected && (() => {
+         const layout = vectorPathLayout;
          const rings = localVectorRings ?? node.vectorPath?.rings ?? [];
-         const nx = node.x ?? 0;
-         const ny = node.y ?? 0;
+         const nx = layout?.x ?? node.x ?? 0;
+         const ny = layout?.y ?? node.y ?? 0;
          const flat = flattenRingsToVertexList(rings);
          const vertices = flat.map((p) => ({ x: nx + p.x, y: ny + p.y }));
          if (vertices.length === 0) return null;

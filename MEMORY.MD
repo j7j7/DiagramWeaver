@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-01 – Vector path: bounding box grows when dragging vertices
+Dragging vector-path node handles now **refits** `x`/`y`/`width`/`height` so the green resize boundary expands or shifts to contain all points (canvas-space refit via **`refitVectorPathNodeBounds`** / **`refitVectorPathFromCanvasRings`**). Patch bumped.
+
 ### 2026-06-01 – Vector shape boolean combine (union / subtract / intersect / exclude)
 **`generic.object.vector-path`** stores custom polygon rings on **`DiagramNodeData.vectorPath`**. Select 2+ closed shapes (circle, rectangle, triangle, etc.), right-click → **Combine shapes** → Union, Subtract (cut), Intersect, or Exclude. Result is a single vector node with fill/border styling from the primary (right-clicked) shape; vertices are draggable when selected. **`polygon-clipping`** + **`shape-to-polygon.ts`** / **`vector-path-boolean.ts`**. Patch bumped.
 

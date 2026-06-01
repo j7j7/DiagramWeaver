@@ -1,6 +1,7 @@
 import type { DiagramNodeData } from "@/lib/types";
 import type { VectorPathRing, VectorPathSpec } from "@/lib/vector-path-types";
 import { VECTOR_PATH_NODE_TYPE } from "@/lib/vector-path-types";
+import { snapDimensionToGrid, snapToGrid } from "@/components/editor/canvas-constants";
 
 export type { VectorPathRing, VectorPathSpec } from "@/lib/vector-path-types";
 
@@ -158,4 +159,99 @@ export function updateVectorPathPoint(
       ),
     };
   });
+}
+
+function vectorPathStrokePadding(node: Pick<DiagramNodeData, "borderWidth" | "borderStyle">): number {
+  return (node.borderStyle === "none" ? 0 : (node.borderWidth ?? 2) / 2) + 4;
+}
+
+/** Recompute node box so all path points fit; re-normalizes ring coords to the new origin. */
+export function refitVectorPathNodeBounds(
+  node: Pick<DiagramNodeData, "x" | "y" | "width" | "height" | "borderWidth" | "borderStyle">,
+  rings: VectorPathRing[],
+  options?: { force?: boolean },
+): { x: number; y: number; width: number; height: number; rings: VectorPathRing[] } | null {
+  if (!rings.length) return null;
+
+  const nx = node.x ?? 0;
+  const ny = node.y ?? 0;
+  const w = node.width ?? 80;
+  const h = node.height ?? 50;
+  const pad = vectorPathStrokePadding(node);
+  const bbox = bboxOfVectorPathRings(rings, nx, ny);
+  if (!bbox) return null;
+
+  const fitsCurrent =
+    bbox.minX >= nx - 0.5 &&
+    bbox.minY >= ny - 0.5 &&
+    bbox.maxX <= nx + w + 0.5 &&
+    bbox.maxY <= ny + h + 0.5;
+
+  if (fitsCurrent && !options?.force) {
+    return { x: nx, y: ny, width: w, height: h, rings };
+  }
+
+  const minW = 20;
+  const minH = 20;
+  const originX = snapToGrid(bbox.minX - pad);
+  const originY = snapToGrid(bbox.minY - pad);
+  const width = snapDimensionToGrid(Math.max(minW, bbox.maxX - bbox.minX + pad * 2), minW);
+  const height = snapDimensionToGrid(Math.max(minH, bbox.maxY - bbox.minY + pad * 2), minH);
+
+  const fittedRings = rings.map((ring) => ({
+    points: ring.points.map((p) => ({
+      ...p,
+      x: nx + p.x - originX,
+      y: ny + p.y - originY,
+    })),
+  }));
+
+  return { x: originX, y: originY, width, height, rings: fittedRings };
+}
+
+export type VectorPathCanvasRing = Array<{ x: number; y: number; id?: string }>;
+
+/** Snapshot local rings as absolute canvas coordinates. */
+export function vectorPathRingsToCanvas(
+  rings: VectorPathRing[],
+  originX: number,
+  originY: number,
+): VectorPathCanvasRing[] {
+  return rings.map((ring) =>
+    ring.points.map((p) => ({ x: originX + p.x, y: originY + p.y, id: p.id })),
+  );
+}
+
+/** Build fitted node from canvas-space ring points (used while dragging vertices). */
+export function refitVectorPathFromCanvasRings(
+  canvasRings: VectorPathCanvasRing[],
+  node: Pick<DiagramNodeData, "borderWidth" | "borderStyle">,
+): { x: number; y: number; width: number; height: number; rings: VectorPathRing[] } | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const ring of canvasRings) {
+    for (const p of ring) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+  }
+  if (!Number.isFinite(minX)) return null;
+
+  const pad = vectorPathStrokePadding(node);
+  const minW = 20;
+  const minH = 20;
+  const originX = snapToGrid(minX - pad);
+  const originY = snapToGrid(minY - pad);
+  const width = snapDimensionToGrid(Math.max(minW, maxX - minX + pad * 2), minW);
+  const height = snapDimensionToGrid(Math.max(minH, maxY - minY + pad * 2), minH);
+
+  const rings: VectorPathRing[] = canvasRings.map((ring) => ({
+    points: ring.map((p) => ({ x: p.x - originX, y: p.y - originY, id: p.id })),
+  }));
+
+  return { x: originX, y: originY, width, height, rings };
 }
