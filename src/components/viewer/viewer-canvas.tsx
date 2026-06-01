@@ -13,8 +13,10 @@ import { type PositionedNode, type PositionedGroup } from "../editor/canvas-cons
 import { CanvasRulers } from "../editor/canvas-rulers";
 import {
   computeConnectionSlots,
+  buildBackgroundBorderStackContext,
   getInterleavedStackZIndices,
   getLinesBehindNodesStackZIndices,
+  resolveCanvasNodeStackZIndex,
 } from "@/lib/connection-order-utils";
 import { cn } from "@/lib/utils";
 import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
@@ -142,6 +144,16 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
     () => computeConnectionSlots(diagramData, processedNodes, processedZones),
     [diagramData, processedNodes, processedZones]
   );
+
+  const backgroundBorderStack = useMemo(
+    () =>
+      buildBackgroundBorderStackContext(connectionSlots.sortedItemIds, (id) => nodesById[id]?.type),
+    [connectionSlots.sortedItemIds, nodesById]
+  );
+
+  const linesBehindNodesConnectionZ = getLinesBehindNodesStackZIndices(0, {
+    leadingBackgroundBorderCount: backgroundBorderStack.leadingBackgroundBorderCount,
+  });
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
@@ -482,7 +494,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               onItemSelect={handleViewerItemSelect}
               closeContextMenu={() => {}}
               onConnectionDelete={undefined}
-              stackZIndex={0}
+              stackZIndex={linesBehindNodesConnectionZ.connectionZIndex}
               animationConnectionsEnabled={animationConnectionsEnabled}
               animationFilterSourceIds={animationFilterSourceIds}
               animationDisabledSources={animationDisabledSources}
@@ -502,14 +514,20 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               nodesById={nodesById}
               zonesById={zonesById}
               processedZones={processedZones}
-              stackZIndex={getLinesBehindNodesStackZIndices(0).connectionTextZIndex}
+              stackZIndex={linesBehindNodesConnectionZ.connectionTextZIndex}
               connectionAnimationStyles={connectionTransitionStyles}
               connectionKey={connKey}
             />
             {connectionSlots.sortedItemIds.map((itemId, i) => {
               const node = nodesById[itemId];
               const zone = zonesById[itemId];
-              const nodeZIndex = getLinesBehindNodesStackZIndices(i).nodeZIndex;
+              const nodeZIndex = resolveCanvasNodeStackZIndex({
+                sortedItemIds: connectionSlots.sortedItemIds,
+                itemIndex: i,
+                itemId,
+                backgroundBorderStack,
+                connectionsBehindNodesEnabled: true,
+              });
               const nodeEl = node ? (
                 <DiagramNode
                   key={node.id}
@@ -544,8 +562,14 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               const {
                 connectionZIndex: connZIndex,
                 connectionTextZIndex: connTextZIndex,
-                nodeZIndex,
               } = getInterleavedStackZIndices(i);
+              const nodeZIndex = resolveCanvasNodeStackZIndex({
+                sortedItemIds: connectionSlots.sortedItemIds,
+                itemIndex: i,
+                itemId,
+                backgroundBorderStack,
+                connectionsBehindNodesEnabled: false,
+              });
               const nodeEl = node ? (
                 <DiagramNode
                   key={node.id}

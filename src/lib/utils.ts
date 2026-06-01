@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { isChartNodeType } from "@/lib/chart-node"
+import type { DiagramNodeData } from "@/lib/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -74,6 +75,38 @@ export function isTimelineNodeType(type: string | undefined): boolean {
 /** Line or timeline — shared move / duplicate / vertex UX. */
 export function isConnectorLikeSpineNodeType(type: string | undefined): boolean {
   return isConnectorLineNodeType(type) || isTimelineNodeType(type)
+}
+
+/** True when the node exists and `locked` prevents move/delete. */
+export function isDiagramNodeLocked(
+  nodes: readonly DiagramNodeData[],
+  nodeId: string,
+): boolean {
+  const node = nodes.find((n) => n.id === nodeId);
+  return Boolean(node?.locked);
+}
+
+/** Drop locked node ids from a delete/move id list. */
+export function filterUnlockedDiagramItemIds(
+  nodes: readonly DiagramNodeData[],
+  itemIds: string[],
+): string[] {
+  return itemIds.filter((id) => !isDiagramNodeLocked(nodes, id));
+}
+
+/** Canvas drag sets: keep zones; omit locked nodes. */
+export function filterUnlockedCanvasDragIds(
+  nodes: readonly DiagramNodeData[],
+  zonesById: Readonly<Record<string, unknown>>,
+  itemIds: Iterable<string>,
+): Set<string> {
+  const out = new Set<string>();
+  for (const id of itemIds) {
+    if (zonesById[id] || !isDiagramNodeLocked(nodes, id)) {
+      out.add(id);
+    }
+  }
+  return out;
 }
 
 /** Radial mind-map card node (`generic.object.mind-map-node`). */

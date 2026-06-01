@@ -4,6 +4,15 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-02 – Borders: connection render order when at back of stack
+Leading **`generic.border.*`** frames (consecutive border nodes at the back of stacking order) render below connector lines in both **Lines Behind Nodes** and **order-aware** modes via **`getLeadingBackgroundBorderIds`** / **`resolveCanvasNodeStackZIndex`** in **`connection-order-utils.ts`**. Editor + viewer canvases use **`buildBackgroundBorderStackContext`**. Border frames moved in front of content keep normal stacking. Patch bumped.
+
+### 2026-06-02 – Locked nodes: no drag/rotate/resize handles or transforms
+Locked nodes skip drag ref + canvas drag-drop commits, hide resize/rotation/corner-radius/line-vertex handles, and block resize/rotate in **`editor-canvas`** / **`canvas-operations`**. Multi-select move/resize/rotate skips locked members. Patch bumped.
+
+### 2026-06-02 – Locked nodes: Delete/Backspace does not remove them
+Keyboard delete (editor canvas + diagram editor shortcuts) and **`handleItemDelete`** skip nodes with **`locked: true`**; multi-select delete removes only unlocked nodes. Helpers **`isDiagramNodeLocked`** / **`filterUnlockedDiagramItemIds`** in **`utils.ts`**. Patch bumped.
+
 ### 2026-06-02 – Right-click drag pans over nodes/zones (no context menu)
 Right-click **without** movement still opens node/zone/connection context menus; **right-click drag** pans the canvas even when the pointer starts on a large object. **`useCanvasInteractions`** starts pan on all right mousedown (not empty canvas only); **`suppressContextMenuIfRightClickPanned`** in **`EditorCanvas`** skips menus after a drag. **Pan move** dismisses any open node/zone context menu, simulation menu, or canvas search overlay. Patch bumped.
 

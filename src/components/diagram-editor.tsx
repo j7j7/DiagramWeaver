@@ -1916,6 +1916,13 @@ export default function DiagramEditor() {
     (itemToDelete: SelectedItem) => {
       if (
         itemToDelete.itemType === 'node' &&
+        currentDiagramData.nodes.find((n) => n.id === itemToDelete.id)?.locked
+      ) {
+        return;
+      }
+
+      if (
+        itemToDelete.itemType === 'node' &&
         isConnectorLikeSpineNodeType(itemToDelete.type) &&
         tryDeleteConnectorLineVertexBeforeNodeDelete(itemToDelete.id)
       ) {

@@ -1,5 +1,6 @@
 import type { DiagramData, DiagramConnectionData } from "./types";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
+import { isBorderNodeType } from "./border-utils";
 
 /** Generate a unique connection id for new connections */
 export function generateConnectionId(): string {
@@ -79,6 +80,79 @@ export interface ConnectionSlotResult {
   connectionsBySlot: Map<number, number[]>;
 }
 
+export interface BackgroundBorderStackContext {
+  /** Consecutive `generic.border.*` ids at the back of `sortedItemIds` (index 0…). */
+  leadingBackgroundBorderIds: string[];
+  leadingBackgroundBorderSet: Set<string>;
+  leadingBackgroundBorderCount: number;
+}
+
+/** Leading run of slide border frames at the back of the stack (before first non-border item). */
+export function getLeadingBackgroundBorderIds(
+  sortedItemIds: string[],
+  getNodeType: (id: string) => string | undefined
+): string[] {
+  const leading: string[] = [];
+  for (const id of sortedItemIds) {
+    if (!isBorderNodeType(getNodeType(id))) break;
+    leading.push(id);
+  }
+  return leading;
+}
+
+export function buildBackgroundBorderStackContext(
+  sortedItemIds: string[],
+  getNodeType: (id: string) => string | undefined
+): BackgroundBorderStackContext {
+  const leadingBackgroundBorderIds = getLeadingBackgroundBorderIds(sortedItemIds, getNodeType);
+  return {
+    leadingBackgroundBorderIds,
+    leadingBackgroundBorderSet: new Set(leadingBackgroundBorderIds),
+    leadingBackgroundBorderCount: leadingBackgroundBorderIds.length,
+  };
+}
+
+/** Stack index among items that are not leading background borders. */
+export function getNonLeadingStackIndex(
+  sortedItemIds: string[],
+  itemIndex: number,
+  leadingBackgroundBorderSet: Set<string>
+): number {
+  let count = 0;
+  for (let j = 0; j < itemIndex; j++) {
+    if (!leadingBackgroundBorderSet.has(sortedItemIds[j]!)) count++;
+  }
+  return count;
+}
+
+export function getLeadingBackgroundBorderZIndex(borderOrdinal: number): number {
+  return borderOrdinal;
+}
+
+export function resolveCanvasNodeStackZIndex(args: {
+  sortedItemIds: string[];
+  itemIndex: number;
+  itemId: string;
+  backgroundBorderStack: BackgroundBorderStackContext;
+  connectionsBehindNodesEnabled: boolean;
+}): number {
+  const { sortedItemIds, itemIndex, itemId, backgroundBorderStack, connectionsBehindNodesEnabled } = args;
+  const { leadingBackgroundBorderIds, leadingBackgroundBorderSet, leadingBackgroundBorderCount } =
+    backgroundBorderStack;
+
+  if (leadingBackgroundBorderSet.has(itemId)) {
+    const borderOrdinal = leadingBackgroundBorderIds.indexOf(itemId);
+    return getLeadingBackgroundBorderZIndex(borderOrdinal >= 0 ? borderOrdinal : 0);
+  }
+
+  if (connectionsBehindNodesEnabled) {
+    const nodeIndex = getNonLeadingStackIndex(sortedItemIds, itemIndex, leadingBackgroundBorderSet);
+    return getLinesBehindNodesStackZIndices(nodeIndex, { leadingBackgroundBorderCount }).nodeZIndex;
+  }
+
+  return getInterleavedStackZIndices(itemIndex).nodeZIndex;
+}
+
 /**
  * Z-indices for order-aware canvas interleaving per slot/item index `i`:
  * connections at `3*i`, labels at `3*i+1`, nodes at `3*i+2`.
@@ -98,15 +172,26 @@ export function getInterleavedStackZIndices(itemIndex: number): {
 }
 
 /** Lines-behind-nodes mode: all lines, then all labels, then nodes by stacking index. */
-export function getLinesBehindNodesStackZIndices(nodeIndex: number): {
+export function getLinesBehindNodesStackZIndices(
+  nodeIndex: number,
+  options?: { leadingBackgroundBorderCount?: number }
+): {
   connectionZIndex: number;
   connectionTextZIndex: number;
   nodeZIndex: number;
 } {
+  const leading = options?.leadingBackgroundBorderCount ?? 0;
+  if (leading === 0) {
+    return {
+      connectionZIndex: 0,
+      connectionTextZIndex: 1,
+      nodeZIndex: 10 + nodeIndex,
+    };
+  }
   return {
-    connectionZIndex: 0,
-    connectionTextZIndex: 1,
-    nodeZIndex: 10 + nodeIndex,
+    connectionZIndex: leading,
+    connectionTextZIndex: leading + 1,
+    nodeZIndex: 10 + leading + nodeIndex,
   };
 }
 

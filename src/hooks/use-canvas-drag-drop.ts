@@ -6,7 +6,12 @@ import type { Transform } from "./use-canvas-transform";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
 import type { DiagramData, DiagramNodeData } from "@/lib/types";
 import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
-import { isConnectorLikeSpineNodeType, isMindmapNodeType } from "@/lib/utils";
+import {
+  filterUnlockedCanvasDragIds,
+  isConnectorLikeSpineNodeType,
+  isDiagramNodeLocked,
+  isMindmapNodeType,
+} from "@/lib/utils";
 import { collectMindmapDragCoMembers } from "@/lib/mindmap-layout";
 import { getConnectorLikeSpinePlacementAnchor } from "@/lib/line-curve-path";
 import {
@@ -273,12 +278,16 @@ export function useCanvasDragDrop({
       // Multi-select takes priority over group membership when multiple items are selected
       let itemsToMove = new Set<string>();
       if (item.id) {
-        if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
+        if (isDiagramNodeLocked(diagramData.nodes, item.id)) {
+          itemsToMove.clear();
+        } else if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
           // Multiple items are selected and the dragged item is one of them - move all selected items
           // This takes priority over group membership (omit connection ids — not draggable nodes)
-          canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById).forEach((id) =>
-            itemsToMove.add(id)
-          );
+          filterUnlockedCanvasDragIds(
+            diagramData.nodes,
+            zonesById,
+            canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById),
+          ).forEach((id) => itemsToMove.add(id));
         } else {
           const draggedNode = item.id ? nodesById[item.id] : undefined;
           if (
@@ -286,12 +295,18 @@ export function useCanvasDragDrop({
             isMindmapNodeType(draggedNode.type) &&
             !(selectedItemIds.size > 1 && selectedItemIds.has(item.id))
           ) {
-            collectMindmapDragCoMembers(item.id!, diagramData.nodes).forEach((id) => itemsToMove.add(id));
+            filterUnlockedCanvasDragIds(
+              diagramData.nodes,
+              zonesById,
+              collectMindmapDragCoMembers(item.id!, diagramData.nodes),
+            ).forEach((id) => itemsToMove.add(id));
           } else {
             const group = getItemGroup(item.id, diagramData);
             if (group) {
               const members = getGroupMembers(group.id, diagramData);
-              members.forEach((id) => itemsToMove.add(id));
+              filterUnlockedCanvasDragIds(diagramData.nodes, zonesById, members).forEach((id) =>
+                itemsToMove.add(id),
+              );
             } else {
               itemsToMove.add(item.id);
             }
@@ -530,12 +545,16 @@ export function useCanvasDragDrop({
         const group = getItemGroup(item.id, diagramData);
         let itemsToMoveSet = new Set<string>();
         
-        if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
+        if (isDiagramNodeLocked(diagramData.nodes, item.id)) {
+          itemsToMoveSet.clear();
+        } else if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
           // Multiple items are selected and the dragged item is one of them - move all selected items
           // This takes priority over group membership (omit connection ids — not draggable nodes)
-          canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById).forEach((id) =>
-            itemsToMoveSet.add(id)
-          );
+          filterUnlockedCanvasDragIds(
+            diagramData.nodes,
+            zonesById,
+            canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById),
+          ).forEach((id) => itemsToMoveSet.add(id));
         } else {
           const draggedNodeDrop = item.id ? nodesById[item.id] : undefined;
           if (
@@ -543,10 +562,16 @@ export function useCanvasDragDrop({
             isMindmapNodeType(draggedNodeDrop.type) &&
             !(selectedItemIds.size > 1 && selectedItemIds.has(item.id))
           ) {
-            collectMindmapDragCoMembers(item.id!, diagramData.nodes).forEach((id) => itemsToMoveSet.add(id));
+            filterUnlockedCanvasDragIds(
+              diagramData.nodes,
+              zonesById,
+              collectMindmapDragCoMembers(item.id!, diagramData.nodes),
+            ).forEach((id) => itemsToMoveSet.add(id));
           } else if (group) {
             const members = getGroupMembers(group.id, diagramData);
-            members.forEach(id => itemsToMoveSet.add(id));
+            filterUnlockedCanvasDragIds(diagramData.nodes, zonesById, members).forEach((id) =>
+              itemsToMoveSet.add(id),
+            );
           } else {
             itemsToMoveSet.add(item.id);
           }
@@ -631,10 +656,10 @@ export function useCanvasDragDrop({
           } else if (itemsToMove.length > 0) {
             moveMultipleItems(itemsToMove, newPositions, targetGroupIdForFreeflow);
           }
-        } else if (wantDuplicate && item.id && nodesById[item.id]) {
+        } else if (wantDuplicate && item.id && nodesById[item.id] && !isDiagramNodeLocked(diagramData.nodes, item.id)) {
           const created = duplicateNodesAtPositions([{ id: item.id }], [{ x, y }], diagramData);
           if (created.length > 0) onDuplicateNodesPlaced?.(created);
-        } else {
+        } else if (!isDiagramNodeLocked(diagramData.nodes, item.id)) {
           // Single item movement
           moveItem({ id: item.id, type: item.type || "", x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
         }
@@ -768,13 +793,19 @@ export function useCanvasDragDrop({
 
       const targetGroupIdForFreeflow: string | null = null;
 
+      if (isDiagramNodeLocked(diagramData.nodes, id) && !zonesById[id]) {
+        return;
+      }
+
       const group = getItemGroup(id, diagramData);
       let itemsToMoveSet = new Set<string>();
 
       if (selectedItemIds.size > 1 && selectedItemIds.has(id)) {
-        canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById).forEach((mid) =>
-          itemsToMoveSet.add(mid),
-        );
+        filterUnlockedCanvasDragIds(
+          diagramData.nodes,
+          zonesById,
+          canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById),
+        ).forEach((mid) => itemsToMoveSet.add(mid));
       } else {
         const draggedNodeMobile = nodesById[id];
         if (
@@ -782,12 +813,24 @@ export function useCanvasDragDrop({
           isMindmapNodeType(draggedNodeMobile.type) &&
           !(selectedItemIds.size > 1 && selectedItemIds.has(id))
         ) {
-          collectMindmapDragCoMembers(id, diagramData.nodes).forEach((mid) => itemsToMoveSet.add(mid));
+          filterUnlockedCanvasDragIds(
+            diagramData.nodes,
+            zonesById,
+            collectMindmapDragCoMembers(id, diagramData.nodes),
+          ).forEach((mid) => itemsToMoveSet.add(mid));
         } else if (group) {
-          getGroupMembers(group.id, diagramData).forEach((mid) => itemsToMoveSet.add(mid));
+          filterUnlockedCanvasDragIds(
+            diagramData.nodes,
+            zonesById,
+            getGroupMembers(group.id, diagramData),
+          ).forEach((mid) => itemsToMoveSet.add(mid));
         } else {
           itemsToMoveSet.add(id);
         }
+      }
+
+      if (itemsToMoveSet.size === 0) {
+        return;
       }
 
       if (itemsToMoveSet.size > 1) {
@@ -807,7 +850,7 @@ export function useCanvasDragDrop({
         if (itemsToMove.length > 0) {
           moveMultipleItems(itemsToMove, newPositions, targetGroupIdForFreeflow);
         }
-      } else {
+      } else if (!isDiagramNodeLocked(diagramData.nodes, id) || zonesById[id]) {
         const entity = nodesById[id] || zonesById[id];
         const mvType = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
         moveItem(

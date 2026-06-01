@@ -2210,7 +2210,8 @@ function DiagramNodeInner({
     ]
   );
   const isLocked = node.locked || false;
-  
+  const showTransformHandles = !isReadOnly && !isLocked;
+
   const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.CANVAS_NODE,
     item: { 
@@ -2292,7 +2293,7 @@ function DiagramNodeInner({
 
   // Resize handlers
   const handleResizeStart = (e: React.MouseEvent | React.PointerEvent, handle: 'top' | 'left' | 'right' | 'bottom' | 'bottom-right') => {
-    if (isReadOnly) {
+    if (isReadOnly || isLocked) {
       e.stopPropagation();
       e.preventDefault();
       return;
@@ -2733,7 +2734,7 @@ function DiagramNodeInner({
       handle: TimelineCardResizeHandleKind,
       entryId: string,
     ) => {
-      if (isReadOnly || !onUpdate || !isTimelineNode) return;
+      if (isReadOnly || isLocked || !onUpdate || !isTimelineNode) return;
       e.preventDefault();
       e.stopPropagation();
       const b = timelineEntryOverlayBoundsRelativeToNodeContainer(
@@ -2945,7 +2946,7 @@ function DiagramNodeInner({
 
   const handleLineVertexPointerDown = useCallback(
     (e: React.PointerEvent | React.MouseEvent, vertexIndex: number) => {
-      if (isReadOnly) {
+      if (isReadOnly || isLocked) {
         e.stopPropagation();
         e.preventDefault();
         return;
@@ -3103,7 +3104,7 @@ function DiagramNodeInner({
 
   const handleVectorVertexPointerDown = useCallback(
     (e: React.PointerEvent | React.MouseEvent, vertexIndex: number) => {
-      if (isReadOnly) {
+      if (isReadOnly || isLocked) {
         e.stopPropagation();
         e.preventDefault();
         return;
@@ -3334,7 +3335,7 @@ function DiagramNodeInner({
 
   // Corner radius drag handlers (rounded-rectangle only)
   const handleCornerRadiusDragStart = useCallback((e: React.MouseEvent | React.PointerEvent) => {
-    if (isReadOnly || !onUpdate || !showsCornerRadiusHandle) return;
+    if (isReadOnly || isLocked || !onUpdate || !showsCornerRadiusHandle) return;
     e.preventDefault();
     e.stopPropagation();
     const startValue = Math.max(0, Math.min(1, (node as any).cornerRadius ?? 0.2));
@@ -3545,7 +3546,7 @@ function DiagramNodeInner({
         highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode ? 'true' : undefined
       }
       ref={(el) => {
-        if (el && !isDuplicateDragPreview) {
+        if (el && !isDuplicateDragPreview && !isLocked) {
           drag(el);
         }
       }}
@@ -3955,21 +3956,21 @@ function DiagramNodeInner({
        </Popover>
 
        {/* Resize handles - textbox, text, shapes, or icon nodes (label width); timeline uses per-card handles only */}
-        {!isReadOnly && (isResizing || isSelected || isMultiSelected) &&
+        {showTransformHandles && (isResizing || isSelected || isMultiSelected) &&
          (isRichTextBoxLike || (isShapeNode && !isPointNode && !spineLikeNode) || isIconNode) && (
           <ResizeHandles
             visible={true}
             activeHandle={resizeHandle}
             hoveredHandle={hoveredHandle}
             onStart={handleResizeStart}
-            disabled={false}
+            disabled={isLocked}
             zIndexClass={cardHandleZIndex}
             handles={isIconNode ? ['right'] : undefined}
           />
        )}
 
         {/* Timeline: resize rails on selected card(s) — matches shape semantics; outer bbox stays line-like (no green hull) */}
-        {!isReadOnly &&
+        {showTransformHandles &&
           isTimelineNode &&
           isSelected &&
           timelineSelectedEntryIds &&
@@ -4009,7 +4010,7 @@ function DiagramNodeInner({
           })}
        
        {/* Line endpoint handles for line shapes - only show when THIS line is selected (not in multi-select with other items) */}
-       {!isReadOnly && spineLikeNode && isSelected && !isMultiSelected && (() => {
+       {showTransformHandles && spineLikeNode && isSelected && !isMultiSelected && (() => {
          const handleSynth = {
            ...node,
            ...(localStartPos && { __localStartPos: localStartPos }),
@@ -4043,7 +4044,7 @@ function DiagramNodeInner({
          );
        })()}
 
-       {!isReadOnly && isVectorPathNode && isSelected && !isMultiSelected && (() => {
+       {showTransformHandles && isVectorPathNode && isSelected && !isMultiSelected && (() => {
          const layout = vectorPathLayout;
          const rings = localVectorRings ?? node.vectorPath?.rings ?? [];
          const nx = layout?.x ?? node.x ?? 0;
@@ -4090,7 +4091,7 @@ function DiagramNodeInner({
        )}
 
        {/* Corner radius handle - rounded-rectangle only, single select */}
-       {!isReadOnly && isSelected && !isMultiSelected && showsCornerRadiusHandle && onUpdate && (
+       {showTransformHandles && isSelected && !isMultiSelected && showsCornerRadiusHandle && onUpdate && (
          <CornerRadiusHandle
            visible={true}
            onPointerDown={handleCornerRadiusDragStart}
@@ -4100,11 +4101,11 @@ function DiagramNodeInner({
        )}
 
        {/* Rotation handle — top-left; parent decides visibility (excludes lines/points) */}
-       {!isReadOnly && rotationHandleVisible && onRotationPointerDown && !spineLikeNode && (
+       {showTransformHandles && rotationHandleVisible && onRotationPointerDown && !spineLikeNode && (
          <RotationHandle
            visible={Boolean(isSelected || isMultiSelected)}
            onPointerDown={onRotationPointerDown}
-           disabled={false}
+           disabled={isLocked}
            isDragging={isRotationDragging ?? false}
            zIndexClass={cardHandleZIndex}
          />

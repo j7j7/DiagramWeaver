@@ -5,6 +5,7 @@ import type { EditorCanvasHandle } from "@/components/editor/editor-canvas";
 import type { DiagramData } from "@/lib/types";
 import type { SelectedItem } from "@/components/editor/diagram-editor-types";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
+import { isDiagramNodeLocked } from "@/lib/utils";
 
 export interface UseDiagramEditorKeyboardParams {
   jsonPanelOpen: boolean;
@@ -154,6 +155,13 @@ export function useDiagramEditorKeyboard(p: UseDiagramEditorKeyboardParams): voi
 
       if ((e.key === "Delete" || e.key === "Backspace") && selectedItem && !isReadOnly) {
         if (selectedItemIds.size > 1) {
+          return;
+        }
+        if (
+          selectedItem.itemType === "node" &&
+          isDiagramNodeLocked(diagramData.nodes, selectedItem.id)
+        ) {
+          e.preventDefault();
           return;
         }
         e.preventDefault();

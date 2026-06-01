@@ -24,6 +24,8 @@ import {
   isMindmapNodeType,
   isShapeNodeType,
   isTimelineNodeType,
+  filterUnlockedDiagramItemIds,
+  isDiagramNodeLocked,
 } from "@/lib/utils";
 import { isVectorPathNodeType, scaleVectorPathRings } from "@/lib/vector-path-utils";
 import { TIMELINE_DEFAULT_SPINE_LENGTH_PX, TIMELINE_NODE_TYPE } from "@/lib/timeline-layout";
@@ -439,6 +441,9 @@ export function useCanvasOperations({
 
   const resizeNode = useCallback((nodeId: string, newWidth: number, newHeight: number, newX?: number, newY?: number) => {
     setDiagramData(prevData => {
+      if (prevData.nodes.find((n) => n.id === nodeId)?.locked) {
+        return prevData;
+      }
       const updatedNodes = prevData.nodes?.map(node => {
         if (node.id === nodeId) {
           const isShapeNode = isShapeNodeType(node.type);
@@ -505,6 +510,7 @@ export function useCanvasOperations({
     setDiagramData(prevData => {
       const updatedNodes = prevData.nodes?.map(node => {
         if (nodeIds.includes(node.id)) {
+          if (node.locked) return node;
           const originalDims = originalDimensions?.get(node.id);
           const originalWidth = originalDims?.width ?? (node.width || 80);
           const originalHeight = originalDims?.height ?? (node.height || 80);
@@ -724,9 +730,11 @@ export function useCanvasOperations({
       items.forEach((item, index) => {
         const newPos = newPositions[index];
         if (!newPos) return;
-        
-        const oldParentId = currentZones.find(zone => zone.children.includes(item.id))?.id;
+
         const node = currentNodes.find(n => n.id === item.id);
+        if (node?.locked) return;
+
+        const oldParentId = currentZones.find(zone => zone.children.includes(item.id))?.id;
         const isFreeflowNode = true; // All nodes use free placement
 
         // Handle re-parenting
@@ -801,6 +809,9 @@ export function useCanvasOperations({
 
   const moveItem = useCallback((item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => {
     setDiagramData(prevData => {
+      if (prevData.nodes.find((n) => n.id === item.id)?.locked) {
+        return prevData;
+      }
       let currentNodes = [...(prevData.nodes || [])];
       let currentZones = [...(prevData.zones || [])];
       
@@ -1058,7 +1069,12 @@ export function useCanvasOperations({
   }, [setDiagramData, processedNodes, processedZones]);
 
   const handleDelete = useCallback((itemId: string) => {
+    let didDelete = false;
     setDiagramData(prev => {
+      if (isDiagramNodeLocked(prev.nodes, itemId)) {
+        return prev;
+      }
+
       const isNode = prev.nodes.some(n => n.id === itemId);
       const isZone = (prev.zones ?? []).some(zone => zone.id === itemId);
       const hasConnectionIdMatch = prev.connections.some((e: any) => e.id === itemId);
@@ -1094,10 +1110,13 @@ export function useCanvasOperations({
           zones: (prev.zones ?? []).filter(zone => zone.id !== itemId)
         };
       }
-      
+
+      didDelete = true;
       return updatedData;
     });
-    
+
+    if (!didDelete) return;
+
     onItemSelect(null);
     toast({
       title: "Item Deleted",
@@ -1106,9 +1125,14 @@ export function useCanvasOperations({
   }, [setDiagramData, onItemSelect, toast]);
 
   const handleDeleteMultiple = useCallback((itemIds: string[]) => {
-    const idsToDelete = new Set(itemIds);
-    
+    let deletedCount = 0;
     setDiagramData(prev => {
+      const deletableIds = filterUnlockedDiagramItemIds(prev.nodes, itemIds);
+      if (deletableIds.length === 0) {
+        return prev;
+      }
+      deletedCount = deletableIds.length;
+      const idsToDelete = new Set(deletableIds);
       // Filter out nodes that are being deleted
       const remainingNodes = prev.nodes.filter(n => !idsToDelete.has(n.id));
 
@@ -1146,11 +1170,13 @@ export function useCanvasOperations({
       
       return dataBeforeCleanup;
     });
-    
+
+    if (deletedCount === 0) return;
+
     onItemSelect(null);
     toast({
       title: "Items Deleted",
-      description: `${itemIds.length} items have been deleted.`,
+      description: `${deletedCount} items have been deleted.`,
     });
   }, [setDiagramData, onItemSelect, toast]);
 

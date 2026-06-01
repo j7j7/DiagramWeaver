@@ -54,8 +54,10 @@ import { getItemGroup } from "@/lib/grouping-utils";
 import {
   generateConnectionId,
   computeConnectionSlots,
+  buildBackgroundBorderStackContext,
   getInterleavedStackZIndices,
   getLinesBehindNodesStackZIndices,
+  resolveCanvasNodeStackZIndex,
   stableDiagramConnectionId,
 } from "@/lib/connection-order-utils";
 import { generateSequentialId } from "@/lib/id-generator";
@@ -546,6 +548,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     [diagramData, processedNodes, processedZones]
   );
 
+  const backgroundBorderStack = useMemo(
+    () =>
+      buildBackgroundBorderStackContext(connectionSlots.sortedItemIds, (id) => nodesById[id]?.type),
+    [connectionSlots.sortedItemIds, nodesById]
+  );
+
+  const linesBehindNodesConnectionZ = getLinesBehindNodesStackZIndices(0, {
+    leadingBackgroundBorderCount: backgroundBorderStack.leadingBackgroundBorderCount,
+  });
+
   // When a selected item is behind others, items on top get pointer-events: none so resize/drag
   // targets the selected item. Preserves visual stacking; allows operating on background when selected.
   const pointerEventsPassThroughIds = useMemo(() => {
@@ -712,11 +724,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const isPointNode = (node: any) => {
       return node?.type === 'generic.object.point' || node?.type?.endsWith('.point');
     };
-    const excludeFromRotation = (node: any) => isLineNode(node) || isPointNode(node);
+    const excludeFromRotation = (node: any) =>
+      isLineNode(node) || isPointNode(node) || Boolean(node?.locked);
     
     // If hovering a selected item, use that (for multi-select, this provides better UX)
     if (hoveredItemId && hoveredItemType && selectedItemIds.has(hoveredItemId)) {
-      // Exclude line and point nodes from rotation
+      // Exclude line, point, and locked nodes from rotation
       if (hoveredItemType === 'node') {
         const node = nodesById[hoveredItemId];
         if (node && excludeFromRotation(node)) return null;
@@ -728,7 +741,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (selectedItemIds.size === 1 && selectedItemId) {
       const node = nodesById[selectedItemId];
       if (node) {
-        // Exclude line and point nodes from rotation
+        // Exclude line, point, and locked nodes from rotation
         if (excludeFromRotation(node)) return null;
         return { id: selectedItemId, type: 'node' as const };
       }
@@ -794,9 +807,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
     setDiagramData(prev => {
       if (applyToAllSelected && selectedItemIds.size > 1) {
-        // Apply rotation to all selected items
+        // Apply rotation to all selected items (skip locked nodes)
         const updatedNodes = prev.nodes.map(n => {
-          if (selectedItemIds.has(n.id)) {
+          if (selectedItemIds.has(n.id) && !n.locked) {
             return { ...n, rotation: normalizedRotation };
           }
           return n;
@@ -813,6 +826,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       } else {
         // Single item rotation
         if (targetType === 'node') {
+          const targetNode = prev.nodes.find((n) => n.id === targetId);
+          if (targetNode?.locked) return prev;
           return {
             ...prev,
             nodes: prev.nodes.map(n => 
@@ -848,6 +863,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       : zonesById[rotationTarget.id];
     
     if (!target) return;
+    if (rotationTarget.type === 'node' && (target as PositionedNode).locked) return;
 
     const currentRotation = (target as any).rotation || 0;
 
@@ -1074,6 +1090,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   );
 
   const handleNodeResize = useCallback((nodeId: string, newWidth: number, newHeight: number, newX?: number, newY?: number) => {
+    const resizingNode = nodesById[nodeId];
+    if (resizingNode?.locked) return;
+
     if (selectedItemIds.size > 1 && selectedItemIds.has(nodeId)) {
       // Multi-select resize: calculate scale factors from the dragged node
       const draggedOriginal = originalDimensionsRef.current.get(nodeId);
@@ -1088,8 +1107,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         const selectedZoneIds: string[] = [];
 
         selectedItemIds.forEach(id => {
-          if (nodesById[id]) {
-            selectedNodeIds.push(id);
+          const n = nodesById[id];
+          if (n) {
+            if (!n.locked) selectedNodeIds.push(id);
           } else if (zonesById[id]) {
             selectedZoneIds.push(id);
           }
@@ -2451,6 +2471,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           }
         }
 
+        const singleLockedNodeSelected =
+          selectedItem?.itemType === 'node' &&
+          Boolean(diagramData.nodes.find((n) => n.id === selectedItem.id)?.locked);
+
+        if (singleLockedNodeSelected && (!selectedItemIds || selectedItemIds.size <= 1)) {
+          return;
+        }
+
         // If there are multiple selected items, delete all of them
         if (selectedItemIds && selectedItemIds.size > 0) {
           operations.handleDeleteMultiple(Array.from(selectedItemIds));
@@ -2465,7 +2493,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedItem, selectedItemId, selectedItemIds, onConnectionDelete, handleCopy, handlePaste, canPaste, operations, tryDeleteConnectorLineVertexBeforeNodeDelete]);
+  }, [selectedItem, selectedItemId, selectedItemIds, diagramData.nodes, onConnectionDelete, handleCopy, handlePaste, canPaste, operations, tryDeleteConnectorLineVertexBeforeNodeDelete]);
 
   // ============================================================================
   // CANVAS DIMENSIONS TRACKING
@@ -2924,9 +2952,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 ================================================================
                 connectionsBehindNodesEnabled=true: All connections first (z=0),
                 then nodes on top (stacking order among nodes only).
+                Leading `generic.border.*` frames at the back render below connections.
                 connectionsBehindNodesEnabled=false: Order-aware interleaving —
                 all node types share one z ladder; connections slot per
-                computeConnectionSlots / stacking order.
+                computeConnectionSlots / stacking order. Leading border frames
+                use the lowest z-indices in that ladder.
             */}
             {connectionsBehindNodesEnabled ? (
               <>
@@ -2947,7 +2977,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onConnectionUpdate={onConnectionUpdate}
                   onConnectionWaypointAdd={onConnectionWaypointAdd}
                   onConnectionInsertNode={onConnectionInsertNode}
-                  stackZIndex={0}
+                  stackZIndex={linesBehindNodesConnectionZ.connectionZIndex}
                   exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                   animationConnectionsEnabled={animationConnectionsEnabled}
                   animationFilterSourceIds={animationFilterSourceIds}
@@ -2978,14 +3008,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   nodesById={displayNodesById}
                   zonesById={displayZonesById}
                   processedZones={processedZones}
-                  stackZIndex={getLinesBehindNodesStackZIndices(0).connectionTextZIndex}
+                  stackZIndex={linesBehindNodesConnectionZ.connectionTextZIndex}
                   connectionAnimationStyles={connectionAnimationStyles}
                   connectionKey={connectionKey}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
                   const zone = zonesById[itemId];
-                  const nodeZIndex = getLinesBehindNodesStackZIndices(i).nodeZIndex;
+                  const nodeZIndex = resolveCanvasNodeStackZIndex({
+                    sortedItemIds: connectionSlots.sortedItemIds,
+                    itemIndex: i,
+                    itemId,
+                    backgroundBorderStack,
+                    connectionsBehindNodesEnabled: true,
+                  });
                   const nodeEl = node ? (
                     <DiagramNode
                       key={node.id}
@@ -3023,6 +3059,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
                   rotationHandleVisible={
                     !isReadOnly &&
+                    !node.locked &&
                     !!rotationTarget &&
                     rotationTarget.type === "node" &&
                     rotationTarget.id === node.id
@@ -3100,8 +3137,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 const {
                   connectionZIndex: connZIndex,
                   connectionTextZIndex: connTextZIndex,
-                  nodeZIndex,
                 } = getInterleavedStackZIndices(i);
+                const nodeZIndex = resolveCanvasNodeStackZIndex({
+                  sortedItemIds: connectionSlots.sortedItemIds,
+                  itemIndex: i,
+                  itemId,
+                  backgroundBorderStack,
+                  connectionsBehindNodesEnabled: false,
+                });
                 const nodeEl = node ? (
                   <DiagramNode
                     key={node.id}
@@ -3139,6 +3182,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
                     rotationHandleVisible={
                       !isReadOnly &&
+                      !node.locked &&
                       !!rotationTarget &&
                       rotationTarget.type === "node" &&
                       rotationTarget.id === node.id
