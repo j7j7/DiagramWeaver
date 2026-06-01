@@ -24,7 +24,11 @@ import {
   sectionedShapeSegmentCount,
 } from '@/lib/sectioned-shape-slide-transition';
 import { isCardNodeType } from '@/lib/card-utils';
-import { cardPresentationSignature, cardSlideStaggerParticipantCount } from '@/lib/card-presentation';
+import {
+  cardNodeCornerRadiusNorm,
+  cardPresentationSignature,
+  cardSlideStaggerParticipantCount,
+} from '@/lib/card-presentation';
 
 export interface SlideTransitionStyle {
   opacity: number;
@@ -71,6 +75,8 @@ export interface SlideTransitionStyle {
   /** Previous-slide dimensions when {@link cardSizeLerpU} is set. */
   cardSizeLerpFromWidth?: number;
   cardSizeLerpFromHeight?: number;
+  /** Previous-slide corner radius (0–1) when {@link cardSizeLerpU} is set. */
+  cardSizeLerpFromCornerRadius?: number;
 }
 
 interface SlideNodeAnimStyle {
@@ -113,6 +119,7 @@ interface SlideNodeAnimStyle {
   isAppearingCard?: boolean;
   isDisappearingCard?: boolean;
   cardSizeLerpEligible?: boolean;
+  cornerRadiusStart?: number;
 }
 
 interface SlideAnimation {
@@ -537,14 +544,19 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         translateYEnd = 0;
       }
 
-      /** Cards suppress outer scale; animate width/height in px so corners and flex layout stay crisp. */
+      const prevCornerRadius = prevNode ? cardNodeCornerRadiusNorm(prevNode) : 0;
+      const currCornerRadius = currNode ? cardNodeCornerRadiusNorm(currNode) : 0;
+
+      /** Cards suppress outer scale; animate width/height/corner radius so layout stays crisp. */
       const cardSizeLerpEligible = Boolean(
         isCardNode &&
           prevNode &&
           currNode &&
           !isAppearing &&
           !isDisappearing &&
-          (prevWidth !== currWidth || prevHeight !== currHeight),
+          (prevWidth !== currWidth ||
+            prevHeight !== currHeight ||
+            prevCornerRadius !== currCornerRadius),
       );
 
       const needsNodeTransition =
@@ -556,7 +568,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         chartPresentationChanged ||
         timelinePresentationChanged ||
         sectionedShapePresentationChanged ||
-        cardPresentationChanged;
+        cardPresentationChanged ||
+        cardSizeLerpEligible;
 
       if (!needsNodeTransition) continue;
 
@@ -600,6 +613,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         isAppearingCard,
         isDisappearingCard,
         cardSizeLerpEligible,
+        cornerRadiusStart: prevCornerRadius,
       });
 
       if (isDisappearing) {
@@ -1026,6 +1040,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               cardSizeLerpU: 0,
               cardSizeLerpFromWidth: style.widthStart,
               cardSizeLerpFromHeight: style.heightStart,
+              cardSizeLerpFromCornerRadius: style.cornerRadiusStart,
             }
           : {};
 
@@ -1224,6 +1239,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                   cardSizeLerpU: 0,
                   cardSizeLerpFromWidth: style.widthStart,
                   cardSizeLerpFromHeight: style.heightStart,
+                  cardSizeLerpFromCornerRadius: style.cornerRadiusStart,
                 }
               : {};
 
@@ -1504,6 +1520,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                   cardSizeLerpU: p,
                   cardSizeLerpFromWidth: st.widthStart,
                   cardSizeLerpFromHeight: st.heightStart,
+                  cardSizeLerpFromCornerRadius: st.cornerRadiusStart,
                 }
               : {}),
           });
@@ -1564,6 +1581,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               cardSizeLerpU: undefined,
               cardSizeLerpFromWidth: undefined,
               cardSizeLerpFromHeight: undefined,
+              cardSizeLerpFromCornerRadius: undefined,
             });
           }
         }

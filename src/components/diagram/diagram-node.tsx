@@ -24,6 +24,7 @@ import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { isCardNodeType, findCardElement, updateCardElementTree } from "@/lib/card-utils";
+import { cardNodeCornerRadiusNorm } from "@/lib/card-presentation";
 import {
   applyBulletListUniformItemFontSize,
   BULLET_LIST_TEXT_SUFFIX,
@@ -343,6 +344,7 @@ interface DiagramNodeProps {
     cardSizeLerpU?: number;
     cardSizeLerpFromWidth?: number;
     cardSizeLerpFromHeight?: number;
+    cardSizeLerpFromCornerRadius?: number;
   };
   /** When node has subDiagramId, double-click navigates to sub-diagram instead of editing label */
   onSubDiagramDoubleClick?: (node: DiagramNodeData) => void;
@@ -985,7 +987,12 @@ function DiagramNodeInner({
           : visualNode;
       const cardRenderNode =
         cardLerpedBox != null
-          ? { ...cardVisualNode, width: cardLerpedBox.width, height: cardLerpedBox.height }
+          ? {
+              ...cardVisualNode,
+              width: cardLerpedBox.width,
+              height: cardLerpedBox.height,
+              cornerRadius: cardLerpedBox.cornerRadius,
+            }
           : cardVisualNode;
       return (
         <CardShape
@@ -2040,19 +2047,26 @@ function DiagramNodeInner({
     const u = animationStyle!.cardSizeLerpU!;
     const fromW = animationStyle!.cardSizeLerpFromWidth!;
     const fromH = animationStyle!.cardSizeLerpFromHeight!;
+    const fromCr =
+      animationStyle!.cardSizeLerpFromCornerRadius ?? cardNodeCornerRadiusNorm(node);
     const toW = node.width ?? 160;
     const toH = node.height ?? 120;
+    const toCr = cardNodeCornerRadiusNorm(node);
     return {
       width: fromW + (toW - fromW) * u,
       height: fromH + (toH - fromH) * u,
+      cornerRadius: fromCr + (toCr - fromCr) * u,
     };
   }, [
     cardSizeLerpActive,
     animationStyle?.cardSizeLerpU,
     animationStyle?.cardSizeLerpFromWidth,
     animationStyle?.cardSizeLerpFromHeight,
+    animationStyle?.cardSizeLerpFromCornerRadius,
+    node,
     node.width,
     node.height,
+    node.cornerRadius,
   ]);
 
   // During resize, use local dimensions for instant visual feedback

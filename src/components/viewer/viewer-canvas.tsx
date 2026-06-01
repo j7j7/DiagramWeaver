@@ -79,6 +79,7 @@ interface ViewerCanvasProps {
     cardSizeLerpU?: number;
     cardSizeLerpFromWidth?: number;
     cardSizeLerpFromHeight?: number;
+    cardSizeLerpFromCornerRadius?: number;
   }>;
   /** Connection transition styles for slide transitions */
   connectionTransitionStyles?: Map<string, {

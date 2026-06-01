@@ -135,6 +135,12 @@ export function cardSlideStaggerParticipantCount(node: DiagramNodeData): number 
   }).length;
 }
 
+/** Normalized 0–1 corner radius for cards (matches {@link CardShape} default 0.12). */
+export function cardNodeCornerRadiusNorm(node: DiagramNodeData): number {
+  const v = node.cornerRadius;
+  return Math.max(0, Math.min(1, typeof v === "number" && Number.isFinite(v) ? v : 0.12));
+}
+
 export function cardPresentationSignature(node: DiagramNodeData): string | null {
   if (!isCardNodeType(node.type) || !node.card) return null;
   return JSON.stringify({

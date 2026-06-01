@@ -4,8 +4,8 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
-### 2026-06-01 – Play / slide transitions: card size lerp (no scale distortion)
-When a **card** node’s **width/height** changes between slides (same id, not appear/disappear), **`use-slide-transition`** drives **`cardSizeLerpU`** via RAF (same window as chart value lerp). **`DiagramNode`** applies interpolated **px** on the outer box and passes the same dimensions into **`CardShape`** so border radius, flex regions, and the accent bar stay crisp—outer **CSS scale** stays suppressed for cards. **`maxWidth`** is relaxed during the lerp like live resize. Patch bumped.
+### 2026-06-01 – Play / slide transitions: card size + corner radius lerp
+When a **card** node’s **width/height** and/or **`cornerRadius`** (0–1) changes between slides (same id, not appear/disappear), **`use-slide-transition`** drives **`cardSizeLerpU`** via RAF (same window as chart value lerp). **`DiagramNode`** applies interpolated **px** + corner radius on the outer box and **`CardShape`** so shell rounding, flex regions, and the accent bar stay crisp—outer **CSS scale** stays suppressed for cards. **`cardNodeCornerRadiusNorm`** in **`card-presentation.ts`**. **`maxWidth`** relaxed during lerp like live resize. Patch bumped.
 
 ### 2026-05-29 – Editor play mode button: orange primary background
 **`top-menu-bar`**: Presentation **Enter play mode** icon button uses **`variant="default"`** (`bg-primary`) instead of secondary so it matches the app orange theme. Patch bumped.
