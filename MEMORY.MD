@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-02 – Right-click drag pans over nodes/zones (no context menu)
+Right-click **without** movement still opens node/zone/connection context menus; **right-click drag** pans the canvas even when the pointer starts on a large object. **`useCanvasInteractions`** starts pan on all right mousedown (not empty canvas only); **`suppressContextMenuIfRightClickPanned`** in **`EditorCanvas`** skips menus after a drag. **Pan move** dismisses any open node/zone context menu, simulation menu, or canvas search overlay. Patch bumped.
+
+### 2026-06-01 – Text outline: fix internal glyph seam artifacts (4, K, …)
+**`-webkit-text-stroke`** and per-contour SVG **`stroke`** on labels showed overlapping inner edges on compound glyphs. HTML text now uses layered zero-blur **`text-shadow`** rings via **`getTextOutlineShadowCss`**; SVG line/loop labels use **`feMorphology` dilate** filter (**`SvgTextOutlineFilterDef`** / **`getSvgTextOutlineFilterRef`**). Patch bumped.
+
 ### 2026-06-01 – Vector path: bounding box grows when dragging vertices
 Dragging vector-path node handles now **refits** `x`/`y`/`width`/`height` so the green resize boundary expands or shifts to contain all points (canvas-space refit via **`refitVectorPathNodeBounds`** / **`refitVectorPathFromCanvasRings`**). Patch bumped.
 

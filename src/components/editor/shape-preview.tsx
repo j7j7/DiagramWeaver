@@ -3,7 +3,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath, boundingBoxFromSvgPolygonPointsString } from '@/components/diagram/shapes/shape-utils';
-import { getTextEffectsShadowCss } from '@/lib/text-styling';
+import { getTextEffectsShadowCss, getTextOutlineShadowCss } from '@/lib/text-styling';
 import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
 import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultLineChartSpec, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
 import {
@@ -253,6 +253,14 @@ export function ShapePreview({
     textShadowColor,
     textDropShadowEnabled,
   });
+  const textOutlineShadow =
+    textOutlineWidth != null && textOutlineWidth > 0
+      ? getTextOutlineShadowCss({
+          textOutlineWidth,
+          textOutlineColor: textOutlineColor ?? '#ffffff',
+        })
+      : undefined;
+  const labelTextShadow = [textOutlineShadow, textEffectsShadow].filter(Boolean).join(', ') || undefined;
   const gradientId = useId();
   const borderGradientId = useId();
   const isPlainRectangle = type === 'generic.object.rectangle' || type?.endsWith('.rectangle');
@@ -2623,13 +2631,8 @@ export function ShapePreview({
                 textDecoration,
                 fontSize: `${fontSize}px`,
                 textShadow:
-                  textEffectsShadow ??
-                  (shadow && !(textOutlineWidth != null && textOutlineWidth > 0)
-                    ? 'var(--shape-text-shadow)'
-                    : undefined),
-                ...(textOutlineWidth != null && textOutlineWidth > 0
-                  ? { WebkitTextStroke: `${textOutlineWidth}px ${textOutlineColor ?? "#ffffff"}` }
-                  : {}),
+                  labelTextShadow ??
+                  (shadow ? 'var(--shape-text-shadow)' : undefined),
                 maxWidth: '100%',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',

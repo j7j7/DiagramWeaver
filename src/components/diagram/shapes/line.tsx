@@ -1,10 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useId } from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { DiagramNodeData } from "@/lib/types";
 import { useResolvedGlobalText } from "../global-properties-context";
-import { extractTextStylingFromNode, getSvgTextOutlineProps, getTextEffectsShadowCss } from "@/lib/text-styling";
+import {
+  extractTextStylingFromNode,
+  getSvgTextOutlineFilterRef,
+  getTextEffectsShadowCss,
+  SvgTextOutlineFilterDef,
+} from "@/lib/text-styling";
 import {
   connectorLinePathD,
   connectorLinePointBounds,
@@ -117,6 +122,7 @@ function normalizeTwoColors(value: unknown, fallbackA: string, fallbackB: string
 
 export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu, slideColorTransition }: LineShapeProps) {
   const { resolvedTheme } = useTheme();
+  const textOutlineFilterId = useId().replace(/:/g, "");
   const displayLabel = useResolvedGlobalText(node.label);
   const vertices = getConnectorLineVertices(node as DiagramNodeData & { __localStartPos?: { x: number; y: number }; __localEndPos?: { x: number; y: number }; __localControlPoints?: { x: number; y: number }[] });
   const startPos = vertices[0];
@@ -264,7 +270,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const fontStyle = textStyling.fontStyle || 'normal';
   const letterSpacing = textStyling.letterSpacing || 0;
   const textOpacity = textStyling.textOpacity !== undefined ? textStyling.textOpacity : 1;
-  const outlineSvg = getSvgTextOutlineProps(textStyling);
+  const textOutlineFilter = getSvgTextOutlineFilterRef(textOutlineFilterId, textStyling);
   const effectsShadow = getTextEffectsShadowCss(textStyling);
   const themeLabelShadow =
     resolvedTheme === "dark"
@@ -428,6 +434,9 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
         {/* Text label */}
         {label && textLines.length > 0 && (
           <g transform={`translate(${finalTextX - svgMinX}, ${finalTextY - svgMinY}) rotate(${textRotation})`}>
+            <defs>
+              <SvgTextOutlineFilterDef filterId={textOutlineFilterId} styling={textStyling} />
+            </defs>
             {textLines.map((line, index) => {
               const lineHeightValue = textStyling.lineHeight || 1.4;
               const lineHeightPx = fontSize * lineHeightValue;
@@ -449,10 +458,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
                   x={0}
                   y={startY + (index * lineHeightPx)}
                   fill={textColor}
-                  stroke={outlineSvg.stroke}
-                  strokeWidth={outlineSvg.strokeWidth}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
+                  filter={textOutlineFilter}
                   fontSize={fontSize}
                   fontWeight={fontWeight}
                   fontFamily={fontFamily}
@@ -463,10 +469,9 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
                   dominantBaseline="middle"
                   className="pointer-events-none select-none"
                   style={{
-                    paintOrder: outlineSvg.paintOrder,
                     textShadow:
                       effectsShadow ??
-                      (outlineSvg.stroke ? undefined : themeLabelShadow),
+                      (textOutlineFilter ? undefined : themeLabelShadow),
                     textDecoration: textStyling.textDecoration === 'underline' ? 'underline' : 
                                    textStyling.textDecoration === 'line-through' ? 'line-through' :
                                    textStyling.textDecoration === 'overline' ? 'overline' : 'none'

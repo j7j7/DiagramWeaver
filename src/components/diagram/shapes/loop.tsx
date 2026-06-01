@@ -1,10 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useId } from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { DiagramNodeData } from "@/lib/types";
 import { useResolvedGlobalText } from "../global-properties-context";
-import { extractTextStylingFromNode, getSvgTextOutlineProps, getTextEffectsShadowCss } from "@/lib/text-styling";
+import {
+  extractTextStylingFromNode,
+  getSvgTextOutlineFilterRef,
+  getTextEffectsShadowCss,
+  SvgTextOutlineFilterDef,
+} from "@/lib/text-styling";
 
 interface LoopShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -23,6 +28,7 @@ interface LoopShapeProps {
  */
 export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu, slideColorTransition }: LoopShapeProps) {
   const { resolvedTheme } = useTheme();
+  const textOutlineFilterId = useId().replace(/:/g, "");
   const displayLabel = useResolvedGlobalText(node.label);
   const width = node.width ?? 60;
   const height = node.height ?? 80;
@@ -46,7 +52,7 @@ export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const textStyling = extractTextStylingFromNode(node);
   const textColor = textStyling.textColor || lineColor;
   const fontSize = textStyling.fontSize || 12;
-  const outlineSvg = getSvgTextOutlineProps(textStyling);
+  const textOutlineFilter = getSvgTextOutlineFilterRef(textOutlineFilterId, textStyling);
   const effectsShadow = getTextEffectsShadowCss(textStyling);
   const themeLabelShadow =
     resolvedTheme === "dark"
@@ -103,29 +109,30 @@ export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
           />
         )}
         {label && (
-          <text
-            x={width / 2}
-            y={height / 2}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill={textColor}
-            stroke={outlineSvg.stroke}
-            strokeWidth={outlineSvg.strokeWidth}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            fontSize={fontSize}
-            fontWeight={textStyling.fontWeight || '500'}
-            fontFamily={textStyling.fontFamily || 'Inter, system-ui, sans-serif'}
-            style={{
-              paintOrder: outlineSvg.paintOrder,
-              textShadow:
-                effectsShadow ??
-                (outlineSvg.stroke ? undefined : themeLabelShadow),
-              pointerEvents: 'none',
-            }}
-          >
-            {label}
-          </text>
+          <>
+            <defs>
+              <SvgTextOutlineFilterDef filterId={textOutlineFilterId} styling={textStyling} />
+            </defs>
+            <text
+              x={width / 2}
+              y={height / 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={textColor}
+              filter={textOutlineFilter}
+              fontSize={fontSize}
+              fontWeight={textStyling.fontWeight || '500'}
+              fontFamily={textStyling.fontFamily || 'Inter, system-ui, sans-serif'}
+              style={{
+                textShadow:
+                  effectsShadow ??
+                  (textOutlineFilter ? undefined : themeLabelShadow),
+                pointerEvents: 'none',
+              }}
+            >
+              {label}
+            </text>
+          </>
         )}
       </svg>
     </div>

@@ -1,3 +1,4 @@
+import React from 'react';
 import type { CardElementData } from './card-types';
 import { flexJustifyToTextJustify, textJustifyToFlexJustify } from './card-layout';
 import { mapCardElementTree } from './card-utils';
@@ -85,13 +86,10 @@ export function getTextStylingCSS(styling: TextStyling): React.CSSProperties {
   if (styling.lineHeight) css.lineHeight = styling.lineHeight;
   if (styling.textOpacity !== undefined) css.opacity = styling.textOpacity;
   if (styling.textColor) css.color = styling.textColor;
-  const ow = styling.textOutlineWidth;
-  if (ow != null && ow > 0) {
-    const oc = styling.textOutlineColor ?? '#ffffff';
-    (css as Record<string, string | undefined>).WebkitTextStroke = `${ow}px ${oc}`;
-  }
+  const outlineShadow = getTextOutlineShadowCss(styling);
   const fx = getTextEffectsShadowCss(styling);
-  if (fx) css.textShadow = fx;
+  const shadows = [outlineShadow, fx].filter(Boolean);
+  if (shadows.length) css.textShadow = shadows.join(', ');
   if (styling.textJustify) css.textAlign = styling.textJustify === 'full' ? 'justify' : styling.textJustify;
   if (styling.textVerticalPosition) {
     css.display = 'flex';
@@ -109,6 +107,28 @@ export function getTextStylingCSS(styling: TextStyling): React.CSSProperties {
   }
   
   return css;
+}
+
+/**
+ * Outline via layered zero-blur `text-shadow` rings (not `-webkit-text-stroke`), so compound
+ * glyphs (e.g. 4, K) do not show internal contour strokes where subpaths overlap.
+ */
+export function getTextOutlineShadowCss(styling: TextStyling): string | undefined {
+  const w = styling.textOutlineWidth;
+  if (w == null || w <= 0) return undefined;
+  const color = styling.textOutlineColor ?? '#ffffff';
+  const layers: string[] = [];
+  const rings = Math.max(1, Math.ceil(w));
+  const stepsPerRing = Math.max(8, Math.round(6 + w * 4));
+  for (let ring = 1; ring <= rings; ring++) {
+    for (let i = 0; i < stepsPerRing; i++) {
+      const a = (i / stepsPerRing) * Math.PI * 2;
+      const x = Math.cos(a) * ring;
+      const y = Math.sin(a) * ring;
+      layers.push(`${x.toFixed(1)}px ${y.toFixed(1)}px 0 ${color}`);
+    }
+  }
+  return layers.join(', ');
 }
 
 /**
@@ -135,21 +155,54 @@ export function getTextEffectsShadowCss(styling: TextStyling): string | undefine
   return parts.length ? parts.join(', ') : undefined;
 }
 
-/**
- * SVG `<text>` outline: stroke drawn first so fill (`textColor`) stays on top.
- */
-export function getSvgTextOutlineProps(styling: TextStyling): {
-  stroke?: string;
-  strokeWidth?: number;
-  paintOrder?: 'stroke fill';
-} {
+/** `filter="url(#id)"` for SVG `<text>` when outline width > 0. */
+export function getSvgTextOutlineFilterRef(filterId: string, styling: TextStyling): string | undefined {
   const w = styling.textOutlineWidth;
-  if (w == null || w <= 0) return {};
-  return {
-    stroke: styling.textOutlineColor ?? '#ffffff',
-    strokeWidth: w,
-    paintOrder: 'stroke fill',
-  };
+  if (w == null || w <= 0) return undefined;
+  return `url(#${filterId})`;
+}
+
+/** Dilated-alpha outline filter — single silhouette, no per-contour stroke artifacts. */
+export function SvgTextOutlineFilterDef({
+  filterId,
+  styling,
+}: {
+  filterId: string;
+  styling: TextStyling;
+}): React.ReactElement | null {
+  const w = styling.textOutlineWidth;
+  if (w == null || w <= 0) return null;
+  const color = styling.textOutlineColor ?? '#ffffff';
+  return React.createElement(
+    'filter',
+    {
+      id: filterId,
+      x: '-50%',
+      y: '-50%',
+      width: '200%',
+      height: '200%',
+      colorInterpolationFilters: 'sRGB',
+    },
+    React.createElement('feMorphology', {
+      in: 'SourceAlpha',
+      operator: 'dilate',
+      radius: w,
+      result: 'dilated',
+    }),
+    React.createElement('feFlood', { floodColor: color, result: 'flood' }),
+    React.createElement('feComposite', {
+      in: 'flood',
+      in2: 'dilated',
+      operator: 'in',
+      result: 'outline',
+    }),
+    React.createElement(
+      'feMerge',
+      null,
+      React.createElement('feMergeNode', { in: 'outline' }),
+      React.createElement('feMergeNode', { in: 'SourceGraphic' }),
+    ),
+  );
 }
 
 /**

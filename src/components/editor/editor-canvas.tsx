@@ -614,6 +614,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const nodeContextMenuHandlerRef = useRef<(e: React.MouseEvent, node: DiagramNodeData) => void>(
     (e) => e.stopPropagation()
   );
+  const panDismissedOverlaysRef = useRef(false);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
   const [searchModalOpen, setSearchModalOpen] = React.useState(false);
   const [metadataPopupRect, setMetadataPopupRect] = useState<{
@@ -1654,7 +1655,34 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onMousePositionChange,
   });
 
+  const suppressContextMenuIfRightClickPanned = useCallback((e: React.MouseEvent) => {
+    if (wasLastRightClickAPan()) {
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
+    return false;
+  }, [wasLastRightClickAPan]);
 
+  const handleConnectionContextMenuWithPanGuard = useCallback(
+    (e: React.MouseEvent, connection: DiagramConnectionData) => {
+      if (suppressContextMenuIfRightClickPanned(e)) return;
+      onConnectionContextMenu?.(e, connection);
+    },
+    [onConnectionContextMenu, suppressContextMenuIfRightClickPanned],
+  );
+
+  const dismissOverlayMenusForCanvasPan = useCallback(() => {
+    closeContextMenu();
+    setSimulationMenuState(null);
+    setSearchModalOpen(false);
+  }, [closeContextMenu]);
+
+  const dismissOverlayMenusOnPanMove = useCallback(() => {
+    if (panDismissedOverlaysRef.current) return;
+    panDismissedOverlaysRef.current = true;
+    dismissOverlayMenusForCanvasPan();
+  }, [dismissOverlayMenusForCanvasPan]);
 
   // ============================================================================
   // EVENT HANDLER COMBINATION
@@ -1663,18 +1691,42 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // Selection and interaction handlers are called in sequence for each event
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     handleSelectionMouseDown(e);  // Handles selection rectangle start
+    if (e.button === 2 && !isEventFromEditableElement(e)) {
+      panDismissedOverlaysRef.current = false;
+    }
     handleInteractionsMouseDown(e); // Handles right-click panning start
   }, [handleSelectionMouseDown, handleInteractionsMouseDown]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     handleSelectionMouseMove(e);  // Updates selection rectangle while dragging
+    if (isPanning) {
+      dismissOverlayMenusOnPanMove();
+    }
     handleInteractionsMouseMove(e); // Tracks mouse position and handles panning
-  }, [handleSelectionMouseMove, handleInteractionsMouseMove]);
+  }, [handleSelectionMouseMove, handleInteractionsMouseMove, isPanning, dismissOverlayMenusOnPanMove]);
 
   const handleMouseUpOrLeave = useCallback(async () => {
     await handleSelectionMouseUpOrLeave(); // Completes selection and selects items
     handleInteractionsMouseUpOrLeave(); // Stops panning and cleans up
   }, [handleSelectionMouseUpOrLeave, handleInteractionsMouseUpOrLeave]);
+
+  const handleTouchStartWithPanDismiss = useCallback(
+    (e: React.TouchEvent) => {
+      panDismissedOverlaysRef.current = false;
+      handleTouchStart(e);
+    },
+    [handleTouchStart],
+  );
+
+  const handleTouchMoveWithPanDismiss = useCallback(
+    (e: React.TouchEvent) => {
+      if (isPanning) {
+        dismissOverlayMenusOnPanMove();
+      }
+      handleTouchMove(e);
+    },
+    [handleTouchMove, isPanning, dismissOverlayMenusOnPanMove],
+  );
 
   // ============================================================================
   // NODE/ZONE EVENT HANDLERS
@@ -1820,6 +1872,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     if (isEventFromEditableElement(e)) return;
+    if (suppressContextMenuIfRightClickPanned(e)) return;
     e.stopPropagation();
     e.preventDefault();
     setSimulationMenuState(null);
@@ -1869,11 +1922,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onCardElementSelect,
     onResetConnectionSettingsTrigger,
     handleContextMenu,
+    suppressContextMenuIfRightClickPanned,
   ]);
 
   const handleTimelineEntryContextMenu = useCallback(
     (e: React.MouseEvent, node: DiagramNodeData, entryId: string) => {
       if (isEventFromEditableElement(e)) return;
+      if (suppressContextMenuIfRightClickPanned(e)) return;
       e.stopPropagation();
       e.preventDefault();
       setSimulationMenuState(null);
@@ -1900,12 +1955,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       onTimelineEntrySelect,
       onResetConnectionSettingsTrigger,
       handleContextMenu,
+      suppressContextMenuIfRightClickPanned,
     ],
   );
 
   const handleTimelineSpineContextMenu = useCallback(
     (e: React.MouseEvent, node: DiagramNodeData, arcRatio: number) => {
       if (isEventFromEditableElement(e)) return;
+      if (suppressContextMenuIfRightClickPanned(e)) return;
       e.stopPropagation();
       e.preventDefault();
       setSimulationMenuState(null);
@@ -1935,6 +1992,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       onTimelineEntrySelect,
       onResetConnectionSettingsTrigger,
       handleContextMenu,
+      suppressContextMenuIfRightClickPanned,
     ],
   );
 
@@ -2002,6 +2060,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const handleZoneContextMenu = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     if (isEventFromEditableElement(e)) return;
+    if (suppressContextMenuIfRightClickPanned(e)) return;
     e.stopPropagation();
     e.preventDefault();
     setSimulationMenuState(null);
@@ -2020,7 +2079,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onResetConnectionSettingsTrigger?.();
     setLastRightClickItemId(zone.id);
     handleContextMenu(e, zone.id, 'zone');
-  }, [simulationModeEnabled, openSimulationMenu, selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
+  }, [simulationModeEnabled, openSimulationMenu, selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu, suppressContextMenuIfRightClickPanned]);
 
   const allSimulationCanvasElements = useMemo(() => {
     const connectionLabelById = new Map<string, string>();
@@ -2584,8 +2643,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           onMouseUp={handleMouseUpOrLeave}
           onMouseLeave={handleMouseUpOrLeave}
           onWheel={handleWheel}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
+          onTouchStart={handleTouchStartWithPanDismiss}
+          onTouchMove={handleTouchMoveWithPanDismiss}
           onTouchEnd={handleTouchEnd}
           onContextMenu={(e) => {
             // When in text edit, use normal browser behavior (right-click context menu)
@@ -2884,7 +2943,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onItemSelect={onItemSelect}
                   closeContextMenu={closeContextMenu}
                   onConnectionDelete={onConnectionDelete}
-                  onConnectionContextMenu={onConnectionContextMenu}
+                  onConnectionContextMenu={handleConnectionContextMenuWithPanGuard}
                   onConnectionUpdate={onConnectionUpdate}
                   onConnectionWaypointAdd={onConnectionWaypointAdd}
                   onConnectionInsertNode={onConnectionInsertNode}
@@ -3129,7 +3188,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       onItemSelect={onItemSelect}
                       closeContextMenu={closeContextMenu}
                       onConnectionDelete={onConnectionDelete}
-                      onConnectionContextMenu={onConnectionContextMenu}
+                      onConnectionContextMenu={handleConnectionContextMenuWithPanGuard}
                       onConnectionUpdate={onConnectionUpdate}
                       onConnectionWaypointAdd={onConnectionWaypointAdd}
                       onConnectionInsertNode={onConnectionInsertNode}
@@ -3222,7 +3281,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onItemSelect={onItemSelect}
                     closeContextMenu={closeContextMenu}
                     onConnectionDelete={onConnectionDelete}
-                    onConnectionContextMenu={onConnectionContextMenu}
+                    onConnectionContextMenu={handleConnectionContextMenuWithPanGuard}
                     onConnectionUpdate={onConnectionUpdate}
                     onConnectionWaypointAdd={onConnectionWaypointAdd}
                     onConnectionInsertNode={onConnectionInsertNode}
