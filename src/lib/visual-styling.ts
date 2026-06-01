@@ -234,6 +234,7 @@ export function themePropertiesToVisualStyling(p: ThemeProperties): VisualStylin
     backgroundStyle: p.backgroundStyle,
     backgroundColor: p.backgroundColor,
     backgroundColors: p.backgroundColors,
+    meshGradientPoints: p.meshGradientPoints,
     gradientAngle: p.gradientAngle,
     borderGradientAngle: p.borderGradientAngle ?? p.gradientAngle,
     borderWidth: Math.min(p.borderWidth ?? 2, 2),

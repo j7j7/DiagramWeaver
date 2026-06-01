@@ -4,6 +4,33 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-01 – Ten bright + ten more dark built-in themes
+**`builtin-bright-themes.ts`**: 10 light mesh themes (Paper Lantern → Cotton Candy Cloud) with varied borders — **none**, **dotted**, **solid**, and **gradient** rims; all use **mesh gradient** fills (first bright mesh presets in the catalog). **`builtin-dark-themes.ts`**: 10 additional dark themes (Void Garden → Phantom Circuit) with borderless, dotted, solid, and prismatic gradient frames. Merged into **`DEFAULT_THEMES`**. Patch bumped.
+
+### 2026-06-01 – Twenty built-in dark mesh themes
+**`builtin-dark-themes.ts`**: 20 new dark built-in themes (Crimson Eclipse → Wine Cellar) with cohesive accent palettes — 14 use **mesh gradient** backgrounds, all include **text glow**; merged into **`DEFAULT_THEMES`** and sorted by hue via **`getThemeSpectrumSortKey`**. **`applyThemeToItem`** now applies **`meshGradientPoints`**, **`textGlowBlur`**, and **`textGlowColor`**; **`themeBackgroundToCardStyle`** supports mesh on cards. Patch bumped.
+
+### 2026-06-01 – Element Feature theme text glow on title + label
+Theme apply now sets card **title** and **label** **`textGlowColor`** / **`textGlowBlur`** from theme **`textGlowColor`** (not only line accent); render no longer overwrites label glow with accent. Patch bumped.
+
+### 2026-06-01 – Element Feature random palette variant on drop
+Dragging **`element-feature`** from the palette randomly picks **violet** or **amber** mesh presets (`ELEMENT_FEATURE_VARIANT_VIOLET` / `_AMBER`); shared **`buildElementFeatureRoot`**. Template swap still uses violet default. Patch bumped.
+
+### 2026-06-01 – Element Feature theme glow: colour only unless already on
+Theme apply on **`element-feature`** always updates **`highlightAnimGlowColor`** but **never** enables highlight anim; constant shell glow changes only when constant glow was already enabled. Patch bumped.
+
+### 2026-06-01 – Element Feature theme syncs constant highlight glow
+Applying a diagram theme to **`element-feature`** cards now updates **`highlightAnimGlowColor`** (constant shell glow) from theme **`textGlowColor`** or accent, at **0.2** alpha via **`elementFeatureConstantGlowColor`**. Patch bumped.
+
+### 2026-06-01 – Element Feature default preset (purple mesh)
+New **`element-feature`** palette defaults: **300×170**, violet **gradient border** (`#6d28d9` → `#5320ac`), purple **mesh** fill, accent **`#a78bfa`**, copy **02 - Section heading** / **context** / watermark **03**, node **text glow** + **highlight anim**, **`lineColor`** green for theme hook. Patch bumped.
+
+### 2026-06-01 – Element Feature watermark full-width alignment
+Watermark overlay spans **100%** card width (was a **62%** right slot); **`textJustify`** left/center/right now applies across the full horizontal row like subtitle/title. Template layout **`width: "100%"`**; inner wrapper matches other alignable text (no flex pin). Patch bumped.
+
+### 2026-06-01 – Element Feature text horizontal alignment
+Subtitle, title, and watermark are full-width text rows; alignment uses standard **`textJustify`** (text styling toolbar). Removed forced right-align on watermark; default subtitle/title **left**, watermark **right**. Patch bumped.
+
 ### 2026-06-01 – Element Feature theme-linked accent colors
 **`element-feature`**: accent (subtitle glow, watermark outline/glow, fade line) derives from theme **`lineColor`** / border via **`applyElementFeatureThemeColors`**; render-time **`resolveElementFeatureAccentColor`** + **`resolveElementFeatureAccentLineStyle`** keep fade and glow in sync; mesh root hubs from theme background + accent. Watermark **`right: 10px`**. Patch bumped.
 

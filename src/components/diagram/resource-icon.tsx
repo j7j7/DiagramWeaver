@@ -424,24 +424,24 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
       <svg viewBox="0 0 24 24" aria-hidden {...props}>
         <defs>
           <linearGradient id={bgId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#080808" />
-            <stop offset="55%" stopColor="#0f2a1c" />
-            <stop offset="100%" stopColor="#061008" />
+            <stop offset="0%" stopColor="#3508ba" />
+            <stop offset="55%" stopColor="#320568" />
+            <stop offset="100%" stopColor="#030207" />
           </linearGradient>
           <linearGradient id={lineId} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#2ecc71" />
-            <stop offset="100%" stopColor="#2ecc71" stopOpacity={0} />
+            <stop offset="0%" stopColor="#a78bfa" />
+            <stop offset="100%" stopColor="#a78bfa" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <rect x="2.5" y="5.5" width="19" height="13" rx="2.5" fill={`url(#${bgId})`} stroke="#2ecc71" strokeWidth={1} />
-        <rect x="5" y="7.8" width="7.5" height="1.2" rx="0.4" fill="#2ecc71" opacity={0.95} />
+        <rect x="2.5" y="5.5" width="19" height="13" rx="2.5" fill={`url(#${bgId})`} stroke="#6d28d9" strokeWidth={1} />
+        <rect x="5" y="7.8" width="7.5" height="1.2" rx="0.4" fill="#a78bfa" opacity={0.95} />
         <rect x="5" y="10.2" width="5.5" height="2.4" rx="0.5" fill="#ffffff" />
         <rect x="5" y="13.2" width="8.5" height="0.55" rx="0.25" fill={`url(#${lineId})`} />
         <text
           x="19.2"
           y="16.8"
           fill="none"
-          stroke="#2ecc71"
+          stroke="#a78bfa"
           strokeWidth={0.35}
           fontFamily="system-ui,sans-serif"
           fontSize={11}
@@ -449,7 +449,7 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
           textAnchor="end"
           opacity={0.85}
         >
-          01
+          03
         </text>
       </svg>
     );

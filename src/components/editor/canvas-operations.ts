@@ -35,6 +35,10 @@ import {
   BULLET_LIST_TEMPLATE_ID,
   defaultBulletListPaletteNodeProps,
 } from "@/lib/card-bullet-list";
+import {
+  createElementFeaturePaletteDrop,
+  ELEMENT_FEATURE_TEMPLATE_ID,
+} from "@/lib/card-element-feature";
 import { getCardTemplate, defaultCardPaletteNodeProps } from "@/lib/card-templates";
 import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
 import {
@@ -362,10 +366,12 @@ export function useCanvasOperations({
                     ...defaultBulletListPaletteNodeProps(),
                     card: createInitialCardSpec(cardTemplateId),
                   }
-                : {
-                    ...defaultCardPaletteNodeProps(cardTemplateId),
-                    card: createInitialCardSpec(cardTemplateId),
-                  }
+                : cardTemplateId === ELEMENT_FEATURE_TEMPLATE_ID
+                  ? createElementFeaturePaletteDrop()
+                  : {
+                      ...defaultCardPaletteNodeProps(cardTemplateId),
+                      card: createInitialCardSpec(cardTemplateId),
+                    }
           )),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {

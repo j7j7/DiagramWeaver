@@ -233,3 +233,13 @@ export function multiplyLightnessOfColor(input: string, factor: number): string 
   }
   return toHex6(nr, ng, nb);
 }
+
+/** Returns `rgba(r,g,b,a)` with the given alpha (0–1), replacing any source alpha. */
+export function colorToRgba(input: string, alpha: number): string {
+  if (!Number.isFinite(alpha)) return input;
+  const trimmed = input.trim();
+  const rgb = parseColorToRgbChannels(trimmed);
+  if (!rgb) return input;
+  const a = Math.max(0, Math.min(1, alpha));
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`;
+}

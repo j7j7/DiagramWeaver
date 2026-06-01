@@ -9,6 +9,8 @@ import type {
   NodeChartSpecRing,
 } from './types';
 import { getThemeSpectrumSortKey } from './theme-spectrum';
+import { BUILTIN_DARK_THEMES } from './builtin-dark-themes';
+import { BUILTIN_BRIGHT_THEMES } from './builtin-bright-themes';
 import { isChartNodeType } from './chart-node';
 import { shiftHueOfColor } from './color-shift';
 import { isConnectorLineGeometryClosed } from './line-curve-path';
@@ -16,6 +18,10 @@ import { syncClosedConnectorLineBorderWidth } from './line-styling';
 import { isConnectorLineNodeType } from './utils';
 import { isCardNodeType, getCardTemplateIdFromNodeType } from './card-utils';
 import { applyThemeToCardElements } from './card-theme';
+import {
+  ELEMENT_FEATURE_TEMPLATE_ID,
+  applyElementFeatureThemeHighlightGlow,
+} from './card-element-feature';
 import { AGENDA_TEMPLATE_ID } from './card-agenda';
 import { BULLET_LIST_TEMPLATE_ID } from './card-bullet-list';
 
@@ -88,6 +94,12 @@ export function shiftDiagramThemePropertiesColors(
   if (next.textOutlineColor) next.textOutlineColor = shiftHueOfColor(next.textOutlineColor, degrees);
   if (next.textGlowColor) next.textGlowColor = shiftHueOfColor(next.textGlowColor, degrees);
   if (next.textShadowColor) next.textShadowColor = shiftHueOfColor(next.textShadowColor, degrees);
+  if (next.meshGradientPoints?.length) {
+    next.meshGradientPoints = next.meshGradientPoints.map((p) => ({
+      ...p,
+      color: shiftHueOfColor(p.color, degrees),
+    }));
+  }
   return next;
 }
 
@@ -1545,7 +1557,9 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
       textOpacity: 1,
       gradientAngle: 60
     }
-  }
+  },
+  ...BUILTIN_DARK_THEMES,
+  ...BUILTIN_BRIGHT_THEMES,
 ];
 
 class ThemeManager {
@@ -1744,6 +1758,9 @@ class ThemeManager {
       // Deep clone arrays if they exist
       borderColors: original.properties.borderColors ? [...original.properties.borderColors] : undefined,
       backgroundColors: original.properties.backgroundColors ? [...original.properties.backgroundColors] : undefined,
+      meshGradientPoints: original.properties.meshGradientPoints
+        ? original.properties.meshGradientPoints.map((p) => ({ ...p }))
+        : undefined,
     };
 
     const duplicate: DiagramTheme = {
@@ -1824,6 +1841,16 @@ class ThemeManager {
         (updated as any).backgroundColor = colorProps.backgroundColors[0];
       }
     }
+    if (properties.backgroundStyle === 'mesh_gradient') {
+      if (colorProps.meshGradientPoints !== undefined) {
+        (updated as any).meshGradientPoints = colorProps.meshGradientPoints.map((p) => ({ ...p }));
+      } else if (properties.meshGradientPoints !== undefined) {
+        (updated as any).meshGradientPoints = properties.meshGradientPoints.map((p) => ({ ...p }));
+      }
+      delete (updated as any).backgroundColors;
+    } else {
+      delete (updated as any).meshGradientPoints;
+    }
 
     // Apply line properties (for connections)
     if ('color' in updated && colorProps.lineColor !== undefined) {
@@ -1841,6 +1868,18 @@ class ThemeManager {
     // Apply text color
     if (colorProps.textColor !== undefined) {
       (updated as any).textColor = colorProps.textColor;
+    }
+    if (properties.textGlowBlur !== undefined) {
+      (updated as any).textGlowBlur = properties.textGlowBlur;
+    }
+    if (colorProps.textGlowColor !== undefined) {
+      (updated as any).textGlowColor = colorProps.textGlowColor;
+    }
+    if (properties.textOutlineWidth !== undefined) {
+      (updated as any).textOutlineWidth = properties.textOutlineWidth;
+    }
+    if (colorProps.textOutlineColor !== undefined) {
+      (updated as any).textOutlineColor = colorProps.textOutlineColor;
     }
 
     // Apply gradient angles
@@ -1997,6 +2036,12 @@ class ThemeManager {
       }
       if (templateId === BULLET_LIST_TEMPLATE_ID) {
         cardNode.bulletListItemThemeHue = stepHueWithinCard;
+      }
+      if (templateId === ELEMENT_FEATURE_TEMPLATE_ID) {
+        Object.assign(
+          cardNode,
+          applyElementFeatureThemeHighlightGlow(colorProps, hueShift),
+        );
       }
     }
 

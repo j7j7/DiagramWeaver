@@ -48,8 +48,13 @@ export function createInitialCardSpec(templateId: string): NodeCardSpec | undefi
   }
   return {
     templateId,
-    elements: deepCloneElement(template.root),
+    elements: cloneCardElementTree(template.root),
   };
+}
+
+/** Deep-clone a card element tree (palette drops, template swap). */
+export function cloneCardElementTree(el: CardElementData): CardElementData {
+  return deepCloneElement(el);
 }
 
 export function findCardElement(root: CardElementData, elementId: string): CardElementData | null {

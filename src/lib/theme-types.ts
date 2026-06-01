@@ -1,3 +1,5 @@
+import type { MeshGradientPoint } from '@/lib/types';
+
 export interface ThemeProperties {
   // Border properties
   borderStyle: 'solid' | 'dotted' | 'gradient' | 'none';
@@ -6,9 +8,11 @@ export interface ThemeProperties {
   borderWidth?: number;
   
   // Background properties
-  backgroundStyle: 'solid' | 'gradient' | 'none';
+  backgroundStyle: 'solid' | 'gradient' | 'none' | 'mesh_gradient';
   backgroundColor?: string;
   backgroundColors?: string[]; // For gradient backgrounds [startColor, endColor]
+  /** Three radial hubs when `backgroundStyle` is `mesh_gradient`. */
+  meshGradientPoints?: MeshGradientPoint[];
   backgroundOpacity?: number; // 0-1
   
   // Line properties (for connections)

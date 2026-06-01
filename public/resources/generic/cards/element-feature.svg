@@ -1,18 +1,18 @@
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="element-feature-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#080808"/>
-      <stop offset="55%" stop-color="#0f2a1c"/>
-      <stop offset="100%" stop-color="#061008"/>
+      <stop offset="0%" stop-color="#3508ba"/>
+      <stop offset="55%" stop-color="#320568"/>
+      <stop offset="100%" stop-color="#030207"/>
     </linearGradient>
     <linearGradient id="element-feature-line" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#2ecc71"/>
-      <stop offset="100%" stop-color="#2ecc71" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
     </linearGradient>
   </defs>
-  <rect x="2.5" y="5.5" width="19" height="13" rx="2.5" fill="url(#element-feature-bg)" stroke="#2ecc71" stroke-width="1"/>
-  <text x="5" y="9.2" fill="#2ecc71" font-family="system-ui,sans-serif" font-size="2.4" font-weight="600" letter-spacing="0.08">SUBTITLE</text>
-  <text x="5" y="12.8" fill="#ffffff" font-family="system-ui,sans-serif" font-size="4.2" font-weight="700">Title</text>
+  <rect x="2.5" y="5.5" width="19" height="13" rx="2.5" fill="url(#element-feature-bg)" stroke="#6d28d9" stroke-width="1"/>
+  <text x="5" y="9.2" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="2.4" font-weight="600" letter-spacing="0.08">02</text>
+  <text x="5" y="12.8" fill="#ffffff" font-family="system-ui,sans-serif" font-size="4.2" font-weight="700">context</text>
   <rect x="5" y="14.2" width="8.5" height="0.55" rx="0.25" fill="url(#element-feature-line)"/>
-  <text x="19.5" y="16.5" fill="none" stroke="#2ecc71" stroke-width="0.35" font-family="system-ui,sans-serif" font-size="11" font-weight="700" text-anchor="end" opacity="0.85">01</text>
+  <text x="19.5" y="16.5" fill="none" stroke="#a78bfa" stroke-width="0.35" font-family="system-ui,sans-serif" font-size="11" font-weight="700" text-anchor="end" opacity="0.85">03</text>
 </svg>

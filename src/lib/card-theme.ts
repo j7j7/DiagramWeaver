@@ -98,6 +98,18 @@ function themeBackgroundToCardStyle(
       gradientAngle: properties.gradientAngle ?? 135,
     };
   }
+  if (bgStyle === "mesh_gradient") {
+    const base = colorProps.backgroundColor ?? "#121212";
+    const hubs =
+      colorProps.meshGradientPoints ??
+      properties.meshGradientPoints ??
+      [];
+    return {
+      backgroundStyle: "mesh_gradient",
+      backgroundColor: base,
+      meshGradientPoints: hubs.length === 3 ? hubs.map((p) => ({ ...p })) : undefined,
+    };
+  }
   return {
     backgroundStyle: "solid",
     backgroundColor: colorProps.backgroundColor ?? "#f3f4f6",
@@ -352,13 +364,20 @@ export function applyThemeToCardElements(
 
   if (isElementFeature) {
     const accent = elementFeatureAccentFromTheme(colorProps, hueShift);
+    const glowColor = colorProps.textGlowColor
+      ? hueShift !== 0
+        ? shiftHueOfColor(colorProps.textGlowColor, hueShift)
+        : colorProps.textGlowColor
+      : accent;
     const baseRaw =
       colorProps.backgroundColors?.[0] ??
       colorProps.backgroundColor ??
       "#121212";
     root = applyElementFeatureThemeColors(root, {
       accentColor: accent,
-      titleColor: ELEMENT_FEATURE_TITLE_COLOR_DEFAULT,
+      glowColor,
+      glowBlur: properties.textGlowBlur,
+      titleColor: colorProps.textColor ?? ELEMENT_FEATURE_TITLE_COLOR_DEFAULT,
       watermarkFillColor: multiplyLightnessOfColor(baseRaw, 0.45),
     });
     return root;

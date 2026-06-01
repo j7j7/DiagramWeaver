@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
-import type { CardElementData, CardElementStyle, CardLayoutBox } from "@/lib/card-types";
+import type { CardElementData, CardElementStyle, CardLayoutBox, NodeCardSpec } from "@/lib/card-types";
+import type { DiagramNodeData, MeshGradientPoint } from "@/lib/types";
 import type { ThemeProperties } from "@/lib/theme-types";
-import { multiplyLightnessOfColor, shiftHueOfColor } from "@/lib/color-shift";
+import { colorToRgba, multiplyLightnessOfColor, shiftHueOfColor } from "@/lib/color-shift";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 
 export const ELEMENT_FEATURE_TEMPLATE_ID = "element-feature";
@@ -14,7 +15,8 @@ export const ELEMENT_FEATURE_WATERMARK_ID = ELEMENT_FEATURE_NUMBER_ID;
 export const ELEMENT_FEATURE_ACCENT_LINE_ID = "accent-line";
 export const ELEMENT_FEATURE_CONTENT_ID = "content-col";
 
-export const ELEMENT_FEATURE_ACCENT_DEFAULT = "#2ecc71";
+export const ELEMENT_FEATURE_ACCENT_DEFAULT = "#a78bfa";
+export const ELEMENT_FEATURE_ACCENT_AMBER = "#9a3412";
 export const ELEMENT_FEATURE_TITLE_COLOR_DEFAULT = "#ffffff";
 /** Inset for the large watermark from the card's right edge (px). */
 export const ELEMENT_FEATURE_WATERMARK_MARGIN_RIGHT = 10;
@@ -47,6 +49,16 @@ export function isElementFeatureForegroundText(elementId: string, templateId: st
   return (
     isElementFeatureCard(templateId) &&
     (elementId === ELEMENT_FEATURE_LABEL_ID || elementId === ELEMENT_FEATURE_TITLE_ID)
+  );
+}
+
+/** Subtitle, title, and watermark — full-width rows so textJustify controls alignment. */
+export function isElementFeatureAlignableText(elementId: string, templateId: string | undefined): boolean {
+  return (
+    isElementFeatureCard(templateId) &&
+    (elementId === ELEMENT_FEATURE_LABEL_ID ||
+      elementId === ELEMENT_FEATURE_TITLE_ID ||
+      elementId === ELEMENT_FEATURE_NUMBER_ID)
   );
 }
 
@@ -156,6 +168,36 @@ export function applyElementFeatureAccentLineHeight(
   });
 }
 
+/** Default alpha for the card shell constant highlight glow (matches palette preset). */
+export const ELEMENT_FEATURE_CONSTANT_GLOW_ALPHA = 0.2;
+
+/** Shell highlight glow for constant mode — derived from theme text glow or accent. */
+export function elementFeatureConstantGlowColor(
+  colorProps: ThemeProperties,
+  hueShift = 0,
+): string {
+  const accent = elementFeatureAccentFromTheme(colorProps, hueShift);
+  const glowSource = colorProps.textGlowColor
+    ? hueShift !== 0
+      ? shiftHueOfColor(colorProps.textGlowColor, hueShift)
+      : colorProps.textGlowColor
+    : accent;
+  return colorToRgba(glowSource, ELEMENT_FEATURE_CONSTANT_GLOW_ALPHA);
+}
+
+/**
+ * Theme apply for element-feature shell glow: always stores `highlightAnimGlowColor`;
+ * never turns highlight anim on. Visible constant glow changes only when already enabled.
+ */
+export function applyElementFeatureThemeHighlightGlow(
+  colorProps: ThemeProperties,
+  hueShift = 0,
+): { highlightAnimGlowColor: string } {
+  return {
+    highlightAnimGlowColor: elementFeatureConstantGlowColor(colorProps, hueShift),
+  };
+}
+
 /** Theme / node shell accent — line color preferred (matches card border accent). */
 export function elementFeatureAccentFromTheme(
   colorProps: ThemeProperties,
@@ -198,13 +240,17 @@ export function resolveElementFeatureAccentLineStyle(
   };
 }
 
-function syncElementFeatureAccentElements(elements: CardElementData, accent: string): CardElementData {
+function syncElementFeatureAccentElements(
+  elements: CardElementData,
+  accent: string,
+  glowColor: string = accent,
+): CardElementData {
   let next = elements;
   const label = findCardElement(next, ELEMENT_FEATURE_LABEL_ID);
   if (label) {
     next = updateCardElementTree(next, ELEMENT_FEATURE_LABEL_ID, {
       textColor: accent,
-      textGlowColor: accent,
+      textGlowColor: glowColor,
     });
   }
   const watermark = findCardElement(next, ELEMENT_FEATURE_NUMBER_ID);
@@ -252,6 +298,9 @@ export function applyElementFeatureThemeColors(
   elements: CardElementData,
   options: {
     accentColor: string;
+    /** Theme text glow colour — subtitle + title glow (defaults to accent). */
+    glowColor?: string;
+    glowBlur?: number;
     titleColor?: string;
     watermarkFillColor?: string;
     rootStyle?: Partial<CardElementStyle>;
@@ -265,13 +314,21 @@ export function applyElementFeatureThemeColors(
     });
   }
 
-  next = syncElementFeatureAccentElements(next, options.accentColor);
+  const glowColor = options.glowColor ?? options.accentColor;
+  next = syncElementFeatureAccentElements(next, options.accentColor, glowColor);
 
   const title = findCardElement(next, ELEMENT_FEATURE_TITLE_ID);
   if (title) {
-    next = updateCardElementTree(next, ELEMENT_FEATURE_TITLE_ID, {
+    const titlePatch: Partial<CardElementData> = {
       textColor: options.titleColor ?? ELEMENT_FEATURE_TITLE_COLOR_DEFAULT,
-    });
+    };
+    if (options.glowColor !== undefined) {
+      titlePatch.textGlowColor = options.glowColor;
+    }
+    if (options.glowBlur !== undefined) {
+      titlePatch.textGlowBlur = options.glowBlur;
+    }
+    next = updateCardElementTree(next, ELEMENT_FEATURE_TITLE_ID, titlePatch);
   }
 
   const watermark = findCardElement(next, ELEMENT_FEATURE_NUMBER_ID);
@@ -306,7 +363,7 @@ export function resolveElementFeatureTextLayout(
   templateId: string | undefined,
   layout: CardLayoutBox | undefined,
 ): CardLayoutBox | undefined {
-  if (!isElementFeatureForegroundText(elementId, templateId)) return layout;
+  if (!isElementFeatureAlignableText(elementId, templateId)) return layout;
   return {
     ...layout,
     width: "100%",
@@ -359,7 +416,7 @@ export function resolveElementFeatureNumberLayout(
   if (!isElementFeatureWatermarkNumber(elementId, templateId)) return layout;
   return {
     ...layout,
-    width: layout?.width ?? "62%",
+    width: "100%",
     height: layout?.height ?? "100%",
     flex: 0,
   };
@@ -400,26 +457,26 @@ export function elementFeatureWatermarkPointerStyle(
   return { pointerEvents: "auto", zIndex: 0 };
 }
 
-/** Large watermark text — absolute overlay behind content (right half, vertically centered). */
+/** Large watermark text — full-width absolute overlay behind content; align via textJustify. */
 export function elementFeatureNumberSlotStyle(
   elementId: string,
   templateId: string | undefined,
-  layout: CardLayoutBox | undefined,
+  _layout: CardLayoutBox | undefined,
 ): CSSProperties | undefined {
   if (!isElementFeatureWatermarkNumber(elementId, templateId)) return undefined;
-  const width = typeof layout?.width === "string" ? layout.width : `${layout?.width ?? 62}%`;
   return {
     position: "absolute",
     top: 0,
+    left: 0,
     right: ELEMENT_FEATURE_WATERMARK_MARGIN_RIGHT,
     bottom: 0,
-    width,
+    width: "100%",
     height: "100%",
     zIndex: 0,
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
-    alignItems: "flex-end",
+    alignItems: "stretch",
     overflow: "hidden",
     padding: 0,
     margin: 0,
@@ -437,3 +494,248 @@ export const ELEMENT_FEATURE_ACCENT_LINE_WIDTH_MIN = MIN_ACCENT_LINE_WIDTH_PCT;
 export const ELEMENT_FEATURE_ACCENT_LINE_WIDTH_MAX = MAX_ACCENT_LINE_WIDTH_PCT;
 export const ELEMENT_FEATURE_ACCENT_LINE_HEIGHT_MIN = MIN_ACCENT_LINE_HEIGHT;
 export const ELEMENT_FEATURE_ACCENT_LINE_HEIGHT_MAX = MAX_ACCENT_LINE_HEIGHT;
+
+export interface ElementFeatureRootVariant {
+  backgroundColor: string;
+  meshGradientPoints: MeshGradientPoint[];
+  accentColor: string;
+  watermarkTextColor: string;
+  titleColor?: string;
+}
+
+export interface ElementFeaturePaletteDropVariant {
+  nodeProps: Partial<DiagramNodeData>;
+  root: ElementFeatureRootVariant;
+}
+
+/** Violet mesh preset (original element-feature palette default). */
+export const ELEMENT_FEATURE_VARIANT_VIOLET: ElementFeaturePaletteDropVariant = {
+  nodeProps: {
+    sizeMode: "custom",
+    borderStyle: "gradient",
+    borderColors: ["#6d28d9", "#5320ac"],
+    borderWidth: 1,
+    backgroundStyle: "none",
+    lineStyle: "solid",
+    lineColor: "#2ecc71",
+    lineWidth: 2.5,
+    lineOpacity: 1,
+    shadow: true,
+    shadowColor: "#000000",
+    shadowOpacity: 0.55,
+    shadowBlur: 12,
+    textColor: "#ede9fe",
+    textOpacity: 1,
+    gradientAngle: 115,
+    textJustify: "left",
+    cornerRadius: 0.12,
+    borderColor: "#6d28d9",
+    textGlowBlur: 14,
+    textGlowColor: "#c4b5fd",
+    borderGradientAngle: 225,
+    highlightAnim: true,
+    highlightAnimMode: "constant",
+    highlightAnimGlowColor: "rgba(140, 79, 255, 0.2)",
+    highlightAnimGlowIntensity: 0.36,
+  } as Partial<DiagramNodeData>,
+  root: {
+    backgroundColor: "#030206",
+    meshGradientPoints: [
+      { xPct: 88, yPct: 12, color: "#3508ba" },
+      { xPct: 55, yPct: 45, color: "#320568" },
+      { xPct: 15, yPct: 85, color: "#030207" },
+    ],
+    accentColor: ELEMENT_FEATURE_ACCENT_DEFAULT,
+    watermarkTextColor: "#040309",
+  },
+};
+
+/** Amber mesh preset — random palette alternative on canvas drop. */
+export const ELEMENT_FEATURE_VARIANT_AMBER: ElementFeaturePaletteDropVariant = {
+  nodeProps: {
+    sizeMode: "custom",
+    borderStyle: "gradient",
+    borderColors: ["#c2410c", "#b45309"],
+    borderWidth: 1,
+    backgroundStyle: "none",
+    lineStyle: "solid",
+    lineColor: "#2ecc71",
+    lineWidth: 2.5,
+    lineOpacity: 1,
+    shadow: true,
+    shadowColor: "#000000",
+    shadowOpacity: 0.55,
+    shadowBlur: 12,
+    textColor: "#7c2d12",
+    textOpacity: 1,
+    gradientAngle: 60,
+    textJustify: "left",
+    cornerRadius: 0.12,
+    borderColor: "#c2410c",
+    textGlowBlur: 14,
+    textGlowColor: "#c4b5fd",
+    borderGradientAngle: 225,
+    highlightAnim: true,
+    highlightAnimMode: "constant",
+    highlightAnimGlowColor: "rgba(154, 52, 18, 0.2)",
+    highlightAnimGlowIntensity: 0.36,
+  } as Partial<DiagramNodeData>,
+  root: {
+    backgroundColor: "#9d5700",
+    meshGradientPoints: [
+      { xPct: 88, yPct: 12, color: "#4d1a09" },
+      { xPct: 55, yPct: 45, color: "#2b1605" },
+      { xPct: 15, yPct: 85, color: "#b56400" },
+    ],
+    accentColor: ELEMENT_FEATURE_ACCENT_AMBER,
+    watermarkTextColor: "#dd7b00",
+  },
+};
+
+const ELEMENT_FEATURE_DROP_VARIANTS: ElementFeaturePaletteDropVariant[] = [
+  ELEMENT_FEATURE_VARIANT_VIOLET,
+  ELEMENT_FEATURE_VARIANT_AMBER,
+];
+
+function cloneElementFeatureTree(root: CardElementData): CardElementData {
+  return structuredClone(root);
+}
+
+export function pickRandomElementFeatureDropVariant(): ElementFeaturePaletteDropVariant {
+  const index = Math.floor(Math.random() * ELEMENT_FEATURE_DROP_VARIANTS.length);
+  return ELEMENT_FEATURE_DROP_VARIANTS[index] ?? ELEMENT_FEATURE_VARIANT_VIOLET;
+}
+
+export function buildElementFeatureRoot(variant: ElementFeatureRootVariant): CardElementData {
+  const accent = variant.accentColor;
+  const titleColor = variant.titleColor ?? ELEMENT_FEATURE_TITLE_COLOR_DEFAULT;
+  return {
+    id: "root",
+    kind: "section",
+    layout: {
+      flexDirection: "column",
+      width: "100%",
+      height: "100%",
+      padding: [20, 22],
+      gap: 0,
+      overflow: "hidden",
+    },
+    style: {
+      backgroundColor: variant.backgroundColor,
+      backgroundStyle: "mesh_gradient",
+      meshGradientPoints: variant.meshGradientPoints.map((p) => ({ ...p })),
+    },
+    children: [
+      {
+        id: "watermark-number",
+        kind: "text",
+        text: "03",
+        editable: true,
+        fontSize: 130,
+        fontWeight: "700",
+        textColor: variant.watermarkTextColor,
+        textOpacity: 0.55,
+        textOutlineWidth: 1.5,
+        textOutlineColor: accent,
+        textGlowBlur: 14,
+        textGlowColor: accent,
+        textJustify: "right",
+        lineHeight: 1,
+        layout: { width: "62%", height: "100%", flex: 0 },
+        style: { backgroundStyle: "none" },
+        richText: [
+          {
+            text: "03",
+            lineJustify: "right",
+            lineFontSize: 130,
+            lineFontWeight: "700",
+          },
+        ],
+      },
+      {
+        id: "content-col",
+        kind: "section",
+        layout: {
+          flexDirection: "column",
+          flex: 1,
+          gap: 10,
+          justifyContent: "center",
+          alignItems: "stretch",
+          minWidth: 0,
+          width: "100%",
+          zIndex: 1,
+        },
+        children: [
+          {
+            id: "label",
+            kind: "text",
+            text: "02 - Section heading",
+            editable: true,
+            fontSize: 10,
+            fontWeight: "600",
+            textTransform: "uppercase",
+            letterSpacing: 1,
+            lineHeight: 1.35,
+            textColor: accent,
+            textGlowBlur: 10,
+            textGlowColor: accent,
+            layout: { width: "100%", alignSelf: "stretch", padding: 0, flex: 0 },
+            style: { backgroundStyle: "none" },
+            richText: [
+              {
+                text: "02 - Section heading",
+                lineJustify: "left",
+                lineFontSize: 10,
+                lineFontWeight: "600",
+              },
+            ],
+          },
+          {
+            id: "title",
+            kind: "text",
+            text: "context",
+            editable: true,
+            fontSize: 36,
+            fontWeight: "700",
+            textColor: titleColor,
+            lineHeight: 1.05,
+            layout: { width: "100%", alignSelf: "stretch", padding: 0, flex: 0 },
+            style: { backgroundStyle: "none" },
+            richText: [
+              {
+                text: "context",
+                lineJustify: "left",
+                lineFontSize: 36,
+                lineFontWeight: "700",
+              },
+            ],
+          },
+          {
+            id: "accent-line",
+            kind: "decor",
+            placeholder: "rect",
+            layout: { width: "78%", height: 2, flex: 0, alignSelf: "start" },
+            style: {
+              backgroundStyle: "gradient",
+              backgroundColors: [accent, "transparent"],
+              gradientAngle: 90,
+              borderRadius: 1,
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/** Random violet or amber preset when dropping element-feature from the palette. */
+export function createElementFeaturePaletteDrop(): Partial<DiagramNodeData> & { card: NodeCardSpec } {
+  const variant = pickRandomElementFeatureDropVariant();
+  return {
+    ...variant.nodeProps,
+    card: {
+      templateId: ELEMENT_FEATURE_TEMPLATE_ID,
+      elements: cloneElementFeatureTree(buildElementFeatureRoot(variant.root)),
+    },
+  };
+}

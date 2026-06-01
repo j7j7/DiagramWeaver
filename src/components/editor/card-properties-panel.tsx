@@ -1443,7 +1443,7 @@ function ElementFeatureCardProperties({
       <p className="text-xs text-muted-foreground">
         Element feature slide — dark mesh background, glowing subtitle, large watermark text, and a
         gradient accent line that fades to transparent. The default example uses{" "}
-        <span className="font-medium">01</span>; replace it with any label, word, or number. Use{" "}
+        <span className="font-medium">03</span>; replace it with any label, word, or number. Use{" "}
         <span className="font-medium">Background</span> above for the card fill (mesh gradient
         recommended) and <span className="font-medium">Border</span> for the outline.
       </p>
@@ -1463,7 +1463,7 @@ function ElementFeatureCardProperties({
           onChange={(e) =>
             onElementsChange(applyElementFeatureWatermarkText(elements, e.target.value))
           }
-          placeholder="01"
+          placeholder="03"
           className="h-9 text-sm"
         />
       </div>

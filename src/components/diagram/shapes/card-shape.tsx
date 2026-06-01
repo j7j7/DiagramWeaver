@@ -103,10 +103,11 @@ import {
   elementFeatureWatermarkPointerStyle,
   ELEMENT_FEATURE_ACCENT_DEFAULT,
   ELEMENT_FEATURE_LABEL_ID,
+  ELEMENT_FEATURE_TITLE_ID,
   ELEMENT_FEATURE_NUMBER_ID,
   isElementFeatureAccentLine,
+  isElementFeatureAlignableText,
   isElementFeatureCard,
-  isElementFeatureForegroundText,
   isElementFeatureWatermarkNumber,
   resolveElementFeatureAccentLineLayout,
   resolveElementFeatureAccentLineStyle,
@@ -187,7 +188,7 @@ import { TextboxRichDisplay } from "../textbox-rich-display";
 import { ResourceIcon } from "../resource-icon";
 import { CardElementMeshBackground } from "./card-element-background";
 import { ShapeWrapper } from "./shape-wrapper";
-import { getShapeStyles } from "./shape-utils";
+import { getShapeStyles, getTextJustifyClass } from "./shape-utils";
 import { ItemTypes } from "@/components/editor/draggable-item";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
@@ -1426,7 +1427,11 @@ function CardElementRenderer({
       );
       if (element.id === ELEMENT_FEATURE_LABEL_ID) {
         textNode.textColor = accent;
-        textNode.textGlowColor = accent;
+        textNode.textGlowColor = element.textGlowColor ?? accent;
+      }
+      if (element.id === ELEMENT_FEATURE_TITLE_ID) {
+        if (element.textGlowColor != null) textNode.textGlowColor = element.textGlowColor;
+        if (element.textGlowBlur != null) textNode.textGlowBlur = element.textGlowBlur;
       }
       if (element.id === ELEMENT_FEATURE_NUMBER_ID) {
         textNode.textOutlineColor = accent;
@@ -1464,16 +1469,18 @@ function CardElementRenderer({
     const elementFeatureNumberOverlay = elementFeatureNumberSlotStyle(
       element.id,
       cardTemplateId,
-      effectiveLayout,
+      element.layout,
     );
     const isElementFeatureWatermark = isElementFeatureWatermarkNumber(element.id, cardTemplateId);
-    const isElementFeatureText = isElementFeatureForegroundText(element.id, cardTemplateId);
+    const isElementFeatureAlignable = isElementFeatureAlignableText(element.id, cardTemplateId);
     const elementFeatureWatermarkPointer = elementFeatureWatermarkPointerStyle(
       element.id,
       cardTemplateId,
     );
     const textStyle: React.CSSProperties = {
-      ...(isElementFeatureWatermark ? {} : layoutCss),
+      ...(isElementFeatureWatermark
+        ? { width: "100%", minWidth: 0, height: layoutCss.height ?? "100%" }
+        : layoutCss),
       ...styleCss,
       ...popStyle,
       ...dashboardEditablePointerStyle,
@@ -1498,7 +1505,7 @@ function CardElementRenderer({
         : (element.lineHeight ?? 1.35),
       wordBreak: isAgendaTimeCell ? "keep-all" : "break-word",
       padding:
-        isElementFeatureWatermark || isElementFeatureText
+        isElementFeatureAlignable
           ? 0
           : cardLayoutToCss({ padding: textPad }).padding,
       boxSizing: "border-box",
@@ -1541,10 +1548,11 @@ function CardElementRenderer({
         ? {
             overflow: isEditing ? "visible" : "hidden",
             zIndex: isEditing || isSelected ? 3 : 0,
-            textAlign: "right",
           }
         : {}),
     };
+    const elementFeatureTextJustify =
+      element.textJustify ?? textNode.textJustify ?? "left";
 
     return (
       <div
@@ -1618,8 +1626,12 @@ function CardElementRenderer({
           className={cn(
             "relative z-[1]",
             isAgendaTimeCell ? "shrink-0 whitespace-nowrap" : "min-w-0",
-            isElementFeatureWatermark &&
-              "flex h-full w-full min-h-0 items-center justify-end break-words whitespace-pre-wrap text-right",
+            isElementFeatureAlignable &&
+              cn(
+                "w-full min-w-0",
+                getTextJustifyClass(elementFeatureTextJustify),
+                isElementFeatureWatermark && "break-words whitespace-pre-wrap",
+              ),
             isBulletListItemText && "flex min-w-0 flex-1 flex-col justify-start",
             isBulletListTitleText && "w-full min-w-0 flex-1",
             fillRemaining && "min-h-0 flex-1 overflow-hidden",
