@@ -9,6 +9,13 @@ import {
   BULLET_LIST_TEMPLATE_ID,
   getBulletListItemTextColor,
 } from "@/lib/card-bullet-list";
+import {
+  ELEMENT_FEATURE_TEMPLATE_ID,
+  ELEMENT_FEATURE_TITLE_COLOR_DEFAULT,
+  applyElementFeatureThemeColors,
+  elementFeatureAccentFromTheme,
+  elementFeatureRootStyleFromTheme,
+} from "@/lib/card-element-feature";
 
 /** Profile Social theme apply — kept here to avoid card-theme ↔ card-profile-social import cycle. */
 const PROFILE_SOCIAL_TEMPLATE_ID = "profile-social";
@@ -211,6 +218,7 @@ export function applyThemeToCardElements(
   const isProfileSocial = templateId === PROFILE_SOCIAL_TEMPLATE_ID;
   const isProfileDiagonalSplit = templateId === PROFILE_DIAGONAL_SPLIT_TEMPLATE_ID;
   const isBulletList = templateId === BULLET_LIST_TEMPLATE_ID;
+  const isElementFeature = templateId === ELEMENT_FEATURE_TEMPLATE_ID;
   const chipBase = colorProps.backgroundColor ?? colorProps.backgroundColors?.[0] ?? "#93c5fd";
   const accentBase =
     colorProps.backgroundColors?.[1] ??
@@ -241,7 +249,9 @@ export function applyThemeToCardElements(
   let root = updateCardElementStyleTree(
     elements,
     bgId,
-    profileSocialBodyStyle ?? themeBackgroundToCardStyle(properties, colorProps),
+    isElementFeature
+      ? elementFeatureRootStyleFromTheme(properties, colorProps, hueShift)
+      : profileSocialBodyStyle ?? themeBackgroundToCardStyle(properties, colorProps),
   );
 
   const borderBase =
@@ -339,6 +349,20 @@ export function applyThemeToCardElements(
 
     return el;
   });
+
+  if (isElementFeature) {
+    const accent = elementFeatureAccentFromTheme(colorProps, hueShift);
+    const baseRaw =
+      colorProps.backgroundColors?.[0] ??
+      colorProps.backgroundColor ??
+      "#121212";
+    root = applyElementFeatureThemeColors(root, {
+      accentColor: accent,
+      titleColor: ELEMENT_FEATURE_TITLE_COLOR_DEFAULT,
+      watermarkFillColor: multiplyLightnessOfColor(baseRaw, 0.45),
+    });
+    return root;
+  }
 
   if (colorProps.textColor || isBulletList) {
     if (isBulletList) {

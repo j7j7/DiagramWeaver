@@ -4,6 +4,18 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-01 – Element Feature theme-linked accent colors
+**`element-feature`**: accent (subtitle glow, watermark outline/glow, fade line) derives from theme **`lineColor`** / border via **`applyElementFeatureThemeColors`**; render-time **`resolveElementFeatureAccentColor`** + **`resolveElementFeatureAccentLineStyle`** keep fade and glow in sync; mesh root hubs from theme background + accent. Watermark **`right: 10px`**. Patch bumped.
+
+### 2026-06-01 – Element Feature watermark accepts any text
+**`element-feature`**: watermark field is plain text (default example **01**); Card properties **Watermark text** input + canvas double-click; wrapping for longer labels; UI copy no longer implies digits-only. Patch bumped.
+
+### 2026-06-01 – Element Feature card layout fix
+**`element-feature`**: watermark numeral **`position: absolute`** was overridden by generic text layout (flex flow → overflow into title). Fixed positioning (right half, vertically centered, z-index behind content); subtitle/title padding cleared; DOM order watermark-first; accent line width bumped. Patch bumped.
+
+### 2026-06-01 – Element Feature card template
+New **`element-feature`** card (`generic.card.element-feature`): dark **mesh gradient** shell, uppercase **glowing label**, editable **title**, **gradient accent line** (green → transparent), and a large **watermark numeral** with outline + glow (`textOutlineWidth` / `textGlowBlur`). Helpers in **`card-element-feature.ts`**; palette icon + resource catalog entry; dedicated Card properties panel (accent color sync, numeral size, line width/thickness). Patch bumped.
+
 ### 2026-06-01 – Play / slide transitions: card size + corner radius lerp
 When a **card** node’s **width/height** and/or **`cornerRadius`** (0–1) changes between slides (same id, not appear/disappear), **`use-slide-transition`** drives **`cardSizeLerpU`** via RAF (same window as chart value lerp). **`DiagramNode`** applies interpolated **px** + corner radius on the outer box and **`CardShape`** so shell rounding, flex regions, and the accent bar stay crisp—outer **CSS scale** stays suppressed for cards. **`cardNodeCornerRadiusNorm`** in **`card-presentation.ts`**. **`maxWidth`** relaxed during lerp like live resize. Patch bumped.
 

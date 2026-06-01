@@ -210,6 +210,11 @@
           "type": "shape"
         },
         {
+          "name": "Element Feature",
+          "file": "element-feature.svg",
+          "type": "shape"
+        },
+        {
           "name": "Detail Post",
           "file": "detail-post.svg",
           "type": "shape"

@@ -96,6 +96,26 @@ import {
   resolveDashboardStatDecorLayout,
 } from "@/lib/card-dashboard-stat";
 import {
+  elementFeatureContentSectionStyle,
+  elementFeatureEditablePointerStyle,
+  elementFeatureNumberSlotStyle,
+  elementFeatureRootStyle,
+  elementFeatureWatermarkPointerStyle,
+  ELEMENT_FEATURE_ACCENT_DEFAULT,
+  ELEMENT_FEATURE_LABEL_ID,
+  ELEMENT_FEATURE_NUMBER_ID,
+  isElementFeatureAccentLine,
+  isElementFeatureCard,
+  isElementFeatureForegroundText,
+  isElementFeatureWatermarkNumber,
+  resolveElementFeatureAccentLineLayout,
+  resolveElementFeatureAccentLineStyle,
+  resolveElementFeatureAccentColor,
+  resolveElementFeatureContentColLayout,
+  resolveElementFeatureNumberLayout,
+  resolveElementFeatureTextLayout,
+} from "@/lib/card-element-feature";
+import {
   addAgendaRow,
   agendaRowThemeHueEnabled,
   AGENDA_MIN_ROWS,
@@ -879,16 +899,19 @@ function CardElementRenderer({
         ) ??
         resolveDetailPostTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveSidebarAccentTextLayout(element.id, cardTemplateId, element.layout) ??
+        resolveElementFeatureTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveProfileFeatureTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveCompactHorizontalTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveListItemLabelLayout(element.id, cardTemplateId, element.layout, cardRootElements) ??
         resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout) ??
-        resolveBulletListTitleTextLayout(element.id, cardTemplateId, element.layout)
+        resolveBulletListTitleTextLayout(element.id, cardTemplateId, element.layout) ??
+        resolveElementFeatureNumberLayout(element.id, cardTemplateId, element.layout)
       : element.kind === "section"
         ? resolveProfileFeatureBodyLayout(element.id, cardTemplateId, element.layout) ??
           resolveProfileDiagonalTextStackLayout(element.id, cardTemplateId, element.layout) ??
           resolveCompactHorizontalTextColLayout(element.id, cardTemplateId, element.layout) ??
           resolveSidebarAccentContentColLayout(element.id, cardTemplateId, element.layout) ??
+          resolveElementFeatureContentColLayout(element.id, cardTemplateId, element.layout) ??
           resolveDetailPostBodySectionLayout(element.id, cardTemplateId, element.layout) ??
           resolveDetailPostFooterSectionLayout(element.id, cardTemplateId, element.layout) ??
           resolveProfileSocialSectionLayout(element.id, cardTemplateId, element.layout)
@@ -898,6 +921,7 @@ function CardElementRenderer({
             element.layout
           : element.kind === "decor"
             ? resolveSidebarAccentBarLayout(element.id, cardTemplateId, element.layout) ??
+              resolveElementFeatureAccentLineLayout(element.id, cardTemplateId, element.layout) ??
               element.layout
             : element.layout;
   const withAgendaLayout = (layout: CardElementData["layout"]) =>
@@ -916,7 +940,14 @@ function CardElementRenderer({
         ? applyBulletListResizeLayout(element.id, resolvedLayout, bulletListResizeMetrics)
         : resolvedLayout;
   const effectiveStyle =
-    element.kind === "text"
+    isElementFeatureAccentLine(element.id, cardTemplateId)
+      ? resolveElementFeatureAccentLineStyle(
+          cardRootElements,
+          node.lineColor,
+          element.style,
+          ELEMENT_FEATURE_ACCENT_DEFAULT,
+        )
+      : element.kind === "text"
       ? resolveDetailPostCtaStyle(element.id, cardTemplateId, element.style)
       : element.kind === "section"
         ? resolveAgendaTableHeaderSectionStyle(element.id, cardTemplateId, element.style, isDarkTheme) ??
@@ -946,6 +977,9 @@ function CardElementRenderer({
   const dashboardEditablePointerStyle = dashboardStatEditablePointerStyle(cardTemplateId, element);
   const dashboardRootStyle =
     isRoot && isDashboardStatCard(cardTemplateId) ? { position: "relative" as const } : undefined;
+  const elementFeatureSectionStyle = elementFeatureContentSectionStyle(element.id, cardTemplateId);
+  const elementFeaturePointerStyle = elementFeatureEditablePointerStyle(cardTemplateId, element);
+  const elementFeatureRootLayerStyle = elementFeatureRootStyle(isRoot, cardTemplateId);
 
   if (
     isProfileDiagonalSplitCard(cardTemplateId) &&
@@ -1022,6 +1056,9 @@ function CardElementRenderer({
           ...dashboardSectionStyle,
           ...dashboardEditablePointerStyle,
           ...dashboardRootStyle,
+          ...elementFeatureSectionStyle,
+          ...elementFeaturePointerStyle,
+          ...elementFeatureRootLayerStyle,
           ...diagonalRootStyle,
           ...diagonalBodyStyle,
           ...diagonalHeroStyle,
@@ -1263,6 +1300,28 @@ function CardElementRenderer({
     );
   }
 
+  if (element.kind === "decor" && isElementFeatureAccentLine(element.id, cardTemplateId)) {
+    return (
+      <div
+        data-dw-card-element-id={element.id}
+        data-dw-card-element-kind="decor"
+        style={{
+          ...layoutCss,
+          ...styleCss,
+          ...popStyle,
+          boxSizing: "border-box",
+          position: needsRelative ? "relative" : undefined,
+        }}
+        className={cn(isSelected && !isReadOnly && "ring-2 ring-primary ring-inset")}
+        onClick={(e) =>
+          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect)
+        }
+      >
+        {meshLayer}
+      </div>
+    );
+  }
+
   if (element.kind === "decor" && element.placeholder === "dots") {
     return (
       <div
@@ -1359,6 +1418,21 @@ function CardElementRenderer({
       return null;
     }
     const textNode = cardElementTextNode(node, element);
+    if (isElementFeatureCard(cardTemplateId)) {
+      const accent = resolveElementFeatureAccentColor(
+        cardRootElements,
+        node.lineColor,
+        ELEMENT_FEATURE_ACCENT_DEFAULT,
+      );
+      if (element.id === ELEMENT_FEATURE_LABEL_ID) {
+        textNode.textColor = accent;
+        textNode.textGlowColor = accent;
+      }
+      if (element.id === ELEMENT_FEATURE_NUMBER_ID) {
+        textNode.textOutlineColor = accent;
+        textNode.textGlowColor = accent;
+      }
+    }
     if (isAgendaCard(cardTemplateId) && agendaResizeMetrics) {
       textNode.fontSize = scaleAgendaFontSize(element.fontSize, agendaResizeMetrics.scale);
     }
@@ -1387,11 +1461,25 @@ function CardElementRenderer({
         isDarkTheme,
         agendaTableHeaderStyle,
       ) ?? element.textColor ?? "#0f172a";
+    const elementFeatureNumberOverlay = elementFeatureNumberSlotStyle(
+      element.id,
+      cardTemplateId,
+      effectiveLayout,
+    );
+    const isElementFeatureWatermark = isElementFeatureWatermarkNumber(element.id, cardTemplateId);
+    const isElementFeatureText = isElementFeatureForegroundText(element.id, cardTemplateId);
+    const elementFeatureWatermarkPointer = elementFeatureWatermarkPointerStyle(
+      element.id,
+      cardTemplateId,
+    );
     const textStyle: React.CSSProperties = {
-      ...layoutCss,
+      ...(isElementFeatureWatermark ? {} : layoutCss),
       ...styleCss,
       ...popStyle,
       ...dashboardEditablePointerStyle,
+      ...elementFeaturePointerStyle,
+      ...elementFeatureWatermarkPointer,
+      ...elementFeatureNumberOverlay,
       ...socialTextStyle,
       ...agendaTimeStyle,
       fontSize:
@@ -1405,11 +1493,20 @@ function CardElementRenderer({
       fontWeight: element.fontWeight as React.CSSProperties["fontWeight"],
       fontFamily: element.fontFamily,
       color: resolvedTextColor,
-      lineHeight: element.lineHeight ?? 1.35,
+      lineHeight: isElementFeatureWatermark
+        ? (element.lineHeight ?? 1)
+        : (element.lineHeight ?? 1.35),
       wordBreak: isAgendaTimeCell ? "keep-all" : "break-word",
-      padding: cardLayoutToCss({ padding: textPad }).padding,
+      padding:
+        isElementFeatureWatermark || isElementFeatureText
+          ? 0
+          : cardLayoutToCss({ padding: textPad }).padding,
       boxSizing: "border-box",
-      position: needsRelative ? "relative" : dashboardEditablePointerStyle?.position,
+      position: isElementFeatureWatermark
+        ? "absolute"
+        : needsRelative
+          ? "relative"
+          : elementFeaturePointerStyle?.position ?? dashboardEditablePointerStyle?.position,
       ...(isAgendaTimeCell
         ? {
             flexShrink: 0,
@@ -1439,6 +1536,13 @@ function CardElementRenderer({
         : {}),
       ...(fillRemaining
         ? { overflow: isEditing ? "auto" : (layoutCss.overflow ?? "hidden") }
+        : {}),
+      ...(isElementFeatureWatermark
+        ? {
+            overflow: isEditing ? "visible" : "hidden",
+            zIndex: isEditing || isSelected ? 3 : 0,
+            textAlign: "right",
+          }
         : {}),
     };
 
@@ -1514,6 +1618,8 @@ function CardElementRenderer({
           className={cn(
             "relative z-[1]",
             isAgendaTimeCell ? "shrink-0 whitespace-nowrap" : "min-w-0",
+            isElementFeatureWatermark &&
+              "flex h-full w-full min-h-0 items-center justify-end break-words whitespace-pre-wrap text-right",
             isBulletListItemText && "flex min-w-0 flex-1 flex-col justify-start",
             isBulletListTitleText && "w-full min-w-0 flex-1",
             fillRemaining && "min-h-0 flex-1 overflow-hidden",

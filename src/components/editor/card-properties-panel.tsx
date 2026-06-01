@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -80,6 +81,27 @@ import {
   SIDEBAR_ACCENT_BAR_WIDTH_MAX,
   isSidebarAccentCard,
 } from "@/lib/card-sidebar-accent";
+import {
+  applyElementFeatureAccentColor,
+  applyElementFeatureAccentLineHeight,
+  applyElementFeatureAccentLineWidth,
+  applyElementFeatureWatermarkFontSize,
+  applyElementFeatureWatermarkText,
+  ELEMENT_FEATURE_ACCENT_DEFAULT,
+  ELEMENT_FEATURE_ACCENT_LINE_HEIGHT_MAX,
+  ELEMENT_FEATURE_ACCENT_LINE_HEIGHT_MIN,
+  ELEMENT_FEATURE_ACCENT_LINE_WIDTH_MAX,
+  ELEMENT_FEATURE_ACCENT_LINE_WIDTH_MIN,
+  ELEMENT_FEATURE_NUMBER_FONT_MAX,
+  ELEMENT_FEATURE_NUMBER_FONT_MIN,
+  getElementFeatureRegions,
+  isElementFeatureCard,
+  parseElementFeatureAccentLineHeight,
+  parseElementFeatureAccentLineWidthPct,
+  parseElementFeatureWatermarkFontSize,
+  resolveElementFeatureAccentColor,
+  updateElementFeatureElementStyle,
+} from "@/lib/card-element-feature";
 import {
   getProfileDiagonalSplitRegions,
   parseDiagonalSplitStartPct,
@@ -1398,6 +1420,111 @@ function BulletListCardProperties({
   );
 }
 
+function ElementFeatureCardProperties({
+  elements,
+  onElementsChange,
+}: {
+  elements: CardElementData;
+  onElementsChange: (elements: CardElementData) => void;
+}) {
+  const { label, watermark, accentLine } = getElementFeatureRegions(elements);
+  const watermarkFontSize = parseElementFeatureWatermarkFontSize(watermark);
+  const watermarkText = watermark?.text ?? "";
+  const accentLineWidthPct = parseElementFeatureAccentLineWidthPct(accentLine);
+  const accentLineHeight = parseElementFeatureAccentLineHeight(accentLine);
+  const accentColor = resolveElementFeatureAccentColor(elements, undefined, ELEMENT_FEATURE_ACCENT_DEFAULT);
+
+  const setRegionStyle = (elementId: string, style: CardElementStyle) => {
+    onElementsChange(updateElementFeatureElementStyle(elements, elementId, style));
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Element feature slide — dark mesh background, glowing subtitle, large watermark text, and a
+        gradient accent line that fades to transparent. The default example uses{" "}
+        <span className="font-medium">01</span>; replace it with any label, word, or number. Use{" "}
+        <span className="font-medium">Background</span> above for the card fill (mesh gradient
+        recommended) and <span className="font-medium">Border</span> for the outline.
+      </p>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Accent color</Label>
+        <ColorPicker
+          value={accentColor}
+          onChange={(value) => onElementsChange(applyElementFeatureAccentColor(elements, value))}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Watermark text</Label>
+        <Input
+          value={watermarkText}
+          onChange={(e) =>
+            onElementsChange(applyElementFeatureWatermarkText(elements, e.target.value))
+          }
+          placeholder="01"
+          className="h-9 text-sm"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Watermark text size</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{watermarkFontSize}px</span>
+        </div>
+        <Slider
+          min={ELEMENT_FEATURE_NUMBER_FONT_MIN}
+          max={ELEMENT_FEATURE_NUMBER_FONT_MAX}
+          step={2}
+          value={[watermarkFontSize]}
+          onValueChange={([v]) => onElementsChange(applyElementFeatureWatermarkFontSize(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Accent line width</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{accentLineWidthPct}%</span>
+        </div>
+        <Slider
+          min={ELEMENT_FEATURE_ACCENT_LINE_WIDTH_MIN}
+          max={ELEMENT_FEATURE_ACCENT_LINE_WIDTH_MAX}
+          step={1}
+          value={[accentLineWidthPct]}
+          onValueChange={([v]) => onElementsChange(applyElementFeatureAccentLineWidth(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Accent line thickness</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{accentLineHeight}px</span>
+        </div>
+        <Slider
+          min={ELEMENT_FEATURE_ACCENT_LINE_HEIGHT_MIN}
+          max={ELEMENT_FEATURE_ACCENT_LINE_HEIGHT_MAX}
+          step={1}
+          value={[accentLineHeight]}
+          onValueChange={([v]) => onElementsChange(applyElementFeatureAccentLineHeight(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      {accentLine ? (
+        <CardFillStyleControls
+          label="Accent line fill"
+          style={accentLine.style}
+          onChange={(style) => setRegionStyle("accent-line", style)}
+          supportsMesh={false}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function CardPropertiesPanel({
   cardTemplateId,
   elements,
@@ -1426,6 +1553,9 @@ export function CardPropertiesPanel({
   }
   if (isSidebarAccentCard(cardTemplateId)) {
     return <SidebarAccentCardProperties elements={elements} onElementsChange={onElementsChange} />;
+  }
+  if (isElementFeatureCard(cardTemplateId)) {
+    return <ElementFeatureCardProperties elements={elements} onElementsChange={onElementsChange} />;
   }
   if (isDetailPostCard(cardTemplateId)) {
     return <DetailPostCardProperties elements={elements} onElementsChange={onElementsChange} />;
