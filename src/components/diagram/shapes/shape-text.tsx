@@ -39,6 +39,12 @@ export function ShapeText({
   passThroughPointerEvents = false,
 }: ShapeTextProps) {
   const globalProperties = useGlobalProperties();
+  const displayRuns = useMemo(() => {
+    const raw = node.richLabel ?? labelToRuns(label);
+    if (isEditingLabel) return editRuns;
+    return resolveGlobalVariablesInRuns(raw, globalProperties);
+  }, [node.richLabel, label, isEditingLabel, editRuns, globalProperties]);
+
   const nodeAny = node as any;
   const verticalPosition = nodeAny.textVerticalPosition;
   const textPosition = nodeAny.textPosition;
@@ -86,12 +92,6 @@ export function ShapeText({
   const isKite = node.type === "generic.object.kite" || node.type?.endsWith(".kite");
   const isHexagon = node.type === "generic.object.hexagon" || node.type?.endsWith(".hexagon");
   const narrowShapeClass = isKite || isHexagon ? " max-w-[70%] mx-auto min-w-0" : "";
-
-  const displayRuns = useMemo(() => {
-    const raw = node.richLabel ?? labelToRuns(label);
-    if (isEditingLabel) return editRuns;
-    return resolveGlobalVariablesInRuns(raw, globalProperties);
-  }, [node.richLabel, label, isEditingLabel, editRuns, globalProperties]);
   const ptShell = passThroughPointerEvents && !isEditingLabel ? " pointer-events-none" : "";
 
   // Render text inside the shape (middle position)

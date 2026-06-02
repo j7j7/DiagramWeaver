@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-02 – ShapeText: fix Rules of Hooks violation
+**`useMemo`** for **`displayRuns`** ran after early returns (point shapes, empty label), so hook order changed when a label appeared or disappeared. **`useMemo`** now runs immediately after **`useGlobalProperties`**, before any conditional return. Patch bumped.
+
 ### 2026-06-02 – Locked nodes: no left-click select or highlight pulse
 Locked nodes skip **`highlightAnim`** pulse/stagger and group-member hover glow; left-click / marquee / Select All do not select them. Right-click still selects (context menu → unlock). Patch bumped.
 
