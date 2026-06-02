@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-02 – Copy/paste: clipboard follows canvas selection set
+**Cmd/Ctrl+C** and menu **Copy** now resolve the copied id from **`selectedItemIds`** (what is highlighted), not stale **`selectedItem.id`** left over after dragging another shape onto the canvas. **`use-canvas-clipboard`** uses the same rule for single-item copy (including grouping expansion). Patch bumped.
+
 ### 2026-06-02 – Resources: double-click cards/borders match drag-to-canvas
 **`createPaletteItem`** (`editor-support.ts`) now maps **`generic` + `cards`/`borders`** categories to **`generic.card.*`** / **`generic.border.*`** (same as **`DraggableResourceItem`** drag items). Double-click and keyboard paste from the palette no longer create icon nodes. Patch bumped.
 

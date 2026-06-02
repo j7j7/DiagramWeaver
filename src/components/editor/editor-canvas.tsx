@@ -2564,9 +2564,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         // Multi-selection: copy all. Check first so we don't copy only primary when both are set.
         if (selectedItemIds && selectedItemIds.size > 1) {
           handleCopy();
-        } else if (selectedItemId || (selectedItemIds && selectedItemIds.size > 0)) {
-          const idToCopy = selectedItemId || Array.from(selectedItemIds)[0];
-          handleCopy(idToCopy);
+        } else if (selectedItemIds && selectedItemIds.size === 1) {
+          handleCopy(Array.from(selectedItemIds)[0]);
+        } else if (selectedItemId) {
+          handleCopy(selectedItemId);
         }
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
         e.preventDefault();
@@ -2673,9 +2674,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     // don't fall through to single-item copy when selectedItemId is set as primary.
     if (selectedItemIds && selectedItemIds.size > 1) {
       handleCopy();
-    } else if (selectedItemId || (selectedItemIds && selectedItemIds.size > 0)) {
-      const idToCopy = selectedItemId || Array.from(selectedItemIds)[0];
-      handleCopy(idToCopy);
+    } else if (selectedItemIds && selectedItemIds.size === 1) {
+      handleCopy(Array.from(selectedItemIds)[0]);
+    } else if (selectedItemId) {
+      handleCopy(selectedItemId);
     }
   }, [selectedItemId, selectedItemIds, handleCopy]);
 

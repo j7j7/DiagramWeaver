@@ -103,12 +103,20 @@ export function useCanvasClipboard({
   const [clipboard, setClipboard] = useState<ClipboardData | null>(null);
 
   const handleCopy = useCallback((itemId?: string) => {
-    // If a specific itemId is provided, handle single item copy (including group logic).
-    // When multiple items are selected, copy the full selection (e.g. context menu on one of them).
-    if (itemId && (!selectedItemIds || selectedItemIds.size <= 1)) {
-      // Fallback to single item copy for backward compatibility
-      const node = diagramData.nodes.find(n => n.id === itemId);
-      const zone = diagramData.zones?.find(zone => zone.id === itemId);
+    // `selectedItemIds` is the source of truth for what is highlighted on the canvas.
+    // `itemId` is only used when there is no id set (legacy callers); never let a stale
+    // primary `selectedItem.id` override a single id in `selectedItemIds`.
+    const singleCopyId =
+      selectedItemIds && selectedItemIds.size === 1
+        ? Array.from(selectedItemIds)[0]
+        : !selectedItemIds || selectedItemIds.size === 0
+          ? itemId
+          : undefined;
+
+    // Single-item copy (including grouping expansion). Skip when multi-select — handled below.
+    if (singleCopyId && (!selectedItemIds || selectedItemIds.size <= 1)) {
+      const node = diagramData.nodes.find(n => n.id === singleCopyId);
+      const zone = diagramData.zones?.find(zone => zone.id === singleCopyId);
 
       if (node) {
         // Check if node is part of a grouping - if so, copy all items in grouping
@@ -215,7 +223,7 @@ export function useCanvasClipboard({
           return children;
         };
 
-        const children = collectChildren(itemId);
+        const children = collectChildren(singleCopyId);
         setClipboard({ zone: { ...zone }, children, originalGroupingRelationships, originalGroupingMemberOrder });
         onClipboardChange?.(true);
 
