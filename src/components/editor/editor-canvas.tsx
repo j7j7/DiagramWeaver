@@ -3683,23 +3683,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             onConnect={() => {
-              const targetId = contextMenu.itemId;
-              if (targetId) {
-                if (contextMenu.itemType === 'zone') {
-                  const zone = diagramData.zones?.find(z => z.id === targetId);
-                  if (zone) {
-                    onItemSelect({ ...(zone as any), itemType: 'node', id: zone.id } as Parameters<typeof onItemSelect>[0], false);
-                  }
-                } else {
-                  const node = diagramData.nodes.find(n => n.id === targetId);
-                  if (node) {
-                    onItemSelect({ ...node, itemType: 'node' }, false);
-                  }
-                }
-              }
-
+              // Match context toolbar Connect: use all selected nodes/zones, not only the right-click target.
               requestAnimationFrame(() => {
-                onConnect?.({ style: 'bezier', curvature: 0.6, sourceItemId: targetId });
+                onConnect?.({ style: 'bezier', curvature: 0.6 });
               });
               closeContextMenu();
             }}

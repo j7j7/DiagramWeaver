@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-02 – Multi-select Connect from context menu matches toolbar
+Right-click **Connect** no longer passes **`sourceItemId`** or collapses selection to the right-click target; it uses the same **`startConnecting`** path as the context-toolbar Connect button (**`collectConnectSourceIdsFromDiagram`** on **`selectedItemIds`**). Patch bumped.
+
 ### 2026-06-02 – Copy/paste: clipboard follows canvas selection set
 **Cmd/Ctrl+C** and menu **Copy** now resolve the copied id from **`selectedItemIds`** (what is highlighted), not stale **`selectedItem.id`** left over after dragging another shape onto the canvas. **`use-canvas-clipboard`** uses the same rule for single-item copy (including grouping expansion). Patch bumped.
 
