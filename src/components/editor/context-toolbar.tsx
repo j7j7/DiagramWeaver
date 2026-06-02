@@ -87,6 +87,7 @@ import {
   applyCardBackgroundVisual,
   partitionCardVisualStylingPatch,
 } from '@/lib/card-theme';
+import { framedHeadingPanelBackgroundVisual } from '@/lib/card-framed-heading';
 import { getCardTemplateIdFromNodeType } from '@/lib/card-utils';
 import type { CardElementData } from '@/lib/card-types';
 import {
@@ -782,9 +783,16 @@ export function ContextToolbar({
       const base = extractVisualStylingFromNode(node);
       if (isCardNodeType(node.type) && node.card?.elements) {
         const templateId = node.card.templateId ?? getCardTemplateIdFromNodeType(node.type) ?? undefined;
+        const cardBg = cardBackgroundVisualFromElements(node.card.elements, templateId);
+        if (templateId === "framed-heading") {
+          return {
+            ...base,
+            ...framedHeadingPanelBackgroundVisual(node, cardBg),
+          };
+        }
         return {
           ...base,
-          ...cardBackgroundVisualFromElements(node.card.elements, templateId),
+          ...cardBg,
         };
       }
       return base;
@@ -1649,7 +1657,7 @@ export function ContextToolbar({
           augmented = augmentTimelineBarOrientationPatch(node, augmented);
           const merged = { ...node } as Record<string, unknown>;
           for (const [k, v] of Object.entries(augmented)) {
-            if (v === null) delete merged[k];
+            if (v === null) merged[k] = null;
             else if (v !== undefined) merged[k] = v;
           }
           return syncClosedConnectorLineBorderWidth(merged as unknown as DiagramNodeData);
@@ -1663,7 +1671,7 @@ export function ContextToolbar({
           if (!selectedItemIds.has(zone.id)) return zone;
           const merged = { ...zone } as Record<string, unknown>;
           for (const [k, v] of Object.entries(stylingObj)) {
-            if (v === null) delete merged[k];
+            if (v === null) merged[k] = null;
             else if (v !== undefined) merged[k] = v;
           }
           return merged as unknown as typeof zone;
@@ -1723,7 +1731,10 @@ export function ContextToolbar({
       let cardElements = selectedNode.card?.elements;
 
       if (isCard && cardElements) {
-        const { cardBackground, nodePatch } = partitionCardVisualStylingPatch(stylingObj);
+        const { cardBackground, nodePatch } = partitionCardVisualStylingPatch(
+          stylingObj,
+          cardTemplateId,
+        );
         if (Object.keys(cardBackground).length > 0) {
           cardElements = applyCardBackgroundVisual(cardElements, cardTemplateId, cardBackground);
         }
@@ -1738,7 +1749,7 @@ export function ContextToolbar({
         : stylingForNode;
       const merged = { ...selectedItem } as Record<string, unknown>;
       for (const [k, v] of Object.entries(augmented)) {
-        if (v === null) delete merged[k];
+        if (v === null) merged[k] = null;
         else if (v !== undefined) merged[k] = v;
       }
       if (isCard && cardElements && selectedNode.card) {

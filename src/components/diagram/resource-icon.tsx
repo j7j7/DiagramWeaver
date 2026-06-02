@@ -418,6 +418,22 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
       </svg>
     );
   }
+  if (slug === "framed-heading") {
+    const tabGradId = "card-framed-heading-tab";
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <defs>
+          <linearGradient id={tabGradId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#2b6ca1" />
+            <stop offset="100%" stopColor="#193661" />
+          </linearGradient>
+        </defs>
+        <rect x="3" y="5.5" width="18" height="14.5" rx="3" fill="none" stroke="currentColor" strokeWidth={1.2} />
+        <rect x="6" y="3.8" width="12" height="4.4" rx="1" fill={`url(#${tabGradId})`} />
+        <rect x="8.5" y="5.1" width="6.8" height="1.5" rx="0.5" fill="#ced7e3" opacity={0.95} />
+      </svg>
+    );
+  }
   if (slug === "element-feature") {
     const bgId = "card-element-feature-bg";
     const lineId = "card-element-feature-line";

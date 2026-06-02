@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 56,
+  "totalResources": 57,
   "categories": {
     "text": {
       "name": "Text",
@@ -207,6 +207,11 @@
         {
           "name": "Sidebar Accent",
           "file": "sidebar-accent.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Framed Heading",
+          "file": "framed-heading.svg",
           "type": "shape"
         },
         {

@@ -4,6 +4,36 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-02 – Framed Heading: default palette styling
+New framed-heading cards use 260×280, 3px `#315d96` frame border, shadow, 50% tab width, tab gradient `#2b6ca1`→`#193661` (315°), no tab border, `#ced7e3` heading text (no glow). Palette icon preview aligned. Patch bumped.
+
+### 2026-06-02 – Visual styling: card accordions + framed heading tab border
+All **card** nodes start with Visual styling accordion sections **collapsed** (`accordionDefaultOpen` false when `isCardNode`). **Framed Heading** cards get a **Heading** section (tab fill + tab border via `CardFillStyleControls` / `CardBorderStyleControls`); layout options stay in Card properties. Patch bumped.
+
+### 2026-06-02 – Framed Heading: clear frosted when fill is None
+Choosing Background **None** after frosted glass now clears `backgroundStyle` / frosted fields on the card **node** (`partitionFramedHeadingVisualStylingPatch` + `handleVisualStylingChange` passes `null` so `handleItemUpdate` removes stale keys). Patch bumped.
+
+### 2026-06-02 – Framed Heading: SVG shell aligned with rounded rectangle
+Framed-heading border + interior fill (solid/gradient/mesh) render via **`FramedHeadingShellSvg`** (same SVG stroke/clip stack as **`RoundedRectangleShape`**). Frosted glass uses **`ShapeWrapper`** + **`framedHeadingFrostedGlassClipPath`** (no nested custom frosted stack; shell drop-shadow uses **box-shadow** when frosted so **`backdrop-filter`** works). Removed CSS box-shadow border ring and DOM gradient border layer that caused white L-shaped corners. Patch bumped.
+
+### 2026-06-02 – Framed Heading: fill switch + white corner fix
+Frosted no longer blocks other fills (`framedHeadingUsesFrostedInterior`; switching styles replaces `frame-fill` style instead of merging). Shell border/highlight moved to rounded clip layer (removed separate border ring). Patch bumped.
+
+### 2026-06-02 – Framed Heading: white corner seam fix
+Removed `width`/`height` 100% with `inset` on interior fill (caused white L-shaped gap). Interior fill + frosted now render inside the shell’s border-inset panel (`CardFramedHeadingInteriorFill`). Patch bumped.
+
+### 2026-06-02 – Framed Heading: z-order + theme rounded shell
+Heading tab renders above the shell border (`FramedHeadingCardShell`: clipped interior z-0, border ring z-2, content/tab z-10+). Gradient borders clip to corner radius (fixes square corners after theme). Theme apply for framed-heading skips generic `mapCardElementTree` recolor; fill stays on `frame-fill` only. Patch bumped.
+
+### 2026-06-02 – Framed Heading: frosted glass interior
+Background **Frosted glass** on framed-heading cards no longer maps to a solid fill on `frame-fill`. Frosted styling is stored on the card **node**; `partitionCardVisualStylingPatch` routes it per template; **`CardFramedHeadingFrostedGlass`** renders backdrop-filter glass clipped to the inner rounded shell. Patch bumped.
+
+### 2026-06-02 – Cards: Framed Heading template
+New **`framed-heading`** card (`generic.card.framed-heading`): rounded shell border (standard Visual styling / border controls), transparent interior by default with optional fill on **`frame-fill`** via Background accordion, and an overlapping heading tab (`heading-tab` / `heading` text). Card properties: edge top/bottom, horizontal position left/center/right, tab width % (15–100), text alignment. Tab uses fixed px padding and grows with wrapped text; shell uses `overflow: visible` so the tab straddles the border. Palette icon **`framed-heading.svg`** + inline preview in **`resource-icon.tsx`**. Logic in **`card-framed-heading.ts`**. Patch bumped.
+
+### 2026-06-02 – Cards: Framed Heading template
+New **`framed-heading`** card (`generic.card.framed-heading`): rounded shell border (standard Visual styling / border controls), transparent interior by default with optional fill on **`frame-fill`** via Background accordion, and an overlapping heading tab (`heading-tab` / `heading` text). Card properties: edge top/bottom, horizontal position left/center/right, tab width % (15–100), text alignment. Tab uses fixed px padding and grows with wrapped text; shell uses `overflow: visible` so the tab straddles the border. Palette icon **`framed-heading.svg`** + inline preview in **`resource-icon.tsx`**. Logic in **`card-framed-heading.ts`**. Patch bumped.
+
 ### 2026-06-02 – ShapeText: fix Rules of Hooks violation
 **`useMemo`** for **`displayRuns`** ran after early returns (point shapes, empty label), so hook order changed when a label appeared or disappeared. **`useMemo`** now runs immediately after **`useGlobalProperties`**, before any conditional return. Patch bumped.
 

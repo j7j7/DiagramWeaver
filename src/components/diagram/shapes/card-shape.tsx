@@ -117,6 +117,23 @@ import {
   resolveElementFeatureTextLayout,
 } from "@/lib/card-element-feature";
 import {
+  FRAMED_HEADING_FILL_ID,
+  framedHeadingFillLayerStyle,
+  framedHeadingFrostedGlassClipPath,
+  framedHeadingRootLayerStyle,
+  framedHeadingRootSectionStyle,
+  framedHeadingTabOverlayStyle,
+  framedHeadingUsesFrostedInterior,
+  isFramedHeadingCard,
+  isFramedHeadingFillSection,
+  isFramedHeadingFillVisible,
+  isFramedHeadingTabSection,
+  resolveFramedHeadingTextLayout,
+} from "@/lib/card-framed-heading";
+import { findCardElement } from "@/lib/card-utils";
+import { FramedHeadingCardShell } from "@/components/diagram/shapes/card-framed-heading-shell";
+import { FramedHeadingShellSvg } from "@/components/diagram/shapes/framed-heading-shell-svg";
+import {
   addAgendaRow,
   agendaRowThemeHueEnabled,
   AGENDA_MIN_ROWS,
@@ -906,7 +923,8 @@ function CardElementRenderer({
         resolveListItemLabelLayout(element.id, cardTemplateId, element.layout, cardRootElements) ??
         resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout) ??
         resolveBulletListTitleTextLayout(element.id, cardTemplateId, element.layout) ??
-        resolveElementFeatureNumberLayout(element.id, cardTemplateId, element.layout)
+        resolveElementFeatureNumberLayout(element.id, cardTemplateId, element.layout) ??
+        resolveFramedHeadingTextLayout(element.id, cardTemplateId, element.layout)
       : element.kind === "section"
         ? resolveProfileFeatureBodyLayout(element.id, cardTemplateId, element.layout) ??
           resolveProfileDiagonalTextStackLayout(element.id, cardTemplateId, element.layout) ??
@@ -940,7 +958,9 @@ function CardElementRenderer({
           (element.kind === "section" || element.kind === "text")
         ? applyBulletListResizeLayout(element.id, resolvedLayout, bulletListResizeMetrics)
         : resolvedLayout;
-  const effectiveStyle =
+  const effectiveStyle = framedHeadingRootSectionStyle(
+    element.id,
+    cardTemplateId,
     isElementFeatureAccentLine(element.id, cardTemplateId)
       ? resolveElementFeatureAccentLineStyle(
           cardRootElements,
@@ -962,7 +982,8 @@ function CardElementRenderer({
             agendaFirstRowFill,
           ) ??
           resolveDetailPostFooterStyle(element.id, cardTemplateId, element.style)
-        : element.style;
+        : element.style,
+  );
   const layoutCss = cardLayoutToCss(effectiveLayout, element.kind === "section");
   const rawStyleCss = cardElementStyleToCss(effectiveStyle);
   const { styleCss, meshLayer } = cardElementBackgroundLayers(element, rawStyleCss);
@@ -981,11 +1002,28 @@ function CardElementRenderer({
   const elementFeatureSectionStyle = elementFeatureContentSectionStyle(element.id, cardTemplateId);
   const elementFeaturePointerStyle = elementFeatureEditablePointerStyle(cardTemplateId, element);
   const elementFeatureRootLayerStyle = elementFeatureRootStyle(isRoot, cardTemplateId);
+  const framedRootLayerStyle = framedHeadingRootLayerStyle(isRoot, cardTemplateId);
+  const framedFillLayerStyle = framedHeadingFillLayerStyle(
+    element.id,
+    cardTemplateId,
+    cardShellInsetPx,
+    cardShellInnerRadius ?? "0px",
+  );
+  const framedTabOverlayStyle = isFramedHeadingTabSection(element.id, cardTemplateId)
+    ? framedHeadingTabOverlayStyle(element)
+    : undefined;
+  const framedUsesOverlayLayout =
+    isFramedHeadingTabSection(element.id, cardTemplateId) ||
+    isFramedHeadingFillSection(element.id, cardTemplateId);
 
   if (
     isProfileDiagonalSplitCard(cardTemplateId) &&
     element.id === PROFILE_DIAGONAL_SPLIT_LINE_ID
   ) {
+    return null;
+  }
+
+  if (isFramedHeadingFillSection(element.id, cardTemplateId)) {
     return null;
   }
 
@@ -1051,7 +1089,7 @@ function CardElementRenderer({
           if (showListRowReorder) rowReorder.setRowRef(el);
         }}
         style={{
-          ...layoutCss,
+          ...(!framedUsesOverlayLayout ? layoutCss : {}),
           ...sectionStyleCss,
           ...agendaTableHeaderBottomRule,
           ...dashboardSectionStyle,
@@ -1060,6 +1098,9 @@ function CardElementRenderer({
           ...elementFeatureSectionStyle,
           ...elementFeaturePointerStyle,
           ...elementFeatureRootLayerStyle,
+          ...framedRootLayerStyle,
+          ...framedFillLayerStyle,
+          ...framedTabOverlayStyle,
           ...diagonalRootStyle,
           ...diagonalBodyStyle,
           ...diagonalHeroStyle,
@@ -1068,8 +1109,15 @@ function CardElementRenderer({
           boxSizing: "border-box",
           ...(sectionPosition != null ? { position: sectionPosition } : {}),
           ...(isRoot
-            ? { overflow: "hidden", height: "100%", width: "100%", minHeight: 0, minWidth: 0 }
+            ? {
+                overflow: isFramedHeadingCard(cardTemplateId) ? "visible" : "hidden",
+                height: "100%",
+                width: "100%",
+                minHeight: 0,
+                minWidth: 0,
+              }
             : {}),
+          ...(framedUsesOverlayLayout ? { flex: "none" as const } : {}),
         }}
         data-dw-card-section={element.id}
         data-dw-card-element-id={element.id}
@@ -1806,6 +1854,7 @@ export function CardShape(props: CardShapeProps) {
   ]);
 
   const isDiagonalSplitCard = isProfileDiagonalSplitCard(resolvedTemplateId);
+  const isFramedHeading = isFramedHeadingCard(resolvedTemplateId);
   const cardShellInsetPx = needsGradientBorder ? borderWidthNum : 0;
 
   const { resolvedTheme } = useTheme();
@@ -1933,18 +1982,54 @@ export function CardShape(props: CardShapeProps) {
     bulletListUniformItemFontSize,
   ]);
 
+  const framedFillStyle = useMemo(() => {
+    if (!isFramedHeading || !cardRoot) return undefined;
+    return findCardElement(cardRoot, FRAMED_HEADING_FILL_ID)?.style;
+  }, [isFramedHeading, cardRoot]);
+
+  const framedInteriorFrosted =
+    isFramedHeading && framedHeadingUsesFrostedInterior(nodeAny, framedFillStyle);
+  const framedInteriorOnFill =
+    isFramedHeading && isFramedHeadingFillVisible(framedFillStyle);
+
   const shellBg =
-    nodeAny.backgroundStyle === "none"
+    isFramedHeading || nodeAny.backgroundStyle === "none" || framedInteriorFrosted
       ? "transparent"
       : styles.background ?? styles.backgroundColor ?? "#ffffff";
 
   const shellTransition = slideColorTransition ? { transition: slideColorTransition } : {};
 
-  /** Drop-shadow on the rounded shell itself — a rectangular parent leaves gray wedges in the corners. */
-  const outerDropShadowFilter = styles.shadow ? "var(--shape-shadow-drop)" : undefined;
+  /** `filter` on an ancestor breaks frosted `backdrop-filter` — use box-shadow instead when interior is frosted. */
+  const outerDropShadowFilter =
+    styles.shadow && !framedInteriorFrosted ? "var(--shape-shadow-drop)" : undefined;
+  const outerDropShadowBox =
+    styles.shadow && framedInteriorFrosted ? "var(--shape-shadow)" : undefined;
+
+  const framedFrostedGlassClipPath = useMemo(() => {
+    if (!framedInteriorFrosted) return undefined;
+    const innerR = Math.max(0, radiusPx - borderWidthNum);
+    return framedHeadingFrostedGlassClipPath(borderWidthNum, innerR);
+  }, [framedInteriorFrosted, radiusPx, borderWidthNum]);
+
+  const framedHeadingShellSvg =
+    isFramedHeading ? (
+      <FramedHeadingShellSvg
+        width={w}
+        height={h}
+        cornerRadius={cornerRadius}
+        borderStyle={nodeBorderStyle}
+        borderWidth={borderWidthNum}
+        borderColor={borderColor}
+        borderColors={styles.borderColors}
+        borderGradientAngle={nodeAny.borderGradientAngle ?? nodeAny.gradientAngle}
+        gradientAngle={nodeAny.gradientAngle}
+        fillStyle={framedFillStyle}
+        slideColorTransition={slideColorTransition}
+      />
+    ) : null;
 
   const nodeLevelBgLayer =
-    shellBg !== "transparent" ? (
+    shellBg !== "transparent" && !(isFramedHeading && framedInteriorOnFill) ? (
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-0"
@@ -2007,19 +2092,30 @@ export function CardShape(props: CardShapeProps) {
   /** One rounded mask; shadow + glow live here (ShapeWrapper uses overflow:hidden and would clip an outer halo). */
   const maskShellStyle: React.CSSProperties = {
     borderRadius: borderRadiusStr,
-    overflow: "hidden",
+    overflow: isFramedHeading ? "visible" : "hidden",
     width: "100%",
     height: "100%",
     boxSizing: "border-box",
     position: "relative",
     ...mergeCardShellHighlightStyle(shellHighlightStyle, outerDropShadowFilter),
+    ...(outerDropShadowBox ? { boxShadow: outerDropShadowBox } : {}),
     ...shellTransition,
   };
   const maskShellHighlightAnim = shellHighlightStyle ? ("true" as const) : undefined;
 
   let maskedCard: React.ReactNode;
 
-  if (needsGradientBorder) {
+  if (isFramedHeading) {
+    maskedCard = (
+      <FramedHeadingCardShell
+        shellStyle={maskShellStyle}
+        shellSvg={framedHeadingShellSvg}
+        highlightAnim={maskShellHighlightAnim}
+      >
+        {cardContentLayer}
+      </FramedHeadingCardShell>
+    );
+  } else if (needsGradientBorder) {
     maskedCard = (
       <div
         className="relative box-border h-full w-full"
@@ -2098,9 +2194,10 @@ export function CardShape(props: CardShapeProps) {
       defaultWidth={160}
       defaultHeight={120}
       skipWrapperStyling
-      preserveShellHalo={Boolean(shellHighlightStyle)}
+      preserveShellHalo={Boolean(shellHighlightStyle) || isFramedHeading}
       omitShapeText
       borderRadius={borderRadiusStr}
+      frostedGlassClipPath={framedFrostedGlassClipPath}
       slideColorTransition={slideColorTransition}
       slideShellExitStyle={slideShellCardPopStyle}
     >

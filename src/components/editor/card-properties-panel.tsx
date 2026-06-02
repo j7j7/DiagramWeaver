@@ -82,6 +82,23 @@ import {
   isSidebarAccentCard,
 } from "@/lib/card-sidebar-accent";
 import {
+  applyFramedHeadingAlign,
+  applyFramedHeadingEdge,
+  applyFramedHeadingTabWidthPct,
+  applyFramedHeadingTextAlign,
+  FRAMED_HEADING_TAB_WIDTH_MAX,
+  FRAMED_HEADING_TAB_WIDTH_MIN,
+  getFramedHeadingAlign,
+  getFramedHeadingEdge,
+  getFramedHeadingRegions,
+  getFramedHeadingTextAlign,
+  isFramedHeadingCard,
+  parseFramedHeadingTabWidthPct,
+  type FramedHeadingAlign,
+  type FramedHeadingEdge,
+  type FramedHeadingTextAlign,
+} from "@/lib/card-framed-heading";
+import {
   applyElementFeatureAccentColor,
   applyElementFeatureAccentLineHeight,
   applyElementFeatureAccentLineWidth,
@@ -767,6 +784,127 @@ function ListItemRowCardProperties({
           supportsMesh={false}
         />
       ) : null}
+    </div>
+  );
+}
+
+const FRAMED_HEADING_EDGE_OPTIONS: { value: FramedHeadingEdge; label: string }[] = [
+  { value: "top", label: "Top" },
+  { value: "bottom", label: "Bottom" },
+];
+
+const FRAMED_HEADING_ALIGN_OPTIONS: { value: FramedHeadingAlign; label: string }[] = [
+  { value: "left", label: "Left" },
+  { value: "center", label: "Center" },
+  { value: "right", label: "Right" },
+];
+
+const FRAMED_HEADING_TEXT_ALIGN_OPTIONS: { value: FramedHeadingTextAlign; label: string }[] = [
+  { value: "left", label: "Left" },
+  { value: "center", label: "Center" },
+  { value: "right", label: "Right" },
+];
+
+function FramedHeadingCardProperties({
+  elements,
+  onElementsChange,
+}: {
+  elements: CardElementData;
+  onElementsChange: (elements: CardElementData) => void;
+}) {
+  const { headingTab, heading } = getFramedHeadingRegions(elements);
+  const edge = getFramedHeadingEdge(headingTab);
+  const align = getFramedHeadingAlign(headingTab);
+  const textAlign = getFramedHeadingTextAlign(heading);
+  const tabWidthPct = parseFramedHeadingTabWidthPct(headingTab);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Rounded border frame with a heading tab on the top or bottom edge. Use Visual styling{" "}
+        <span className="font-medium">Background</span> for the frame interior,{" "}
+        <span className="font-medium">Border</span> for the outer outline, and{" "}
+        <span className="font-medium">Heading</span> for tab fill and border. Resize the card to
+        scale the frame border; tab padding stays proportional while the tab grows for longer text.
+      </p>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Heading edge</Label>
+        <Select
+          value={edge}
+          onValueChange={(value) =>
+            onElementsChange(applyFramedHeadingEdge(elements, value as FramedHeadingEdge))
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {FRAMED_HEADING_EDGE_OPTIONS.map(({ value, label }) => (
+              <SelectItem key={value} value={value} className="text-sm">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Heading position</Label>
+        <Select
+          value={align}
+          onValueChange={(value) =>
+            onElementsChange(applyFramedHeadingAlign(elements, value as FramedHeadingAlign))
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {FRAMED_HEADING_ALIGN_OPTIONS.map(({ value, label }) => (
+              <SelectItem key={value} value={value} className="text-sm">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Heading box width</Label>
+          <span className="tabular-nums text-xs text-muted-foreground">{tabWidthPct}%</span>
+        </div>
+        <Slider
+          min={FRAMED_HEADING_TAB_WIDTH_MIN}
+          max={FRAMED_HEADING_TAB_WIDTH_MAX}
+          step={1}
+          value={[tabWidthPct]}
+          onValueChange={([v]) => onElementsChange(applyFramedHeadingTabWidthPct(elements, v))}
+          className="w-full"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Text alignment</Label>
+        <Select
+          value={textAlign}
+          onValueChange={(value) =>
+            onElementsChange(applyFramedHeadingTextAlign(elements, value as FramedHeadingTextAlign))
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {FRAMED_HEADING_TEXT_ALIGN_OPTIONS.map(({ value, label }) => (
+              <SelectItem key={value} value={value} className="text-sm">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }
@@ -1550,6 +1688,9 @@ export function CardPropertiesPanel({
   }
   if (isListItemRowCard(cardTemplateId)) {
     return <ListItemRowCardProperties elements={elements} onElementsChange={onElementsChange} />;
+  }
+  if (isFramedHeadingCard(cardTemplateId)) {
+    return <FramedHeadingCardProperties elements={elements} onElementsChange={onElementsChange} />;
   }
   if (isSidebarAccentCard(cardTemplateId)) {
     return <SidebarAccentCardProperties elements={elements} onElementsChange={onElementsChange} />;

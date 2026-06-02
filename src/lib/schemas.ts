@@ -162,6 +162,10 @@ const CardElementDataSchema: z.ZodType<import('./card-types').CardElementData> =
     textVerticalPosition: z.enum(['top', 'middle', 'bottom']).optional(),
     highlighted: z.boolean().optional(),
     hidden: z.boolean().optional(),
+    framedHeadingEdge: z.enum(['top', 'bottom']).optional(),
+    framedHeadingAlign: z.enum(['left', 'center', 'right']).optional(),
+    framedHeadingTabWidthPct: z.number().optional(),
+    framedHeadingEdgeInset: z.number().optional(),
   })
 );
 

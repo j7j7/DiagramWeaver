@@ -47,10 +47,18 @@ import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
-import type { CardElementData } from "@/lib/card-types";
+import type { CardElementData, CardElementStyle } from "@/lib/card-types";
 import { CardPropertiesPanel } from "./card-properties-panel";
+import { CardFillStyleControls } from "./card-fill-style-controls";
+import { CardBorderStyleControls } from "./card-border-style-controls";
 import { BorderPropertiesPanel } from "./border-properties-panel";
 import { cardTemplateHasDedicatedPropertiesPanel } from "@/lib/card-compact-horizontal";
+import {
+  FRAMED_HEADING_TEMPLATE_ID,
+  getFramedHeadingRegions,
+  updateFramedHeadingElementStyle,
+  FRAMED_HEADING_TAB_ID,
+} from "@/lib/card-framed-heading";
 import type { NodeBorderSpec } from "@/lib/border-types";
 
 /** Native steppers steal horizontal space on short inputs and clip fractional values (Chrome/Safari/Firefox). */
@@ -690,8 +698,10 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         meshGradientPoints: points,
         backgroundColor: base,
       });
+    } else if (value === "none") {
+      onStylingChange({ backgroundStyle: "none" as const });
     } else {
-      handlePropertyChange("backgroundStyle", value as "solid" | "gradient" | "none", true);
+      handlePropertyChange("backgroundStyle", value as "solid" | "gradient", true);
     }
   };
 
@@ -710,9 +720,26 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   // Find the closest predefined style for the current styling
   const currentPredefinedStyle = findClosestPredefinedStyle(styling as VisualStyling);
 
-  /** Progress bar + timeline bar + pyramid: start layout sections folded */
-  const accordionDefaultOpen = !isProgressBar && !isTimelineBar && !isSegmentedRectangle && !isPyramid;
-  const accordionRemountKey = `${[...(selectedItemIds ?? new Set<string>())].sort().join("|")}-${isProgressBar ? "pb" : isTimelineBar ? "tb" : isSegmentedRectangle ? "sr" : isPyramid ? "py" : "std"}`;
+  /** Progress bar, timeline bar, pyramid, and all cards: accordion sections start collapsed */
+  const accordionDefaultOpen =
+    !isProgressBar && !isTimelineBar && !isSegmentedRectangle && !isPyramid && !isCardNode;
+  const accordionRemountKey = `${[...(selectedItemIds ?? new Set<string>())].sort().join("|")}-${isProgressBar ? "pb" : isTimelineBar ? "tb" : isSegmentedRectangle ? "sr" : isPyramid ? "py" : isCardNode ? "card" : "std"}`;
+
+  const isFramedHeadingCard = cardTemplateId === FRAMED_HEADING_TEMPLATE_ID;
+  const framedHeadingTab = useMemo(() => {
+    if (!isFramedHeadingCard || !cardElements) return null;
+    return getFramedHeadingRegions(cardElements).headingTab;
+  }, [isFramedHeadingCard, cardElements]);
+
+  const patchFramedHeadingTabStyle = useCallback(
+    (style: CardElementStyle) => {
+      if (!cardElements || !onCardElementsChange) return;
+      onCardElementsChange(
+        updateFramedHeadingElementStyle(cardElements, FRAMED_HEADING_TAB_ID, style),
+      );
+    },
+    [cardElements, onCardElementsChange],
+  );
 
   return (
     <Draggable
@@ -1173,8 +1200,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Background" dotClassName="bg-emerald-500" outerClassName="border-emerald-200/50 bg-emerald-50/50">
                 {isCardNode ? (
                   <p className="mb-2 text-xs text-muted-foreground">
-                    Card fill area{cardTemplateId ? ` (${cardTemplateId.replace(/-/g, " ")})` : ""}. Border
-                    styles the card outline; click inner regions on the canvas to style segments individually.
+                    {isFramedHeadingCard
+                      ? "Interior fill for the rounded frame (transparent by default). Border styles the outer frame; use Heading for the tab fill and border."
+                      : `Card fill area${cardTemplateId ? ` (${cardTemplateId.replace(/-/g, " ")})` : ""}. Border styles the card outline; click inner regions on the canvas to style segments individually.`}
                   </p>
                 ) : null}
                 <div
@@ -1760,6 +1788,29 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     border={border}
                     onBorderChange={onBorderChange}
                   />
+                </StylingAccordionSection>
+              ) : null}
+
+              {isFramedHeadingCard && framedHeadingTab && onCardElementsChange ? (
+                <StylingAccordionSection
+                  defaultOpen={accordionDefaultOpen}
+                  title="Heading"
+                  dotClassName="bg-rose-500"
+                  outerClassName="border-rose-200/50 bg-rose-50/50"
+                >
+                  <div className="space-y-3">
+                    <CardFillStyleControls
+                      label="Heading box fill"
+                      style={framedHeadingTab.style}
+                      onChange={patchFramedHeadingTabStyle}
+                      supportsMesh={false}
+                    />
+                    <CardBorderStyleControls
+                      label="Heading box border"
+                      style={framedHeadingTab.style}
+                      onChange={patchFramedHeadingTabStyle}
+                    />
+                  </div>
                 </StylingAccordionSection>
               ) : null}
 

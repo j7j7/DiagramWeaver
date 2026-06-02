@@ -1,0 +1,11 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="5" width="18" height="15" rx="3.2" fill="none" stroke="#315d96" stroke-width="1.3"/>
+  <rect x="6" y="3.2" width="12" height="4.2" rx="1" fill="url(#fh-tab)"/>
+  <text x="12" y="6.1" text-anchor="middle" fill="#ced7e3" font-size="2.4" font-family="system-ui,sans-serif" font-weight="700">H</text>
+  <defs>
+    <linearGradient id="fh-tab" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2b6ca1"/>
+      <stop offset="100%" stop-color="#193661"/>
+    </linearGradient>
+  </defs>
+</svg>

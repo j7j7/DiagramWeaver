@@ -132,6 +132,14 @@ export interface CardElementData {
   highlighted?: boolean;
   /** When true, element is omitted from layout/render (e.g. list-item drag handle). */
   hidden?: boolean;
+  /** Framed-heading tab: top or bottom edge of the shell. */
+  framedHeadingEdge?: "top" | "bottom";
+  /** Framed-heading tab: horizontal placement along the edge. */
+  framedHeadingAlign?: "left" | "center" | "right";
+  /** Framed-heading tab width as % of card width (15–100). */
+  framedHeadingTabWidthPct?: number;
+  /** Framed-heading tab inset from left/right when edge-aligned (px). */
+  framedHeadingEdgeInset?: number;
 }
 
 export interface CardTemplate {

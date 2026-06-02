@@ -9,6 +9,7 @@ import { isProfileSocialCard } from "@/lib/card-profile-social";
 import { isProfileDiagonalSplitCard } from "@/lib/card-profile-diagonal-split";
 import { isSidebarAccentCard } from "@/lib/card-sidebar-accent";
 import { isElementFeatureCard } from "@/lib/card-element-feature";
+import { isFramedHeadingCard } from "@/lib/card-framed-heading";
 
 export const COMPACT_HORIZONTAL_TEMPLATE_ID = "compact-horizontal";
 export const COMPACT_AVATAR_ID = "avatar";
@@ -69,7 +70,8 @@ export function cardTemplateHasDedicatedPropertiesPanel(templateId: string | und
     isAgendaCard(templateId) ||
     isBulletListCard(templateId) ||
     isSidebarAccentCard(templateId) ||
-    isElementFeatureCard(templateId)
+    isElementFeatureCard(templateId) ||
+    isFramedHeadingCard(templateId)
   );
 }
 

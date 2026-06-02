@@ -16,6 +16,14 @@ import {
   elementFeatureAccentFromTheme,
   elementFeatureRootStyleFromTheme,
 } from "@/lib/card-element-feature";
+import {
+  FRAMED_HEADING_FILL_ID,
+  FRAMED_HEADING_TEMPLATE_ID,
+  applyFramedHeadingCardBackgroundVisual,
+  applyFramedHeadingThemeColors,
+  ensureFramedHeadingFrameFill,
+  partitionFramedHeadingVisualStylingPatch,
+} from "@/lib/card-framed-heading";
 
 /** Profile Social theme apply — kept here to avoid card-theme ↔ card-profile-social import cycle. */
 const PROFILE_SOCIAL_TEMPLATE_ID = "profile-social";
@@ -45,6 +53,7 @@ export type CardBackgroundVisual = Pick<
 
 /** Element id that receives Visual styling → Background for each card template. */
 export function getCardBackgroundElementId(templateId: string | undefined): string {
+  if (templateId === FRAMED_HEADING_TEMPLATE_ID) return FRAMED_HEADING_FILL_ID;
   return templateId === "profile-feature" ||
     templateId === "profile-social" ||
     templateId === "profile-diagonal-split"
@@ -64,13 +73,19 @@ export function updateCardElementStyleTree(
   });
 }
 
-function cardStyleFromVisualBackground(styling: Partial<VisualStyling>): Partial<CardElementStyle> {
+function cardStyleFromVisualBackground(
+  styling: Partial<VisualStyling>,
+  templateId?: string,
+): Partial<CardElementStyle> {
   const style: Partial<CardElementStyle> = {};
   if (styling.backgroundStyle !== undefined) {
     const v = styling.backgroundStyle;
     if (v === "mesh_gradient") style.backgroundStyle = "mesh_gradient";
     else if (v === "none" || v === "solid" || v === "gradient") style.backgroundStyle = v;
-    else if (v === "frosted") style.backgroundStyle = "solid";
+    else if (v === "frosted") {
+      style.backgroundStyle =
+        templateId === FRAMED_HEADING_TEMPLATE_ID ? "none" : "solid";
+    }
   }
   if (styling.backgroundColor !== undefined) style.backgroundColor = styling.backgroundColor;
   if (styling.backgroundColors !== undefined) {
@@ -150,15 +165,25 @@ export function applyCardBackgroundVisual(
   templateId: string | undefined,
   styling: Partial<VisualStyling>,
 ): CardElementData {
+  if (templateId === FRAMED_HEADING_TEMPLATE_ID) {
+    return applyFramedHeadingCardBackgroundVisual(elements, styling);
+  }
   const bgId = getCardBackgroundElementId(templateId);
-  return updateCardElementStyleTree(elements, bgId, cardStyleFromVisualBackground(styling));
+  return updateCardElementStyleTree(elements, bgId, cardStyleFromVisualBackground(styling, templateId));
 }
 
 /** Split visual styling patch: card background region vs shell/node fields. */
-export function partitionCardVisualStylingPatch(styling: Record<string, unknown>): {
+export function partitionCardVisualStylingPatch(
+  styling: Record<string, unknown>,
+  templateId?: string,
+): {
   cardBackground: Partial<VisualStyling>;
   nodePatch: Record<string, unknown>;
 } {
+  if (templateId === FRAMED_HEADING_TEMPLATE_ID) {
+    return partitionFramedHeadingVisualStylingPatch(styling);
+  }
+
   const cardBackground: Record<string, unknown> = {};
   const nodePatch = { ...styling };
   for (const k of CARD_BACKGROUND_VISUAL_KEYS) {
@@ -167,7 +192,10 @@ export function partitionCardVisualStylingPatch(styling: Record<string, unknown>
       delete nodePatch[k];
     }
   }
-  return { cardBackground: cardBackground as Partial<VisualStyling>, nodePatch };
+  return {
+    cardBackground: cardBackground as Partial<VisualStyling>,
+    nodePatch,
+  };
 }
 
 function withMergedStyle(el: CardElementData, stylePatch: Partial<CardElementStyle>): CardElementData {
@@ -231,6 +259,7 @@ export function applyThemeToCardElements(
   const isProfileDiagonalSplit = templateId === PROFILE_DIAGONAL_SPLIT_TEMPLATE_ID;
   const isBulletList = templateId === BULLET_LIST_TEMPLATE_ID;
   const isElementFeature = templateId === ELEMENT_FEATURE_TEMPLATE_ID;
+  const isFramedHeading = templateId === FRAMED_HEADING_TEMPLATE_ID;
   const chipBase = colorProps.backgroundColor ?? colorProps.backgroundColors?.[0] ?? "#93c5fd";
   const accentBase =
     colorProps.backgroundColors?.[1] ??
@@ -257,6 +286,16 @@ export function applyThemeToCardElements(
   const profileSocialAvatarRingColor = profileSocialBodyStyle
     ? profileSocialThemeBodyRingColor(profileSocialBodyStyle)
     : "#ffffff";
+
+  if (isFramedHeading) {
+    let root = ensureFramedHeadingFrameFill(elements);
+    root = updateCardElementStyleTree(
+      root,
+      FRAMED_HEADING_FILL_ID,
+      themeBackgroundToCardStyle(properties, colorProps),
+    );
+    return applyFramedHeadingThemeColors(root, properties, colorProps, hueShift);
+  }
 
   let root = updateCardElementStyleTree(
     elements,
