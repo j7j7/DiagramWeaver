@@ -2,7 +2,7 @@ import type { DiagramNodeData } from "@/lib/types";
 import { objectKindSuffixFromNodeType } from "@/lib/shape-type-swap";
 import { parsePoints, getPolygonViewBoxAndPoints } from "@/components/diagram/shapes/shape-utils";
 import type { ClipMultiPolygon, ClipPair, ClipPolygon, ClipRing } from "@/lib/vector-path-utils";
-import { isVectorPathNodeType } from "@/lib/vector-path-utils";
+import { groupClipRingsToPolygons, isVectorPathNodeType } from "@/lib/vector-path-utils";
 
 const CIRCLE_SEGMENTS = 48;
 
@@ -114,8 +114,6 @@ function polygonKindLocalRing(kind: string, w: number, h: number, strokePad: num
 
 function vectorPathLocalPolygons(node: DiagramNodeData): ClipPolygon[] {
   const rings = node.vectorPath?.rings ?? [];
-  const polys: ClipPolygon[] = [];
-  if (rings.length === 0) return polys;
   const clipRings: ClipRing[] = rings
     .filter((r) => r.points.length >= 3)
     .map((r) => {
@@ -123,8 +121,7 @@ function vectorPathLocalPolygons(node: DiagramNodeData): ClipPolygon[] {
       ring.push(ring[0]);
       return ring;
     });
-  if (clipRings.length > 0) polys.push(clipRings);
-  return polys;
+  return groupClipRingsToPolygons(clipRings);
 }
 
 function primitiveLocalRing(node: DiagramNodeData, kind: string): ClipRing | null {

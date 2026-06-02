@@ -11,6 +11,110 @@ export type ClipRing = ClipPair[];
 export type ClipPolygon = ClipRing[];
 export type ClipMultiPolygon = ClipPolygon[];
 
+function clipRingVertices(ring: ClipRing): ClipRing {
+  if (ring.length > 1) {
+    const [fx, fy] = ring[0];
+    const [lx, ly] = ring[ring.length - 1];
+    if (fx === lx && fy === ly) return ring.slice(0, -1);
+  }
+  return ring;
+}
+
+function clipRingCentroid(ring: ClipRing): ClipPair {
+  const pts = clipRingVertices(ring);
+  if (pts.length === 0) return [0, 0];
+  let sx = 0;
+  let sy = 0;
+  for (const [x, y] of pts) {
+    sx += x;
+    sy += y;
+  }
+  const n = pts.length;
+  return [sx / n, sy / n];
+}
+
+function clipRingAbsArea(ring: ClipRing): number {
+  const pts = clipRingVertices(ring);
+  if (pts.length < 3) return 0;
+  let sum = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x0, y0] = pts[i];
+    const [x1, y1] = pts[(i + 1) % pts.length];
+    sum += x0 * y1 - x1 * y0;
+  }
+  return Math.abs(sum / 2);
+}
+
+/** Ray-cast point-in-polygon for a closed ring. */
+export function pointInClipRing(point: ClipPair, ring: ClipRing): boolean {
+  const [x, y] = point;
+  const pts = ring.length > 1 ? ring : clipRingVertices(ring);
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i];
+    const [xj, yj] = pts[j];
+    const intersects = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function clipRingContainsRing(outer: ClipRing, inner: ClipRing): boolean {
+  return pointInClipRing(clipRingCentroid(inner), outer);
+}
+
+/**
+ * Group evenodd vector rings into polygon-clipping polygons.
+ * Disjoint rings become separate polygons; nested rings become outer + holes.
+ */
+export function groupClipRingsToPolygons(rings: ClipRing[]): ClipPolygon[] {
+  if (rings.length === 0) return [];
+  if (rings.length === 1) return [[rings[0]]];
+
+  const areas = rings.map(clipRingAbsArea);
+  const parent = new Array<number>(rings.length).fill(-1);
+
+  for (let i = 0; i < rings.length; i++) {
+    let bestParent = -1;
+    let bestArea = Infinity;
+    for (let j = 0; j < rings.length; j++) {
+      if (i === j || areas[j] <= areas[i]) continue;
+      if (!clipRingContainsRing(rings[j], rings[i])) continue;
+      if (areas[j] < bestArea) {
+        bestArea = areas[j];
+        bestParent = j;
+      }
+    }
+    parent[i] = bestParent;
+  }
+
+  const childrenOf = (idx: number): number[] => {
+    const out: number[] = [];
+    for (let i = 0; i < rings.length; i++) {
+      if (parent[i] === idx) out.push(i);
+    }
+    return out;
+  };
+
+  const polys: ClipPolygon[] = [];
+  const walk = (outerIdx: number) => {
+    const poly: ClipPolygon = [rings[outerIdx]];
+    for (const childIdx of childrenOf(outerIdx)) {
+      poly.push(rings[childIdx]);
+      for (const islandIdx of childrenOf(childIdx)) {
+        walk(islandIdx);
+      }
+    }
+    polys.push(poly);
+  };
+
+  for (let i = 0; i < rings.length; i++) {
+    if (parent[i] === -1) walk(i);
+  }
+
+  return polys;
+}
+
 export function isVectorPathNodeType(type: string | undefined): boolean {
   return type === VECTOR_PATH_NODE_TYPE || (type?.endsWith(".vector-path") ?? false);
 }
@@ -67,6 +171,28 @@ export function canvasRingsToLocalRings(
       points: pts.map(([x, y]) => ({ x: x - originX, y: y - originY })),
     };
   });
+}
+
+export function bboxOfClipPolygon(poly: ClipPolygon): {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+} | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const ring of poly) {
+    for (const [x, y] of ring) {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  if (!Number.isFinite(minX)) return null;
+  return { minX, minY, maxX, maxY };
 }
 
 export function bboxOfClipMultiPolygon(mp: ClipMultiPolygon): {

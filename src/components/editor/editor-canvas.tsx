@@ -1598,18 +1598,18 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         return;
       }
       setDiagramData(result.diagram);
-      onItemSelect(
-        { ...result.diagram.nodes.find((n) => n.id === result.resultNodeId)!, itemType: "node" },
-        false,
-      );
-      setSelectedItemIds(new Set([result.resultNodeId]));
+      setSelectedItemIds(new Set(result.resultNodeIds));
+      const primaryNode = result.diagram.nodes.find((n) => n.id === result.resultNodeId);
+      if (primaryNode) {
+        setSelectedItem({ ...primaryNode, itemType: "node" });
+      }
     },
     [
       selectedItemIds,
       diagramData,
       contextMenu.itemId,
       setDiagramData,
-      onItemSelect,
+      setSelectedItem,
       setSelectedItemIds,
       toast,
     ],

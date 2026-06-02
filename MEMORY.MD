@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-02 – Vector path boolean: split disjoint cut pieces into separate shapes
+Subtract/intersect/exclude/union results with multiple disjoint polygons become **separate `generic.object.vector-path` nodes** (each with its own bounding box) instead of one multi-ring node. All pieces stay **multi-selected** after the op; label and connection remap follow the primary (right-clicked) piece. Patch bumped.
+
+### 2026-06-02 – Vector path boolean: preserve disjoint rings on cut/combine
+Multi-ring vector paths (separate pieces from prior cuts) no longer lose untouched parts on subtract/union/intersect/exclude. **`groupClipRingsToPolygons`** in **`vector-path-utils.ts`** maps evenodd rings to polygon-clipping polygons (disjoint → separate polygons; nested → outer + holes); **`vectorPathLocalPolygons`** in **`shape-to-polygon.ts`** uses it before boolean ops. Patch bumped.
+
 ### 2026-06-02 – Multi-select context menu preserves selection on overlapping shapes
 Right-click with 2+ items selected no longer collapses to a single object when overlapping shapes or pointer-events pass-through layers skew the hit target. **`findTopSelectedCanvasObjectIdAtPoint`** (`elementsFromPoint`) picks the topmost selected node/zone under the cursor; context-menu handlers read **`selectedItemIdsRef`** so shift-click + immediate right-click still sees the full set; **`handleItemSelect`** keeps multi-select when plain-clicking an already-selected node; Shift/Ctrl/Meta disables pass-through so additive clicks hit the top overlapping shape. **Combine shapes** (union/subtract/…) stays available. Patch bumped.
 
