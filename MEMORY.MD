@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-02 – Multi-select context menu preserves selection on overlapping shapes
+Right-click with 2+ items selected no longer collapses to a single object when overlapping shapes or pointer-events pass-through layers skew the hit target. **`findTopSelectedCanvasObjectIdAtPoint`** (`elementsFromPoint`) picks the topmost selected node/zone under the cursor; context-menu handlers read **`selectedItemIdsRef`** so shift-click + immediate right-click still sees the full set; **`handleItemSelect`** keeps multi-select when plain-clicking an already-selected node; Shift/Ctrl/Meta disables pass-through so additive clicks hit the top overlapping shape. **Combine shapes** (union/subtract/…) stays available. Patch bumped.
+
 ### 2026-06-02 – Borders: connection render order when at back of stack
 Leading **`generic.border.*`** frames (consecutive border nodes at the back of stacking order) render below connector lines in both **Lines Behind Nodes** and **order-aware** modes via **`getLeadingBackgroundBorderIds`** / **`resolveCanvasNodeStackZIndex`** in **`connection-order-utils.ts`**. Editor + viewer canvases use **`buildBackgroundBorderStackContext`**. Border frames moved in front of content keep normal stacking. Patch bumped.
 

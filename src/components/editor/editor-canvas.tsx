@@ -153,6 +153,25 @@ function normalizeRotationDegrees(rotation: number): number {
   return r;
 }
 
+/** Topmost canvas node/zone under the cursor that is in the current selection (includes pointer-events:none pass-through layers). */
+function findTopSelectedCanvasObjectIdAtPoint(
+  clientX: number,
+  clientY: number,
+  selectedItemIds: ReadonlySet<string>,
+): string | null {
+  if (selectedItemIds.size === 0 || typeof document.elementsFromPoint !== "function") {
+    return null;
+  }
+  for (const el of document.elementsFromPoint(clientX, clientY)) {
+    if (!(el instanceof Element)) continue;
+    const nodeId = el.closest("[data-node-id]")?.getAttribute("data-node-id");
+    if (nodeId && selectedItemIds.has(nodeId)) return nodeId;
+    const zoneId = el.closest("[data-zone-id]")?.getAttribute("data-zone-id");
+    if (zoneId && selectedItemIds.has(zoneId)) return zoneId;
+  }
+  return null;
+}
+
 function snapRotationDegrees(rotation: number, snapStep: number): number {
   return normalizeRotationDegrees(Math.round(rotation / snapStep) * snapStep);
 }
@@ -558,10 +577,28 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     leadingBackgroundBorderCount: backgroundBorderStack.leadingBackgroundBorderCount,
   });
 
+  const [multiSelectModifierHeld, setMultiSelectModifierHeld] = useState(false);
+
+  // Track Shift/Ctrl/Meta so overlapping unselected shapes stay hittable for additive selection.
+  useEffect(() => {
+    const syncModifier = (e: KeyboardEvent | MouseEvent) => {
+      setMultiSelectModifierHeld(e.shiftKey || e.ctrlKey || e.metaKey);
+    };
+    window.addEventListener("keydown", syncModifier);
+    window.addEventListener("keyup", syncModifier);
+    window.addEventListener("mousedown", syncModifier, true);
+    return () => {
+      window.removeEventListener("keydown", syncModifier);
+      window.removeEventListener("keyup", syncModifier);
+      window.removeEventListener("mousedown", syncModifier, true);
+    };
+  }, []);
+
   // When a selected item is behind others, items on top get pointer-events: none so resize/drag
   // targets the selected item. Preserves visual stacking; allows operating on background when selected.
   const pointerEventsPassThroughIds = useMemo(() => {
     const passThrough = new Set<string>();
+    if (multiSelectModifierHeld) return passThrough;
     if (!selectedItemIds?.size || selectedItemIds.size === 0) return passThrough;
     const sortedIds = connectionSlots.sortedItemIds;
     const getBounds = (id: string) => {
@@ -592,7 +629,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       }
     }
     return passThrough;
-  }, [connectionSlots.sortedItemIds, selectedItemIds, nodesById, zonesById]);
+  }, [connectionSlots.sortedItemIds, selectedItemIds, nodesById, zonesById, multiSelectModifierHeld]);
 
   const canGroupSelectedCanvasItems = useMemo(() => {
     if (selectedItemIds.size < 2) return false;
@@ -626,6 +663,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const nodeContextMenuHandlerRef = useRef<(e: React.MouseEvent, node: DiagramNodeData) => void>(
     (e) => e.stopPropagation()
   );
+  /** Latest multi-select ids — context menu must read this ref (shift-click + right-click same frame). */
+  const selectedItemIdsRef = useRef(selectedItemIds);
+  selectedItemIdsRef.current = selectedItemIds;
+  const selectedItemIdRef = useRef(selectedItemId);
+  selectedItemIdRef.current = selectedItemId;
   const panDismissedOverlaysRef = useRef(false);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
   const [searchModalOpen, setSearchModalOpen] = React.useState(false);
@@ -1907,9 +1949,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       if (slotHit) {
         const slotEl = findCardElement(node.card.elements, slotHit.elementId);
         if (slotEl?.kind === "icon-slot") {
-          if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
-            // keep multi-selection
-          } else if (selectedItemId !== node.id) {
+          const ids = selectedItemIdsRef.current;
+          const primaryId = selectedItemIdRef.current;
+          if (ids.size > 1) {
+            if (primaryId !== node.id && ids.has(node.id)) {
+              setSelectedItem({ ...node, itemType: "node" });
+            }
+          } else if (primaryId !== node.id) {
             onItemSelect({ ...node, itemType: "node" }, false);
           }
           onCardElementSelect?.(node.id, slotHit.elementId);
@@ -1921,24 +1967,40 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       }
     }
 
-    // If multiple items are selected and this node is already in the selection, preserve the selection
-    // Otherwise, select just this node
-    if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
-      // Preserve multi-selection - don't change selection
-    } else if (selectedItemId !== node.id) {
-      onItemSelect({ ...node, itemType: 'node' }, false);
+    // Multi-select: never collapse selection on right-click (overlapping shapes may hit a pass-through layer).
+    const ids = selectedItemIdsRef.current;
+    const primaryId = selectedItemIdRef.current;
+    if (ids.size > 1) {
+      const anchorId =
+        findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids) ??
+        (ids.has(node.id) ? node.id : null) ??
+        primaryId ??
+        Array.from(ids)[0];
+      const anchorNode = nodesById[anchorId] ?? node;
+      if (primaryId !== anchorId) {
+        setSelectedItem({ ...anchorNode, itemType: "node" });
+      }
+      onResetConnectionSettingsTrigger?.();
+      setLastRightClickItemId(anchorId);
+      handleContextMenu(e, anchorId, "node");
+      return;
     }
-    // Always reset connection settings trigger when opening context menu
+
+    if (primaryId !== node.id) {
+      onItemSelect({ ...node, itemType: "node" }, false);
+    }
     onResetConnectionSettingsTrigger?.();
     setLastRightClickItemId(node.id);
-    handleContextMenu(e, node.id, 'node'); // Opens context menu
+    handleContextMenu(e, node.id, "node");
   }, [
     simulationModeEnabled,
     openSimulationMenu,
     isReadOnly,
     selectedItemIds,
     selectedItemId,
+    nodesById,
     onItemSelect,
+    setSelectedItem,
     onCardElementSelect,
     onResetConnectionSettingsTrigger,
     handleContextMenu,
@@ -1956,9 +2018,25 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         openSimulationMenu(e, node.id, "node");
         return;
       }
-      if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
-        // keep multi-selection
-      } else if (selectedItemId !== node.id) {
+      if (selectedItemIdsRef.current.size > 1) {
+        const ids = selectedItemIdsRef.current;
+        const primaryId = selectedItemIdRef.current;
+        const anchorId =
+          findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids) ??
+          (ids.has(node.id) ? node.id : null) ??
+          primaryId ??
+          Array.from(ids)[0];
+        const anchorNode = nodesById[anchorId] ?? node;
+        if (primaryId !== anchorId) {
+          setSelectedItem({ ...anchorNode, itemType: "node" });
+        }
+        onTimelineEntrySelect?.(node.id, entryId, false);
+        onResetConnectionSettingsTrigger?.();
+        setLastRightClickItemId(anchorId);
+        handleContextMenu(e, anchorId, "node", { timelineEntryId: entryId, timelineSpineArcRatio: undefined });
+        return;
+      }
+      if (selectedItemIdRef.current !== node.id) {
         onItemSelect({ ...node, itemType: "node" }, false);
       }
       onTimelineEntrySelect?.(node.id, entryId, false);
@@ -1971,7 +2049,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       openSimulationMenu,
       selectedItemIds,
       selectedItemId,
+      nodesById,
       onItemSelect,
+      setSelectedItem,
       onTimelineEntrySelect,
       onResetConnectionSettingsTrigger,
       handleContextMenu,
@@ -1990,9 +2070,28 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         openSimulationMenu(e, node.id, "node");
         return;
       }
-      if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
-        // keep multi-selection
-      } else if (selectedItemId !== node.id) {
+      if (selectedItemIdsRef.current.size > 1) {
+        const ids = selectedItemIdsRef.current;
+        const primaryId = selectedItemIdRef.current;
+        const anchorId =
+          findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids) ??
+          (ids.has(node.id) ? node.id : null) ??
+          primaryId ??
+          Array.from(ids)[0];
+        const anchorNode = nodesById[anchorId] ?? node;
+        if (primaryId !== anchorId) {
+          setSelectedItem({ ...anchorNode, itemType: "node" });
+        }
+        onTimelineEntrySelect?.(node.id, null);
+        onResetConnectionSettingsTrigger?.();
+        setLastRightClickItemId(anchorId);
+        handleContextMenu(e, anchorId, "node", {
+          timelineSpineArcRatio: arcRatio,
+          timelineEntryId: undefined,
+        });
+        return;
+      }
+      if (selectedItemIdRef.current !== node.id) {
         onItemSelect({ ...node, itemType: "node" }, false);
       }
       onTimelineEntrySelect?.(node.id, null);
@@ -2008,7 +2107,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       openSimulationMenu,
       selectedItemIds,
       selectedItemId,
+      nodesById,
       onItemSelect,
+      setSelectedItem,
       onTimelineEntrySelect,
       onResetConnectionSettingsTrigger,
       handleContextMenu,
@@ -2088,18 +2189,41 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       openSimulationMenu(e, zone.id, "zone");
       return;
     }
-    // If multiple items are selected and this zone is already in the selection, preserve the selection
-    // Otherwise, select just this zone
-    if (selectedItemIds.size > 1 && selectedItemIds.has(zone.id)) {
-      // Preserve multi-selection - don't change selection
-    } else if (selectedItemId !== zone.id) {
-      onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], false);
+    if (selectedItemIdsRef.current.size > 1) {
+      const ids = selectedItemIdsRef.current;
+      const primaryId = selectedItemIdRef.current;
+      const anchorId =
+        findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids) ??
+        (ids.has(zone.id) ? zone.id : null) ??
+        primaryId ??
+        Array.from(ids)[0];
+      const anchorZone = zonesById[anchorId] ?? zone;
+      if (primaryId !== anchorId) {
+        setSelectedItem({ ...anchorZone, itemType: "node" } as Parameters<typeof onItemSelect>[0]);
+      }
+      onResetConnectionSettingsTrigger?.();
+      setLastRightClickItemId(anchorId);
+      handleContextMenu(e, anchorId, "zone");
+      return;
     }
-    // Always reset connection settings trigger when opening context menu
+    if (selectedItemIdRef.current !== zone.id) {
+      onItemSelect({ ...zone, itemType: "node" } as Parameters<typeof onItemSelect>[0], false);
+    }
     onResetConnectionSettingsTrigger?.();
     setLastRightClickItemId(zone.id);
-    handleContextMenu(e, zone.id, 'zone');
-  }, [simulationModeEnabled, openSimulationMenu, selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu, suppressContextMenuIfRightClickPanned]);
+    handleContextMenu(e, zone.id, "zone");
+  }, [
+    simulationModeEnabled,
+    openSimulationMenu,
+    selectedItemIds,
+    selectedItemId,
+    zonesById,
+    onItemSelect,
+    setSelectedItem,
+    onResetConnectionSettingsTrigger,
+    handleContextMenu,
+    suppressContextMenuIfRightClickPanned,
+  ]);
 
   const allSimulationCanvasElements = useMemo(() => {
     const connectionLabelById = new Map<string, string>();

@@ -1262,14 +1262,17 @@ export default function DiagramEditor() {
       setSelectedItem(item);
     } else {
       // Plain click on an item already in a multi-selection: primary only, keep the set.
-      // Use canonical connection matching (uuid vs from-to-index in the set).
       let preserveMulti = false;
-      if (item && !shiftKey && selectedItemIds.size > 1 && item.itemType === 'edge') {
-        const conns = (displayDiagramData.connections ?? []) as DiagramConnectionData[];
-        for (let i = 0; i < conns.length; i++) {
-          if (!connectionSelectionIdMatches(item.id, conns[i], i, conns)) continue;
-          preserveMulti = selectionSetContainsConnection(selectedItemIds, conns[i], i, conns);
-          break;
+      if (item && !shiftKey && selectedItemIds.size > 1) {
+        if (item.itemType === "edge") {
+          const conns = (displayDiagramData.connections ?? []) as DiagramConnectionData[];
+          for (let i = 0; i < conns.length; i++) {
+            if (!connectionSelectionIdMatches(item.id, conns[i], i, conns)) continue;
+            preserveMulti = selectionSetContainsConnection(selectedItemIds, conns[i], i, conns);
+            break;
+          }
+        } else if (selectedItemIds.has(item.id)) {
+          preserveMulti = true;
         }
       }
 
