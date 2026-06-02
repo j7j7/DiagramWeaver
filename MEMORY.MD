@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-02 – Resources: double-click cards/borders match drag-to-canvas
+**`createPaletteItem`** (`editor-support.ts`) now maps **`generic` + `cards`/`borders`** categories to **`generic.card.*`** / **`generic.border.*`** (same as **`DraggableResourceItem`** drag items). Double-click and keyboard paste from the palette no longer create icon nodes. Patch bumped.
+
 ### 2026-06-02 – Vector path boolean: split disjoint cut pieces into separate shapes
 Subtract/intersect/exclude/union results with multiple disjoint polygons become **separate `generic.object.vector-path` nodes** (each with its own bounding box) instead of one multi-ring node. All pieces stay **multi-selected** after the op; label and connection remap follow the primary (right-clicked) piece. Patch bumped.
 

@@ -520,6 +520,8 @@ export function createPaletteItem(
   const isLineChartPalette = provider === "generic" && category === "object" && derivedSlug === "line-chart";
   const isRingChartPalette =
     provider === "generic" && category === "object" && derivedSlug === "ring-chart";
+  const isCardPalette = provider === "generic" && category === "cards";
+  const isBorderPalette = provider === "generic" && category === "borders";
   return {
     type: isTextPaletteTextBoxHeading
       ? "generic.object.text-box-heading"
@@ -531,7 +533,11 @@ export function createPaletteItem(
             ? "generic.chart.line"
             : isRingChartPalette
               ? "generic.chart.ring"
-              : `${provider}.${category}.${derivedSlug}`,
+              : isBorderPalette
+                ? `generic.border.${derivedSlug}`
+                : isCardPalette
+                  ? `generic.card.${derivedSlug}`
+                  : `${provider}.${category}.${derivedSlug}`,
     label: (resource as PaletteResource).name,
     provider,
     category: isTextPaletteTextBoxHeading ? "object" : category,
