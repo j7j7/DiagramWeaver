@@ -75,6 +75,7 @@ export function computeMarqueeSelectionPlan(diagramData: DiagramData, x1: number
   const objectHits: ObjectHit[] = [];
 
   diagramData.nodes.forEach((node) => {
+    if (node.locked) return;
     const nodeX = node.x || 0;
     const nodeY = node.y || 0;
     const nodeWidth = node.width || 80;

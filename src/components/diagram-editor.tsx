@@ -1304,7 +1304,7 @@ export default function DiagramEditor() {
   const handleConnectorLineVertexFocus = React.useCallback(
     (nodeId: string, vertexIndex: number) => {
       const node = currentDiagramData.nodes.find((n) => n.id === nodeId);
-      if (!node || !isConnectorLikeSpineNodeType(node.type)) return;
+      if (!node || !isConnectorLikeSpineNodeType(node.type) || node.locked) return;
       setTimelineEntrySelectionKeys([]);
       setSelectedItem({ ...node, itemType: 'node' });
       setSelectedItemIds(new Set([nodeId]));
@@ -1332,6 +1332,7 @@ export default function DiagramEditor() {
     for (const id of itemIds) {
       const node = dataForHits.nodes.find((n) => n.id === id);
       if (node) {
+        if (node.locked) continue;
         resolvedIds.push(node.id);
         items.push({ ...node, itemType: "node" as const });
         continue;
@@ -3240,7 +3241,9 @@ export default function DiagramEditor() {
   const handleSelectAll = React.useCallback(() => {
     const allIds = new Set<string>();
 
-    diagramData.nodes.forEach(node => allIds.add(node.id));
+    diagramData.nodes.forEach((node) => {
+      if (!node.locked) allIds.add(node.id);
+    });
     diagramData.connections.forEach(connection => {
       allIds.add((connection as DiagramConnectionData).id ?? `${connection.from}-${connection.to}`);
     });

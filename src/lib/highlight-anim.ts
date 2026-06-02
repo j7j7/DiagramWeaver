@@ -134,6 +134,7 @@ export function buildHighlightAnimStaggerOrder(
   const entries: { id: string; x: number; y: number }[] = [];
   for (const [id, n] of Object.entries(nodesById)) {
     if (!n.highlightAnim) continue;
+    if (n.locked) continue;
     if (n.highlightAnimMode === 'constant') continue;
     if (isConnectorLineNodeType(n.type)) continue;
     entries.push({ id, x: n.x ?? 0, y: n.y ?? 0 });
@@ -264,6 +265,7 @@ export function getHighlightAnimStyleForNode(
 ): CSSProperties | undefined {
   if (opts.isLineNode || opts.isDuplicateDragPreview) return undefined;
   if (!node.highlightAnim) return undefined;
+  if (node.locked) return undefined;
 
   const color = node.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR;
   const intensity = clampHighlightGlowIntensity((node as any).highlightAnimGlowIntensity);

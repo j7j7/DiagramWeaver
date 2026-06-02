@@ -1863,6 +1863,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const fingerTap = (e as React.MouseEvent & { dwFingerTap?: boolean }).dwFingerTap === true;
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
 
+    // Locked nodes: left-click does not change selection (right-click selects via context menu).
+    if (node.locked && !isConnectMode) {
+      closeContextMenu();
+      return;
+    }
+
     // Touch: second tap on an already-selected item opens the same menu as right-click (mouse unchanged).
     if (fingerTap && !additive && !isConnectMode && selectedItemIds.has(node.id)) {
       nodeContextMenuHandlerRef.current(e, node);
@@ -1904,6 +1910,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const handleTimelineCardTap = useCallback(
     (node: DiagramNodeData, entryId: string, e: React.MouseEvent | React.PointerEvent) => {
       const additiveCards = e.shiftKey || e.ctrlKey || e.metaKey;
+
+      if (node.locked && !isConnectMode && !simulationModeEnabled) {
+        return;
+      }
 
       if (isConnectMode || simulationModeEnabled) {
         handleNodeClick(e as unknown as React.MouseEvent, node);
