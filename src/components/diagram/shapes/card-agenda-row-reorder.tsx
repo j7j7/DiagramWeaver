@@ -244,6 +244,7 @@ export function useAgendaRowSectionReorder(
       const target = e.target;
       if (!(target instanceof Element)) return;
       if (target.closest("[data-dw-card-element-kind='text']")) return;
+      if (target.closest("[data-dw-card-icon-slot]")) return;
       if (target.closest("[data-dw-card-action]")) return;
       ctx.beginRowDrag(rowId, e);
     },

@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-03 – Bullet List: icon drop hit-testing
+Icon palette drops onto bullet list rows resolve when the cursor is over **row text or section**, not only the small marker (`resolveRowSectionIconSlotFromElement` in **`card-utils.ts`**). Row reorder ignores **`data-dw-card-icon-slot`**; enabling item icons bumps marker size to at least **14px**. Patch bumped.
+
+### 2026-06-03 – Bullet List: per-item icons (drag from resources)
+**Item icons** toggle in Card properties converts row markers from colored bullets to **`icon-slot`** regions (same `row-N-cube` ids). Drag icons from the resources sidebar onto each row; **Icon size** slider sets the square slot. Select a marker for standard icon styling (color, opacity, remove background). **`bulletListUseItemIcons`** on the node; helpers **`applyBulletListUseItemIcons`**, **`bulletListUsesItemIcons`** in **`card-bullet-list.ts`**. Patch bumped.
+
 ### 2026-06-03 – Cards: frosted glass shell (Bullet List et al.)
 **Frosted glass** Background on standard card templates (e.g. **Bullet List**) now matches **Framed Heading**: frosted styling lives on the **card node**, the background region (`root` / `body`) stays transparent, and **`ShapeWrapper`** renders the clipped backdrop-filter stack (`cardShellUsesFrostedInterior`, `partitionCardVisualStylingPatch`, `cardPanelBackgroundVisual`). Patch bumped.
 

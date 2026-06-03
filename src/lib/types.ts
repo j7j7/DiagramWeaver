@@ -542,6 +542,8 @@ export interface DiagramNodeData {
 
   /** Bullet list card: step hue per bullet cube (defaults to Themes menu multi-select hue setting). */
   bulletListItemThemeHue?: boolean;
+  /** Bullet list card: per-item icons instead of colored bullet markers. */
+  bulletListUseItemIcons?: boolean;
 
   /** UML class diagram compartments: name, attributes, methods in separate sections */
   umlClass?: {

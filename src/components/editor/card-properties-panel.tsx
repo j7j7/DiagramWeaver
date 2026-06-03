@@ -181,6 +181,8 @@ import {
   applyBulletListItemTextColor,
   applyBulletListTitleTextColor,
   applyBulletListTitleAlign,
+  applyBulletListUseItemIcons,
+  bulletListUseItemIconsEnabled,
   BULLET_LIST_ITEM_TEXT_DEFAULT,
   BULLET_LIST_CUBE_SUFFIX,
   BULLET_SIZE_MAX,
@@ -214,6 +216,8 @@ export interface CardPropertiesPanelProps {
   onAgendaDividersEnabledChange?: (enabled: boolean) => void;
   bulletListItemThemeHue?: boolean;
   onBulletListItemThemeHueChange?: (enabled: boolean) => void;
+  bulletListUseItemIcons?: boolean;
+  onBulletListUseItemIconsChange?: (enabled: boolean) => void;
 }
 
 function ProfileCardProperties({
@@ -1409,11 +1413,15 @@ function BulletListCardProperties({
   onElementsChange,
   bulletListItemThemeHue,
   onBulletListItemThemeHueChange,
+  bulletListUseItemIcons,
+  onBulletListUseItemIconsChange,
 }: {
   elements: CardElementData;
   onElementsChange: (elements: CardElementData) => void;
   bulletListItemThemeHue?: boolean;
   onBulletListItemThemeHueChange?: (enabled: boolean) => void;
+  bulletListUseItemIcons?: boolean;
+  onBulletListUseItemIconsChange?: (enabled: boolean) => void;
 }) {
   const rows = getBulletListRows(elements).map(parseBulletListRow);
   const globalMultiHue = useThemeMultiHueLayout();
@@ -1422,11 +1430,12 @@ function BulletListCardProperties({
   const titleTextColor = getBulletListTitleTextColor(elements);
   const itemTextColor = getBulletListItemTextColor(elements);
   const themeHueOn = bulletListItemThemeHue ?? globalMultiHue;
-  const firstCube = getBulletListRows(elements)[0]?.children?.find((c) =>
+  const useItemIcons = bulletListUseItemIconsEnabled(bulletListUseItemIcons, elements);
+  const firstMarker = getBulletListRows(elements)[0]?.children?.find((c) =>
     c.id.endsWith(BULLET_LIST_CUBE_SUFFIX),
   );
-  const bulletSize = parseBulletListBulletSize(firstCube);
-  const bulletCircle = parseBulletListBulletShape(firstCube) === "circle";
+  const bulletSize = parseBulletListBulletSize(firstMarker);
+  const bulletCircle = parseBulletListBulletShape(firstMarker) === "circle";
   const titleAlign = getBulletListTitleAlign(elements);
   const titleAlignOptions: { value: BulletListTitleAlign; label: string }[] = [
     { value: "left", label: "Left" },
@@ -1465,18 +1474,37 @@ function BulletListCardProperties({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-sm text-muted-foreground">Circle bullet</Label>
+        <Label className="text-sm text-muted-foreground">Item icons</Label>
         <Switch
-          checked={bulletCircle}
-          onCheckedChange={(checked) =>
-            onElementsChange(applyBulletListBulletShape(elements, checked ? "circle" : "square"))
-          }
+          checked={useItemIcons}
+          onCheckedChange={(checked) => {
+            onBulletListUseItemIconsChange?.(checked);
+            onElementsChange(applyBulletListUseItemIcons(elements, checked));
+          }}
         />
       </div>
+      <p className="text-xs text-muted-foreground">
+        When on, drag icons from the resources sidebar onto each row marker. Select a marker on the
+        card to set icon color, opacity, and background in Visual styling.
+      </p>
+
+      {!useItemIcons ? (
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm text-muted-foreground">Circle bullet</Label>
+          <Switch
+            checked={bulletCircle}
+            onCheckedChange={(checked) =>
+              onElementsChange(applyBulletListBulletShape(elements, checked ? "circle" : "square"))
+            }
+          />
+        </div>
+      ) : null}
 
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
-          <Label className="text-sm text-muted-foreground">Bullet size</Label>
+          <Label className="text-sm text-muted-foreground">
+            {useItemIcons ? "Icon size" : "Bullet size"}
+          </Label>
           <span className="tabular-nums text-xs text-muted-foreground">{bulletSize}px</span>
         </div>
         <Slider
@@ -1505,25 +1533,39 @@ function BulletListCardProperties({
         />
       </div>
 
-      <div className="space-y-1">
-        <Label className="text-sm text-muted-foreground">Accent color (bullets, + Add item)</Label>
-        <ColorPicker
-          value={accentColor}
-          onChange={(value) => onElementsChange(applyBulletListAccentColor(elements, value))}
-        />
-      </div>
+      {!useItemIcons ? (
+        <div className="space-y-1">
+          <Label className="text-sm text-muted-foreground">Accent color (bullets, + Add item)</Label>
+          <ColorPicker
+            value={accentColor}
+            onChange={(value) => onElementsChange(applyBulletListAccentColor(elements, value))}
+          />
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <Label className="text-sm text-muted-foreground">+ Add item color</Label>
+          <ColorPicker
+            value={accentColor}
+            onChange={(value) => onElementsChange(applyBulletListAccentColor(elements, value))}
+          />
+        </div>
+      )}
 
-      <div className="flex items-center justify-between gap-2">
-        <Label className="text-sm text-muted-foreground">Step hue per bullet</Label>
-        <Switch
-          checked={themeHueOn}
-          onCheckedChange={(checked) => onBulletListItemThemeHueChange?.(checked)}
-        />
-      </div>
-      <p className="text-xs text-muted-foreground">
-        When off, every cube matches the accent color. When on, each bullet shifts hue from the first
-        (uses Themes menu hue step).
-      </p>
+      {!useItemIcons ? (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-sm text-muted-foreground">Step hue per bullet</Label>
+            <Switch
+              checked={themeHueOn}
+              onCheckedChange={(checked) => onBulletListItemThemeHueChange?.(checked)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            When off, every cube matches the accent color. When on, each bullet shifts hue from the
+            first (uses Themes menu hue step).
+          </p>
+        </>
+      ) : null}
 
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
@@ -1684,6 +1726,8 @@ export function CardPropertiesPanel({
   onAgendaDividersEnabledChange,
   bulletListItemThemeHue,
   onBulletListItemThemeHueChange,
+  bulletListUseItemIcons,
+  onBulletListUseItemIconsChange,
 }: CardPropertiesPanelProps) {
   if (isProfileFeatureCard(cardTemplateId)) {
     return <ProfileCardProperties elements={elements} onElementsChange={onElementsChange} />;
@@ -1734,6 +1778,8 @@ export function CardPropertiesPanel({
         onElementsChange={onElementsChange}
         bulletListItemThemeHue={bulletListItemThemeHue}
         onBulletListItemThemeHueChange={onBulletListItemThemeHueChange}
+        bulletListUseItemIcons={bulletListUseItemIcons}
+        onBulletListUseItemIconsChange={onBulletListUseItemIconsChange}
       />
     );
   }

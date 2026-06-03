@@ -173,6 +173,7 @@ import {
   addBulletListRow,
   applyBulletListResizeLayout,
   BULLET_LIST_ADD_ROW_LABEL_ID,
+  BULLET_LIST_ICON_MARKER_MIN,
   BULLET_LIST_MIN_ROWS,
   BULLET_LIST_TEXT_SUFFIX,
   BULLET_LIST_TITLE_ID,
@@ -590,6 +591,10 @@ function CardIconSlot({
     isListItemRowCard(cardTemplateId) &&
     element.id === LIST_ITEM_INDICATOR_ID &&
     !parseListItemIndicatorCircle(element);
+  const bulletListItemIcon =
+    isBulletListCard(cardTemplateId) &&
+    isBulletListCubeId(element.id) &&
+    element.kind === "icon-slot";
   const isSelected = cardSelectedElementId === element.id;
   const fillSlot = element.iconFillSlot ?? element.placeholder === "circle";
   const isDashboardActionIcon = isDashboardStatActionIcon(element.id, cardTemplateId);
@@ -626,6 +631,7 @@ function CardIconSlot({
         const forceNoIconBackground =
           element.iconDecorGradient ||
           listItemPlainIcon ||
+          bulletListItemIcon ||
           ((element.iconFillSlot ?? element.placeholder === "circle") && !isDashboardActionIcon);
         if (forceNoIconBackground) {
           iconRef = { ...iconRef, noIconBackground: true };
@@ -637,7 +643,7 @@ function CardIconSlot({
         canDrop: monitor.canDrop(),
       }),
     }),
-    [element.id, element.iconDecorGradient, element.iconFillSlot, element.placeholder, cardTemplateId, isDashboardActionIcon, isReadOnly, listItemPlainIcon, onCardIconDrop],
+    [element.id, element.iconDecorGradient, element.iconFillSlot, element.placeholder, cardTemplateId, isDashboardActionIcon, isReadOnly, listItemPlainIcon, bulletListItemIcon, onCardIconDrop],
   );
 
   const ref = useCallback(
@@ -652,7 +658,7 @@ function CardIconSlot({
   const placement = element.iconPlacement ?? (isDashboardActionIcon ? "top-right" : "center");
   const { style: placementStyle } = cardIconPlacementToAbsoluteStyle(placement);
   const iconSizeMode = iconRef?.iconSizeMode;
-  const noIconBackground = (iconRef?.noIconBackground ?? false) || listItemPlainIcon;
+  const noIconBackground = (iconRef?.noIconBackground ?? false) || listItemPlainIcon || bulletListItemIcon;
   const hideIconTile = isDashboardActionIcon || noIconBackground || (fillSlot && !isDashboardActionIcon);
   const rawIconOpacity = iconRef?.iconOpacity;
   const iconGlyphOpacity = element.iconDecorGradient
@@ -683,7 +689,7 @@ function CardIconSlot({
       )}
       style={{
         ...layoutCss,
-        ...(isDashboardActionIcon || listItemPlainIcon
+        ...(isDashboardActionIcon || listItemPlainIcon || bulletListItemIcon
           ? {
               backgroundImage: "none",
               backgroundColor: "transparent",
@@ -697,7 +703,18 @@ function CardIconSlot({
         ...actionOverlayStyle,
         ...diagonalAvatarStyle,
         ...cardIconSlotContainerStyle(iconSizeMode),
-        borderRadius: isDashboardActionIcon || listItemPlainIcon ? undefined : isCircle ? "50%" : slotStyleCss.borderRadius,
+        ...(bulletListItemIcon
+          ? {
+              minWidth: BULLET_LIST_ICON_MARKER_MIN,
+              minHeight: BULLET_LIST_ICON_MARKER_MIN,
+            }
+          : {}),
+        borderRadius:
+          isDashboardActionIcon || listItemPlainIcon || bulletListItemIcon
+            ? undefined
+            : isCircle
+              ? "50%"
+              : slotStyleCss.borderRadius,
         boxSizing: "border-box",
       }}
       onClick={(e) =>
@@ -732,8 +749,8 @@ function CardIconSlot({
               useFillSlotGlyphLayout ? "absolute inset-0" : "absolute shrink-0",
               "flex items-center justify-center overflow-hidden",
               useFillSlotGlyphLayout && isCircle && "rounded-full",
-              !hideIconTile && !listItemPlainIcon && "rounded-lg shadow-md bg-card dw-icon-container border",
-              !hideIconTile && !listItemPlainIcon && isSelected && !isReadOnly && "border-primary",
+              !hideIconTile && !listItemPlainIcon && !bulletListItemIcon && "rounded-lg shadow-md bg-card dw-icon-container border",
+              !hideIconTile && !listItemPlainIcon && !bulletListItemIcon && isSelected && !isReadOnly && "border-primary",
               isDashboardActionIcon && "pointer-events-auto",
             )}
             data-dw-card-icon-glyph

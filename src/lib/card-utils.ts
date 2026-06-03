@@ -126,6 +126,26 @@ export function resolveCardIconDropFromPoint(
   return resolveCardIconSlotFromPoint(clientX, clientY);
 }
 
+/** Bullet list rows: drop on row text/section still targets the row icon-slot marker. */
+function resolveRowSectionIconSlotFromElement(
+  el: Element,
+  nodeId?: string,
+): { nodeId: string; elementId: string } | null {
+  const section = el.closest(
+    '[data-dw-card-element-kind="section"]',
+  ) as HTMLElement | null;
+  if (!section) return null;
+  const sectionId = section.dataset.dwCardElementId ?? "";
+  if (!/^row-\d+$/.test(sectionId)) return null;
+  const marker = section.querySelector("[data-dw-card-icon-slot]") as HTMLElement | null;
+  if (!marker) return null;
+  const hitNodeId = marker.dataset.dwCardNodeId;
+  const elementId = marker.dataset.dwCardElementId;
+  if (!hitNodeId || !elementId) return null;
+  if (nodeId && hitNodeId !== nodeId) return null;
+  return { nodeId: hitNodeId, elementId };
+}
+
 /** Hit-test icon-slot under cursor; walks the full pointer stack (resize rails, etc.). */
 export function resolveCardIconSlotFromPoint(
   clientX: number,
@@ -140,12 +160,15 @@ export function resolveCardIconSlotFromPoint(
   for (const el of stack) {
     if (!(el instanceof Element)) continue;
     const slot = el.closest("[data-dw-card-icon-slot]") as HTMLElement | null;
-    if (!slot) continue;
-    const hitNodeId = slot.dataset.dwCardNodeId;
-    const elementId = slot.dataset.dwCardElementId;
-    if (!hitNodeId || !elementId) continue;
-    if (nodeId && hitNodeId !== nodeId) continue;
-    return { nodeId: hitNodeId, elementId };
+    if (slot) {
+      const hitNodeId = slot.dataset.dwCardNodeId;
+      const elementId = slot.dataset.dwCardElementId;
+      if (hitNodeId && elementId && (!nodeId || hitNodeId === nodeId)) {
+        return { nodeId: hitNodeId, elementId };
+      }
+    }
+    const rowSlot = resolveRowSectionIconSlotFromElement(el, nodeId);
+    if (rowSlot) return rowSlot;
   }
   return null;
 }

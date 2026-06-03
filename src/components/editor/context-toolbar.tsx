@@ -92,6 +92,7 @@ import { framedHeadingPanelBackgroundVisual } from '@/lib/card-framed-heading';
 import { getCardTemplateIdFromNodeType } from '@/lib/card-utils';
 import type { CardElementData } from '@/lib/card-types';
 import {
+  applyBulletListUseItemIcons,
   applyTextStylingPatchToBulletListTitle,
   applyBulletListTextStylingFromModal,
   BULLET_LIST_MODAL_ITEM_STYLING_KEYS,
@@ -99,6 +100,7 @@ import {
   BULLET_LIST_TITLE_ID,
   getBulletListTextStylingForModal,
   isBulletListCard,
+  isBulletListCubeId,
 } from '@/lib/card-bullet-list';
 import { supportsDiagramMeshGradient } from '@/lib/diagram-mesh-gradient-support';
 import { extractLineStylingFromNode, applyLineStylingToNode, syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
@@ -1057,6 +1059,49 @@ export function ContextToolbar({
         nodes: prev.nodes.map((n) =>
           n.id === selectedItem.id ? { ...n, bulletListItemThemeHue: enabled } : n,
         ),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      const data = currentDiagramData ?? diagramData;
+      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
+      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+    },
+    [
+      selectedItem?.id,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      onItemUpdate,
+    ],
+  );
+
+  const selectedBulletListUseItemIcons = useMemo(() => {
+    if (!selectedItem || !isNode) return undefined;
+    const data = currentDiagramData ?? diagramData;
+    const node = data?.nodes.find((n) => n.id === selectedItem.id);
+    return node?.bulletListUseItemIcons;
+  }, [selectedItem, isNode, currentDiagramData, diagramData]);
+
+  const handleBulletListUseItemIconsChange = useCallback(
+    (enabled: boolean) => {
+      if (!selectedItem?.id) return;
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (n.id !== selectedItem.id || !n.card?.elements) return n;
+          return {
+            ...n,
+            bulletListUseItemIcons: enabled,
+            card: {
+              ...n.card,
+              elements: applyBulletListUseItemIcons(n.card.elements, enabled),
+            },
+          };
+        }),
       });
       if (onCurrentDiagramDataUpdate) {
         onCurrentDiagramDataUpdate(applyPatch);
@@ -2796,7 +2841,13 @@ export function ContextToolbar({
                     const t = (selectedItem as any)?.type || '';
                     return isDiagramIconTileNodeType(t, (selectedItem as any)?.iconType);
                   })()}
-                  showCardIconPlacement={!!selectedCardIconElement?.iconRef}
+                  showCardIconPlacement={
+                    !!selectedCardIconElement?.iconRef &&
+                    !(
+                      isBulletListCard(selectedCardTemplateId) &&
+                      isBulletListCubeId(selectedCardIconElement.id)
+                    )
+                  }
                   showIconBevel={(() => {
                     if (selectedCardIconElement?.iconRef) return false;
                     return isDiagramIconTileNodeType(
@@ -2887,6 +2938,8 @@ export function ContextToolbar({
                   onAgendaDividersEnabledChange={handleAgendaDividersEnabledChange}
                   bulletListItemThemeHue={selectedBulletListItemThemeHue}
                   onBulletListItemThemeHueChange={handleBulletListItemThemeHueChange}
+                  bulletListUseItemIcons={selectedBulletListUseItemIcons}
+                  onBulletListUseItemIconsChange={handleBulletListUseItemIconsChange}
                   isBorderNode={isBorderNodeType((selectedItem as DiagramNodeData)?.type)}
                   borderTemplateId={selectedBorderTemplateId}
                   border={selectedBorderSpec}

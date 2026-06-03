@@ -1,4 +1,10 @@
-import type { CardElementData, CardElementStyle, CardLayoutBox, CardTemplate } from "@/lib/card-types";
+import type {
+  CardElementData,
+  CardElementStyle,
+  CardIconRef,
+  CardLayoutBox,
+  CardTemplate,
+} from "@/lib/card-types";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { flexJustifyToTextJustify } from "@/lib/card-layout";
 import { applyTextStylingToCardElement, extractTextStylingFromCardElement, type TextStyling } from "@/lib/text-styling";
@@ -20,6 +26,8 @@ export const BULLET_LIST_MIN_ROWS = 1;
 export const BULLET_LIST_CUBE_SIZE_PX = 8;
 export const BULLET_SIZE_MIN = 4;
 export const BULLET_SIZE_MAX = 24;
+/** Minimum square marker when item icons are enabled (easier drop target, fits line height). */
+export const BULLET_LIST_ICON_MARKER_MIN = 14;
 
 export const BULLET_LIST_TITLE_FONT_SIZE = 14;
 export const BULLET_LIST_ITEM_FONT_SIZE = 12;
@@ -60,6 +68,7 @@ export interface BulletListRowData {
   id: string;
   text: string;
   cubeStyle?: CardElementStyle;
+  iconRef?: CardIconRef;
 }
 
 const DEFAULT_ROWS: Omit<BulletListRowData, "id">[] = [
@@ -82,9 +91,9 @@ function clampBulletSize(n: number): number {
 }
 
 export function parseBulletListBulletSize(
-  cube: CardElementData | null | undefined,
+  marker: CardElementData | null | undefined,
 ): number {
-  const w = cube?.layout?.width;
+  const w = marker?.layout?.width;
   if (typeof w === "number" && Number.isFinite(w) && w > 0) {
     return clampBulletSize(w);
   }
@@ -92,9 +101,75 @@ export function parseBulletListBulletSize(
 }
 
 export function parseBulletListBulletShape(
-  cube: CardElementData | null | undefined,
+  marker: CardElementData | null | undefined,
 ): BulletListBulletShape {
-  return cube?.placeholder === "circle" ? "circle" : "square";
+  if (!marker || marker.kind === "icon-slot") return "square";
+  return marker.placeholder === "circle" ? "circle" : "square";
+}
+
+function normalizeBulletListIconRef(iconRef: CardIconRef | undefined): CardIconRef | undefined {
+  if (!iconRef) return undefined;
+  return {
+    ...iconRef,
+    iconSizeMode: iconRef.iconSizeMode ?? "scaled",
+    noIconBackground: iconRef.noIconBackground ?? true,
+  };
+}
+
+function bulletIconSlot(
+  id: string,
+  size: number,
+  iconRef?: CardIconRef,
+): CardElementData {
+  return {
+    id,
+    kind: "icon-slot",
+    iconRef: normalizeBulletListIconRef(iconRef),
+    iconFillSlot: true,
+    layout: {
+      width: size,
+      height: size,
+      flex: 0,
+      alignSelf: "center",
+      overflow: "hidden",
+    },
+    style: { backgroundStyle: "none" },
+  };
+}
+
+function markerDecorToIconSlot(
+  decor: CardElementData,
+  iconRef?: CardIconRef,
+): CardElementData {
+  const size = parseBulletListBulletSize(decor);
+  return bulletIconSlot(decor.id, size, iconRef);
+}
+
+function markerIconSlotToDecor(
+  slot: CardElementData,
+  accentColor: string,
+  shape: BulletListBulletShape,
+  cubeStyle?: CardElementStyle,
+): CardElementData {
+  const size = parseBulletListBulletSize(slot);
+  const borderRadius = resolveBulletListBulletBorderRadius(size, shape);
+  return {
+    id: slot.id,
+    kind: "decor",
+    placeholder: shape === "circle" ? "circle" : "rect",
+    layout: {
+      ...slot.layout,
+      width: size,
+      height: size,
+      flex: 0,
+      alignSelf: "center",
+    },
+    style: cubeStyle ?? {
+      backgroundColor: accentColor,
+      backgroundStyle: "solid",
+      borderRadius,
+    },
+  };
 }
 
 export function resolveBulletListBulletBorderRadius(
@@ -104,9 +179,33 @@ export function resolveBulletListBulletBorderRadius(
   return shape === "circle" ? sizePx / 2 : 1;
 }
 
-function getBulletListFirstCube(root: CardElementData | undefined): CardElementData | null {
+/** Row marker: colored bullet (`decor`) or per-item icon (`icon-slot`). */
+export function getBulletListRowMarker(
+  row: CardElementData | undefined,
+): CardElementData | null {
+  return row?.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX)) ?? null;
+}
+
+function getBulletListFirstMarker(root: CardElementData | undefined): CardElementData | null {
   const firstRow = root ? getBulletListRows(root)[0] : undefined;
-  return firstRow?.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX)) ?? null;
+  return getBulletListRowMarker(firstRow);
+}
+
+/** @deprecated Use {@link getBulletListFirstMarker}. */
+function getBulletListFirstCube(root: CardElementData | undefined): CardElementData | null {
+  return getBulletListFirstMarker(root);
+}
+
+export function bulletListUsesItemIcons(root: CardElementData | undefined): boolean {
+  return getBulletListFirstMarker(root)?.kind === "icon-slot";
+}
+
+export function bulletListUseItemIconsEnabled(
+  nodeValue: boolean | undefined,
+  root: CardElementData | undefined,
+): boolean {
+  if (typeof nodeValue === "boolean") return nodeValue;
+  return bulletListUsesItemIcons(root);
 }
 
 function readBulletListBulletConfig(root: CardElementData): {
@@ -335,8 +434,21 @@ function bulletRowSection(
   itemTextColor: string,
   bulletSize: number,
   bulletShape: BulletListBulletShape,
+  useIcons: boolean,
 ): CardElementData {
+  const markerId = `${row.id}${BULLET_LIST_CUBE_SUFFIX}`;
   const borderRadius = resolveBulletListBulletBorderRadius(bulletSize, bulletShape);
+  const marker: CardElementData = useIcons
+    ? bulletIconSlot(markerId, bulletSize, row.iconRef)
+    : {
+        ...bulletCube(markerId, accentColor, bulletSize, bulletShape),
+        style: row.cubeStyle ?? {
+          backgroundColor: accentColor,
+          backgroundStyle: "solid",
+          borderRadius,
+        },
+        placeholder: bulletShape === "circle" ? "circle" : "rect",
+      };
   return {
     id: row.id,
     kind: "section",
@@ -350,18 +462,7 @@ function bulletRowSection(
       padding: [4, 14] as [number, number],
     },
     style: { backgroundStyle: "none" },
-    children: [
-      {
-        ...bulletCube(`${row.id}${BULLET_LIST_CUBE_SUFFIX}`, accentColor, bulletSize, bulletShape),
-        style: row.cubeStyle ?? {
-          backgroundColor: accentColor,
-          backgroundStyle: "solid",
-          borderRadius,
-        },
-        placeholder: bulletShape === "circle" ? "circle" : "rect",
-      },
-      bulletText(`${row.id}${BULLET_LIST_TEXT_SUFFIX}`, row.text, itemTextColor),
-    ],
+    children: [marker, bulletText(`${row.id}${BULLET_LIST_TEXT_SUFFIX}`, row.text, itemTextColor)],
   };
 }
 
@@ -399,7 +500,7 @@ export function createBulletListRoot(
   rows: BulletListRowData[] = defaultStyledBulletListRows(theme),
 ): CardElementData {
   const entryChildren: CardElementData[] = rows.map((row) =>
-    bulletRowSection(row, theme.accentColor, theme.itemTextColor, BULLET_LIST_CUBE_SIZE_PX, "square"),
+    bulletRowSection(row, theme.accentColor, theme.itemTextColor, BULLET_LIST_CUBE_SIZE_PX, "square", false),
   );
   entryChildren.push(bulletAddRowButton(theme.addRowTextColor));
 
@@ -515,9 +616,11 @@ export function getBulletListRows(root: CardElementData | undefined): CardElemen
 
 export function getBulletListAccentColor(root: CardElementData | undefined): string {
   const firstRow = root ? getBulletListRows(root)[0] : undefined;
-  const cube = firstRow?.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX));
-  const cubeColor = cube?.style?.backgroundColor;
-  if (cubeColor) return cubeColor;
+  const marker = getBulletListRowMarker(firstRow ?? undefined);
+  if (marker?.kind !== "icon-slot") {
+    const cubeColor = marker?.style?.backgroundColor;
+    if (cubeColor) return cubeColor;
+  }
   const addLabel = root ? findCardElement(root, BULLET_LIST_ADD_ROW_LABEL_ID) : null;
   return addLabel?.textColor ?? BULLET_LIST_ACCENT_DEFAULT;
 }
@@ -702,11 +805,14 @@ export function applyBulletListUniformItemFontSize(root: CardElementData): CardE
 
 export function parseBulletListRow(row: CardElementData): BulletListRowData {
   const textEl = row.children?.find((c) => c.id.endsWith(BULLET_LIST_TEXT_SUFFIX));
-  const cubeEl = row.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX));
+  const markerEl = getBulletListRowMarker(row);
+  const useIcons = markerEl?.kind === "icon-slot";
   return {
     id: row.id,
     text: textEl?.text ?? "",
-    cubeStyle: cubeEl?.style ? { ...cubeEl.style } : undefined,
+    cubeStyle: !useIcons && markerEl?.style ? { ...markerEl.style } : undefined,
+    iconRef:
+      useIcons && markerEl?.iconRef ? { ...markerEl.iconRef } : undefined,
   };
 }
 
@@ -813,12 +919,42 @@ function rebuildBulletListEntries(root: CardElementData, rows: BulletListRowData
   const itemTextColor = getBulletListItemTextColor(root);
   const addRowLabelColor = readAddRowLabelColor(root);
   const { size, shape } = readBulletListBulletConfig(root);
+  const useIcons = bulletListUsesItemIcons(root);
   const entryChildren: CardElementData[] = rows.map((row) =>
-    bulletRowSection(row, accent, itemTextColor, size, shape),
+    bulletRowSection(row, accent, itemTextColor, size, shape, useIcons),
   );
   entryChildren.push(bulletAddRowButton(addRowLabelColor));
   let next = updateCardElementTree(root, BULLET_LIST_ENTRIES_ID, { children: entryChildren });
   return applyBulletListUniformItemFontSize(next);
+}
+
+/** Switch row markers between colored bullets and per-item icon slots (preserves icons and cube styles). */
+export function applyBulletListUseItemIcons(
+  elements: CardElementData,
+  useIcons: boolean,
+): CardElementData {
+  if (bulletListUsesItemIcons(elements) === useIcons) return elements;
+  const accent = getBulletListAccentColor(elements);
+  const { shape } = readBulletListBulletConfig(elements);
+  const rows = getBulletListRows(elements).map(parseBulletListRow);
+  let next = elements;
+  for (const row of getBulletListRows(next)) {
+    const marker = getBulletListRowMarker(row);
+    if (!marker) continue;
+    const markerId = marker.id;
+    const parsed = rows.find((r) => r.id === row.id);
+    const patch: CardElementData = useIcons
+      ? markerDecorToIconSlot(marker, parsed?.iconRef)
+      : markerIconSlotToDecor(marker, accent, shape, parsed?.cubeStyle);
+    next = updateCardElementTree(next, markerId, patch);
+  }
+  if (useIcons) {
+    const { size } = readBulletListBulletConfig(next);
+    if (size < BULLET_LIST_ICON_MARKER_MIN) {
+      next = applyBulletListBulletSize(next, BULLET_LIST_ICON_MARKER_MIN);
+    }
+  }
+  return next;
 }
 
 export function addBulletListRow(
@@ -880,11 +1016,10 @@ export function applyBulletListAccentColor(elements: CardElementData, color: str
   for (const row of getBulletListRows(next)) {
     const cubeId = `${row.id}${BULLET_LIST_CUBE_SUFFIX}`;
     const cube = findCardElement(next, cubeId);
-    if (cube) {
-      next = updateCardElementTree(next, cubeId, {
-        style: { ...cube.style, backgroundColor: color, backgroundStyle: "solid" },
-      });
-    }
+    if (!cube || cube.kind === "icon-slot") continue;
+    next = updateCardElementTree(next, cubeId, {
+      style: { ...cube.style, backgroundColor: color, backgroundStyle: "solid" },
+    });
   }
   return next;
 }
@@ -918,12 +1053,12 @@ export function applyBulletListThemeColors(
   next = applyBulletListTitleTextColor(next, accentColor);
   next = applyBulletListItemTextColor(next, itemTextColor);
 
-  if (options?.stepHueWithinCard) {
+  if (options?.stepHueWithinCard && !bulletListUsesItemIcons(next)) {
     const step = options.hueStepDeg ?? DIAGRAM_THEME_HUE_STEP_DEG;
     for (const [index, row] of getBulletListRows(next).entries()) {
       const cubeId = `${row.id}${BULLET_LIST_CUBE_SUFFIX}`;
       const cube = findCardElement(next, cubeId);
-      if (!cube) continue;
+      if (!cube || cube.kind === "icon-slot") continue;
       const fill = index === 0 ? accentColor : shiftHueOfColor(accentColor, index * step);
       next = updateCardElementTree(next, cubeId, {
         style: { ...cube.style, backgroundColor: fill, backgroundStyle: "solid" },
@@ -943,14 +1078,19 @@ export function applyBulletListBulletSize(elements: CardElementData, sizePx: num
     const cubeId = `${row.id}${BULLET_LIST_CUBE_SUFFIX}`;
     const cube = findCardElement(next, cubeId);
     if (!cube) continue;
+    const layoutPatch = {
+      ...cube.layout,
+      width: size,
+      height: size,
+      flex: 0,
+      alignSelf: "center" as const,
+    };
+    if (cube.kind === "icon-slot") {
+      next = updateCardElementTree(next, cubeId, { layout: layoutPatch });
+      continue;
+    }
     next = updateCardElementTree(next, cubeId, {
-      layout: {
-        ...cube.layout,
-        width: size,
-        height: size,
-        flex: 0,
-        alignSelf: "center",
-      },
+      layout: layoutPatch,
       style: { ...cube.style, borderRadius },
     });
   }
@@ -967,7 +1107,7 @@ export function applyBulletListBulletShape(
   for (const row of getBulletListRows(next)) {
     const cubeId = `${row.id}${BULLET_LIST_CUBE_SUFFIX}`;
     const cube = findCardElement(next, cubeId);
-    if (!cube) continue;
+    if (!cube || cube.kind === "icon-slot") continue;
     next = updateCardElementTree(next, cubeId, {
       placeholder: shape === "circle" ? "circle" : "rect",
       style: { ...cube.style, borderRadius },

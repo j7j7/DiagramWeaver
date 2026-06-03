@@ -411,6 +411,8 @@ interface VisualStylingPanelProps {
   onAgendaDividersEnabledChange?: (enabled: boolean) => void;
   bulletListItemThemeHue?: boolean;
   onBulletListItemThemeHueChange?: (enabled: boolean) => void;
+  bulletListUseItemIcons?: boolean;
+  onBulletListUseItemIconsChange?: (enabled: boolean) => void;
   /** Selected slide border template node. */
   isBorderNode?: boolean;
   borderTemplateId?: string;
@@ -543,7 +545,7 @@ function IconBevelMatchColorPreview({
   );
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, bulletListUseItemIcons, onBulletListUseItemIconsChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -1833,6 +1835,8 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     onAgendaDividersEnabledChange={onAgendaDividersEnabledChange}
                     bulletListItemThemeHue={bulletListItemThemeHue}
                     onBulletListItemThemeHueChange={onBulletListItemThemeHueChange}
+                    bulletListUseItemIcons={bulletListUseItemIcons}
+                    onBulletListUseItemIconsChange={onBulletListUseItemIconsChange}
                   />
                 </StylingAccordionSection>
               ) : isCardNode && !cardTemplateHasDedicatedPropertiesPanel(cardTemplateId) ? (
