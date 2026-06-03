@@ -8,6 +8,7 @@ import type {
   NodeChartSpecRing,
 } from "@/lib/types";
 import { isChartNodeType } from "@/lib/chart-node";
+import { gridChartSlideLerpCompatible } from "@/lib/grid-chart-slide-lerp";
 
 function barLineSeriesShapeCompatible(
   prevS: ChartBarSegmentItem[] | undefined,
@@ -45,6 +46,9 @@ export function chartSlideLerpCompatible(prev: DiagramNodeData, curr: DiagramNod
   }
   if (a.kind === "line" && b.kind === "line") {
     return barLineSeriesShapeCompatible(a.series, b.series);
+  }
+  if (a.kind === "grid" && b.kind === "grid") {
+    return gridChartSlideLerpCompatible(prev, curr);
   }
   return false;
 }

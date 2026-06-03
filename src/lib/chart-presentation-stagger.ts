@@ -18,6 +18,49 @@ export interface ChartSlideStagger {
 /** Delay between segment i and i+1 so the cascade reads clearly (ms). */
 export const CHART_SLIDE_SEGMENT_STAGGER_MS = 58;
 
+/** Grid chart: frame (background, border, grid lines, titles) fades before/after cell stagger. */
+export const GRID_CHART_SHELL_FADE_MS = 140;
+
+/** Cell stagger config: on enter, cells start after the shell fade. */
+export function gridChartCellSlideStagger(cfg: ChartSlideStagger): ChartSlideStagger {
+  if (cfg.exit) return cfg;
+  return { ...cfg, baseDelayMs: cfg.baseDelayMs + GRID_CHART_SHELL_FADE_MS };
+}
+
+/** Shell fades in first (enter) or out last (exit, after all cells). */
+export function gridChartShellPopAnimationStyle(
+  cfg: ChartSlideStagger,
+  cellCount: number,
+  animationNameIn: string,
+  animationNameOut: string
+): CSSProperties | undefined {
+  const name = cfg.exit ? animationNameOut : animationNameIn;
+  const n = Math.max(1, cellCount);
+  const delay = cfg.exit
+    ? cfg.baseDelayMs + (n - 1) * cfg.staggerMs + cfg.durationMs
+    : cfg.baseDelayMs;
+  return {
+    animation: `${name} ${GRID_CHART_SHELL_FADE_MS}ms ${cfg.easingCss} ${delay}ms both`,
+    willChange: "opacity",
+  };
+}
+
+/** Total ms for a grid appear/disappear stagger sequence (shell + cells). */
+export function gridChartSlideStaggerTailMs(
+  baseDelayMs: number,
+  cellCount: number,
+  segmentStaggerMs: number,
+  segmentDurationMs: number,
+  exit: boolean
+): number {
+  const n = Math.max(1, cellCount);
+  const cellsSpan = (n - 1) * segmentStaggerMs + segmentDurationMs;
+  if (exit) {
+    return baseDelayMs + cellsSpan + GRID_CHART_SHELL_FADE_MS;
+  }
+  return baseDelayMs + GRID_CHART_SHELL_FADE_MS + cellsSpan;
+}
+
 export function chartPresentationSignature(node: DiagramNodeData): string | null {
   if (!isChartNodeType(node.type)) return null;
   return JSON.stringify((node as { chart?: unknown }).chart ?? null);
@@ -44,6 +87,11 @@ export function chartSegmentCountForStagger(node: DiagramNodeData): number {
   }
   if (c.kind === "line") {
     return Array.isArray(c.series) ? c.series.length : 0;
+  }
+  if (c.kind === "grid") {
+    const cols = Math.max(1, (c as { cols?: number }).cols ?? 4);
+    const rows = Math.max(1, (c as { rows?: number }).rows ?? 4);
+    return cols * rows;
   }
   return 0;
 }

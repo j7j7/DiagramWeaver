@@ -52,6 +52,8 @@ interface SvgShapeBaseProps {
   frostedClipCircleInViewBox?: { cx: number; cy: number; r: number };
   /** Root SVG pointer-events (`none` lets events pass except on descendants with explicit hit targets). */
   svgPointerEvents?: React.CSSProperties["pointerEvents"];
+  /** Allow handles/UI drawn outside the viewBox (e.g. grid row/column chrome). */
+  preserveShellHalo?: boolean;
 }
 
 export function SvgShapeBase({
@@ -70,6 +72,7 @@ export function SvgShapeBase({
   frostedClipPathOverride,
   frostedClipCircleInViewBox,
   svgPointerEvents,
+  preserveShellHalo,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -129,6 +132,7 @@ export function SvgShapeBase({
       slideColorTransition={slideColorTransition}
       omitShapeText={omitShapeText}
       frostedGlassClipPath={frostedGlassClipPath}
+      preserveShellHalo={preserveShellHalo}
       {...rest}
     >
       <svg
@@ -142,7 +146,7 @@ export function SvgShapeBase({
       >
         {svgPaintTransition ? (
           <style>{`
-            .dw-slide-svg-paint-tx :is(path, circle, rect, polygon, polyline, line, ellipse, text, tspan) {
+            .dw-slide-svg-paint-tx :is(path, circle, rect:not(.dw-grid-chart-cell-fill), polygon, polyline, line, ellipse, text, tspan) {
               transition: ${svgPaintTransition};
             }
           `}</style>

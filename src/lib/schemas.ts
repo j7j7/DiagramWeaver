@@ -294,10 +294,11 @@ const ChartGridCellSchema = z.object({
   filled: z.boolean().optional(),
   color: z.string().optional(),
   fillStyle: z
-    .enum(["none", "solid", "gradient", "hue-step", "theme-hue"])
+    .enum(["none", "solid", "gradient", "hue-step", "theme-hue", "default"])
     .optional(),
   gradientColors: z.tuple([z.string(), z.string()]).optional(),
   text: z.string().optional(),
+  richText: z.array(RichTextRunSchema).optional(),
   labelColor: z.string().optional(),
 });
 
@@ -307,12 +308,25 @@ const NodeChartGridSchema = z.object({
   rows: z.number().int().min(1).max(24),
   cells: z.array(ChartGridCellSchema),
   title: z.string().optional(),
+  richTitle: z.array(RichTextRunSchema).optional(),
   columnTitles: z.array(z.string()).optional(),
+  richColumnTitles: z.array(z.array(RichTextRunSchema).optional()).optional(),
   rowTitles: z.array(z.string()).optional(),
+  richRowTitles: z.array(z.array(RichTextRunSchema).optional()).optional(),
   cellGap: z.number().min(0).max(0.45).optional(),
   showGridLines: z.boolean().optional(),
   gridLineColor: z.string().optional(),
   themeHueStepDeg: z.number().min(1).max(360).optional(),
+  hueStepDirection: z.enum(["row", "column"]).optional(),
+  columnWeights: z.array(z.number().positive()).optional(),
+  rowWeights: z.array(z.number().positive()).optional(),
+  canvasPaintFill: z
+    .enum(["none", "solid", "gradient", "hue-step", "theme-hue", "same", "default"])
+    .optional(),
+  canvasPaintGradientColors: z.tuple([z.string(), z.string()]).optional(),
+  defaultCellFill: z.string().optional(),
+  defaultCellLabelColor: z.string().optional(),
+  paintFromPrevious: z.enum(["same", "hue-step"]).optional(),
   axisColor: z.string().optional(),
   titleColor: z.string().optional(),
 });

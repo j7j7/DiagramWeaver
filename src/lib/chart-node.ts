@@ -2,6 +2,7 @@ import type {
   ChartRingSeriesItem,
   ChartSeriesItem,
   ChartSliceFillStyle,
+  DiagramNodeData,
   NodeChartSpec,
   NodeChartSpecBar,
   NodeChartSpecLine,
@@ -9,8 +10,12 @@ import type {
   NodeChartSpecRing,
   NodeChartSpecGrid,
   ChartGridCell,
+  RichTextRun,
 } from "@/lib/types";
-import { normalizeGridChartCells } from "@/lib/grid-chart-layout";
+import {
+  normalizeGridChartCells,
+  resizeGridTrackWeights,
+} from "@/lib/grid-chart-layout";
 
 export const DEFAULT_PIE_SLICE_COLORS = [
   "#3b82f6",
@@ -316,47 +321,110 @@ export function randomLineChartSpec(): NodeChartSpecLine {
   };
 }
 
-const GRID_CHART_DEFAULT_COLS = 5;
-const GRID_CHART_DEFAULT_ROWS = 5;
+const GRID_CHART_DEFAULT_COLS = 9;
+const GRID_CHART_DEFAULT_ROWS = 3;
+
+const GRID_CHART_DEFAULT_TITLE_RUNS: RichTextRun[] = [
+  {
+    text: "HEADING",
+    lineJustify: "center",
+    lineFontSize: 13.86,
+    lineFontWeight: "600",
+  },
+];
+
+/** Row-major 9×3 starter pattern (ids assigned at runtime). */
+const GRID_CHART_DEFAULT_CELL_TEMPLATES: Omit<ChartGridCell, "id">[] = [
+  { filled: true, labelColor: "#79b337", fillStyle: "theme-hue" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: false, labelColor: "#365314", fillStyle: "none" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: false, fillStyle: "none" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: false, fillStyle: "none" },
+  { filled: false, fillStyle: "none" },
+  { filled: false, fillStyle: "none" },
+  {
+    filled: true,
+    text: "START",
+    richText: [{ text: "START", lineJustify: "center" }],
+    labelColor: "#365314",
+    fillStyle: "theme-hue",
+  },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  {
+    filled: true,
+    labelColor: "#365314",
+    fillStyle: "theme-hue",
+    text: "END",
+    richText: [{ text: "END", lineJustify: "center" }],
+  },
+  { filled: false, labelColor: "#365314", fillStyle: "none" },
+  { filled: false, labelColor: "#365314", fillStyle: "none" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: false, fillStyle: "none", labelColor: "#365314" },
+  { filled: false, fillStyle: "none" },
+  { filled: false, fillStyle: "none" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: true, labelColor: "#365314", fillStyle: "theme-hue" },
+  { filled: false, fillStyle: "none" },
+];
 
 /** Stable sample grid for palette, modals, and fallbacks. */
 export function defaultGridChartSpec(): NodeChartSpecGrid {
   const cols = GRID_CHART_DEFAULT_COLS;
   const rows = GRID_CHART_DEFAULT_ROWS;
-  const cells: ChartGridCell[] = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const filled = (r + c) % 2 === 0;
-      const idx = r * cols + c;
-      cells.push({
-        id: newChartSliceId(),
-        filled,
-        fillStyle:
-          filled && r > 0 && c === 0
-            ? "hue-step"
-            : filled && c === 0
-              ? "theme-hue"
-              : filled
-                ? "solid"
-                : undefined,
-        color: filled
-          ? DEFAULT_PIE_SLICE_COLORS[idx % DEFAULT_PIE_SLICE_COLORS.length]
-          : undefined,
-        text: filled && r === 1 && c === 2 ? "42" : undefined,
-      });
-    }
-  }
+  const cells: ChartGridCell[] = GRID_CHART_DEFAULT_CELL_TEMPLATES.map((template) => ({
+    ...template,
+    id: newChartSliceId(),
+  }));
   return {
     kind: "grid",
     cols,
     rows,
     cells,
-    title: "Grid",
-    columnTitles: ["A", "B", "C", "D", "E"],
-    rowTitles: ["1", "2", "3", "4", "5"],
+    title: "HEADING",
+    richTitle: GRID_CHART_DEFAULT_TITLE_RUNS.map((run) => ({ ...run })),
+    richColumnTitles: Array.from({ length: cols }, () => undefined),
     cellGap: 0.12,
     showGridLines: true,
+    canvasPaintFill: "theme-hue",
+    hueStepDirection: "row",
+    defaultCellLabelColor: "#000000",
+    columnWeights: Array.from({ length: cols }, () => 1),
+    rowWeights: Array.from({ length: rows }, () => 1),
   };
+}
+
+/** Palette drop defaults for `generic.chart.grid` (fixed styling, no random theme). */
+export function defaultPaletteGridChartNodeProps(): Partial<DiagramNodeData> {
+  return {
+    borderStyle: "solid",
+    borderColor: "#0d7b96",
+    borderWidth: 1,
+    backgroundStyle: "none",
+    backgroundColor: "#f7fee7",
+    backgroundColors: ["#f7fee7", "#ecfccb"],
+    lineStyle: "solid",
+    lineColor: "#6b7280",
+    lineWidth: 2,
+    lineOpacity: 1,
+    shadow: true,
+    shadowColor: "#000000",
+    shadowOpacity: 0.1,
+    shadowBlur: 2,
+    textColor: "#365314",
+    textOpacity: 1,
+    gradientAngle: 180,
+    textJustify: "center",
+    cornerRadius: 0.0533137686381657,
+  } as Partial<DiagramNodeData>;
 }
 
 /** Palette / drop default chart payload from node `type`. */
@@ -371,16 +439,61 @@ export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeC
 }
 
 /** Ensure `cells` matches `cols` × `rows` after dimension edits. */
+/** Remove custom column/row track weights so all tracks share space equally. */
+export function resetGridChartTrackSizes(chart: NodeChartSpecGrid): NodeChartSpecGrid {
+  const { columnWeights: _c, rowWeights: _r, ...rest } = chart;
+  return { ...rest, kind: "grid" };
+}
+
+/** Clear fill on every cell; keeps ids, labels, and text. */
+export function resetGridChartCellFills(chart: NodeChartSpecGrid): NodeChartSpecGrid {
+  const cols = chart.cols ?? 4;
+  const rows = chart.rows ?? 4;
+  const cells = normalizeGridChartCells(chart.cells, cols, rows).map((cell) => {
+    const cleared: ChartGridCell = {
+      id: cell.id ?? newChartSliceId(),
+      filled: false,
+      fillStyle: "none",
+    };
+    if (cell.text?.trim()) cleared.text = cell.text.trim();
+    if (cell.richText?.length) cleared.richText = cell.richText;
+    if (cell.labelColor?.trim()) cleared.labelColor = cell.labelColor.trim();
+    return cleared;
+  });
+  return { ...chart, kind: "grid", cells };
+}
+
+/** Clear in-cell text on every cell; keeps fill and label colours. */
+export function resetGridChartCellContent(chart: NodeChartSpecGrid): NodeChartSpecGrid {
+  const cols = chart.cols ?? 4;
+  const rows = chart.rows ?? 4;
+  const cells = normalizeGridChartCells(chart.cells, cols, rows).map((cell) => {
+    const next: ChartGridCell = { ...cell };
+    delete next.text;
+    delete next.richText;
+    return next;
+  });
+  return { ...chart, kind: "grid", cells };
+}
+
 export function resizeGridChartCells(
   chart: NodeChartSpecGrid,
   cols: number,
   rows: number
 ): NodeChartSpecGrid {
+  const oldCols = chart.cols ?? 4;
+  const oldRows = chart.rows ?? 4;
   return {
     ...chart,
     cols,
     rows,
     cells: normalizeGridChartCells(chart.cells, cols, rows),
+    columnWeights: resizeGridTrackWeights(
+      cols,
+      oldCols,
+      chart.columnWeights
+    ),
+    rowWeights: resizeGridTrackWeights(rows, oldRows, chart.rowWeights),
   };
 }
 

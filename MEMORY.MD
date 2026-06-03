@@ -4,6 +4,84 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-03 – Grid chart palette default (fixed lime/teal starter)
+New **Grid chart** drops use a fixed **9×3** starter (HEADING, START/END cells, theme-hue fills) and teal border / lime text styling — **`defaultGridChartSpec()`** + **`defaultPaletteGridChartNodeProps()`** — not a random built-in theme. Default size **500×180** (grid-snapped). Patch bumped.
+
+### 2026-06-03 – Slide background → none fades out
+When `backgroundStyle` goes from solid/gradient/mesh to **`none`**, visual crossfade **fades out** the previous frame (opacity 1→0) instead of fading in a transparent layer over it (which left the old fill visible). Applies to grid chart shell and other SVG shapes. Patch bumped.
+
+### 2026-06-03 – Grid slide lerp: fade none ↔ fill, lerp colour ↔ colour
+Play-mode cell transitions: **empty → filled** or **filled → empty** use **fill opacity** fade; **colour → colour** (solid or gradient) uses RGB **lerp** (`grid-chart-slide-lerp`). Patch bumped.
+
+### 2026-06-03 – Grid play: shell fade then cells (and reverse on exit)
+On appear, the grid **frame** (background, border, mesh, grid lines, axis/title labels) **fades in first** (~140ms), then **cells** stagger in (random order). On disappear, **cells** stagger out, then the **frame** fades out. Slide tail timing includes shell + cells (`gridChartSlideStaggerTailMs`). Patch bumped.
+
+### 2026-06-03 – Grid play: cell fade in/out + smooth colour lerp
+**Appear / disappear**: per-cell opacity stagger (random order) before the chart shell goes; outer chart opacity stays at 1 (`isAppearingChart` / `isDisappearingChart`). **Between slides**: all cells share one eased `chartLerpU` colour blend (no per-cell lerp stagger); prior-slide snapshot includes `backgroundColor` for correct hue-step resolve; grid cell rects skip SVG `slideColorTransition` CSS so RAF lerp does not flicker. Patch bumped.
+
+### 2026-06-03 – Grid theme-hue / hue-step respect Hue step along
+**Theme hue** ranks are per row or column track (`hueStepDirection`), not global across the grid. **Hue step** and **solid** fills update the track base so later cells in the same row (or column) chain correctly; other tracks are unchanged. Patch bumped.
+
+### 2026-06-03 – Grid solid paint: default fill not chart background
+**Solid** canvas paint and **`defaultCellFill`** resolution no longer fall back to the grid node **`backgroundColor`** (picker showed app default blue while paints used frame lime). Fallback is **`DEFAULT_PIE_SLICE_COLORS[0]`** / diagram **`gridCellFill`**. Choosing **Solid** paint persists **`defaultCellFill`** when unset. Patch bumped.
+
+### 2026-06-03 – Grid chart in-cell text vertically centered
+Cell label **`foreignObject`** slots use **`justifyContent: center`** (vertical in column flex) and **`alignItems`** from horizontal alignment; display wrapper no longer **`flex-1`** so text is not pinned to the top. Patch bumped.
+
+### 2026-06-03 – Grid cell paint: apply vs clear (not stale toggle)
+Canvas click: **empty** cell gets current **Paint on canvas** (default/solid/hue-step/etc.); **filled** cell clears fill (`fillStyle: "none"`, strips colour/gradient) and keeps text. Fixes clears that left `fillStyle` so the next click only toggled. **`clearGridCellFillKeepingContent`**. Patch bumped.
+
+### 2026-06-03 – Grid Default paint uses default cell color
+**Default** canvas paint stores **`fillStyle: "default"`** on cells so render uses chart **`defaultCellFill`**. Chart data **Default cell color** and **Paint on canvas** patch the diagram live (no save required). Patch bumped.
+
+### 2026-06-03 – Grid canvas paint Solid uses default cell color
+**Paint on canvas → Solid** fills with **Default cell color** (chart `defaultCellFill` / global `gridCellFill`); **Same** still copies the previous filled cell. Patch bumped.
+
+### 2026-06-03 – Grid chart data: reset cell fill / content
+Chart data (grid): **Reset cell fill** (`resetGridChartCellFills`) clears all cell fills live + in modal rows; **Reset cell content** (`resetGridChartCellContent`) clears text/`richText` only. Beside **Reset cell sizes**. Patch bumped.
+
+### 2026-06-03 – Grid cell paint vs text edit; hue-step track anchors
+With grid selected, cells with text still **single-click** toggle fill (text layer passes clicks through; hit target above labels). **Double-click** opens text edit. **Hue step** resets to shape **theme** colour at the first cell of each row (`hueStepDirection: row`) or column (`column`); further cells in that track step from the previous filled cell in the same row/column. Patch bumped.
+
+### 2026-06-03 – Grid chart hue step row / column direction
+**`hueStepDirection`** on grid chart (`row` | `column`): chains **hue-step** / **theme-hue** left→right per row (default) or top→bottom per column. Chart data **Hue step along** select; resolution in **`gridCellResolveOrder`** / **`buildGridChartLayout`**. Patch bumped.
+
+### 2026-06-03 – Grid chart cell text centered
+In-cell labels always use horizontal **center** alignment (`gridChartCellRunsCentered` on display/save; overrides per-line `lineJustify` from shape styling). Patch bumped.
+
+### 2026-06-03 – Grid chart title horizontal inset
+Chart title rich-text slot uses **`titlePadX`** from **`buildGridChartLayout`** (same as plot edge padding) so the heading is not flush with the body edges. Patch bumped.
+
+### 2026-06-03 – Grid chart cell text color
+Per-cell **Text color** in Chart data (Cells section); chart-level **Default cell text color** for paint/new cells. Resolution: `labelColor` → `defaultCellLabelColor` → node `textColor` → default (`resolveGridCellLabelColor`). Paint inherits color from previous cells or defaults. Patch bumped.
+
+### 2026-06-03 – Grid chart rich text (wrap + formatting toolbar)
+All grid text (chart title, column/row titles, in-cell labels) uses **`TextboxRichEditor`** / **`TextboxRichDisplay`** with wrapping in **`foreignObject`** slots — same inline toolbar as timeline section labels (bold, italic, underline, alignment). Stored as **`richText`** on cells and **`richTitle`** / **`richColumnTitles`** / **`richRowTitles`** on chart spec; plain strings kept in sync. Chart data modal preserves rich runs when plain text unchanged. Column title handlers use layout **`colIndex`** / **`rowIndex`**. Patch bumped.
+
+### 2026-06-03 – Grid structure chrome clearance vs resize handles
+Row/column edit handles moved further outside the body (larger `GRID_CHROME_*` gutters) so they do not overlap node resize rails or corner knobs. Patch bumped.
+
+### 2026-06-03 – Grid chart: fixed size when editing; cell text on double-click
+Structure handles sit **outside** the rounded body (negative/out-of-viewBox SVG coords + `overflow: visible`); viewBox no longer grows when selected so the grid stays full size. **Double-click** any cell opens an inline text field (including empty cells). Patch bumped.
+
+### 2026-06-03 – Grid structure chrome matches app handle style
+Row/column **delete** / **drag** / **add** use **`foreignObject`** + Lucide (**`Trash2`**, **`GripVertical`**, **`Plus`**) with the same Tailwind classes as chart data reorder and card agenda grips (`text-muted-foreground`, `hover:bg-muted`, etc.). Drop highlight uses **`--primary`**. Patch bumped.
+
+### 2026-06-03 – Grid chart row/column structure handles
+With grid **selected**: **×** delete and **#** drag handles sit in gutters **outside** the rounded body; **+** adds row (below) or column (right). Drag a row/column handle to reorder (data + titles + weights move). Layout expands viewBox when handles show (`structureChrome` in **`buildGridChartLayout`**). Ops: **`moveGridChartRow`**, **`moveGridChartColumn`**, **`deleteGridChartRowAt`**, **`insertGridChartRowAt`**, etc. **`GridChartStructureChrome`**. Patch bumped.
+
+### 2026-06-03 – Grid chart data: default color + reset cell sizes
+Chart data: **Paint on canvas** dropdown uses modal **z-index** (all modes visible); **Default cell color** picker saves **`defaultCellFill`** on the chart (overrides global **`gridCellFill`**). **Reset cell sizes** clears **`columnWeights`** / **`rowWeights`** via **`onPatchChart`** (live) and on save. Saving chart data preserves track weights unless reset. Patch bumped.
+
+### 2026-06-03 – Grid chart default fill (global `gridCellFill`)
+**Paint on canvas** includes **Default (global)**: clicks only toggle **filled** (no per-cell color). Filled cells use diagram property **`gridCellFill`** (Properties panel hint). **`canvasPaintFill: 'default'`** on new sample grids. Double-click cell opens inline text edit (single-click debounced so fill does not fire). Patch bumped.
+
+### 2026-06-03 – Grid chart track resize + canvas paint fill modes
+**`columnWeights`** / **`rowWeights`** drive non-uniform column widths and row heights (`buildGridChartLayout`, `normalizeGridTrackWeights`). With the grid **selected**, hover internal **column/row dividers** for resize markers; drag updates weights (`adjustColumnWeightsAtPointer` / `adjustRowWeightsAtPointer`). Chart data **Paint on canvas** supports **solid**, **same**, **gradient** (with stop pickers), **hue-step**, **theme-hue**, **none** via **`canvasPaintFill`** (replaces **`paintFromPrevious`**). Patch bumped.
+
+### 2026-06-03 – Grid chart canvas cell paint
+With the grid chart **selected** (single-select, edit mode), each cell is hover-highlighted; **click** fills an empty cell or **clears** a filled cell. Color comes from the previous filled cell (row-major): **`paintFromPrevious`** `hue-step` (default) or `same` on `chart` + Chart data **Paint on canvas** select. Preview tint on hover; logic in **`nextGridCellAfterPaintClick`** (`grid-chart-layout.ts`). Patch bumped.
+
 ### 2026-06-03 – Grid chart corner radius handle
 **`generic.chart.grid`** shows the standard **`CornerRadiusHandle`** on select (same as rounded rectangle) and **Corner radius** in Visual styling; live preview while dragging via **`localCornerRadius`**. Patch bumped.
 

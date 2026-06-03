@@ -125,7 +125,25 @@ import { RotationHandle } from "./rotation-handle";
 import { UrlHandle } from "./url-handle";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
 import { openExternalUrlInNewTab } from "@/lib/url-utils";
-import { roundChartDataValue } from "@/lib/chart-node";
+import {
+  DEFAULT_PIE_SLICE_COLORS,
+  newChartSliceId,
+  resizeGridChartCells,
+  roundChartDataValue,
+} from "@/lib/chart-node";
+import {
+  nextGridCellAfterPaintClick,
+  resolveGridDefaultCellFill,
+  gridChartHueStepDeg,
+  moveGridChartRow,
+  moveGridChartColumn,
+  deleteGridChartRowAt,
+  deleteGridChartColumnAt,
+  insertGridChartRowAt,
+  insertGridChartColumnAt,
+} from "@/lib/grid-chart-layout";
+import { gridChartCellRunsCentered } from "@/lib/grid-chart-rich-node";
+import { readThemeMenuHueStepDegFromStorage } from "@/lib/theme-menu-hue-step";
 
 /** Timeline card HTML resize rails — matches `ResizeHandles` edge semantics (diagram px). */
 type TimelineCardResizeHandleKind = "top" | "left" | "right" | "bottom" | "bottom-right";
@@ -934,15 +952,18 @@ function DiagramNodeInner({
     }
     const from = { ...node, ...animationStyle.visualColorCrossfade.from } as DiagramNodeData;
     const to = { ...node, ...animationStyle.visualColorCrossfade.to } as DiagramNodeData;
-    const topOpacity = animationStyle.visualColorCrossfadeTopOpacity ?? 0;
+    const fadeOutBackground = animationStyle.visualColorCrossfade.fadeOut === true;
+    const topOpacity = animationStyle.visualColorCrossfadeTopOpacity ?? (fadeOutBackground ? 1 : 0);
     const topTransition = animationStyle.visualColorCrossfadeTopTransition ?? 'none';
     const liftGroupShadow = Boolean((displayNode as any).shadow);
+    const bottomNode = fadeOutBackground ? to : from;
+    const topNode = fadeOutBackground ? from : to;
     return (
       <div
         className="relative w-full h-full min-h-0 isolate"
         style={liftGroupShadow ? { filter: "var(--shape-shadow-drop)" } : undefined}
       >
-        <div className="absolute inset-0">{render(from)}</div>
+        <div className="absolute inset-0">{render(bottomNode)}</div>
         <div
           className="absolute inset-0"
           style={{
@@ -951,7 +972,7 @@ function DiagramNodeInner({
             pointerEvents: topOpacity < 1 ? "none" : "auto",
           }}
         >
-          {render(to)}
+          {render(topNode)}
         </div>
       </div>
     );
@@ -1285,14 +1306,148 @@ function DiagramNodeInner({
         isDraggingCornerRadius && localCornerRadius !== null
           ? { ...visualNode, cornerRadius: localCornerRadius }
           : visualNode;
+      const gridCellPaintInteractive =
+        isSelected && !isReadOnly && !isMultiSelected;
+      const gridTrackResizeInteractive = gridCellPaintInteractive;
+      const gridStructureInteractive = gridCellPaintInteractive;
+      const gridDragSession = !isReadOnly
+        ? (active: boolean) => {
+            chartValueDragInteractionRef.current = active;
+            onChartValueDragSessionChange?.(active);
+          }
+        : undefined;
+      const patchGridChart = (next: import("@/lib/types").NodeChartSpecGrid) => {
+        if (!onUpdate) return;
+        onUpdate({ ...node, chart: next });
+      };
       return (
         <GridChartShape
           {...shapeProps}
           node={gridNode}
+          presentationChartLerpU={animationStyle?.chartLerpU}
+          presentationChartLerpFromJson={animationStyle?.chartLerpFromJson}
+          presentationChartStagger={animationStyle?.chartSlideStagger}
           isReadOnly={isReadOnly}
+          gridCellPaintInteractive={gridCellPaintInteractive}
+          gridTrackResizeInteractive={gridTrackResizeInteractive}
+          gridStructureInteractive={gridStructureInteractive}
+          onGridStructureDragSessionChange={gridDragSession}
+          onGridTrackDragSessionChange={gridDragSession}
+          onDeleteGridRow={
+            onUpdate && gridStructureInteractive
+              ? (rowIndex) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  patchGridChart(deleteGridChartRowAt(c, rowIndex));
+                }
+              : undefined
+          }
+          onDeleteGridColumn={
+            onUpdate && gridStructureInteractive
+              ? (colIndex) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  patchGridChart(deleteGridChartColumnAt(c, colIndex));
+                }
+              : undefined
+          }
+          onMoveGridRow={
+            onUpdate && gridStructureInteractive
+              ? (fromRow, toRow) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  patchGridChart(moveGridChartRow(c, fromRow, toRow));
+                }
+              : undefined
+          }
+          onMoveGridColumn={
+            onUpdate && gridStructureInteractive
+              ? (fromCol, toCol) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  patchGridChart(moveGridChartColumn(c, fromCol, toCol));
+                }
+              : undefined
+          }
+          onInsertGridRow={
+            onUpdate && gridStructureInteractive
+              ? (atRow) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  patchGridChart(insertGridChartRowAt(c, atRow));
+                }
+              : undefined
+          }
+          onInsertGridColumn={
+            onUpdate && gridStructureInteractive
+              ? (atCol) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  patchGridChart(insertGridChartColumnAt(c, atCol));
+                }
+              : undefined
+          }
+          onColumnWeightsChange={
+            onUpdate && gridTrackResizeInteractive
+              ? (columnWeights) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  onUpdate({ ...node, chart: { ...c, columnWeights } });
+                }
+              : undefined
+          }
+          onRowWeightsChange={
+            onUpdate && gridTrackResizeInteractive
+              ? (rowWeights) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  onUpdate({ ...node, chart: { ...c, rowWeights } });
+                }
+              : undefined
+          }
+          onGridCellPaint={
+            onUpdate && gridCellPaintInteractive
+              ? (cellIndex) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  const colCount = Math.max(1, c.cols ?? 4);
+                  const rowCount = Math.max(1, c.rows ?? 4);
+                  const sized = resizeGridChartCells(c, colCount, rowCount);
+                  const cells = [...sized.cells];
+                  if (cellIndex < 0 || cellIndex >= cells.length) return;
+                  const themeBase =
+                    ((node as DiagramNodeData).backgroundColor ?? "").trim() ||
+                    DEFAULT_PIE_SLICE_COLORS[0];
+                  const hueStep = gridChartHueStepDeg(
+                    c,
+                    readThemeMenuHueStepDegFromStorage()
+                  );
+                  const nodeTextColor = ((node as DiagramNodeData).textColor ?? "").trim();
+                  const resolvedDefaultCellFill = resolveGridDefaultCellFill(
+                    globalProperties,
+                    DEFAULT_PIE_SLICE_COLORS[0],
+                    c.defaultCellFill
+                  );
+                  cells[cellIndex] = nextGridCellAfterPaintClick(
+                    cells[cellIndex],
+                    cellIndex,
+                    cells,
+                    c,
+                    themeBase,
+                    hueStep,
+                    nodeTextColor || undefined,
+                    resolvedDefaultCellFill
+                  );
+                  if (!cells[cellIndex].id) {
+                    cells[cellIndex] = { ...cells[cellIndex], id: newChartSliceId() };
+                  }
+                  onUpdate({ ...node, chart: { ...c, cells } });
+                }
+              : undefined
+          }
           onGridCellTextChange={
             onUpdate && !isReadOnly
-              ? (cellIndex, text) => {
+              ? (cellIndex, plainText, runs) => {
                   const c = node.chart;
                   if (c?.kind !== "grid") return;
                   const rows = Math.max(1, c.rows ?? 4);
@@ -1301,48 +1456,76 @@ function DiagramNodeInner({
                   const cells = [...(c.cells ?? [])];
                   while (cells.length < n) cells.push({ filled: false });
                   if (cellIndex < 0 || cellIndex >= n) return;
-                  cells[cellIndex] = { ...cells[cellIndex], text: text || undefined };
+                  const norm = gridChartCellRunsCentered(normalizeRuns(runs));
+                  const trimmed = plainText.trim();
+                  cells[cellIndex] = {
+                    ...cells[cellIndex],
+                    text: trimmed || undefined,
+                    richText: norm.length > 0 ? norm : undefined,
+                  };
                   onUpdate({ ...node, chart: { ...c, cells } });
                 }
               : undefined
           }
           onGridTitleChange={
             onUpdate && !isReadOnly
-              ? (title) => {
+              ? (plainText, runs) => {
                   const c = node.chart;
                   if (c?.kind !== "grid") return;
+                  const norm = normalizeRuns(runs);
+                  const trimmed = plainText.trim();
                   onUpdate({
                     ...node,
-                    chart: { ...c, title: title || undefined },
+                    chart: {
+                      ...c,
+                      title: trimmed || undefined,
+                      richTitle: norm.length > 0 ? norm : undefined,
+                    },
                   });
                 }
               : undefined
           }
           onGridColumnTitleChange={
             onUpdate && !isReadOnly
-              ? (colIndex, title) => {
+              ? (colIndex, plainText, runs) => {
                   const c = node.chart;
                   if (c?.kind !== "grid") return;
                   const colCount = Math.max(1, c.cols ?? 4);
                   const next = [...(c.columnTitles ?? [])];
+                  const richNext = [...(c.richColumnTitles ?? [])];
                   while (next.length < colCount) next.push("");
+                  while (richNext.length < colCount) richNext.push(undefined);
                   if (colIndex < 0 || colIndex >= colCount) return;
-                  next[colIndex] = title;
-                  onUpdate({ ...node, chart: { ...c, columnTitles: next } });
+                  const norm = normalizeRuns(runs);
+                  const trimmed = plainText.trim();
+                  next[colIndex] = trimmed;
+                  richNext[colIndex] = norm.length > 0 ? norm : undefined;
+                  onUpdate({
+                    ...node,
+                    chart: { ...c, columnTitles: next, richColumnTitles: richNext },
+                  });
                 }
               : undefined
           }
           onGridRowTitleChange={
             onUpdate && !isReadOnly
-              ? (rowIndex, title) => {
+              ? (rowIndex, plainText, runs) => {
                   const c = node.chart;
                   if (c?.kind !== "grid") return;
                   const rowCount = Math.max(1, c.rows ?? 4);
                   const next = [...(c.rowTitles ?? [])];
+                  const richNext = [...(c.richRowTitles ?? [])];
                   while (next.length < rowCount) next.push("");
+                  while (richNext.length < rowCount) richNext.push(undefined);
                   if (rowIndex < 0 || rowIndex >= rowCount) return;
-                  next[rowIndex] = title;
-                  onUpdate({ ...node, chart: { ...c, rowTitles: next } });
+                  const norm = normalizeRuns(runs);
+                  const trimmed = plainText.trim();
+                  next[rowIndex] = trimmed;
+                  richNext[rowIndex] = norm.length > 0 ? norm : undefined;
+                  onUpdate({
+                    ...node,
+                    chart: { ...c, rowTitles: next, richRowTitles: richNext },
+                  });
                 }
               : undefined
           }
@@ -3517,7 +3700,7 @@ function DiagramNodeInner({
     if (
       rawTarget instanceof Element &&
       rawTarget.closest(
-        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-bar-width-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-line-vertex-handle], [data-dw-card-action], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
+        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-bar-width-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-line-vertex-handle], [data-dw-card-action], [data-dw-grid-structure-action], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
       )
     ) {
       return;
@@ -3635,7 +3818,10 @@ function DiagramNodeInner({
       }}
       className={cn(
         "absolute group duration-200 ease-in-out",
-        spineLikeNode || (isIconNode && Boolean((node as DiagramNodeData).iconBevel)) || isCardNode
+        spineLikeNode ||
+          isGridChartNode ||
+          (isIconNode && Boolean((node as DiagramNodeData).iconBevel)) ||
+          isCardNode
           ? "overflow-visible"
           : "rounded-lg",
         // Highlight pulse animates box-shadow; transitioning `filter` here can fight keyframes on some browsers (e.g. Chrome/Win).
@@ -3759,7 +3945,7 @@ function DiagramNodeInner({
         if (
           rawTarget instanceof Element &&
           rawTarget.closest(
-            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-bar-width-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-card-action]"
+            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-bar-width-handle], [data-dw-pie-slice-value-handle], [data-dw-ring-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-card-action], [data-dw-grid-structure-action]"
           )
         ) {
           e.preventDefault();

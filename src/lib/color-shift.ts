@@ -234,6 +234,28 @@ export function multiplyLightnessOfColor(input: string, factor: number): string 
   return toHex6(nr, ng, nb);
 }
 
+/** Linear RGB blend between two CSS colors (`t` = 0 → `from`, 1 → `to`). */
+export function lerpColors(from: string, to: string, t: number): string {
+  const u = Math.max(0, Math.min(1, t));
+  if (u <= 0) return from;
+  if (u >= 1) return to;
+  const a = parseColorToRgbChannels(from.trim());
+  const b = parseColorToRgbChannels(to.trim());
+  if (!a && !b) return to;
+  if (!a) return to;
+  if (!b) return from;
+  const r = a.r + (b.r - a.r) * u;
+  const g = a.g + (b.g - a.g) * u;
+  const bl = a.b + (b.b - a.b) * u;
+  const alphaA = a.a ?? 1;
+  const alphaB = b.a ?? 1;
+  const alpha = alphaA + (alphaB - alphaA) * u;
+  if (alpha < 1 - 1e-6) {
+    return toHex8(r, g, bl, alpha);
+  }
+  return toHex6(r, g, bl);
+}
+
 /** Returns `rgba(r,g,b,a)` with the given alpha (0–1), replacing any source alpha. */
 export function colorToRgba(input: string, alpha: number): string {
   if (!Number.isFinite(alpha)) return input;

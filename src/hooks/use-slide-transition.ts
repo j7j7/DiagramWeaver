@@ -1,6 +1,11 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { DiagramData, DiagramNodeData, DiagramConnectionData, DiagramZoneData } from '@/lib/types';
-import { extractVisualColorFields, visualColorNeedsCrossfade, visualColorSignature } from '@/lib/slide-visual-color';
+import {
+  extractVisualColorFields,
+  visualColorCrossfadeFadeOutBackground,
+  visualColorNeedsCrossfade,
+  visualColorSignature,
+} from '@/lib/slide-visual-color';
 import { buildStaggerDelaysForSlideTransition } from '@/lib/slide-transition-order';
 import { easeSlideTransitionInOut } from '@/lib/ease-slide-cubic-bezier';
 import { isChartNodeType } from '@/lib/chart-node';
@@ -8,9 +13,12 @@ import {
   CHART_SLIDE_SEGMENT_STAGGER_MS,
   chartPresentationSignature,
   chartSegmentCountForStagger,
+  gridChartSlideStaggerTailMs,
   type ChartSlideStagger,
 } from '@/lib/chart-presentation-stagger';
 import { chartSlideLerpCompatible } from '@/lib/chart-slide-lerp';
+import { isGridChartNodeType } from '@/lib/chart-node';
+import { gridChartLerpSnapshotFromNode } from '@/lib/grid-chart-slide-lerp';
 import {
   isTimelineNodeType,
   timelinePresentationSignature,
@@ -47,8 +55,13 @@ export interface SlideTransitionStyle {
   slideFadeOut?: boolean;
   visualColorMerge?: Record<string, unknown>;
   visualColorMergeTransition?: string;
-  /** Stack "from" and "to" visual fields and animate top layer opacity (gradients). */
-  visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown> };
+  /** Stack "from" and "to" visual fields and animate top layer opacity (gradients / background none). */
+  visualColorCrossfade?: {
+    from: Record<string, unknown>;
+    to: Record<string, unknown>;
+    /** When true, top layer is the previous slide and opacity goes 1 → 0. */
+    fadeOut?: boolean;
+  };
   visualColorCrossfadeTopOpacity?: number;
   visualColorCrossfadeTopTransition?: string;
   /** Pie/bar/line: stagger segment pop during slide change (outer node scale suppressed). */
@@ -456,7 +469,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       );
       const chartLerpFromJson =
         chartLerpEligible && prevNode?.chart
-          ? JSON.stringify(prevNode.chart)
+          ? isGridChartNodeType(prevNode.type) && prevNode.chart?.kind === "grid"
+            ? gridChartLerpSnapshotFromNode(prevNode)
+            : JSON.stringify(prevNode.chart)
           : undefined;
 
       const prevTlSig = prevNode ? timelinePresentationSignature(prevNode) : null;
@@ -792,10 +807,27 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         (st.chartPresentationChanged && !st.chartLerpEligible);
       if (!useStaggerTail) continue;
       const base = nodeDelayMs.get(nodeId) ?? 0;
-      chartTailMs = Math.max(
-        chartTailMs,
-        base + (nSeg - 1) * CHART_SLIDE_SEGMENT_STAGGER_MS + TRANSITION_DURATION_MS
-      );
+      const chartKind = (chartNode as { chart?: { kind?: string } }).chart?.kind;
+      if (
+        chartKind === "grid" &&
+        (st.isAppearingChart || st.isDisappearingChart)
+      ) {
+        chartTailMs = Math.max(
+          chartTailMs,
+          gridChartSlideStaggerTailMs(
+            base,
+            nSeg,
+            CHART_SLIDE_SEGMENT_STAGGER_MS,
+            TRANSITION_DURATION_MS,
+            !!st.isDisappearingChart
+          )
+        );
+      } else {
+        chartTailMs = Math.max(
+          chartTailMs,
+          base + (nSeg - 1) * CHART_SLIDE_SEGMENT_STAGGER_MS + TRANSITION_DURATION_MS
+        );
+      }
     }
 
     for (const [nodeId, st] of nodeIdStyles) {
@@ -1045,6 +1077,10 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           : {};
 
         if (style.hasVisualColorChange && style.useVisualColorCrossfade) {
+          const crossfadeFadeOut = visualColorCrossfadeFadeOutBackground(
+            style.visualColorMergeStart,
+            style.visualColorMergeEnd
+          );
           next.set(nodeId, {
             opacity: style.opacityStart,
             transition: 'none',
@@ -1053,8 +1089,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             visualColorCrossfade: {
               from: style.visualColorMergeStart,
               to: style.visualColorMergeEnd,
+              fadeOut: crossfadeFadeOut,
             },
-            visualColorCrossfadeTopOpacity: 0,
+            visualColorCrossfadeTopOpacity: crossfadeFadeOut ? 1 : 0,
             visualColorCrossfadeTopTransition: 'none',
             ...(chartSlideStagger ? { chartSlideStagger } : {}),
             ...(sectionSlideStagger ? { sectionSlideStagger } : {}),
@@ -1244,6 +1281,10 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               : {};
 
             if (style.hasVisualColorChange && style.useVisualColorCrossfade) {
+              const crossfadeFadeOut = visualColorCrossfadeFadeOutBackground(
+                style.visualColorMergeStart,
+                style.visualColorMergeEnd
+              );
               next.set(nodeId, {
                 opacity: style.opacityEnd,
                 transition,
@@ -1253,8 +1294,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 visualColorCrossfade: {
                   from: style.visualColorMergeStart,
                   to: style.visualColorMergeEnd,
+                  fadeOut: crossfadeFadeOut,
                 },
-                visualColorCrossfadeTopOpacity: 0,
+                visualColorCrossfadeTopOpacity: crossfadeFadeOut ? 0 : 1,
                 visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs, motionDurationMs),
                 ...(chartSlideStagger ? { chartSlideStagger } : {}),
                 ...(sectionSlideStagger ? { sectionSlideStagger } : {}),
@@ -1366,13 +1408,18 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               if (!existing) continue;
               const dMs = nodeDelayFor(nodeId);
               if (style.useVisualColorCrossfade) {
+                const crossfadeFadeOut = visualColorCrossfadeFadeOutBackground(
+                  style.visualColorMergeStart,
+                  style.visualColorMergeEnd
+                );
                 next.set(nodeId, {
                   ...existing,
                   visualColorCrossfade: {
                     from: style.visualColorMergeStart,
                     to: style.visualColorMergeEnd,
+                    fadeOut: crossfadeFadeOut,
                   },
-                  visualColorCrossfadeTopOpacity: 1,
+                  visualColorCrossfadeTopOpacity: crossfadeFadeOut ? 0 : 1,
                   visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs, motionDurationMs),
                 });
               } else {

@@ -247,10 +247,12 @@ export interface ChartGridCell {
   /** When false or omitted with no fill style, the cell is empty. */
   filled?: boolean;
   color?: string;
-  fillStyle?: ChartSliceFillStyle | "hue-step" | "theme-hue";
+  fillStyle?: ChartSliceFillStyle | "hue-step" | "theme-hue" | "default";
   gradientColors?: [string, string];
   /** In-cell label (not the row/column axis titles). */
   text?: string;
+  /** Rich in-cell label; plain `text` is kept in sync on canvas edit. */
+  richText?: RichTextRun[];
   labelColor?: string;
 }
 
@@ -262,8 +264,12 @@ export interface NodeChartSpecGrid {
   cells: ChartGridCell[];
   /** Shown above the matrix when non-empty. */
   title?: string;
+  richTitle?: RichTextRun[];
   columnTitles?: string[];
+  /** Parallel to `columnTitles` (same length as `cols` when saved from editor). */
+  richColumnTitles?: (RichTextRun[] | undefined)[];
   rowTitles?: string[];
+  richRowTitles?: (RichTextRun[] | undefined)[];
   /** Gap between cells as a fraction of cell slot size (0 = flush). */
   cellGap?: number;
   /** Draw lines between cell slots (independent of node border). */
@@ -271,6 +277,30 @@ export interface NodeChartSpecGrid {
   gridLineColor?: string;
   /** Hue step (°) for `hue-step` and `theme-hue` cells; falls back to Themes menu step. */
   themeHueStepDeg?: number;
+  /**
+   * Order for chaining `hue-step` / `theme-hue` fills: `row` = left→right per row (default);
+   * `column` = top→bottom per column.
+   */
+  hueStepDirection?: "row" | "column";
+  /** Relative column widths (positive; normalized at render). Length should match `cols`. */
+  columnWeights?: number[];
+  /** Relative row heights (positive; normalized at render). Length should match `rows`. */
+  rowWeights?: number[];
+  /**
+   * Fill applied when clicking empty cells on the canvas (grid selected).
+   * `same` copies the previous filled cell's color as solid; `hue-step` / `theme-hue` as elsewhere.
+   */
+  canvasPaintFill?: ChartSliceFillStyle | "hue-step" | "theme-hue" | "same" | "default";
+  /** Gradient stops for canvas paint when {@link canvasPaintFill} is `gradient`. */
+  canvasPaintGradientColors?: [string, string];
+  /** Default filled-cell color for this grid (overrides diagram `gridCellFill` global). */
+  defaultCellFill?: string;
+  /** Default in-cell label color when a cell omits `labelColor`. */
+  defaultCellLabelColor?: string;
+  /**
+   * @deprecated Use {@link canvasPaintFill}. `same` → solid from previous; `hue-step` → hue-step.
+   */
+  paintFromPrevious?: "same" | "hue-step";
   axisColor?: string;
   titleColor?: string;
 }

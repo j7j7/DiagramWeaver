@@ -918,6 +918,14 @@ export function DiagramEditorInner({
               }));
               setChartDataEditorModal({ visible: false, x: 0, y: 0, itemId: '' });
             }}
+            onPatchChart={(nodeId, chart) => {
+              setDiagramData((prev: DiagramData) => ({
+                ...prev,
+                nodes: prev.nodes?.map((n: DiagramNodeData) =>
+                  n.id === nodeId ? { ...n, chart } : n
+                ) ?? [],
+              }));
+            }}
             isReadOnly={isReadOnly}
             globalProperties={currentDiagramData.globalProperties}
             globalVariableContext={globalVariableContext}

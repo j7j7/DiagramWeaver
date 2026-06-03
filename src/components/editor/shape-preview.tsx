@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { polygonToRoundedPath, boundingBoxFromSvgPolygonPointsString } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss, getTextOutlineShadowCss } from '@/lib/text-styling';
 import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
-import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultLineChartSpec, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
+import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultLineChartSpec, defaultPaletteGridChartNodeProps, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
 import { buildGridChartLayout } from '@/lib/grid-chart-layout';
 import {
   barChartWantsRoundedColumnEnds,
@@ -1052,12 +1052,7 @@ export function ShapePreview({
         type: "generic.chart.grid",
         width: displayWidth,
         height: displayHeight,
-        backgroundColor: effectiveBackgroundColor,
-        backgroundStyle,
-        borderStyle,
-        borderColor: effectiveBorderColor,
-        borderWidth: strokeWidth,
-        cornerRadius: 0.2,
+        ...defaultPaletteGridChartNodeProps(),
       } as import("@/lib/types").DiagramNodeData;
       const layout = buildGridChartLayout(previewNode, spec);
       const { body } = layout;
@@ -1122,10 +1117,10 @@ export function ShapePreview({
                 key={`sp-gc-${i}`}
                 x={cell.x}
                 y={cell.y}
-                width={cell.size}
-                height={cell.size}
+                width={cell.w}
+                height={cell.h}
                 fill={fill}
-                rx={Math.min(cell.size * 0.12, 3)}
+                rx={Math.min(Math.min(cell.w, cell.h) * 0.12, 3)}
               />
             );
           })}

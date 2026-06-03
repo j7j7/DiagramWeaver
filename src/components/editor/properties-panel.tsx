@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeExternalUrl, openExternalUrlInNewTab } from "@/lib/url-utils";
 import { BUILTIN_GLOBAL_VARIABLE_NAMES } from "@/lib/builtin-global-variables";
+import { GRID_CELL_FILL_GLOBAL_PROPERTY } from "@/lib/global-properties";
 import { normalizeGlobalPropertyKey, collectUsedGlobalVariableNames } from "@/lib/global-properties";
 import { CustomIconPreviewEditor } from "@/components/editor/custom-icon-preview-editor";
 import { DEFAULT_CUSTOM_IMAGE_OPTIONS, normalizeCustomImageOptions, normalizeHttpImageUrl, validateCustomImageUrl } from "@/lib/custom-icon-utils";
@@ -34,6 +35,14 @@ const BUILTIN_EXPRESSION_HINTS: ReadonlyArray<string> = [
   "Math needs parentheses: (%dd% - 1), (%slide% + 1), (%dd%/2) — / divides only inside (...).",
   "Date-style join uses slashes between variables: %dd%/%mm%/%yyyy% → 04/06/2026 (not division).",
   "Without parentheses, operators stay literal after substitution: %dd% - 1 → 04 - 1.",
+];
+
+const DIAGRAM_GLOBAL_PROPERTY_HINTS: ReadonlyArray<{ name: string; description: string }> = [
+  {
+    name: GRID_CELL_FILL_GLOBAL_PROPERTY,
+    description:
+      "Grid chart filled-cell background (CSS color, e.g. #22c55e). Not a %variable%; used when Paint on canvas is Default.",
+  },
 ];
 
 interface PropertiesPanelProps {
@@ -490,6 +499,24 @@ export function PropertiesPanel({
                       </li>
                     ))}
                   </ul>
+                  {DIAGRAM_GLOBAL_PROPERTY_HINTS.length > 0 ? (
+                    <div className="border-t border-border/70 px-2 py-2">
+                      <p className="mb-1 text-[10px] font-medium text-muted-foreground">
+                        Grid chart properties
+                      </p>
+                      <ul className="space-y-0">
+                        {DIAGRAM_GLOBAL_PROPERTY_HINTS.map(({ name, description }) => (
+                          <li
+                            key={name}
+                            className="rounded-sm px-2 py-1.5 text-[11px] hover:bg-muted/60"
+                          >
+                            <div className="font-mono text-xs text-foreground">{name}</div>
+                            <div className="text-muted-foreground">{description}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </CollapsibleContent>
               </Collapsible>
 

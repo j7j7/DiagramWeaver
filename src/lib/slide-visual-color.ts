@@ -105,13 +105,30 @@ function hasGradientPaint(f: Record<string, unknown>): boolean {
   );
 }
 
+/** Chart/frame background is fully transparent (`backgroundStyle: 'none'`). */
+export function isSlideBackgroundEmpty(fields: Record<string, unknown>): boolean {
+  return fields.backgroundStyle === 'none';
+}
+
 /**
  * When either slide uses a gradient fill or border, blend slides by crossfading two full renders
  * (opacity on the "to" layer). Solid-only changes keep using per-property CSS transitions.
+ * Background → `none` also crossfades so the previous fill can fade out (not snap off).
  */
 export function visualColorNeedsCrossfade(
   prevFields: Record<string, unknown>,
   nextFields: Record<string, unknown>
 ): boolean {
-  return hasGradientPaint(prevFields) || hasGradientPaint(nextFields);
+  if (hasGradientPaint(prevFields) || hasGradientPaint(nextFields)) return true;
+  if (!isSlideBackgroundEmpty(prevFields) && isSlideBackgroundEmpty(nextFields)) return true;
+  if (isSlideBackgroundEmpty(prevFields) && !isSlideBackgroundEmpty(nextFields)) return true;
+  return false;
+}
+
+/** Crossfade should fade out the previous background (not fade in a transparent top layer). */
+export function visualColorCrossfadeFadeOutBackground(
+  fromFields: Record<string, unknown>,
+  toFields: Record<string, unknown>
+): boolean {
+  return !isSlideBackgroundEmpty(fromFields) && isSlideBackgroundEmpty(toFields);
 }

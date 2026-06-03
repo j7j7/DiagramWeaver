@@ -56,7 +56,10 @@ import {
   syncMindmapChildPolarAfterMove,
 } from "@/lib/mindmap-layout";
 import { getConnectorLikeSpinePlacementAnchor } from "@/lib/line-curve-path";
-import { defaultChartSpecForNodeType } from "@/lib/chart-node";
+import {
+  defaultChartSpecForNodeType,
+  defaultPaletteGridChartNodeProps,
+} from "@/lib/chart-node";
 // Zones removed - no zone layout
 
 interface UseCanvasOperationsOptions {
@@ -194,7 +197,11 @@ export function useCanvasOperations({
       if (!existingNode) {
         const borderTemplateId = getBorderTemplateIdFromNodeType(itemType);
         const shouldApplyShapeTheme =
-          isShapeResource && itemType !== "generic.object.point" && !isFromScratchPad && !borderTemplateId;
+          isShapeResource &&
+          itemType !== "generic.object.point" &&
+          itemType !== "generic.chart.grid" &&
+          !isFromScratchPad &&
+          !borderTemplateId;
         const randomBuiltInTheme = shouldApplyShapeTheme ? pickRandomBuiltInTheme() : null;
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
@@ -243,7 +250,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.line' ? 470 :
              itemType === 'generic.chart.bar' ? 380 :
              itemType === 'generic.chart.ring' ? 410 :
-             itemType === 'generic.chart.grid' ? 400 :
+             itemType === 'generic.chart.grid' ? snapDimensionToGrid(500, 40) :
              borderTemplate ? borderTemplate.defaultWidth :
              cardTemplate ? cardTemplate.defaultWidth :
              60
@@ -265,7 +272,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.line' ? 320 :
              itemType === 'generic.chart.bar' ? 280 :
              itemType === 'generic.chart.ring' ? 320 :
-             itemType === 'generic.chart.grid' ? 280 :
+             itemType === 'generic.chart.grid' ? snapDimensionToGrid(180, 40) :
              borderTemplate ? borderTemplate.defaultHeight :
              cardTemplate ? cardTemplate.defaultHeight :
              60
@@ -371,8 +378,8 @@ export function useCanvasOperations({
             !isFromScratchPad && {
             chart: defaultChartSpecForNodeType(itemType),
           }),
-          ...(itemType === 'generic.chart.grid' && !isFromScratchPad && {
-            cornerRadius: 0.2,
+          ...(itemType === "generic.chart.grid" && !isFromScratchPad && {
+            ...defaultPaletteGridChartNodeProps(),
           }),
           ...(borderTemplateId && !isFromScratchPad && {
             ...defaultBorderPaletteNodeProps(borderTemplateId),
@@ -418,8 +425,7 @@ export function useCanvasOperations({
           randomBuiltInTheme &&
           (itemType === "generic.chart.pie" ||
             itemType === "generic.chart.bar" ||
-            itemType === "generic.chart.ring" ||
-            itemType === "generic.chart.grid")
+            itemType === "generic.chart.ring")
         ) {
           newNode = themeManager.applyThemeToItem(newNode, randomBuiltInTheme) as DiagramNodeData;
         }
