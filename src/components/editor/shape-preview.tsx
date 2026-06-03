@@ -4,8 +4,9 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath, boundingBoxFromSvgPolygonPointsString } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss, getTextOutlineShadowCss } from '@/lib/text-styling';
-import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
-import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultLineChartSpec, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
+import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
+import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultLineChartSpec, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
+import { buildGridChartLayout } from '@/lib/grid-chart-layout';
 import {
   barChartWantsRoundedColumnEnds,
   barColumnAutoRoundRadius,
@@ -1039,6 +1040,108 @@ export function ShapePreview({
                 );
               })
             : null}
+        </svg>
+      );
+    }
+
+    if (type === 'generic.chart.grid' || chart?.kind === 'grid') {
+      const spec: NodeChartSpecGrid =
+        chart?.kind === 'grid' ? chart : defaultGridChartSpec();
+      const previewNode = {
+        id: "preview-grid",
+        type: "generic.chart.grid",
+        width: displayWidth,
+        height: displayHeight,
+        backgroundColor: effectiveBackgroundColor,
+        backgroundStyle,
+        borderStyle,
+        borderColor: effectiveBorderColor,
+        borderWidth: strokeWidth,
+        cornerRadius: 0.2,
+      } as import("@/lib/types").DiagramNodeData;
+      const layout = buildGridChartLayout(previewNode, spec);
+      const { body } = layout;
+      const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      const gridGradBase = `sp-grid-${gradientId.replace(/:/g, '')}`;
+      const gridGradCoords = getGradientCoordinates(gradientAngle);
+      return (
+        <svg {...commonSvgProps} viewBox={`0 0 ${layout.vbW} ${layout.vbH}`} preserveAspectRatio="xMidYMid meet">
+          <defs>
+            {layout.cells.map((cell, i) =>
+              cell.fillMode === 'gradient' ? (
+                <linearGradient
+                  key={`sp-grid-lg-${i}`}
+                  id={`${gridGradBase}-${i}`}
+                  x1={gridGradCoords.x1}
+                  y1={gridGradCoords.y1}
+                  x2={gridGradCoords.x2}
+                  y2={gridGradCoords.y2}
+                  gradientUnits="objectBoundingBox"
+                >
+                  <stop offset="0%" stopColor={cell.gradientColor1} />
+                  <stop offset="100%" stopColor={cell.gradientColor2} />
+                </linearGradient>
+              ) : null
+            )}
+          </defs>
+          <rect
+            x={body.x}
+            y={body.y}
+            width={body.w}
+            height={body.h}
+            rx={body.rx}
+            ry={body.ry}
+            fill={effectiveBackgroundColor}
+            stroke={effectiveBorderColor}
+            strokeWidth={sw}
+            vectorEffect="non-scaling-stroke"
+          />
+          <g pointerEvents="none">
+            {layout.gridLines.map((ln, i) => (
+              <line
+                key={`sp-gl-${i}`}
+                x1={ln.x1}
+                y1={ln.y1}
+                x2={ln.x2}
+                y2={ln.y2}
+                stroke={layout.gridLineColor}
+                strokeWidth={0.5}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </g>
+          {layout.cells.map((cell, i) => {
+            const fill =
+              cell.fillMode === 'none'
+                ? 'transparent'
+                : cell.fillMode === 'gradient'
+                  ? `url(#${gridGradBase}-${i})`
+                  : cell.solidFill;
+            return (
+              <rect
+                key={`sp-gc-${i}`}
+                x={cell.x}
+                y={cell.y}
+                width={cell.size}
+                height={cell.size}
+                fill={fill}
+                rx={Math.min(cell.size * 0.12, 3)}
+              />
+            );
+          })}
+          {layout.title ? (
+            <text
+              x={layout.title.x}
+              y={layout.title.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={layout.titleColor}
+              fontSize={layout.title.fontSize}
+              fontWeight={600}
+            >
+              {layout.title.text}
+            </text>
+          ) : null}
         </svg>
       );
     }

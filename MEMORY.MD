@@ -4,6 +4,15 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-03 – Grid chart corner radius handle
+**`generic.chart.grid`** shows the standard **`CornerRadiusHandle`** on select (same as rounded rectangle) and **Corner radius** in Visual styling; live preview while dragging via **`localCornerRadius`**. Patch bumped.
+
+### 2026-06-03 – Grid chart (`generic.chart.grid`)
+New **Grid chart** in Generic → Object: **`chart.kind: 'grid'`** with **`cols`**, **`rows`**, **`cells`** (filled, solid/gradient/**hue-step**/**theme-hue**, optional text), optional **title**, **columnTitles**, **rowTitles**, **cellGap**, **showGridLines**. Renders in **`GridChartShape`** with rounded-rectangle container (node Visual styling: background, border, corner radius, mesh). **Chart data** modal grid branch; palette **`grid-chart.svg`** + **`ChartPaletteGridGlyph`**. Default drop **400×280**, **`cornerRadius: 0.2`**, **`defaultGridChartSpec()`** (5×5 checker sample). Layout in **`grid-chart-layout.ts`**. Patch bumped.
+
+### 2026-06-03 – Built-in globals: parentheses for math, slash for dates
+Text math requires parentheses — `(%dd% - 1)`, `(%dd%/2)`; ungrouped `%dd% - 1` substitutes only (`04 - 1`). `%dd%/%mm%/%yyyy%` joins with `/` (not division). **`dd`** / **`mm`** builtins zero-padded. Properties built-in list documents rules. Patch bumped.
+
 ### 2026-06-03 – Properties: built-in variables collapsible list
 Built-in **`%var%`** placeholders in the global **Properties** panel are shown in a **collapsed-by-default** collapsible list with short descriptions (not always visible). Patch bumped.
 

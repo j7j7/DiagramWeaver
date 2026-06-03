@@ -450,7 +450,9 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
               ? 'generic.chart.line'
               : slug === 'ring-chart'
                 ? 'generic.chart.ring'
-                : null;
+                : slug === 'grid-chart'
+                  ? 'generic.chart.grid'
+                  : null;
       const type = chartType ?? `generic.object.${slug}`;
       return (
         <span className="text-muted-foreground inline-flex items-center justify-center">

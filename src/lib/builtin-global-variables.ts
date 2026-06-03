@@ -72,9 +72,13 @@ const MONTH_NAMES = [
   "December",
 ] as const;
 
-/** `%var%` followed by `+ - * /` and numeric or `%var%` operands. */
-const TEXT_EXPRESSION_PATTERN =
-  /%([a-zA-Z_][a-zA-Z0-9_]*)%((?:\s*[+\-*/]\s*(?:-?\d+(?:\.\d+)?|%[a-zA-Z_][a-zA-Z0-9_]*%))+)/g;
+/** Parenthesized math, e.g. `(%dd% - 1)` or `(%dd%/2)` — `/` is division only inside `(...)`. */
+const PAREN_MATH_EXPRESSION_PATTERN =
+  /\(([^()]*(?:%[a-zA-Z_][a-zA-Z0-9_]*%)[^()]*)\)/g;
+
+/** Slash-separated variables, e.g. `%dd%/%mm%/%yyyy%` — joins values (not division). */
+const DATE_SLASH_CHAIN_PATTERN =
+  /%[a-zA-Z_][a-zA-Z0-9_]*%(?:\s*\/\s*%[a-zA-Z_][a-zA-Z0-9_]*%)+/g;
 
 function resolveNow(context: GlobalVariableContext): Date {
   return context.now ?? new Date();
@@ -103,8 +107,8 @@ export function getBuiltinGlobalProperties(
   return {
     day: WEEKDAY_NAMES[now.getDay()],
     shortday: SHORT_WEEKDAY_NAMES[now.getDay()],
-    dd: String(now.getDate()),
-    mm: String(now.getMonth() + 1),
+    dd: String(now.getDate()).padStart(2, "0"),
+    mm: String(now.getMonth() + 1).padStart(2, "0"),
     month: MONTH_NAMES[now.getMonth()],
     yy: String(now.getFullYear() % 100).padStart(2, "0"),
     yyyy: String(now.getFullYear()),
@@ -311,14 +315,37 @@ function evaluatePlainMathExpression(expr: string): PlainMathResult {
   }
 }
 
-function evaluateTextExpression(
-  expression: string,
+function getDisplayValueForVariable(
+  name: string,
+  merged: Record<string, string>,
+  context: GlobalVariableContext,
+): string | null {
+  if (!Object.prototype.hasOwnProperty.call(merged, name)) return null;
+
+  const builtinKind = (BUILTIN_GLOBAL_VARIABLE_NAMES as readonly string[]).includes(name)
+    ? BUILTIN_VAR_KIND[name as BuiltinGlobalVariableName]
+    : null;
+
+  if (builtinKind === "dayNum" || builtinKind === "monthNum") {
+    const n = getNumericForVariable(name, merged, context);
+    if (n !== null) return String(Math.round(n)).padStart(2, "0");
+  }
+  if (builtinKind === "year2") {
+    const n = getNumericForVariable(name, merged, context);
+    if (n !== null) return String(((Math.round(n) % 100) + 100) % 100).padStart(2, "0");
+  }
+
+  return merged[name];
+}
+
+function evaluateParenMathExpression(
+  inner: string,
   merged: Record<string, string>,
   context: GlobalVariableContext,
 ): string | null {
   const problems: string[] = [];
 
-  const substituted = expression.replace(GLOBAL_VARIABLE_PATTERN, (match, name: string) => {
+  const substituted = inner.replace(GLOBAL_VARIABLE_PATTERN, (match, name: string) => {
     const num = getNumericForVariable(name, merged, context);
     if (num === null) {
       problems.push(name);
@@ -335,10 +362,32 @@ function evaluateTextExpression(
   const evaluated = evaluatePlainMathExpression(substituted);
   if (!evaluated.ok) return null;
 
-  return formatExpressionResult(inferExpressionResultKind(expression), evaluated.value);
+  return formatExpressionResult(inferExpressionResultKind(inner), evaluated.value);
 }
 
-/** Evaluate inline `%var% + 1` style expressions, then leave plain `%var%` for substitution. */
+function evaluateDateSlashChain(
+  chain: string,
+  merged: Record<string, string>,
+  context: GlobalVariableContext,
+): string | null {
+  const parts = chain.split(/\s*\/\s*/);
+  const resolved: string[] = [];
+
+  for (const part of parts) {
+    const match = /^%([a-zA-Z_][a-zA-Z0-9_]*)%$/.exec(part.trim());
+    if (!match) return null;
+    const value = getDisplayValueForVariable(match[1], merged, context);
+    if (value === null) return null;
+    resolved.push(value);
+  }
+
+  return resolved.join("/");
+}
+
+/**
+ * Evaluate parenthesized math and slash-joined date chains.
+ * Ungrouped `%dd% - 1` is left for plain `%var%` substitution (e.g. `04 - 1`).
+ */
 export function evaluateGlobalTextExpressions(
   text: string,
   merged: Record<string, string>,
@@ -346,10 +395,19 @@ export function evaluateGlobalTextExpressions(
 ): string {
   if (!text.includes("%")) return text;
 
-  return text.replace(TEXT_EXPRESSION_PATTERN, (full) => {
-    const evaluated = evaluateTextExpression(full, merged, context);
-    return evaluated ?? full;
+  let result = text;
+
+  result = result.replace(PAREN_MATH_EXPRESSION_PATTERN, (full, inner: string) => {
+    const evaluated = evaluateParenMathExpression(inner, merged, context);
+    return evaluated !== null ? evaluated : full;
   });
+
+  result = result.replace(DATE_SLASH_CHAIN_PATTERN, (chain) => {
+    const evaluated = evaluateDateSlashChain(chain, merged, context);
+    return evaluated ?? chain;
+  });
+
+  return result;
 }
 
 export function isBuiltinGlobalVariableName(name: string): boolean {

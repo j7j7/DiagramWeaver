@@ -7,7 +7,10 @@ import type {
   NodeChartSpecLine,
   NodeChartSpecPie,
   NodeChartSpecRing,
+  NodeChartSpecGrid,
+  ChartGridCell,
 } from "@/lib/types";
+import { normalizeGridChartCells } from "@/lib/grid-chart-layout";
 
 export const DEFAULT_PIE_SLICE_COLORS = [
   "#3b82f6",
@@ -123,6 +126,10 @@ export interface PieSlicesForSvgResult {
 
 export function isChartNodeType(nodeType: string | undefined): boolean {
   return !!nodeType?.startsWith("generic.chart.");
+}
+
+export function isGridChartNodeType(nodeType: string | undefined): boolean {
+  return nodeType === "generic.chart.grid" || !!nodeType?.endsWith(".chart.grid");
 }
 
 export function newChartSliceId(): string {
@@ -309,13 +316,72 @@ export function randomLineChartSpec(): NodeChartSpecLine {
   };
 }
 
+const GRID_CHART_DEFAULT_COLS = 5;
+const GRID_CHART_DEFAULT_ROWS = 5;
+
+/** Stable sample grid for palette, modals, and fallbacks. */
+export function defaultGridChartSpec(): NodeChartSpecGrid {
+  const cols = GRID_CHART_DEFAULT_COLS;
+  const rows = GRID_CHART_DEFAULT_ROWS;
+  const cells: ChartGridCell[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const filled = (r + c) % 2 === 0;
+      const idx = r * cols + c;
+      cells.push({
+        id: newChartSliceId(),
+        filled,
+        fillStyle:
+          filled && r > 0 && c === 0
+            ? "hue-step"
+            : filled && c === 0
+              ? "theme-hue"
+              : filled
+                ? "solid"
+                : undefined,
+        color: filled
+          ? DEFAULT_PIE_SLICE_COLORS[idx % DEFAULT_PIE_SLICE_COLORS.length]
+          : undefined,
+        text: filled && r === 1 && c === 2 ? "42" : undefined,
+      });
+    }
+  }
+  return {
+    kind: "grid",
+    cols,
+    rows,
+    cells,
+    title: "Grid",
+    columnTitles: ["A", "B", "C", "D", "E"],
+    rowTitles: ["1", "2", "3", "4", "5"],
+    cellGap: 0.12,
+    showGridLines: true,
+  };
+}
+
 /** Palette / drop default chart payload from node `type`. */
 export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeChartSpec {
   if (nodeType === "generic.chart.bar") return randomBarChartSpec();
   if (nodeType === "generic.chart.line") return randomLineChartSpec();
+  if (nodeType === "generic.chart.grid" || nodeType?.endsWith(".chart.grid"))
+    return defaultGridChartSpec();
   if (nodeType === "generic.chart.ring" || nodeType?.endsWith(".chart.ring"))
     return defaultRingChartSpec();
   return defaultPieChartSpec();
+}
+
+/** Ensure `cells` matches `cols` × `rows` after dimension edits. */
+export function resizeGridChartCells(
+  chart: NodeChartSpecGrid,
+  cols: number,
+  rows: number
+): NodeChartSpecGrid {
+  return {
+    ...chart,
+    cols,
+    rows,
+    cells: normalizeGridChartCells(chart.cells, cols, rows),
+  };
 }
 
 export type PieSliceFillMode = "none" | "solid" | "gradient";

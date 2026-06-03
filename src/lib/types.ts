@@ -241,8 +241,47 @@ export interface NodeChartSpecLine {
   valuesLocked?: boolean;
 }
 
+/** One cell in a grid chart (`generic.chart.grid`), row-major order. */
+export interface ChartGridCell {
+  id?: string;
+  /** When false or omitted with no fill style, the cell is empty. */
+  filled?: boolean;
+  color?: string;
+  fillStyle?: ChartSliceFillStyle | "hue-step" | "theme-hue";
+  gradientColors?: [string, string];
+  /** In-cell label (not the row/column axis titles). */
+  text?: string;
+  labelColor?: string;
+}
+
+/** Matrix / heatmap-style grid (`generic.chart.grid`). Container uses node Visual styling (rounded rect). */
+export interface NodeChartSpecGrid {
+  kind: "grid";
+  cols: number;
+  rows: number;
+  cells: ChartGridCell[];
+  /** Shown above the matrix when non-empty. */
+  title?: string;
+  columnTitles?: string[];
+  rowTitles?: string[];
+  /** Gap between cells as a fraction of cell slot size (0 = flush). */
+  cellGap?: number;
+  /** Draw lines between cell slots (independent of node border). */
+  showGridLines?: boolean;
+  gridLineColor?: string;
+  /** Hue step (°) for `hue-step` and `theme-hue` cells; falls back to Themes menu step. */
+  themeHueStepDeg?: number;
+  axisColor?: string;
+  titleColor?: string;
+}
+
 /** Chart configuration on a node (`generic.chart.*`). */
-export type NodeChartSpec = NodeChartSpecPie | NodeChartSpecBar | NodeChartSpecLine | NodeChartSpecRing;
+export type NodeChartSpec =
+  | NodeChartSpecPie
+  | NodeChartSpecBar
+  | NodeChartSpecLine
+  | NodeChartSpecRing
+  | NodeChartSpecGrid;
 
 /**
  * Card silhouette for `generic.object.timeline` / `generic.object.mind-map-node`; `type` stays timeline/mind-map.

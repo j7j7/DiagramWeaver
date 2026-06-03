@@ -520,6 +520,8 @@ export function createPaletteItem(
   const isLineChartPalette = provider === "generic" && category === "object" && derivedSlug === "line-chart";
   const isRingChartPalette =
     provider === "generic" && category === "object" && derivedSlug === "ring-chart";
+  const isGridChartPalette =
+    provider === "generic" && category === "object" && derivedSlug === "grid-chart";
   const isCardPalette = provider === "generic" && category === "cards";
   const isBorderPalette = provider === "generic" && category === "borders";
   return {
@@ -533,7 +535,9 @@ export function createPaletteItem(
             ? "generic.chart.line"
             : isRingChartPalette
               ? "generic.chart.ring"
-              : isBorderPalette
+              : isGridChartPalette
+                ? "generic.chart.grid"
+                : isBorderPalette
                 ? `generic.border.${derivedSlug}`
                 : isCardPalette
                   ? `generic.card.${derivedSlug}`

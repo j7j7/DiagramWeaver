@@ -289,6 +289,34 @@ const NodeChartBarSchema = z.object({
   valuesLocked: z.boolean().optional(),
 });
 
+const ChartGridCellSchema = z.object({
+  id: z.string().optional(),
+  filled: z.boolean().optional(),
+  color: z.string().optional(),
+  fillStyle: z
+    .enum(["none", "solid", "gradient", "hue-step", "theme-hue"])
+    .optional(),
+  gradientColors: z.tuple([z.string(), z.string()]).optional(),
+  text: z.string().optional(),
+  labelColor: z.string().optional(),
+});
+
+const NodeChartGridSchema = z.object({
+  kind: z.literal("grid"),
+  cols: z.number().int().min(1).max(24),
+  rows: z.number().int().min(1).max(24),
+  cells: z.array(ChartGridCellSchema),
+  title: z.string().optional(),
+  columnTitles: z.array(z.string()).optional(),
+  rowTitles: z.array(z.string()).optional(),
+  cellGap: z.number().min(0).max(0.45).optional(),
+  showGridLines: z.boolean().optional(),
+  gridLineColor: z.string().optional(),
+  themeHueStepDeg: z.number().min(1).max(360).optional(),
+  axisColor: z.string().optional(),
+  titleColor: z.string().optional(),
+});
+
 const NodeChartLineSchema = z.object({
   kind: z.literal("line"),
   series: z.array(ChartBarSeriesRowSchema),
@@ -318,6 +346,7 @@ const NodeChartSpecSchema = z.discriminatedUnion("kind", [
   NodeChartRingSchema,
   NodeChartBarSchema,
   NodeChartLineSchema,
+  NodeChartGridSchema,
 ]);
 
 function normalizeChartField(chart: unknown): unknown {
@@ -335,6 +364,7 @@ function normalizeChartField(chart: unknown): unknown {
   if (c.kind === "line") return chart;
   if (c.kind === "pie") return chart;
   if (c.kind === "ring") return chart;
+  if (c.kind === "grid") return chart;
   const series = c.series;
   if (
     Array.isArray(series) &&

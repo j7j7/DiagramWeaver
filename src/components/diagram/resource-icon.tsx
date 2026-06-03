@@ -86,6 +86,26 @@ function ChartPaletteBarGlyph(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function ChartPaletteGridGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" strokeWidth={1.35} opacity={0.55} />
+      <rect x="5.5" y="9" width="4" height="4" rx="0.6" fill="currentColor" opacity={0.95} />
+      <rect x="10.5" y="9" width="4" height="4" rx="0.6" fill="currentColor" opacity={0.35} />
+      <rect x="15.5" y="9" width="4" height="4" rx="0.6" fill="currentColor" opacity={0.7} />
+      <rect x="5.5" y="14.5" width="4" height="4" rx="0.6" fill="currentColor" opacity={0.35} />
+      <rect x="10.5" y="14.5" width="4" height="4" rx="0.6" fill="currentColor" opacity={0.95} />
+      <rect x="15.5" y="14.5" width="4" height="4" rx="0.6" fill="currentColor" opacity={0.35} />
+      <path
+        d="M5.5 8.5h13M5.5 14h13M5.5 19.5h13M5.5 8.5v11M10.5 8.5v11M15.5 8.5v11"
+        stroke="currentColor"
+        strokeWidth={0.65}
+        opacity={0.4}
+      />
+    </svg>
+  );
+}
+
 function ChartPaletteLineGlyph(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
@@ -876,6 +896,9 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   }
   if (type === "generic.chart.ring") {
     return <ChartPaletteRingGlyph {...props} />;
+  }
+  if (type === "generic.chart.grid") {
+    return <ChartPaletteGridGlyph {...props} />;
   }
 
   if (type?.startsWith("generic.border.")) {

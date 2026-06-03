@@ -70,6 +70,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
     const isBarChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'bar-chart';
     const isLineChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'line-chart';
     const isRingChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'ring-chart';
+    const isGridChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'grid-chart';
     const isCardPalette = provider === 'generic' && category === 'cards';
     const isBorderPalette = provider === 'generic' && category === 'borders';
     return {
@@ -83,7 +84,9 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
               ? 'generic.chart.line'
               : isRingChartPalette
                 ? 'generic.chart.ring'
-                : isBorderPalette
+                : isGridChartPalette
+                  ? 'generic.chart.grid'
+                  : isBorderPalette
                   ? `generic.border.${derivedSlug}`
                 : isCardPalette
                   ? `generic.card.${derivedSlug}`
@@ -160,6 +163,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   const isBarChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'bar-chart';
   const isLineChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'line-chart';
   const isRingChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'ring-chart';
+  const isGridChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'grid-chart';
   const isCloudPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'cloud';
   const isProgressBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'progress-bar';
   const isTimelineBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'timeline-bar';
@@ -201,6 +205,8 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.chart.line" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isRingChartPalette ? (
                     <ResourceIcon type="generic.chart.ring" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
+                  ) : isGridChartPalette ? (
+                    <ResourceIcon type="generic.chart.grid" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isCloudPalette ? (
                     <ResourceIcon type="generic.object.cloud" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isProgressBarPalette ? (
@@ -252,6 +258,8 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.chart.line" width={24} height={24} className="shrink-0" />
                   ) : isRingChartPalette ? (
                     <ResourceIcon type="generic.chart.ring" width={24} height={24} className="shrink-0" />
+                  ) : isGridChartPalette ? (
+                    <ResourceIcon type="generic.chart.grid" width={24} height={24} className="shrink-0" />
                   ) : isCloudPalette ? (
                     <ResourceIcon type="generic.object.cloud" width={24} height={24} className="shrink-0" />
                   ) : isProgressBarPalette ? (

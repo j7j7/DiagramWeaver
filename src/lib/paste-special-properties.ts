@@ -33,7 +33,7 @@ export function getClipboardTemplateNode(c: PasteSpecialClipboardLike | null): D
 }
 
 export type PastePropertyFamily =
-  | { kind: "chart"; chartKind: "pie" | "bar" | "line" | "ring" }
+  | { kind: "chart"; chartKind: "pie" | "bar" | "line" | "ring" | "grid" }
   | { kind: "connectorLine" }
   | { kind: "timeline" }
   | { kind: "mindmap" }
@@ -42,11 +42,12 @@ export type PastePropertyFamily =
   | { kind: "icon" }
   | { kind: "resourceLabel" };
 
-function chartKindFromType(type: string): "pie" | "bar" | "line" | "ring" | null {
+function chartKindFromType(type: string): "pie" | "bar" | "line" | "ring" | "grid" | null {
   if (type === "generic.chart.pie" || type.endsWith(".chart.pie")) return "pie";
   if (type === "generic.chart.bar" || type.endsWith(".chart.bar")) return "bar";
   if (type === "generic.chart.line" || type.endsWith(".chart.line")) return "line";
   if (type === "generic.chart.ring" || type.endsWith(".chart.ring")) return "ring";
+  if (type === "generic.chart.grid" || type.endsWith(".chart.grid")) return "grid";
   return null;
 }
 

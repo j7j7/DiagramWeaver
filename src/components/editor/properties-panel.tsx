@@ -21,13 +21,19 @@ import type { CustomImageOptions, DiagramData } from "@/lib/types";
 const BUILTIN_GLOBAL_VARIABLE_REFERENCES: ReadonlyArray<{ name: string; description: string }> = [
   { name: "day", description: "Weekday name (e.g. Monday)" },
   { name: "shortday", description: "Short weekday (e.g. mon)" },
-  { name: "dd", description: "Day of month (e.g. 23)" },
-  { name: "mm", description: "Month number 1–12" },
+  { name: "dd", description: "Day of month, padded (e.g. 04)" },
+  { name: "mm", description: "Month number 1–12, padded (e.g. 06)" },
   { name: "month", description: "Month name (e.g. June)" },
   { name: "yy", description: "Two-digit year (e.g. 06)" },
   { name: "yyyy", description: "Four-digit year (e.g. 2026)" },
   { name: "slide", description: "Current slide number (1-based)" },
   { name: "slides", description: "Total slides in deck" },
+];
+
+const BUILTIN_EXPRESSION_HINTS: ReadonlyArray<string> = [
+  "Math needs parentheses: (%dd% - 1), (%slide% + 1), (%dd%/2) — / divides only inside (...).",
+  "Date-style join uses slashes between variables: %dd%/%mm%/%yyyy% → 04/06/2026 (not division).",
+  "Without parentheses, operators stay literal after substitution: %dd% - 1 → 04 - 1.",
 ];
 
 interface PropertiesPanelProps {
@@ -444,10 +450,10 @@ export function PropertiesPanel({
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
                   Define diagram variables and use them in any text as{" "}
-                  <span className="font-mono text-foreground">%name%</span>. Built-in
-                  date and slide placeholders resolve at display time; use expressions
-                  like <span className="font-mono text-foreground">%mm% + 1</span> or{" "}
-                  <span className="font-mono text-foreground">%month% + 1</span>.
+                  <span className="font-mono text-foreground">%name%</span>. Use{" "}
+                  <span className="font-mono text-foreground">(%dd% - 1)</span> for math,{" "}
+                  <span className="font-mono text-foreground">%dd%/%mm%/%yyyy%</span> for
+                  dates — see built-in list below.
                 </p>
               </div>
 
@@ -468,6 +474,11 @@ export function PropertiesPanel({
                   </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="overflow-hidden border-t border-border/70">
+                  <div className="space-y-1 border-b border-border/70 px-2 py-2 text-[10px] text-muted-foreground">
+                    {BUILTIN_EXPRESSION_HINTS.map((hint) => (
+                      <p key={hint}>{hint}</p>
+                    ))}
+                  </div>
                   <ul className="max-h-48 space-y-0 overflow-y-auto p-1">
                     {BUILTIN_GLOBAL_VARIABLE_REFERENCES.map(({ name, description }) => (
                       <li

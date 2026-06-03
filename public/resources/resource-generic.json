@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 57,
+  "totalResources": 58,
   "categories": {
     "text": {
       "name": "Text",
@@ -46,6 +46,11 @@
         {
           "name": "Line chart",
           "file": "line-chart.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Grid chart",
+          "file": "grid-chart.svg",
           "type": "shape"
         },
         {

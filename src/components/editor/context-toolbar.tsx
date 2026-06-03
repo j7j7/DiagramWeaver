@@ -2905,8 +2905,10 @@ export function ContextToolbar({
                   isRoundedRectangle={
                     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
                     (selectedItem as any)?.type === 'generic.object.mind-map-node' ||
+                    (selectedItem as any)?.type === 'generic.chart.grid' ||
                     (selectedItem as any)?.type?.endsWith?.('.rounded-rectangle') ||
-                    (selectedItem as any)?.type?.endsWith?.('.mind-map-node')
+                    (selectedItem as any)?.type?.endsWith?.('.mind-map-node') ||
+                    (selectedItem as any)?.type?.endsWith?.('.chart.grid')
                   }
                   isTextBoxHeading={
                     (selectedItem as any)?.type === 'generic.object.text-box-heading' ||

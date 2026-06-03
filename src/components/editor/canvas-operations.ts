@@ -243,6 +243,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.line' ? 470 :
              itemType === 'generic.chart.bar' ? 380 :
              itemType === 'generic.chart.ring' ? 410 :
+             itemType === 'generic.chart.grid' ? 400 :
              borderTemplate ? borderTemplate.defaultWidth :
              cardTemplate ? cardTemplate.defaultWidth :
              60
@@ -264,6 +265,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.line' ? 320 :
              itemType === 'generic.chart.bar' ? 280 :
              itemType === 'generic.chart.ring' ? 320 :
+             itemType === 'generic.chart.grid' ? 280 :
              borderTemplate ? borderTemplate.defaultHeight :
              cardTemplate ? cardTemplate.defaultHeight :
              60
@@ -364,9 +366,13 @@ export function useCanvasOperations({
             itemType === 'generic.chart.bar' ||
             itemType === 'generic.chart.line' ||
             itemType === 'generic.chart.ring' ||
+            itemType === 'generic.chart.grid' ||
             itemType?.startsWith('generic.chart.')) &&
             !isFromScratchPad && {
             chart: defaultChartSpecForNodeType(itemType),
+          }),
+          ...(itemType === 'generic.chart.grid' && !isFromScratchPad && {
+            cornerRadius: 0.2,
           }),
           ...(borderTemplateId && !isFromScratchPad && {
             ...defaultBorderPaletteNodeProps(borderTemplateId),
@@ -412,7 +418,8 @@ export function useCanvasOperations({
           randomBuiltInTheme &&
           (itemType === "generic.chart.pie" ||
             itemType === "generic.chart.bar" ||
-            itemType === "generic.chart.ring")
+            itemType === "generic.chart.ring" ||
+            itemType === "generic.chart.grid")
         ) {
           newNode = themeManager.applyThemeToItem(newNode, randomBuiltInTheme) as DiagramNodeData;
         }

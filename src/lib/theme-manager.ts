@@ -1999,6 +1999,40 @@ class ThemeManager {
           return base;
         });
         node.chart = { ...chart, series };
+      } else if (chart?.kind === "grid" && Array.isArray(chart.cells)) {
+        const bgStyle = properties.backgroundStyle;
+        const cells = chart.cells.map((cell, i) => {
+          const hue = i * chartSeriesHueStepDeg + hueShift;
+          const base = { ...cell };
+          if (cell.labelColor !== undefined) {
+            base.labelColor = colorProps.textColor ?? cell.labelColor;
+          } else if (colorProps.textColor !== undefined) {
+            base.labelColor = colorProps.textColor;
+          }
+          if (cell.fillStyle === "hue-step" || cell.fillStyle === "theme-hue") {
+            return base;
+          }
+          if (cell.fillStyle === "none" || !cell.filled) {
+            return base;
+          }
+          if (bgStyle === "gradient" && properties.backgroundColors && properties.backgroundColors.length >= 2) {
+            base.fillStyle = "gradient";
+            base.gradientColors = [
+              shiftHueOfColor(properties.backgroundColors[0], hue),
+              shiftHueOfColor(properties.backgroundColors[1], hue),
+            ];
+            return base;
+          }
+          if (bgStyle === "none") {
+            base.fillStyle = "none";
+            return base;
+          }
+          const c = properties.backgroundColor ?? "#6b7280";
+          base.fillStyle = "solid";
+          base.color = shiftHueOfColor(c, hue);
+          return base;
+        });
+        node.chart = { ...chart, cells };
       }
     }
 

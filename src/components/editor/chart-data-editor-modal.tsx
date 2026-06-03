@@ -22,15 +22,19 @@ import type {
   NodeChartSpecLine,
   NodeChartSpecPie,
   NodeChartSpecRing,
+  NodeChartSpecGrid,
+  ChartGridCell,
 } from "@/lib/types";
 import {
   CHART_MAX_SEGMENT_PULL,
   CHART_MAX_PER_SLICE_SEGMENT_PULL,
   defaultBarChartSpec,
+  defaultGridChartSpec,
   defaultLineChartSpec,
   defaultPieChartSpec,
   defaultRingChartSpec,
   randomLineChartSpec,
+  resizeGridChartCells,
   newChartSliceId,
   DEFAULT_PIE_SLICE_COLORS,
   DEFAULT_PIE_SLICE_LABEL_COLOR,
@@ -213,6 +217,35 @@ function ChartValueInputHint({
       {hint}
     </p>
   );
+}
+
+type GridCellFillStyle = ChartSliceFillStyle | "hue-step" | "theme-hue";
+
+function gridCellFillStyleFromCell(cell: ChartGridCell): GridCellFillStyle {
+  const fs = cell.fillStyle;
+  if (
+    fs === "none" ||
+    fs === "solid" ||
+    fs === "gradient" ||
+    fs === "hue-step" ||
+    fs === "theme-hue"
+  ) {
+    return fs;
+  }
+  const g = cell.gradientColors;
+  if (g?.[0]?.trim() && g?.[1]?.trim()) return "gradient";
+  return cell.filled === false ? "none" : "solid";
+}
+
+interface GridCellEditRow {
+  id: string;
+  filled: boolean;
+  fillStyle: GridCellFillStyle;
+  color: string;
+  gradientColor1: string;
+  gradientColor2: string;
+  text: string;
+  labelColor: string;
 }
 
 interface BarEditRow {
@@ -411,12 +444,87 @@ export function ChartDataEditorModal({
   /** Default segment outline width in SVG vb units when rows omit theirs. */
   const [ringDefaultOutlineWidthVb, setRingDefaultOutlineWidthVb] = useState(1.75);
 
+  const [gridCols, setGridCols] = useState(4);
+  const [gridRows, setGridRows] = useState(4);
+  const [gridTitle, setGridTitle] = useState("");
+  const [gridColumnTitlesStr, setGridColumnTitlesStr] = useState("");
+  const [gridRowTitlesStr, setGridRowTitlesStr] = useState("");
+  const [gridCellGap, setGridCellGap] = useState(0.1);
+  const [gridShowLines, setGridShowLines] = useState(true);
+  const [gridLineColor, setGridLineColor] = useState("");
+  const [gridAxisColor, setGridAxisColor] = useState("");
+  const [gridCellRows, setGridCellRows] = useState<GridCellEditRow[]>([]);
+
+  const applyGridDimensions = (cols: number, rows: number, prevCells: GridCellEditRow[]) => {
+    const c = Math.min(24, Math.max(1, Math.round(cols)));
+    const r = Math.min(24, Math.max(1, Math.round(rows)));
+    setGridCols(c);
+    setGridRows(r);
+    const n = c * r;
+    const next: GridCellEditRow[] = [];
+    for (let i = 0; i < n; i++) {
+      const prev = prevCells[i];
+      next.push(
+        prev ?? {
+          id: newChartSliceId(),
+          filled: false,
+          fillStyle: "none",
+          color: "",
+          gradientColor1: "",
+          gradientColor2: "",
+          text: "",
+          labelColor: "",
+        }
+      );
+    }
+    setGridCellRows(next);
+  };
+
   useEffect(() => {
     if (visible && node) {
       const chart = (node as DiagramNodeData & { chart?: NodeChartSpec }).chart;
+      const isGrid = node.type === "generic.chart.grid" || chart?.kind === "grid";
       const isBar = node.type === "generic.chart.bar" || chart?.kind === "bar";
       const isLine = node.type === "generic.chart.line" || chart?.kind === "line";
       const isRing = node.type === "generic.chart.ring" || chart?.kind === "ring";
+
+      if (isGrid) {
+        const spec: NodeChartSpecGrid =
+          chart?.kind === "grid" ? chart : defaultGridChartSpec();
+        const cols = Math.min(24, Math.max(1, spec.cols ?? 4));
+        const rows = Math.min(24, Math.max(1, spec.rows ?? 4));
+        const normalized = resizeGridChartCells(spec, cols, rows);
+        setGridCols(cols);
+        setGridRows(rows);
+        setGridTitle(spec.title ?? "");
+        setGridColumnTitlesStr((spec.columnTitles ?? []).join(", "));
+        setGridRowTitlesStr((spec.rowTitles ?? []).join(", "));
+        setGridCellGap(
+          typeof spec.cellGap === "number" && spec.cellGap >= 0
+            ? Math.min(0.45, spec.cellGap)
+            : 0.1
+        );
+        setGridShowLines(spec.showGridLines !== false);
+        setGridLineColor(spec.gridLineColor ?? "");
+        setGridAxisColor(spec.axisColor ?? "");
+        setGridCellRows(
+          normalized.cells.map((cell) => {
+            const fs = gridCellFillStyleFromCell(cell);
+            const gc = cell.gradientColors;
+            return {
+              id: cell.id || newChartSliceId(),
+              filled: cell.filled !== false && fs !== "none",
+              fillStyle: fs,
+              color: cell.color ?? "",
+              gradientColor1: gc?.[0] ?? "",
+              gradientColor2: gc?.[1] ?? "",
+              text: cell.text ?? "",
+              labelColor: cell.labelColor ?? "",
+            };
+          })
+        );
+        return;
+      }
 
       if (isLine) {
         const spec: NodeChartSpecLine =
@@ -879,6 +987,7 @@ export function ChartDataEditorModal({
 
   const handleSave = () => {
     if (!node || isReadOnly) return;
+    const isGrid = node.type === "generic.chart.grid" || node.chart?.kind === "grid";
     const isBar = node.type === "generic.chart.bar" || node.chart?.kind === "bar";
     const isLine = node.type === "generic.chart.line" || node.chart?.kind === "line";
     const isRing = node.type === "generic.chart.ring" || node.chart?.kind === "ring";
@@ -1162,6 +1271,65 @@ export function ChartDataEditorModal({
       return;
     }
 
+    if (isGrid) {
+      const cols = Math.min(24, Math.max(1, Math.round(gridCols)));
+      const rows = Math.min(24, Math.max(1, Math.round(gridRows)));
+      const colTitles = gridColumnTitlesStr
+        .split(/[,;\n]+/)
+        .map((s) => s.trim());
+      const rowTitles = gridRowTitlesStr
+        .split(/[,;\n]+/)
+        .map((s) => s.trim());
+      const cells: ChartGridCell[] = gridCellRows.slice(0, cols * rows).map((row, i) => {
+        const base: ChartGridCell = {
+          id: row.id || newChartSliceId(),
+          filled: row.filled && row.fillStyle !== "none",
+        };
+        if (row.text.trim()) base.text = row.text.trim();
+        if (row.labelColor.trim()) base.labelColor = row.labelColor.trim();
+        if (!base.filled) {
+          base.fillStyle = "none";
+          return base;
+        }
+        if (row.fillStyle === "hue-step" || row.fillStyle === "theme-hue") {
+          base.fillStyle = row.fillStyle;
+          return base;
+        }
+        if (row.fillStyle === "none") {
+          base.filled = false;
+          base.fillStyle = "none";
+          return base;
+        }
+        if (row.fillStyle === "gradient") {
+          base.fillStyle = "gradient";
+          const g1 = row.gradientColor1.trim();
+          const g2 = row.gradientColor2.trim();
+          const fb = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
+          base.gradientColors = [g1 || fb, g2 || g1 || fb] as [string, string];
+          return base;
+        }
+        base.fillStyle = "solid";
+        if (row.color.trim()) base.color = row.color.trim();
+        return base;
+      });
+      const gridChart: NodeChartSpecGrid = {
+        kind: "grid",
+        cols,
+        rows,
+        cells,
+        ...(gridTitle.trim() ? { title: gridTitle.trim() } : {}),
+        ...(colTitles.some(Boolean) ? { columnTitles: colTitles } : {}),
+        ...(rowTitles.some(Boolean) ? { rowTitles: rowTitles } : {}),
+        cellGap: Math.min(0.45, Math.max(0, gridCellGap)),
+        ...(gridShowLines ? { showGridLines: true } : { showGridLines: false }),
+        ...(gridLineColor.trim() ? { gridLineColor: gridLineColor.trim() } : {}),
+        ...(gridAxisColor.trim() ? { axisColor: gridAxisColor.trim() } : {}),
+      };
+      onSave(node.id, gridChart);
+      onClose();
+      return;
+    }
+
     const cleaned: ChartSeriesItem[] = [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
@@ -1316,6 +1484,8 @@ export function ChartDataEditorModal({
     !!node && (node.type === "generic.chart.line" || node.chart?.kind === "line");
   const isRingModal =
     !!node && (node.type === "generic.chart.ring" || node.chart?.kind === "ring");
+  const isGridModal =
+    !!node && (node.type === "generic.chart.grid" || node.chart?.kind === "grid");
   const isCartesianModal = isBarModal || isLineModal;
 
   return (
@@ -2517,7 +2687,220 @@ export function ChartDataEditorModal({
                 </ChartModalSection>
               </>
             ) : null}
-            {!isCartesianModal && !isRingModal ? (
+            {isGridModal ? (
+              <>
+                <ChartModalSection title="Grid layout" tint="sky">
+                  <div className={cn("grid grid-cols-2 gap-3", isReadOnly && "pointer-events-none opacity-75")}>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Columns</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={24}
+                        value={gridCols}
+                        onChange={(e) =>
+                          applyGridDimensions(Number(e.target.value), gridRows, gridCellRows)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Rows</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={24}
+                        value={gridRows}
+                        onChange={(e) =>
+                          applyGridDimensions(gridCols, Number(e.target.value), gridCellRows)
+                        }
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Chart title</Label>
+                      <Input
+                        value={gridTitle}
+                        onChange={(e) => setGridTitle(e.target.value)}
+                        placeholder="Optional title"
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Column titles (comma-separated)</Label>
+                      <Input
+                        value={gridColumnTitlesStr}
+                        onChange={(e) => setGridColumnTitlesStr(e.target.value)}
+                        placeholder="A, B, C"
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Row titles (comma-separated)</Label>
+                      <Input
+                        value={gridRowTitlesStr}
+                        onChange={(e) => setGridRowTitlesStr(e.target.value)}
+                        placeholder="1, 2, 3"
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">
+                        Cell gap ({Math.round(gridCellGap * 100)}%)
+                      </Label>
+                      <Slider
+                        value={[gridCellGap]}
+                        min={0}
+                        max={0.45}
+                        step={0.01}
+                        onValueChange={([v]) => setGridCellGap(v ?? 0)}
+                        disabled={isReadOnly}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="chart-grid-lines" className="text-xs font-medium">
+                        Grid lines
+                      </Label>
+                      <Switch
+                        id="chart-grid-lines"
+                        checked={gridShowLines}
+                        onCheckedChange={setGridShowLines}
+                        disabled={isReadOnly}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Grid line color</Label>
+                      <ColorPicker
+                        value={gridLineColor.trim() ? gridLineColor : "#94a3b8"}
+                        onChange={setGridLineColor}
+                        showAlpha={true}
+                        allowTransparent={true}
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Axis / title color</Label>
+                      <ColorPicker
+                        value={gridAxisColor.trim() ? gridAxisColor : "#64748b"}
+                        onChange={setGridAxisColor}
+                        showAlpha={true}
+                        allowTransparent={true}
+                      />
+                    </div>
+                  </div>
+                </ChartModalSection>
+                <ChartModalSection title="Cells" tint="emerald">
+                  <div
+                    className={cn(
+                      "max-h-64 space-y-2 overflow-y-auto pr-1",
+                      isReadOnly && "pointer-events-none opacity-75"
+                    )}
+                  >
+                    {gridCellRows.map((cell, i) => {
+                      const col = i % gridCols;
+                      const row = Math.floor(i / gridCols);
+                      return (
+                        <div
+                          key={cell.id}
+                          className="rounded border border-border/80 bg-background/60 p-2 space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-medium text-muted-foreground">
+                              Row {row + 1}, Col {col + 1}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Label className="text-[10px]">Filled</Label>
+                              <Switch
+                                checked={cell.filled}
+                                onCheckedChange={(v) =>
+                                  setGridCellRows((prev) =>
+                                    prev.map((c, j) =>
+                                      j === i ? { ...c, filled: v, fillStyle: v ? c.fillStyle === "none" ? "solid" : c.fillStyle : "none" } : c
+                                    )
+                                  )
+                                }
+                                disabled={isReadOnly}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">Fill</Label>
+                              <Select
+                                value={cell.fillStyle}
+                                onValueChange={(v) =>
+                                  setGridCellRows((prev) =>
+                                    prev.map((c, j) =>
+                                      j === i ? { ...c, fillStyle: v as GridCellFillStyle } : c
+                                    )
+                                  )
+                                }
+                                disabled={isReadOnly || !cell.filled}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="solid">Solid</SelectItem>
+                                  <SelectItem value="gradient">Gradient</SelectItem>
+                                  <SelectItem value="hue-step">Hue step</SelectItem>
+                                  <SelectItem value="theme-hue">Theme hue</SelectItem>
+                                  <SelectItem value="none">None</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">Cell text</Label>
+                              <Input
+                                className="h-8 text-xs"
+                                value={cell.text}
+                                onChange={(e) =>
+                                  setGridCellRows((prev) =>
+                                    prev.map((c, j) => (j === i ? { ...c, text: e.target.value } : c))
+                                  )
+                                }
+                                placeholder="Optional"
+                              />
+                            </div>
+                          </div>
+                          {cell.filled && cell.fillStyle === "solid" ? (
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">Color</Label>
+                              <ColorPicker
+                                value={cell.color.trim() || DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length]}
+                                onChange={(v) =>
+                                  setGridCellRows((prev) =>
+                                    prev.map((c, j) => (j === i ? { ...c, color: v } : c))
+                                  )
+                                }
+                                showAlpha={true}
+                              />
+                            </div>
+                          ) : null}
+                          {cell.filled && cell.fillStyle === "gradient" ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              <ColorPicker
+                                value={cell.gradientColor1.trim() || DEFAULT_PIE_SLICE_COLORS[0]}
+                                onChange={(v) =>
+                                  setGridCellRows((prev) =>
+                                    prev.map((c, j) => (j === i ? { ...c, gradientColor1: v } : c))
+                                  )
+                                }
+                                showAlpha={true}
+                              />
+                              <ColorPicker
+                                value={cell.gradientColor2.trim() || DEFAULT_PIE_SLICE_COLORS[1]}
+                                onChange={(v) =>
+                                  setGridCellRows((prev) =>
+                                    prev.map((c, j) => (j === i ? { ...c, gradientColor2: v } : c))
+                                  )
+                                }
+                                showAlpha={true}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ChartModalSection>
+              </>
+            ) : null}
+            {!isCartesianModal && !isRingModal && !isGridModal ? (
               <>
             <ChartModalSection title="Slice outline & options" tint="muted">
               <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>

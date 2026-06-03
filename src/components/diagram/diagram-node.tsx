@@ -85,6 +85,7 @@ import {
   RingChartShape,
   BarChartShape,
   LineChartShape,
+  GridChartShape,
   ProgressBarShape,
   TimelineBarShape,
   SegmentedRectangleShape,
@@ -995,7 +996,11 @@ function DiagramNodeInner({
     };
 
     const nodeType = node.type;
-    const chartValuesLocked = visualNode.chart?.valuesLocked === true;
+    const chartValuesLocked =
+      visualNode.chart != null &&
+      visualNode.chart.kind !== "grid" &&
+      "valuesLocked" in visualNode.chart &&
+      visualNode.chart.valuesLocked === true;
     if (nodeType === 'generic.object.square' || nodeType?.endsWith('.square')) {
       return <SquareShape {...shapeProps} />;
     } else     if (nodeType === 'generic.object.uml-class' || nodeType?.endsWith('.uml-class')) {
@@ -1275,6 +1280,74 @@ function DiagramNodeInner({
           }
         />
       );
+    } else if (nodeType === "generic.chart.grid" || nodeType?.endsWith(".chart.grid")) {
+      const gridNode =
+        isDraggingCornerRadius && localCornerRadius !== null
+          ? { ...visualNode, cornerRadius: localCornerRadius }
+          : visualNode;
+      return (
+        <GridChartShape
+          {...shapeProps}
+          node={gridNode}
+          isReadOnly={isReadOnly}
+          onGridCellTextChange={
+            onUpdate && !isReadOnly
+              ? (cellIndex, text) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  const rows = Math.max(1, c.rows ?? 4);
+                  const colCount = Math.max(1, c.cols ?? 4);
+                  const n = colCount * rows;
+                  const cells = [...(c.cells ?? [])];
+                  while (cells.length < n) cells.push({ filled: false });
+                  if (cellIndex < 0 || cellIndex >= n) return;
+                  cells[cellIndex] = { ...cells[cellIndex], text: text || undefined };
+                  onUpdate({ ...node, chart: { ...c, cells } });
+                }
+              : undefined
+          }
+          onGridTitleChange={
+            onUpdate && !isReadOnly
+              ? (title) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  onUpdate({
+                    ...node,
+                    chart: { ...c, title: title || undefined },
+                  });
+                }
+              : undefined
+          }
+          onGridColumnTitleChange={
+            onUpdate && !isReadOnly
+              ? (colIndex, title) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  const colCount = Math.max(1, c.cols ?? 4);
+                  const next = [...(c.columnTitles ?? [])];
+                  while (next.length < colCount) next.push("");
+                  if (colIndex < 0 || colIndex >= colCount) return;
+                  next[colIndex] = title;
+                  onUpdate({ ...node, chart: { ...c, columnTitles: next } });
+                }
+              : undefined
+          }
+          onGridRowTitleChange={
+            onUpdate && !isReadOnly
+              ? (rowIndex, title) => {
+                  const c = node.chart;
+                  if (c?.kind !== "grid") return;
+                  const rowCount = Math.max(1, c.rows ?? 4);
+                  const next = [...(c.rowTitles ?? [])];
+                  while (next.length < rowCount) next.push("");
+                  if (rowIndex < 0 || rowIndex >= rowCount) return;
+                  next[rowIndex] = title;
+                  onUpdate({ ...node, chart: { ...c, rowTitles: next } });
+                }
+              : undefined
+          }
+        />
+      );
     } else if (nodeType === 'generic.chart.line') {
       return (
         <LineChartShape
@@ -1393,7 +1466,8 @@ function DiagramNodeInner({
       (nodeType?.startsWith("generic.chart.") &&
         node.chart?.kind !== "bar" &&
         node.chart?.kind !== "line" &&
-        node.chart?.kind !== "ring")
+        node.chart?.kind !== "ring" &&
+        node.chart?.kind !== "grid")
     ) {
       return (
         <PieChartShape
@@ -1928,13 +2002,20 @@ function DiagramNodeInner({
   const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode || isTimelineNode);
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
    const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
+  const isGridChartNode =
+    node.type === "generic.chart.grid" || node.type?.endsWith(".chart.grid");
   const isCardNode = isCardNodeType(node.type);
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
    const isMindmapCardNode = isMindmapNodeType(node.type);
    const mindmapBodyRounded =
      isMindmapCardNode &&
      normalizeCompositeBodyShapeKind((node as DiagramNodeData).compositeBodyShape) === "rounded-rectangle";
-   const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode || mindmapBodyRounded || isCardNode;
+   const showsCornerRadiusHandle =
+     isRoundedRectangleNode ||
+     isGridChartNode ||
+     isTextBoxHeadingNode ||
+     mindmapBodyRounded ||
+     isCardNode;
   const cardHandleZIndex = isCardNode ? "z-[125]" : "z-50";
   const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode && !isTimelineNode;
   const isIconNode = !isTextNode && !isTextboxNode && !isShapeNode && !isLineNode;
@@ -4092,7 +4173,7 @@ function DiagramNodeInner({
          />
        )}
 
-       {/* Corner radius handle - rounded-rectangle only, single select */}
+       {/* Corner radius handle — rounded rect, grid chart, cards, etc.; single select */}
        {showTransformHandles && isSelected && !isMultiSelected && showsCornerRadiusHandle && onUpdate && (
          <CornerRadiusHandle
            visible={true}
