@@ -9,6 +9,7 @@ import { useCanvasTransform, type Transform } from "@/hooks/use-canvas-transform
 import { CanvasConnections } from "../editor/canvas-connections";
 import { CanvasConnectionText } from "../editor/canvas-connection-text";
 import { GlobalPropertiesProvider } from "../diagram/global-properties-context";
+import type { GlobalVariableContext } from "@/lib/builtin-global-variables";
 import { type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
 import { CanvasRulers } from "../editor/canvas-rulers";
 import {
@@ -103,9 +104,11 @@ interface ViewerCanvasProps {
   connectionRenderRevision?: string | number;
   /** When false, canvas background has no dot grid (e.g. presentation play mode). Default true. */
   showDotGrid?: boolean;
+  /** Built-in `%day%`, `%slide%`, etc. and expression evaluation context. */
+  globalVariableContext?: GlobalVariableContext;
 }
 
-export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision, showDotGrid = true }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision, showDotGrid = true, globalVariableContext }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(false);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -465,7 +468,10 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
       )}
 
         {/* Canvas content */}
-      <GlobalPropertiesProvider globalProperties={diagramData.globalProperties}>
+      <GlobalPropertiesProvider
+        globalProperties={diagramData.globalProperties}
+        variableContext={globalVariableContext}
+      >
       <div
         data-diagram-layer
         className={cn("absolute", showDotGrid && "dot-grid")}

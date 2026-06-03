@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import type { DiagramNodeData, NodeChartSpec, NodeChartSpecRing, RichTextRun } from "@/lib/types";
 import { lerpNodeChartForSlide } from "@/lib/chart-slide-lerp";
 import { resolveChartSpecForDisplay } from "@/lib/chart-value-expr";
-import { useGlobalProperties } from "../global-properties-context";
+import { useGlobalVariableContext, useUserGlobalProperties } from "../global-properties-context";
 import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
@@ -98,7 +98,8 @@ export function RingChartShape(props: RingChartShapeProps) {
   const chartRaw = node.chart;
   const ringChartBase: NodeChartSpecRing | undefined =
     chartRaw?.kind === "ring" ? chartRaw : undefined;
-  const globalProperties = useGlobalProperties();
+  const globalProperties = useUserGlobalProperties();
+  const variableContext = useGlobalVariableContext();
   const ringChartLerped = useMemo(() => {
     if (!ringChartBase) return undefined;
     if (
@@ -119,12 +120,12 @@ export function RingChartShape(props: RingChartShapeProps) {
 
   const { chart: ringChart, chartValueErrors } = useMemo(() => {
     if (!ringChartLerped) return { chart: undefined, chartValueErrors: [] as const };
-    const resolved = resolveChartSpecForDisplay(ringChartLerped, globalProperties);
+    const resolved = resolveChartSpecForDisplay(ringChartLerped, globalProperties, variableContext);
     return {
       chart: resolved.chart as NodeChartSpecRing,
       chartValueErrors: resolved.errors,
     };
-  }, [ringChartLerped, globalProperties]);
+  }, [ringChartLerped, globalProperties, variableContext]);
   const series = ringChart?.series;
 
   const borderStyle = node.borderStyle || "solid";

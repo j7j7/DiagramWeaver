@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { buildPresentationGlobalVariableContext } from "@/lib/builtin-global-variables";
 import type { DiagramData, DiagramNodeData, PresentationDeck, Slide } from "@/lib/types";
 import { isSegmentedRectangleNodeType } from "@/lib/segmented-rectangle";
 import { useTutorial } from "./tutorial/tutorial-provider";
@@ -326,6 +327,19 @@ export function DiagramEditorInner({
     () => `${activePresentationDeckId ?? ''}-${activePresentationSlideId ?? ''}`,
     [activePresentationDeckId, activePresentationSlideId],
   );
+
+  const globalVariableContext = React.useMemo(() => {
+    const slideCount =
+      activePresentationSlides.length > 0 ? activePresentationSlides.length : 1;
+    let slideIndex = 0;
+    if (activePresentationSlideId && activePresentationSlides.length > 0) {
+      const idx = activePresentationSlides.findIndex(
+        (s: Slide) => s.id === activePresentationSlideId,
+      );
+      if (idx >= 0) slideIndex = idx;
+    }
+    return buildPresentationGlobalVariableContext(slideIndex, slideCount);
+  }, [activePresentationSlides, activePresentationSlideId]);
 
   const exportPresentationSlidesInfo = React.useMemo(() => {
     if (activeDiagramStack.length > 0) return null;
@@ -673,6 +687,7 @@ export function DiagramEditorInner({
                     key={canvasRefreshKey}
                     ref={editorRef}
                     diagramData={displayDiagramData}
+                    globalVariableContext={globalVariableContext}
                     nodeAnimationStyles={layerAnimation.nodeAnimationStyles}
                     connectionAnimationStyles={layerAnimation.connectionAnimationStyles}
                     connectionKey={layerAnimation.connectionKey}
@@ -905,6 +920,7 @@ export function DiagramEditorInner({
             }}
             isReadOnly={isReadOnly}
             globalProperties={currentDiagramData.globalProperties}
+            globalVariableContext={globalVariableContext}
           />,
           document.body
         )}

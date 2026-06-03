@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-03 – Properties: built-in variables collapsible list
+Built-in **`%var%`** placeholders in the global **Properties** panel are shown in a **collapsed-by-default** collapsible list with short descriptions (not always visible). Patch bumped.
+
+### 2026-06-03 – Built-in global variables and text expressions
+Diagram text supports built-in **`%day%`**, **`%shortday%`**, **`%dd%`**, **`%mm%`**, **`%month%`**, **`%yy%`**, **`%yyyy%`**, **`%slide%`**, **`%slides%`** (date/time + 1-based presentation slide index). Inline expressions such as **`%mm% + 1`**, **`%month% + 1`**, **`%slide% + 1`** evaluate at display time. Logic in **`builtin-global-variables.ts`**; **`GlobalPropertiesProvider`** takes **`variableContext`**; custom **`globalProperties`** override built-in names. Patch bumped.
+
 ### 2026-06-03 – Bullet List: icon drop hit-testing
 Icon palette drops onto bullet list rows resolve when the cursor is over **row text or section**, not only the small marker (`resolveRowSectionIconSlotFromElement` in **`card-utils.ts`**). Row reorder ignores **`data-dw-card-icon-slot`**; enabling item icons bumps marker size to at least **14px**. Patch bumped.
 

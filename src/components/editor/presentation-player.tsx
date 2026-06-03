@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { buildPresentationGlobalVariableContext } from '@/lib/builtin-global-variables';
 import { ViewerCanvas } from '@/components/viewer/viewer-canvas';
 import type { DiagramData, Slide } from '@/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
@@ -76,6 +77,10 @@ export function PresentationPlayer({
 
   const totalSlides = slides.length;
   const safeIndex = Math.min(Math.max(currentIndex, 0), Math.max(totalSlides - 1, 0));
+  const globalVariableContext = React.useMemo(
+    () => buildPresentationGlobalVariableContext(safeIndex, totalSlides),
+    [safeIndex, totalSlides],
+  );
   const currentSlide = slides[safeIndex] ?? null;
   const currentSlideDiagram = slideDiagrams?.[safeIndex] ?? null;
   const playbackAnimationEnabled = currentSlide?.animationState?.enabled ?? true;
@@ -330,6 +335,7 @@ export function PresentationPlayer({
                     nodeTransitionStyles={slideTransition.nodeTransitionStyles}
                     connectionTransitionStyles={slideTransition.connectionTransitionStyles}
                     connectionRenderRevision={`${safeIndex}-${currentSlide?.id ?? ''}`}
+                    globalVariableContext={globalVariableContext}
                   />
                 </DndProvider>
               </div>

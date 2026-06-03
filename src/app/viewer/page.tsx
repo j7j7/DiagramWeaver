@@ -23,6 +23,7 @@ import {
   getElementVisibleViewportSize,
   pruneConnectionsToVisibleNodes,
 } from "@/lib/presentation-viewport-fit";
+import { buildPresentationGlobalVariableContext } from "@/lib/builtin-global-variables";
 import { usePresentationSlideView } from "@/hooks/use-presentation-slide-view";
 import { usePresentationPlaybackCamera } from "@/hooks/use-presentation-playback-camera";
 import { cn } from "@/lib/utils";
@@ -580,6 +581,20 @@ function ViewerPageContent() {
         : new Set<string>())  // Empty set = no animations when nothing selected
     : undefined;
 
+  const globalVariableContext = useMemo(() => {
+    if (slideCanvasActive) {
+      return buildPresentationGlobalVariableContext(
+        slidePresentationView.safeIndex,
+        slidePresentationView.totalSlides,
+      );
+    }
+    return buildPresentationGlobalVariableContext(0, 1);
+  }, [
+    slideCanvasActive,
+    slidePresentationView.safeIndex,
+    slidePresentationView.totalSlides,
+  ]);
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex w-full h-screen bg-background overflow-hidden flex-col">
@@ -636,6 +651,7 @@ function ViewerPageContent() {
                   : undefined
               }
               showDotGrid={!presentationPlayerOpen}
+              globalVariableContext={globalVariableContext}
             />
             {slideCanvasActive && activeViewerPresentationDeck && (
                 <ViewerPresentationBar

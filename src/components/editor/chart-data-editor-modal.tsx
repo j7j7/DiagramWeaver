@@ -191,13 +191,15 @@ const CHART_BAR_SEGMENT_REORDER_TYPE = "dw-chart-bar-segment-reorder";
 function ChartValueInputHint({
   valueStr,
   globalProperties,
+  globalVariableContext,
 }: {
   valueStr: string;
   globalProperties?: Record<string, string>;
+  globalVariableContext?: import("@/lib/builtin-global-variables").GlobalVariableContext;
 }) {
   const hint = useMemo(
-    () => previewChartValueInput(valueStr, globalProperties),
-    [valueStr, globalProperties],
+    () => previewChartValueInput(valueStr, globalProperties, globalVariableContext),
+    [valueStr, globalProperties, globalVariableContext],
   );
   if (!hint) return null;
   const isError = !hint.startsWith("=");
@@ -350,6 +352,7 @@ interface ChartDataEditorModalProps {
   onSave: (nodeId: string, chart: NodeChartSpec) => void;
   isReadOnly?: boolean;
   globalProperties?: Record<string, string>;
+  globalVariableContext?: import("@/lib/builtin-global-variables").GlobalVariableContext;
 }
 
 export function ChartDataEditorModal({
@@ -361,6 +364,7 @@ export function ChartDataEditorModal({
   onSave,
   isReadOnly = false,
   globalProperties,
+  globalVariableContext,
 }: ChartDataEditorModalProps) {
   const { toast } = useToast();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -902,7 +906,12 @@ export function ChartDataEditorModal({
       const series: ChartBarSegmentItem[] = [];
       for (let i = 0; i < barRows.length; i++) {
         const r = barRows[i];
-        const parsed = parseChartValuesListForSave(String(r.valuesStr ?? ""), maxCat, globalProperties);
+        const parsed = parseChartValuesListForSave(
+          String(r.valuesStr ?? ""),
+          maxCat,
+          globalProperties,
+          globalVariableContext,
+        );
         if (!parsed.ok) {
           failSave(`${(r.name ?? "").trim() || `Series ${i + 1}`}: ${parsed.error}`);
           return;
@@ -994,7 +1003,12 @@ export function ChartDataEditorModal({
       const series: ChartBarSegmentItem[] = [];
       for (let i = 0; i < barRows.length; i++) {
         const r = barRows[i];
-        const parsed = parseChartValuesListForSave(String(r.valuesStr ?? ""), maxCat, globalProperties);
+        const parsed = parseChartValuesListForSave(
+          String(r.valuesStr ?? ""),
+          maxCat,
+          globalProperties,
+          globalVariableContext,
+        );
         if (!parsed.ok) {
           failSave(`${(r.name ?? "").trim() || `Segment ${i + 1}`}: ${parsed.error}`);
           return;
@@ -1078,7 +1092,11 @@ export function ChartDataEditorModal({
       const series: ChartRingSeriesItem[] = [];
       for (let i = 0; i < ringRows.length; i++) {
         const r = ringRows[i];
-        const parsed = parseChartScalarForSave(String(r.valueStr ?? ""), globalProperties);
+        const parsed = parseChartScalarForSave(
+          String(r.valueStr ?? ""),
+          globalProperties,
+          globalVariableContext,
+        );
         if (!parsed.ok) {
           failSave(`${(r.name ?? "").trim() || `Segment ${i + 1}`}: ${parsed.error}`);
           return;
@@ -1147,7 +1165,11 @@ export function ChartDataEditorModal({
     const cleaned: ChartSeriesItem[] = [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      const parsed = parseChartScalarForSave(String(r.valueStr ?? ""), globalProperties);
+      const parsed = parseChartScalarForSave(
+        String(r.valueStr ?? ""),
+        globalProperties,
+        globalVariableContext,
+      );
       if (!parsed.ok) {
         failSave(`${(r.name ?? "").trim() || `Series ${i + 1}`}: ${parsed.error}`);
         return;
@@ -1892,7 +1914,11 @@ export function ChartDataEditorModal({
                                     className="h-8 text-xs font-mono"
                                     disabled={isReadOnly}
                                   />
-                                  <ChartValueInputHint valueStr={row.valuesStr} globalProperties={globalProperties} />
+                                  <ChartValueInputHint
+                                    valueStr={row.valuesStr}
+                                    globalProperties={globalProperties}
+                                    globalVariableContext={globalVariableContext}
+                                  />
                                 </div>
                                 <div
                                   className={`grid grid-cols-2 gap-2 items-end ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
@@ -2296,7 +2322,11 @@ export function ChartDataEditorModal({
                                         className="h-8 text-xs font-mono"
                                         disabled={isReadOnly}
                                       />
-                                      <ChartValueInputHint valueStr={row.valueStr} globalProperties={globalProperties} />
+                                      <ChartValueInputHint
+                                      valueStr={row.valueStr}
+                                      globalProperties={globalProperties}
+                                      globalVariableContext={globalVariableContext}
+                                    />
                                     </div>
                                     <div className="space-y-1">
                                       <Label className="text-[10px] text-muted-foreground">Fill mode</Label>
@@ -2688,7 +2718,11 @@ export function ChartDataEditorModal({
                               className="h-8 text-xs font-mono"
                               disabled={isReadOnly}
                             />
-                            <ChartValueInputHint valueStr={row.valueStr} globalProperties={globalProperties} />
+                            <ChartValueInputHint
+                                      valueStr={row.valueStr}
+                                      globalProperties={globalProperties}
+                                      globalVariableContext={globalVariableContext}
+                                    />
                           </div>
                           <div className="space-y-1 min-w-0">
                             <Label className="text-[10px] text-muted-foreground">Slice fill</Label>

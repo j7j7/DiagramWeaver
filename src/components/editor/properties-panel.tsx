@@ -1,20 +1,34 @@
 "use client";
 
 import React, { useState, useCallback, useMemo } from "react";
-import { ChevronLeft, ChevronRight, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeExternalUrl, openExternalUrlInNewTab } from "@/lib/url-utils";
+import { BUILTIN_GLOBAL_VARIABLE_NAMES } from "@/lib/builtin-global-variables";
 import { normalizeGlobalPropertyKey, collectUsedGlobalVariableNames } from "@/lib/global-properties";
 import { CustomIconPreviewEditor } from "@/components/editor/custom-icon-preview-editor";
 import { DEFAULT_CUSTOM_IMAGE_OPTIONS, normalizeCustomImageOptions, normalizeHttpImageUrl, validateCustomImageUrl } from "@/lib/custom-icon-utils";
 import type { SelectedItem } from "../diagram-editor";
 import type { CustomImageOptions, DiagramData } from "@/lib/types";
+
+const BUILTIN_GLOBAL_VARIABLE_REFERENCES: ReadonlyArray<{ name: string; description: string }> = [
+  { name: "day", description: "Weekday name (e.g. Monday)" },
+  { name: "shortday", description: "Short weekday (e.g. mon)" },
+  { name: "dd", description: "Day of month (e.g. 23)" },
+  { name: "mm", description: "Month number 1–12" },
+  { name: "month", description: "Month name (e.g. June)" },
+  { name: "yy", description: "Two-digit year (e.g. 06)" },
+  { name: "yyyy", description: "Four-digit year (e.g. 2026)" },
+  { name: "slide", description: "Current slide number (1-based)" },
+  { name: "slides", description: "Total slides in deck" },
+];
 
 interface PropertiesPanelProps {
   selectedItem: SelectedItem | null;
@@ -430,9 +444,43 @@ export function PropertiesPanel({
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
                   Define diagram variables and use them in any text as{" "}
-                  <span className="font-mono text-foreground">%name%</span>.
+                  <span className="font-mono text-foreground">%name%</span>. Built-in
+                  date and slide placeholders resolve at display time; use expressions
+                  like <span className="font-mono text-foreground">%mm% + 1</span> or{" "}
+                  <span className="font-mono text-foreground">%month% + 1</span>.
                 </p>
               </div>
+
+              <Collapsible className="group rounded-md border bg-muted/30">
+                <CollapsibleTrigger
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <ChevronDown
+                    className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90"
+                    aria-hidden
+                  />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Built-in variables
+                  </span>
+                  <span className="ml-auto text-[10px] text-muted-foreground">
+                    {BUILTIN_GLOBAL_VARIABLE_NAMES.length}
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="overflow-hidden border-t border-border/70">
+                  <ul className="max-h-48 space-y-0 overflow-y-auto p-1">
+                    {BUILTIN_GLOBAL_VARIABLE_REFERENCES.map(({ name, description }) => (
+                      <li
+                        key={name}
+                        className="rounded-sm px-2 py-1.5 text-[11px] hover:bg-muted/60"
+                      >
+                        <div className="font-mono text-xs text-foreground">%{name}%</div>
+                        <div className="text-muted-foreground">{description}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleContent>
+              </Collapsible>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

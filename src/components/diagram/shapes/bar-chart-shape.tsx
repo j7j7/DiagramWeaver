@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import type { DiagramNodeData, NodeChartSpec, NodeChartSpecBar, RichTextRun } from "@/lib/types";
 import { lerpNodeChartForSlide } from "@/lib/chart-slide-lerp";
 import { resolveChartSpecForDisplay } from "@/lib/chart-value-expr";
-import { useGlobalProperties } from "../global-properties-context";
+import { useGlobalVariableContext, useUserGlobalProperties } from "../global-properties-context";
 import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
@@ -186,7 +186,8 @@ export function BarChartShape(props: BarChartShapeProps) {
           vertical: true,
         } as NodeChartSpecBar);
 
-  const globalProperties = useGlobalProperties();
+  const globalProperties = useUserGlobalProperties();
+  const variableContext = useGlobalVariableContext();
   const chartLerped = useMemo(() => {
     if (
       presentationChartLerpFromJson == null ||
@@ -205,12 +206,12 @@ export function BarChartShape(props: BarChartShapeProps) {
   }, [chartBase, presentationChartLerpFromJson, presentationChartLerpU]);
 
   const { chart, chartValueErrors } = useMemo(() => {
-    const resolved = resolveChartSpecForDisplay(chartLerped, globalProperties);
+    const resolved = resolveChartSpecForDisplay(chartLerped, globalProperties, variableContext);
     return {
       chart: resolved.chart as NodeChartSpecBar,
       chartValueErrors: resolved.errors,
     };
-  }, [chartLerped, globalProperties]);
+  }, [chartLerped, globalProperties, variableContext]);
 
   const model = buildBarChartLayout(chart, { vbW: VB_W, vbH: VB_H });
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);

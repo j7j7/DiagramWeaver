@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { labelToRuns } from "@/lib/rich-text";
 import { resolveGlobalVariablesInRuns } from "@/lib/global-properties";
-import { useGlobalProperties } from "../global-properties-context";
+import { useGlobalProperties, useGlobalVariableContext } from "../global-properties-context";
 import { TextboxRichEditor } from "../textbox-rich-editor";
 import { TextboxRichDisplay } from "../textbox-rich-display";
 import {
@@ -39,11 +39,12 @@ export function ShapeText({
   passThroughPointerEvents = false,
 }: ShapeTextProps) {
   const globalProperties = useGlobalProperties();
+  const variableContext = useGlobalVariableContext();
   const displayRuns = useMemo(() => {
     const raw = node.richLabel ?? labelToRuns(label);
     if (isEditingLabel) return editRuns;
-    return resolveGlobalVariablesInRuns(raw, globalProperties);
-  }, [node.richLabel, label, isEditingLabel, editRuns, globalProperties]);
+    return resolveGlobalVariablesInRuns(raw, globalProperties, variableContext);
+  }, [node.richLabel, label, isEditingLabel, editRuns, globalProperties, variableContext]);
 
   const nodeAny = node as any;
   const verticalPosition = nodeAny.textVerticalPosition;

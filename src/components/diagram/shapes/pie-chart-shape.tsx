@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import type { DiagramNodeData, NodeChartSpec, NodeChartSpecPie, RichTextRun } from "@/lib/types";
 import { lerpNodeChartForSlide } from "@/lib/chart-slide-lerp";
 import { resolveChartSpecForDisplay } from "@/lib/chart-value-expr";
-import { useGlobalProperties } from "../global-properties-context";
+import { useGlobalVariableContext, useUserGlobalProperties } from "../global-properties-context";
 import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
@@ -100,7 +100,8 @@ export function PieChartShape(props: PieChartShapeProps) {
   const chartRaw = node.chart;
   const pieChartBase: NodeChartSpecPie | undefined =
     chartRaw?.kind === "pie" ? chartRaw : undefined;
-  const globalProperties = useGlobalProperties();
+  const globalProperties = useUserGlobalProperties();
+  const variableContext = useGlobalVariableContext();
   const pieChartLerped = useMemo(() => {
     if (!pieChartBase) return undefined;
     if (
@@ -121,12 +122,12 @@ export function PieChartShape(props: PieChartShapeProps) {
 
   const { chart: pieChart, chartValueErrors } = useMemo(() => {
     if (!pieChartLerped) return { chart: undefined, chartValueErrors: [] as const };
-    const resolved = resolveChartSpecForDisplay(pieChartLerped, globalProperties);
+    const resolved = resolveChartSpecForDisplay(pieChartLerped, globalProperties, variableContext);
     return {
       chart: resolved.chart as NodeChartSpecPie,
       chartValueErrors: resolved.errors,
     };
-  }, [pieChartLerped, globalProperties]);
+  }, [pieChartLerped, globalProperties, variableContext]);
   const series = pieChart?.series;
   const { slices, rDraw } = pieSlicesForSvg(VB_CX, VB_CY, VB_R, series, {
     segmentGapDeg: pieChart?.segmentGapDeg,

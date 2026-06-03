@@ -197,7 +197,7 @@ import {
 } from "@/lib/card-bullet-list";
 import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
 import { resolveGlobalVariablesInRuns } from "@/lib/global-properties";
-import { useGlobalProperties } from "../global-properties-context";
+import { useGlobalProperties, useGlobalVariableContext } from "../global-properties-context";
 import { mergeCardElementTextStylingOntoNode } from "@/lib/text-styling";
 import { useTheme } from "@/components/theme-provider";
 import { useThemeMenuHueStepDeg } from "@/hooks/use-theme-menu-hue-step-deg";
@@ -843,6 +843,7 @@ function CardElementRenderer({
   bulletListUniformItemFontSize,
 }: CardElementRendererProps) {
   const globalProperties = useGlobalProperties();
+  const variableContext = useGlobalVariableContext();
   const diagonalAccentClipId = `dw-diag-a-${nodeId}`;
   const diagonalBodyClipId = `dw-diag-b-${nodeId}`;
   const agendaRowIndex = agendaRowIndexMap?.get(element.id) ?? 0;
@@ -1406,7 +1407,7 @@ function CardElementRenderer({
     const runs = labelToRuns(element.tag ?? "");
     const displayRuns = isEditing
       ? (cardEditRuns ?? runs)
-      : resolveGlobalVariablesInRuns(runs, globalProperties);
+      : resolveGlobalVariablesInRuns(runs, globalProperties, variableContext);
     const hasText = getPlainTextFromRuns(isEditing ? runs : displayRuns).trim().length > 0;
     if (!hasText && !isEditing) {
       return null;
@@ -1478,7 +1479,7 @@ function CardElementRenderer({
           : runs;
     const displayRuns = isEditing
       ? scaledRuns
-      : resolveGlobalVariablesInRuns(scaledRuns, globalProperties);
+      : resolveGlobalVariablesInRuns(scaledRuns, globalProperties, variableContext);
     const hasText = getPlainTextFromRuns(isEditing ? runs : displayRuns).trim().length > 0;
     const fillRemaining = effectiveLayout?.fillRemaining === true;
     if (!hasText && !isEditing && !fillRemaining) {

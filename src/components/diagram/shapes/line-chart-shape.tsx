@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import type { DiagramNodeData, NodeChartSpec, NodeChartSpecLine, RichTextRun } from "@/lib/types";
 import { lerpNodeChartForSlide } from "@/lib/chart-slide-lerp";
 import { resolveChartSpecForDisplay } from "@/lib/chart-value-expr";
-import { useGlobalProperties } from "../global-properties-context";
+import { useGlobalVariableContext, useUserGlobalProperties } from "../global-properties-context";
 import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
@@ -155,7 +155,8 @@ export function LineChartShape(props: LineChartShapeProps) {
           series: [],
         } as NodeChartSpecLine);
 
-  const globalProperties = useGlobalProperties();
+  const globalProperties = useUserGlobalProperties();
+  const variableContext = useGlobalVariableContext();
   const chartLerped = useMemo(() => {
     if (
       presentationChartLerpFromJson == null ||
@@ -174,12 +175,12 @@ export function LineChartShape(props: LineChartShapeProps) {
   }, [chartBase, presentationChartLerpFromJson, presentationChartLerpU]);
 
   const { chart, chartValueErrors } = useMemo(() => {
-    const resolved = resolveChartSpecForDisplay(chartLerped, globalProperties);
+    const resolved = resolveChartSpecForDisplay(chartLerped, globalProperties, variableContext);
     return {
       chart: resolved.chart as NodeChartSpecLine,
       chartValueErrors: resolved.errors,
     };
-  }, [chartLerped, globalProperties]);
+  }, [chartLerped, globalProperties, variableContext]);
 
   const model = buildLineChartLayout(chart, { vbW: VB_W, vbH: VB_H });
   const vbH = model.vbH;

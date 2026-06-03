@@ -19,7 +19,7 @@ import {
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { resolveGlobalVariables, resolveGlobalVariablesInRuns } from "@/lib/global-properties";
-import { useGlobalProperties } from "./global-properties-context";
+import { useGlobalProperties, useGlobalVariableContext } from "./global-properties-context";
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
@@ -610,34 +610,36 @@ function DiagramNodeInner({
   const timelineSegPopOutId = `${timelineSlidePopBase}Out`;
 
   const globalProperties = useGlobalProperties();
+  const variableContext = useGlobalVariableContext();
   const displayLabel = useMemo(
-    () => resolveGlobalVariables(node.label || "", globalProperties),
-    [node.label, globalProperties],
+    () => resolveGlobalVariables(node.label || "", globalProperties, variableContext),
+    [node.label, globalProperties, variableContext],
   );
   const displayTag = useMemo(
-    () => resolveGlobalVariables(node.tag || "", globalProperties),
-    [node.tag, globalProperties],
+    () => resolveGlobalVariables(node.tag || "", globalProperties, variableContext),
+    [node.tag, globalProperties, variableContext],
   );
   const displayInfo = useMemo(
-    () => resolveGlobalVariables(node.info || "", globalProperties),
-    [node.info, globalProperties],
+    () => resolveGlobalVariables(node.info || "", globalProperties, variableContext),
+    [node.info, globalProperties, variableContext],
   );
   const resolveEntryPlain = useCallback(
     (entry: { label?: string; richLabel?: RichTextRun[] }) => {
       const raw = entry.richLabel?.length
         ? getPlainTextFromRuns(entry.richLabel)
         : entry.label ?? "";
-      return resolveGlobalVariables(raw, globalProperties);
+      return resolveGlobalVariables(raw, globalProperties, variableContext);
     },
-    [globalProperties],
+    [globalProperties, variableContext],
   );
   const displayRichLabelRuns = useMemo(
     () =>
       resolveGlobalVariablesInRuns(
         node.richLabel ?? labelToRuns(node.label),
         globalProperties,
+        variableContext,
       ),
-    [node.richLabel, node.label, globalProperties],
+    [node.richLabel, node.label, globalProperties, variableContext],
   );
 
   const [isOpen, setIsOpen] = useState(false);

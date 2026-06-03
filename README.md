@@ -225,8 +225,9 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 ### Global variables
 
 - **`globalProperties`**: Diagram-wide name → value map stored in JSON (per diagram level, including sub-diagrams). Use **`%varname%`** placeholders in **any displayed text**—labels, rich text, tags, connection labels, card cells, UML compartments, timeline entries, chart value expressions, and more. Stored text keeps the template (e.g. `Hello %name%`); substitution happens at **display time** only
-- **Properties panel**: When **nothing is selected**, the right **Properties** panel lists global variables—add, edit, or delete entries (editor). Names are alphanumeric/underscore; values are shown as **`%name%`** → value. Viewer is read-only
-- **Chart values**: In **Chart data**, series **Value** fields (and comma-separated bar/line lists) can reference globals and evaluate math—invalid or non-numeric variable values show an error in the modal and on the chart
+- **Built-in placeholders** (no setup required): `%day%`, `%shortday%`, `%dd%`, `%mm%`, `%month%`, `%yy%`, `%yyyy%`, `%slide%`, `%slides%` — current date/time and presentation slide index (1-based). Inline math works in text, e.g. `%mm% + 1`, `%month% + 1` → next month name, `%slide% + 1`
+- **Properties panel**: When **nothing is selected**, the right **Properties** panel lists built-ins and custom global variables—add, edit, or delete custom entries (editor). Custom names are alphanumeric/underscore; values are shown as **`%name%`** → value. Viewer is read-only
+- **Chart values**: In **Chart data**, series **Value** fields (and comma-separated bar/line lists) can reference globals (including built-ins) and evaluate math—invalid or non-numeric variable values show an error in the modal and on the chart
 
 ### Theme
 

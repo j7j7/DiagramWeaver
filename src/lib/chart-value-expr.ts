@@ -1,3 +1,4 @@
+import { mergeGlobalProperties, type GlobalVariableContext } from "@/lib/builtin-global-variables";
 import { GLOBAL_VARIABLE_PATTERN } from "@/lib/global-properties";
 import { formatChartValueForEdit, roundChartDataValue } from "@/lib/chart-node";
 import type {
@@ -52,15 +53,17 @@ export function parseChartNumericToken(raw: string): ChartValueEvalResult {
 function substituteChartVariables(
   expr: string,
   globalProperties?: Record<string, string>,
+  context?: GlobalVariableContext,
 ): { ok: true; expr: string } | { ok: false; error: string } {
   const problems: string[] = [];
+  const effective = mergeGlobalProperties(globalProperties, context);
 
   const substituted = expr.replace(GLOBAL_VARIABLE_PATTERN, (match, name: string) => {
-    if (!globalProperties || !Object.prototype.hasOwnProperty.call(globalProperties, name)) {
+    if (!Object.prototype.hasOwnProperty.call(effective, name)) {
       problems.push(`Unknown variable %${name}%`);
       return match;
     }
-    const parsed = parseChartNumericToken(globalProperties[name]);
+    const parsed = parseChartNumericToken(effective[name]);
     if (!parsed.ok) {
       problems.push(`%${name}%: ${parsed.error}`);
       return match;
@@ -154,6 +157,7 @@ function evaluateMathExpression(expr: string): ChartValueEvalResult {
 export function evaluateChartValueInput(
   raw: string,
   globalProperties?: Record<string, string>,
+  context?: GlobalVariableContext,
 ): ChartValueEvalResult {
   const trimmed = raw.trim();
   if (!trimmed) return { ok: true, value: 0 };
@@ -162,7 +166,7 @@ export function evaluateChartValueInput(
     return parseChartNumericToken(trimmed);
   }
 
-  const sub = substituteChartVariables(trimmed, globalProperties);
+  const sub = substituteChartVariables(trimmed, globalProperties, context);
   if (!sub.ok) return sub;
   return evaluateMathExpression(sub.expr);
 }
@@ -193,11 +197,12 @@ export function chartValuesStrForEditorDisplay(values: number[], valuesExpr?: st
 export function parseChartScalarForSave(
   raw: string,
   globalProperties?: Record<string, string>,
+  context?: GlobalVariableContext,
 ):
   | { ok: true; value: number; valueExpr?: string }
   | { ok: false; error: string } {
   const trimmed = raw.trim();
-  const evaluated = evaluateChartValueInput(trimmed, globalProperties);
+  const evaluated = evaluateChartValueInput(trimmed, globalProperties, context);
   if (!evaluated.ok) return evaluated;
   if (isChartValueExpression(trimmed)) {
     return { ok: true, value: evaluated.value, valueExpr: trimmed };
@@ -209,6 +214,7 @@ export function parseChartValuesListForSave(
   raw: string,
   targetLen: number,
   globalProperties?: Record<string, string>,
+  context?: GlobalVariableContext,
 ):
   | { ok: true; values: number[]; valuesExpr?: string }
   | { ok: false; error: string } {
@@ -216,7 +222,7 @@ export function parseChartValuesListForSave(
   const parts = splitChartValuesList(trimmed);
   const values: number[] = [];
   for (const part of parts) {
-    const evaluated = evaluateChartValueInput(part, globalProperties);
+    const evaluated = evaluateChartValueInput(part, globalProperties, context);
     if (!evaluated.ok) return { ok: false, error: `${part}: ${evaluated.error}` };
     values.push(evaluated.value);
   }
@@ -233,10 +239,11 @@ function resolveScalarRowValue(
   value: number,
   valueExpr: string | undefined,
   globalProperties: Record<string, string> | undefined,
+  context: GlobalVariableContext | undefined,
   onError: (error: string) => void,
 ): number {
   if (!valueExpr?.trim()) return value;
-  const evaluated = evaluateChartValueInput(valueExpr, globalProperties);
+  const evaluated = evaluateChartValueInput(valueExpr, globalProperties, context);
   if (!evaluated.ok) {
     onError(evaluated.error);
     return value;
@@ -247,13 +254,14 @@ function resolveScalarRowValue(
 function resolveBarSegmentRow(
   row: ChartBarSegmentItem,
   globalProperties: Record<string, string> | undefined,
+  context: GlobalVariableContext | undefined,
   onError: (categoryIndex: number | undefined, error: string) => void,
 ): ChartBarSegmentItem {
   if (!row.valuesExpr?.trim()) return row;
   const parts = splitChartValuesList(row.valuesExpr);
   const values = [...(row.values ?? [])];
   parts.forEach((part, categoryIndex) => {
-    const evaluated = evaluateChartValueInput(part, globalProperties);
+    const evaluated = evaluateChartValueInput(part, globalProperties, context);
     if (!evaluated.ok) {
       onError(categoryIndex, evaluated.error);
       return;
@@ -267,13 +275,14 @@ function resolveBarSegmentRow(
 export function resolveChartSpecForDisplay(
   chart: NodeChartSpec,
   globalProperties?: Record<string, string>,
+  context?: GlobalVariableContext,
 ): { chart: NodeChartSpec; errors: ChartValueResolveError[] } {
   const errors: ChartValueResolveError[] = [];
 
   if (chart.kind === "pie") {
     const series = chart.series.map((row, seriesIndex) => {
       if (!row.valueExpr?.trim()) return row;
-      const value = resolveScalarRowValue(row.value, row.valueExpr, globalProperties, (error) => {
+      const value = resolveScalarRowValue(row.value, row.valueExpr, globalProperties, context, (error) => {
         errors.push({ kind: "pie", seriesIndex, error });
       });
       return { ...row, value };
@@ -284,7 +293,7 @@ export function resolveChartSpecForDisplay(
   if (chart.kind === "ring") {
     const series = chart.series.map((row, seriesIndex) => {
       if (!row.valueExpr?.trim()) return row;
-      const value = resolveScalarRowValue(row.value, row.valueExpr, globalProperties, (error) => {
+      const value = resolveScalarRowValue(row.value, row.valueExpr, globalProperties, context, (error) => {
         errors.push({ kind: "ring", seriesIndex, error });
       });
       return { ...row, value };
@@ -294,7 +303,7 @@ export function resolveChartSpecForDisplay(
 
   if (chart.kind === "bar" || chart.kind === "line") {
     const series = chart.series.map((row, seriesIndex) =>
-      resolveBarSegmentRow(row, globalProperties, (categoryIndex, error) => {
+      resolveBarSegmentRow(row, globalProperties, context, (categoryIndex, error) => {
         errors.push({
           kind: chart.kind,
           seriesIndex,
@@ -312,11 +321,12 @@ export function resolveChartSpecForDisplay(
 export function previewChartValueInput(
   raw: string,
   globalProperties?: Record<string, string>,
+  context?: GlobalVariableContext,
 ): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
   if (!isChartValueExpression(trimmed)) return null;
-  const evaluated = evaluateChartValueInput(trimmed, globalProperties);
+  const evaluated = evaluateChartValueInput(trimmed, globalProperties, context);
   if (!evaluated.ok) return evaluated.error;
   return `= ${formatChartValueForEdit(evaluated.value)}`;
 }

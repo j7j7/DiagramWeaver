@@ -1,4 +1,17 @@
+import {
+  evaluateGlobalTextExpressions,
+  mergeGlobalProperties,
+  type GlobalVariableContext,
+} from "@/lib/builtin-global-variables";
 import type { DiagramData, RichTextRun } from "@/lib/types";
+
+export type { GlobalVariableContext } from "@/lib/builtin-global-variables";
+export {
+  BUILTIN_GLOBAL_VARIABLE_NAMES,
+  getBuiltinGlobalProperties,
+  mergeGlobalProperties,
+  isBuiltinGlobalVariableName,
+} from "@/lib/builtin-global-variables";
 
 /** `%varname%` placeholders in text — varname is `[a-zA-Z_][a-zA-Z0-9_]*`. */
 export const GLOBAL_VARIABLE_PATTERN = /%([a-zA-Z_][a-zA-Z0-9_]*)%/g;
@@ -9,30 +22,33 @@ export function normalizeGlobalPropertyKey(raw: string): string | null {
   return trimmed;
 }
 
+/**
+ * Resolve `%var%` placeholders and inline expressions (e.g. `%mm% + 1`).
+ * Pass **effective** properties (built-ins merged with diagram globals) from `useGlobalProperties()`.
+ */
 export function resolveGlobalVariables(
   text: string,
-  globalProperties?: Record<string, string>,
+  effectiveProperties?: Record<string, string>,
+  context: GlobalVariableContext = {},
 ): string {
-  if (!text || !globalProperties || Object.keys(globalProperties).length === 0) {
-    return text;
-  }
-  return text.replace(GLOBAL_VARIABLE_PATTERN, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(globalProperties, name)
-      ? globalProperties[name]
-      : match,
+  if (!text || !text.includes("%")) return text;
+
+  const effective = effectiveProperties ?? {};
+  const withExpressions = evaluateGlobalTextExpressions(text, effective, context);
+
+  return withExpressions.replace(GLOBAL_VARIABLE_PATTERN, (match, name: string) =>
+    Object.prototype.hasOwnProperty.call(effective, name) ? effective[name] : match,
   );
 }
 
 export function resolveGlobalVariablesInRuns(
   runs: RichTextRun[],
-  globalProperties?: Record<string, string>,
+  effectiveProperties?: Record<string, string>,
+  context: GlobalVariableContext = {},
 ): RichTextRun[] {
-  if (!globalProperties || Object.keys(globalProperties).length === 0) {
-    return runs;
-  }
   return runs.map((run) => ({
     ...run,
-    text: resolveGlobalVariables(run.text, globalProperties),
+    text: resolveGlobalVariables(run.text, effectiveProperties, context),
   }));
 }
 

@@ -23,7 +23,7 @@ import {
 } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
 import { resolveGlobalVariables } from "@/lib/global-properties";
-import { useGlobalProperties } from "../global-properties-context";
+import { useGlobalProperties, useGlobalVariableContext } from "../global-properties-context";
 import { UML_NAME_HEIGHT, UML_LINE_HEIGHT } from "@/lib/uml-utils";
 
 type CompartmentKey = "name" | "attributes" | "methods";
@@ -92,14 +92,19 @@ export function UmlClassShape({
   const styles = getShapeStyles(node);
   const slideShapeShadowMode = useSlideShapeShadowTransitionMode();
   const globalProperties = useGlobalProperties();
+  const variableContext = useGlobalVariableContext();
 
   const rawName = uml?.name ?? label.split("\n")[0] ?? "";
   const rawAttributes = uml?.attributes ?? [];
   const rawMethods = uml?.methods ?? [];
 
-  const name = resolveGlobalVariables(rawName, globalProperties);
-  const attributes = rawAttributes.map((line: string) => resolveGlobalVariables(line, globalProperties));
-  const methods = rawMethods.map((line: string) => resolveGlobalVariables(line, globalProperties));
+  const name = resolveGlobalVariables(rawName, globalProperties, variableContext);
+  const attributes = rawAttributes.map((line: string) =>
+    resolveGlobalVariables(line, globalProperties, variableContext),
+  );
+  const methods = rawMethods.map((line: string) =>
+    resolveGlobalVariables(line, globalProperties, variableContext),
+  );
 
   const [editingCompartment, setEditingCompartment] = useState<CompartmentKey | null>(null);
   const [editValue, setEditValue] = useState("");
