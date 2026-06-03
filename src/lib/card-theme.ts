@@ -22,6 +22,7 @@ import {
   applyFramedHeadingCardBackgroundVisual,
   applyFramedHeadingThemeColors,
   ensureFramedHeadingFrameFill,
+  isFramedHeadingFillVisible,
   partitionFramedHeadingVisualStylingPatch,
 } from "@/lib/card-framed-heading";
 
@@ -83,8 +84,7 @@ function cardStyleFromVisualBackground(
     if (v === "mesh_gradient") style.backgroundStyle = "mesh_gradient";
     else if (v === "none" || v === "solid" || v === "gradient") style.backgroundStyle = v;
     else if (v === "frosted") {
-      style.backgroundStyle =
-        templateId === FRAMED_HEADING_TEMPLATE_ID ? "none" : "solid";
+      style.backgroundStyle = "none";
     }
   }
   if (styling.backgroundColor !== undefined) style.backgroundColor = styling.backgroundColor;
@@ -172,6 +172,52 @@ export function applyCardBackgroundVisual(
   return updateCardElementStyleTree(elements, bgId, cardStyleFromVisualBackground(styling, templateId));
 }
 
+function cardClearNodeBackgroundPatch(): Record<string, unknown> {
+  return {
+    backgroundStyle: null,
+    backgroundColor: null,
+    backgroundColors: null,
+    gradientAngle: null,
+    meshGradientPoints: null,
+    frostedDiffusion: null,
+    frostedTransparency: null,
+    frostedPerlinNoise: null,
+  };
+}
+
+/** Frosted shell fill is stored on the card node; the background region stays transparent. */
+export function cardShellUsesFrostedInterior(
+  node: { backgroundStyle?: string | null },
+  fillStyle: CardElementStyle | undefined,
+): boolean {
+  return node.backgroundStyle === "frosted" && !isFramedHeadingFillVisible(fillStyle);
+}
+
+/** Visual styling panel read — node frosted wins when the card background region has no opaque fill. */
+export function cardPanelBackgroundVisual(
+  node: {
+    backgroundStyle?: string | null;
+    backgroundColor?: string;
+    frostedDiffusion?: number;
+    frostedTransparency?: number;
+    frostedPerlinNoise?: number;
+  },
+  cardBg: CardBackgroundVisual,
+): CardBackgroundVisual &
+  Pick<VisualStyling, "frostedDiffusion" | "frostedTransparency" | "frostedPerlinNoise"> {
+  if (cardShellUsesFrostedInterior(node, cardBg as CardElementStyle)) {
+    return {
+      ...cardBg,
+      backgroundStyle: "frosted",
+      backgroundColor: node.backgroundColor ?? cardBg.backgroundColor,
+      frostedDiffusion: node.frostedDiffusion,
+      frostedTransparency: node.frostedTransparency,
+      frostedPerlinNoise: node.frostedPerlinNoise,
+    };
+  }
+  return cardBg;
+}
+
 /** Split visual styling patch: card background region vs shell/node fields. */
 export function partitionCardVisualStylingPatch(
   styling: Record<string, unknown>,
@@ -184,6 +230,20 @@ export function partitionCardVisualStylingPatch(
     return partitionFramedHeadingVisualStylingPatch(styling);
   }
 
+  if (styling.backgroundStyle === "frosted") {
+    return {
+      cardBackground: { backgroundStyle: "none" },
+      nodePatch: { ...styling },
+    };
+  }
+
+  if (styling.backgroundStyle === "none") {
+    return {
+      cardBackground: { backgroundStyle: "none" },
+      nodePatch: cardClearNodeBackgroundPatch(),
+    };
+  }
+
   const cardBackground: Record<string, unknown> = {};
   const nodePatch = { ...styling };
   for (const k of CARD_BACKGROUND_VISUAL_KEYS) {
@@ -194,7 +254,7 @@ export function partitionCardVisualStylingPatch(
   }
   return {
     cardBackground: cardBackground as Partial<VisualStyling>,
-    nodePatch,
+    nodePatch: { ...nodePatch, ...cardClearNodeBackgroundPatch() },
   };
 }
 

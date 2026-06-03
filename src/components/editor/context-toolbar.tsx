@@ -86,6 +86,7 @@ import {
   cardBackgroundVisualFromElements,
   applyCardBackgroundVisual,
   partitionCardVisualStylingPatch,
+  cardPanelBackgroundVisual,
 } from '@/lib/card-theme';
 import { framedHeadingPanelBackgroundVisual } from '@/lib/card-framed-heading';
 import { getCardTemplateIdFromNodeType } from '@/lib/card-utils';
@@ -792,7 +793,7 @@ export function ContextToolbar({
         }
         return {
           ...base,
-          ...cardBg,
+          ...cardPanelBackgroundVisual(node, cardBg),
         };
       }
       return base;

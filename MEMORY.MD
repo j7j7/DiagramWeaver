@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-03 – Cards: frosted glass shell (Bullet List et al.)
+**Frosted glass** Background on standard card templates (e.g. **Bullet List**) now matches **Framed Heading**: frosted styling lives on the **card node**, the background region (`root` / `body`) stays transparent, and **`ShapeWrapper`** renders the clipped backdrop-filter stack (`cardShellUsesFrostedInterior`, `partitionCardVisualStylingPatch`, `cardPanelBackgroundVisual`). Patch bumped.
+
 ### 2026-06-03 – Bullet List: separate heading text color
 **Card properties** (Visual styling) now has independent **Heading text color** and **Item text color** pickers. **Accent color** applies only to bullet cubes and the + Add item label (no longer overwrites the title). **`getBulletListTitleTextColor`** / **`applyBulletListTitleTextColor`** in **`card-bullet-list.ts`**. Patch bumped.
 

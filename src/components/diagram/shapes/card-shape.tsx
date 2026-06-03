@@ -131,6 +131,7 @@ import {
   resolveFramedHeadingTextLayout,
 } from "@/lib/card-framed-heading";
 import { findCardElement } from "@/lib/card-utils";
+import { getCardBackgroundElementId, cardShellUsesFrostedInterior } from "@/lib/card-theme";
 import { FramedHeadingCardShell } from "@/components/diagram/shapes/card-framed-heading-shell";
 import { FramedHeadingShellSvg } from "@/components/diagram/shapes/framed-heading-shell-svg";
 import {
@@ -1987,13 +1988,22 @@ export function CardShape(props: CardShapeProps) {
     return findCardElement(cardRoot, FRAMED_HEADING_FILL_ID)?.style;
   }, [isFramedHeading, cardRoot]);
 
+  const cardShellFillStyle = useMemo(() => {
+    if (isFramedHeading || !cardRoot) return undefined;
+    const bgId = getCardBackgroundElementId(resolvedTemplateId);
+    return findCardElement(cardRoot, bgId)?.style;
+  }, [isFramedHeading, cardRoot, resolvedTemplateId]);
+
   const framedInteriorFrosted =
     isFramedHeading && framedHeadingUsesFrostedInterior(nodeAny, framedFillStyle);
+  const cardShellFrosted =
+    !isFramedHeading && cardShellUsesFrostedInterior(nodeAny, cardShellFillStyle);
+  const shellFrosted = framedInteriorFrosted || cardShellFrosted;
   const framedInteriorOnFill =
     isFramedHeading && isFramedHeadingFillVisible(framedFillStyle);
 
   const shellBg =
-    isFramedHeading || nodeAny.backgroundStyle === "none" || framedInteriorFrosted
+    isFramedHeading || nodeAny.backgroundStyle === "none" || shellFrosted
       ? "transparent"
       : styles.background ?? styles.backgroundColor ?? "#ffffff";
 
@@ -2018,15 +2028,15 @@ export function CardShape(props: CardShapeProps) {
 
   /** `filter` on an ancestor breaks frosted `backdrop-filter` — use box-shadow instead when interior is frosted. */
   const outerDropShadowFilter =
-    styles.shadow && !framedInteriorFrosted ? "var(--shape-shadow-drop)" : undefined;
+    styles.shadow && !shellFrosted ? "var(--shape-shadow-drop)" : undefined;
   const outerDropShadowBox =
-    styles.shadow && framedInteriorFrosted ? "var(--shape-shadow)" : undefined;
+    styles.shadow && shellFrosted ? "var(--shape-shadow)" : undefined;
 
-  const framedFrostedGlassClipPath = useMemo(() => {
-    if (!framedInteriorFrosted) return undefined;
+  const frostedGlassClipPath = useMemo(() => {
+    if (!shellFrosted) return undefined;
     const innerR = Math.max(0, radiusPx - borderWidthNum);
     return framedHeadingFrostedGlassClipPath(borderWidthNum, innerR);
-  }, [framedInteriorFrosted, radiusPx, borderWidthNum]);
+  }, [shellFrosted, radiusPx, borderWidthNum]);
 
   const framedHeadingShellSvg =
     isFramedHeading ? (
@@ -2211,7 +2221,7 @@ export function CardShape(props: CardShapeProps) {
       preserveShellHalo={Boolean(shellHighlightStyle) || isFramedHeading}
       omitShapeText
       borderRadius={borderRadiusStr}
-      frostedGlassClipPath={framedFrostedGlassClipPath}
+      frostedGlassClipPath={frostedGlassClipPath}
       slideColorTransition={slideColorTransition}
       slideShellExitStyle={slideShellCardPopStyle}
     >
