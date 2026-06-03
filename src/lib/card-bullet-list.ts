@@ -514,6 +514,15 @@ export function getBulletListRows(root: CardElementData | undefined): CardElemen
 }
 
 export function getBulletListAccentColor(root: CardElementData | undefined): string {
+  const firstRow = root ? getBulletListRows(root)[0] : undefined;
+  const cube = firstRow?.children?.find((c) => c.id.endsWith(BULLET_LIST_CUBE_SUFFIX));
+  const cubeColor = cube?.style?.backgroundColor;
+  if (cubeColor) return cubeColor;
+  const addLabel = root ? findCardElement(root, BULLET_LIST_ADD_ROW_LABEL_ID) : null;
+  return addLabel?.textColor ?? BULLET_LIST_ACCENT_DEFAULT;
+}
+
+export function getBulletListTitleTextColor(root: CardElementData | undefined): string {
   const title = root ? findCardElement(root, BULLET_LIST_TITLE_ID) : null;
   return title?.textColor ?? BULLET_LIST_ACCENT_DEFAULT;
 }
@@ -861,13 +870,9 @@ export function getBulletListRowIndex(elements: CardElementData, rowId: string):
   return getBulletListRows(elements).findIndex((r) => r.id === rowId);
 }
 
-/** Sync accent color to title, add-row label, and all cube fills. */
+/** Sync accent color to add-row label and all cube fills (not the title heading). */
 export function applyBulletListAccentColor(elements: CardElementData, color: string): CardElementData {
   let next = elements;
-  const title = findCardElement(next, BULLET_LIST_TITLE_ID);
-  if (title) {
-    next = updateCardElementTree(next, BULLET_LIST_TITLE_ID, { textColor: color });
-  }
   const addLabel = findCardElement(next, BULLET_LIST_ADD_ROW_LABEL_ID);
   if (addLabel) {
     next = updateCardElementTree(next, BULLET_LIST_ADD_ROW_LABEL_ID, { textColor: color });
@@ -882,6 +887,12 @@ export function applyBulletListAccentColor(elements: CardElementData, color: str
     }
   }
   return next;
+}
+
+export function applyBulletListTitleTextColor(elements: CardElementData, color: string): CardElementData {
+  const title = findCardElement(elements, BULLET_LIST_TITLE_ID);
+  if (!title) return elements;
+  return updateCardElementTree(elements, BULLET_LIST_TITLE_ID, { textColor: color });
 }
 
 export function applyBulletListItemTextColor(elements: CardElementData, color: string): CardElementData {
@@ -904,6 +915,7 @@ export function applyBulletListThemeColors(
   options?: { stepHueWithinCard?: boolean; hueStepDeg?: number },
 ): CardElementData {
   let next = applyBulletListAccentColor(elements, accentColor);
+  next = applyBulletListTitleTextColor(next, accentColor);
   next = applyBulletListItemTextColor(next, itemTextColor);
 
   if (options?.stepHueWithinCard) {

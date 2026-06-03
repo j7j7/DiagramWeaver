@@ -1999,6 +1999,23 @@ export function CardShape(props: CardShapeProps) {
 
   const shellTransition = slideColorTransition ? { transition: slideColorTransition } : {};
 
+  /** When fill is none, mask the gradient to the border ring only — otherwise the first border stop fills the interior. */
+  const gradientBorderLayerStyle: React.CSSProperties = shellBg === "transparent"
+    ? {
+        backgroundImage: borderGradientBackground,
+        backgroundColor: "transparent",
+        borderRadius: borderRadiusStr,
+        padding: borderWidthNum,
+        WebkitMask:
+          "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+        WebkitMaskComposite: "xor",
+        maskComposite: "exclude",
+      }
+    : {
+        backgroundImage: borderGradientBackground,
+        backgroundColor: styles.borderColors?.[0] ?? "transparent",
+      };
+
   /** `filter` on an ancestor breaks frosted `backdrop-filter` — use box-shadow instead when interior is frosted. */
   const outerDropShadowFilter =
     styles.shadow && !framedInteriorFrosted ? "var(--shape-shadow-drop)" : undefined;
@@ -2125,10 +2142,7 @@ export function CardShape(props: CardShapeProps) {
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-0"
-          style={{
-            backgroundImage: borderGradientBackground,
-            backgroundColor: styles.borderColors?.[0] ?? "transparent",
-          }}
+          style={gradientBorderLayerStyle}
         />
         <div
           className="absolute z-[1] flex min-h-0 min-w-0 flex-col overflow-hidden"

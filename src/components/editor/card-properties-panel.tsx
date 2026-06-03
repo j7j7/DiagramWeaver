@@ -179,6 +179,7 @@ import {
   applyBulletListBulletShape,
   applyBulletListBulletSize,
   applyBulletListItemTextColor,
+  applyBulletListTitleTextColor,
   applyBulletListTitleAlign,
   BULLET_LIST_ITEM_TEXT_DEFAULT,
   BULLET_LIST_CUBE_SUFFIX,
@@ -186,6 +187,7 @@ import {
   BULLET_SIZE_MIN,
   getBulletListAccentColor,
   getBulletListItemTextColor,
+  getBulletListTitleTextColor,
   getBulletListRows,
   getBulletListTitleAlign,
   isBulletListCard,
@@ -1417,6 +1419,7 @@ function BulletListCardProperties({
   const globalMultiHue = useThemeMultiHueLayout();
   const hueStepDeg = useThemeMenuHueStepDeg();
   const accentColor = getBulletListAccentColor(elements);
+  const titleTextColor = getBulletListTitleTextColor(elements);
   const itemTextColor = getBulletListItemTextColor(elements);
   const themeHueOn = bulletListItemThemeHue ?? globalMultiHue;
   const firstCube = getBulletListRows(elements)[0]?.children?.find((c) =>
@@ -1487,10 +1490,10 @@ function BulletListCardProperties({
       </div>
 
       <div className="space-y-1">
-        <Label className="text-sm text-muted-foreground">Accent color (title, border, bullets)</Label>
+        <Label className="text-sm text-muted-foreground">Heading text color</Label>
         <ColorPicker
-          value={accentColor}
-          onChange={(value) => onElementsChange(applyBulletListAccentColor(elements, value))}
+          value={titleTextColor}
+          onChange={(value) => onElementsChange(applyBulletListTitleTextColor(elements, value))}
         />
       </div>
 
@@ -1499,6 +1502,14 @@ function BulletListCardProperties({
         <ColorPicker
           value={itemTextColor || BULLET_LIST_ITEM_TEXT_DEFAULT}
           onChange={(value) => onElementsChange(applyBulletListItemTextColor(elements, value))}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Accent color (bullets, + Add item)</Label>
+        <ColorPicker
+          value={accentColor}
+          onChange={(value) => onElementsChange(applyBulletListAccentColor(elements, value))}
         />
       </div>
 

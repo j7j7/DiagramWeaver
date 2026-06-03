@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-03 – Bullet List: separate heading text color
+**Card properties** (Visual styling) now has independent **Heading text color** and **Item text color** pickers. **Accent color** applies only to bullet cubes and the + Add item label (no longer overwrites the title). **`getBulletListTitleTextColor`** / **`applyBulletListTitleTextColor`** in **`card-bullet-list.ts`**. Patch bumped.
+
+### 2026-06-03 – Card gradient border + none fill
+Cards with **gradient border** and **Background → None** (e.g. Bullet List) no longer show the first border stop as a solid interior fill. **`CardShape`** masks the gradient border layer to the ring only when the shell fill is transparent (same intent as SVG **`RoundedRectangleShape`** / **`FramedHeadingShellSvg`**). Patch bumped.
+
 ### 2026-06-02 – Framed Heading: default palette styling
 New framed-heading cards use 260×280, 3px `#315d96` frame border, shadow, 50% tab width, tab gradient `#2b6ca1`→`#193661` (315°), no tab border, `#ced7e3` heading text (no glow). Palette icon preview aligned. Patch bumped.
 
