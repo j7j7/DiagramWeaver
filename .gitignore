@@ -109,6 +109,11 @@ logs/
 # Testing
 coverage/
 .nyc_output/
+e2e/logs/
+e2e/report/
+e2e/test-results/
+playwright-report/
+blob-report/
 
 # Storybook build outputs
 storybook-static/

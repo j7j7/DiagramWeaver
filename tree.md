@@ -8,6 +8,14 @@ Canonical narrative: **README → Development → Project Structure**. Update th
 .
 ├── docs/
 │   ├── functional.md           # Modules, hooks, routes — how code fits together (see README / AGENTS.md)
+│   ├── e2e-perf-harness.md     # Playwright canvas performance workflow + env vars
+├── e2e/
+│   ├── helpers/                # editor-page, perf-logger, palette-items
+│   ├── perf/                   # canvas-workflow.spec.ts
+│   ├── logs/                   # perf-*.log / perf-*.json (gitignored)
+│   ├── report/                 # Playwright HTML report (gitignored)
+│   └── test-results/           # traces, video (gitignored)
+├── playwright.config.ts
 ├── public/
 │   ├── examples/
 │   └── resources/          # Served JSON + icons (`/resources/*`)

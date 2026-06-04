@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-03 – Playwright E2E canvas performance harness
+Added **`e2e/perf/canvas-workflow.spec.ts`** (Playwright): new tab, palette drops (3× rounded rect, EC2, grid chart, segmented rect, agenda, element feature), connect rects→EC2, random theme on rects, resize segmented + agenda, right-drag pan, delete all nodes, close tab. Per-step + total timings in **`e2e/logs/perf-*.log`** / **`.json`**. Headed: **`npm run test:e2e:perf:headed`**; headless: **`npm run test:e2e:perf`**. See **`docs/e2e-perf-harness.md`**. Dev deps: `@playwright/test`; scripts **`test:e2e:perf`**, **`test:e2e:install`**.
+
 ### 2026-06-03 – Grid chart palette default (fixed lime/teal starter)
 New **Grid chart** drops use a fixed **9×3** starter (HEADING, START/END cells, theme-hue fills) and teal border / lime text styling — **`defaultGridChartSpec()`** + **`defaultPaletteGridChartNodeProps()`** — not a random built-in theme. Default size **500×180** (grid-snapped). Patch bumped.
 
