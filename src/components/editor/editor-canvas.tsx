@@ -78,7 +78,7 @@ import {
   sortObjectIdsByDistanceFromAnchor,
 } from "@/lib/auto-number-labels";
 import { CanvasRotationOverlay } from "./canvas-rotation-overlay";
-import { measureNodeDims } from "./canvas-constants";
+import { measureNodeDims, nodeBoundingBoxForFit } from "./canvas-constants";
 import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
 import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
 import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
@@ -112,6 +112,16 @@ import { syncClosedConnectorLineBorderWidth } from "@/lib/line-styling";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { canUniformSpacingAlign } from "@/lib/uniform-spacing-align";
+import {
+  clientPointToDiagram,
+  findTopSelectedCanvasObjectIdAtPoint,
+  getCanvasObjectIdsAtPoint,
+  getCanvasOverlapStackAtDiagramPoint,
+  mergeOverlapStacks,
+  resolveClickThroughSelectId,
+  resolveContextMenuAnchorId,
+  type CanvasObjectBounds,
+} from "@/lib/canvas-click-through";
 
 const ROTATION_DRAG_SENSITIVITY_DEG_PER_PX = 0.5;
 const SIMULATION_AVAILABILITY_STATE_KEY = "simulation:availability:state";
@@ -153,25 +163,6 @@ function normalizeRotationDegrees(rotation: number): number {
   if (r >= 180) r -= 360;
   if (r < -180) r += 360;
   return r;
-}
-
-/** Topmost canvas node/zone under the cursor that is in the current selection (includes pointer-events:none pass-through layers). */
-function findTopSelectedCanvasObjectIdAtPoint(
-  clientX: number,
-  clientY: number,
-  selectedItemIds: ReadonlySet<string>,
-): string | null {
-  if (selectedItemIds.size === 0 || typeof document.elementsFromPoint !== "function") {
-    return null;
-  }
-  for (const el of document.elementsFromPoint(clientX, clientY)) {
-    if (!(el instanceof Element)) continue;
-    const nodeId = el.closest("[data-node-id]")?.getAttribute("data-node-id");
-    if (nodeId && selectedItemIds.has(nodeId)) return nodeId;
-    const zoneId = el.closest("[data-zone-id]")?.getAttribute("data-zone-id");
-    if (zoneId && selectedItemIds.has(zoneId)) return zoneId;
-  }
-  return null;
 }
 
 function snapRotationDegrees(rotation: number, snapStep: number): number {
@@ -672,6 +663,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   selectedItemIdsRef.current = selectedItemIds;
   const selectedItemIdRef = useRef(selectedItemId);
   selectedItemIdRef.current = selectedItemId;
+  /** Last left-click screen position for overlap click-through cycling. */
+  const clickThroughLastPointRef = useRef<{ x: number; y: number } | null>(null);
   const panDismissedOverlaysRef = useRef(false);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
   const [searchModalOpen, setSearchModalOpen] = React.useState(false);
@@ -1043,6 +1036,53 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     processedZones,
     wheelZoomDisabled: searchModalOpen || wheelZoomSuppressed,
   });
+
+  const getClickThroughBounds = useCallback(
+    (id: string): CanvasObjectBounds | null => {
+      const node = nodesById[id];
+      if (node) {
+        const box = nodeBoundingBoxForFit(node as PositionedNode);
+        return {
+          x: box.minX,
+          y: box.minY,
+          w: box.maxX - box.minX,
+          h: box.maxY - box.minY,
+        };
+      }
+      const zone = zonesById[id];
+      if (zone) {
+        return {
+          x: zone.x ?? 0,
+          y: zone.y ?? 0,
+          w: zone.width ?? 300,
+          h: zone.height ?? 220,
+        };
+      }
+      return null;
+    },
+    [nodesById, zonesById],
+  );
+
+  /** Top-first overlap stack at a screen point (geometry + DOM), stable for click-through cycling. */
+  const getOverlapStackAtClientPoint = useCallback(
+    (clientX: number, clientY: number): string[] => {
+      const canvasEl = canvasRef.current;
+      const domStack = getCanvasObjectIdsAtPoint(clientX, clientY);
+      if (!canvasEl) {
+        return mergeOverlapStacks([], domStack, connectionSlots.sortedItemIds);
+      }
+      const rect = canvasEl.getBoundingClientRect();
+      const diagram = clientPointToDiagram(clientX, clientY, rect, transform);
+      const geometryStack = getCanvasOverlapStackAtDiagramPoint(
+        diagram.x,
+        diagram.y,
+        connectionSlots.sortedItemIds,
+        getClickThroughBounds,
+      );
+      return mergeOverlapStacks(geometryStack, domStack, connectionSlots.sortedItemIds);
+    },
+    [connectionSlots.sortedItemIds, getClickThroughBounds, transform],
+  );
 
   // Measure selected item rect for metadata popup (anchored to object)
   useLayoutEffect(() => {
@@ -1867,6 +1907,34 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const fingerTap = (e as React.MouseEvent & { dwFingerTap?: boolean }).dwFingerTap === true;
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
 
+    const useOverlapClickThrough =
+      !additive && !isConnectMode && !simulationModeEnabled && !fingerTap;
+    if (useOverlapClickThrough) {
+      const { targetId, nextLastClickPoint } = resolveClickThroughSelectId({
+        clientX: e.clientX,
+        clientY: e.clientY,
+        domHitId: node.id,
+        selectedItemId: selectedItemIdRef.current,
+        lastClickPoint: clickThroughLastPointRef.current,
+        sortedItemIds: connectionSlots.sortedItemIds,
+        nodesById,
+        skipLocked: true,
+        overlapStackTopFirst: getOverlapStackAtClientPoint(e.clientX, e.clientY),
+      });
+      clickThroughLastPointRef.current = nextLastClickPoint;
+      if (targetId !== node.id) {
+        const targetNode = nodesById[targetId] ?? displayNodesByIdRef.current[targetId];
+        if (targetNode) {
+          closeContextMenu();
+          setSimulationMenuState(null);
+          onResetConnectionSettingsTrigger?.();
+          onCardElementSelect?.(targetNode.id, null);
+          onItemSelect({ ...targetNode, itemType: "node" }, false);
+          return;
+        }
+      }
+    }
+
     // Locked nodes: left-click does not change selection (right-click selects via context menu).
     if (node.locked && !isConnectMode) {
       closeContextMenu();
@@ -1908,7 +1976,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       onCardElementSelect?.(node.id, null);
       onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onCardElementSelect, handleSimulationElementPrimaryClick, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData, selectedItemIds]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onCardElementSelect, handleSimulationElementPrimaryClick, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData, selectedItemIds, connectionSlots.sortedItemIds, nodesById, getOverlapStackAtClientPoint]);
 
   /** Tap on a timeline card (pointer-up without drag): selects the node + updates card selection; Shift toggles multi-card keys without dropping the parent node from an existing multi-select. */
   const handleTimelineCardTap = useCallback(
@@ -1984,9 +2052,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     // Multi-select: never collapse selection on right-click (overlapping shapes may hit a pass-through layer).
     const ids = selectedItemIdsRef.current;
     const primaryId = selectedItemIdRef.current;
+    const overlapStack = getOverlapStackAtClientPoint(e.clientX, e.clientY);
     if (ids.size > 1) {
       const anchorId =
-        findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids) ??
+        findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids, overlapStack) ??
         (ids.has(node.id) ? node.id : null) ??
         primaryId ??
         Array.from(ids)[0];
@@ -2000,12 +2069,21 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       return;
     }
 
-    if (primaryId !== node.id) {
-      onItemSelect({ ...node, itemType: "node" }, false);
+    const anchorId = resolveContextMenuAnchorId({
+      clientX: e.clientX,
+      clientY: e.clientY,
+      domHitId: node.id,
+      primaryItemId: primaryId,
+      sortedItemIds: connectionSlots.sortedItemIds,
+      overlapStackTopFirst: overlapStack,
+    });
+    const anchorNode = nodesById[anchorId] ?? node;
+    if (primaryId !== anchorId) {
+      onItemSelect({ ...anchorNode, itemType: "node" }, false);
     }
     onResetConnectionSettingsTrigger?.();
-    setLastRightClickItemId(node.id);
-    handleContextMenu(e, node.id, "node");
+    setLastRightClickItemId(anchorId);
+    handleContextMenu(e, anchorId, "node");
   }, [
     simulationModeEnabled,
     openSimulationMenu,
@@ -2019,6 +2097,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onResetConnectionSettingsTrigger,
     handleContextMenu,
     suppressContextMenuIfRightClickPanned,
+    connectionSlots.sortedItemIds,
+    getOverlapStackAtClientPoint,
   ]);
 
   const handleTimelineEntryContextMenu = useCallback(
@@ -2032,11 +2112,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         openSimulationMenu(e, node.id, "node");
         return;
       }
+      const overlapStack = getOverlapStackAtClientPoint(e.clientX, e.clientY);
       if (selectedItemIdsRef.current.size > 1) {
         const ids = selectedItemIdsRef.current;
         const primaryId = selectedItemIdRef.current;
         const anchorId =
-          findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids) ??
+          findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids, overlapStack) ??
           (ids.has(node.id) ? node.id : null) ??
           primaryId ??
           Array.from(ids)[0];
@@ -2050,13 +2131,22 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         handleContextMenu(e, anchorId, "node", { timelineEntryId: entryId, timelineSpineArcRatio: undefined });
         return;
       }
-      if (selectedItemIdRef.current !== node.id) {
-        onItemSelect({ ...node, itemType: "node" }, false);
+      const anchorId = resolveContextMenuAnchorId({
+        clientX: e.clientX,
+        clientY: e.clientY,
+        domHitId: node.id,
+        primaryItemId: selectedItemIdRef.current,
+        sortedItemIds: connectionSlots.sortedItemIds,
+        overlapStackTopFirst: overlapStack,
+      });
+      const anchorNode = nodesById[anchorId] ?? node;
+      if (selectedItemIdRef.current !== anchorId) {
+        onItemSelect({ ...anchorNode, itemType: "node" }, false);
       }
       onTimelineEntrySelect?.(node.id, entryId, false);
       onResetConnectionSettingsTrigger?.();
-      setLastRightClickItemId(node.id);
-      handleContextMenu(e, node.id, "node", { timelineEntryId: entryId, timelineSpineArcRatio: undefined });
+      setLastRightClickItemId(anchorId);
+      handleContextMenu(e, anchorId, "node", { timelineEntryId: entryId, timelineSpineArcRatio: undefined });
     },
     [
       simulationModeEnabled,
@@ -2070,6 +2160,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       onResetConnectionSettingsTrigger,
       handleContextMenu,
       suppressContextMenuIfRightClickPanned,
+      getOverlapStackAtClientPoint,
+      connectionSlots.sortedItemIds,
     ],
   );
 
@@ -2084,11 +2176,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         openSimulationMenu(e, node.id, "node");
         return;
       }
+      const overlapStack = getOverlapStackAtClientPoint(e.clientX, e.clientY);
       if (selectedItemIdsRef.current.size > 1) {
         const ids = selectedItemIdsRef.current;
         const primaryId = selectedItemIdRef.current;
         const anchorId =
-          findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids) ??
+          findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids, overlapStack) ??
           (ids.has(node.id) ? node.id : null) ??
           primaryId ??
           Array.from(ids)[0];
@@ -2105,13 +2198,22 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         });
         return;
       }
-      if (selectedItemIdRef.current !== node.id) {
-        onItemSelect({ ...node, itemType: "node" }, false);
+      const anchorId = resolveContextMenuAnchorId({
+        clientX: e.clientX,
+        clientY: e.clientY,
+        domHitId: node.id,
+        primaryItemId: selectedItemIdRef.current,
+        sortedItemIds: connectionSlots.sortedItemIds,
+        overlapStackTopFirst: overlapStack,
+      });
+      const anchorNode = nodesById[anchorId] ?? node;
+      if (selectedItemIdRef.current !== anchorId) {
+        onItemSelect({ ...anchorNode, itemType: "node" }, false);
       }
       onTimelineEntrySelect?.(node.id, null);
       onResetConnectionSettingsTrigger?.();
-      setLastRightClickItemId(node.id);
-      handleContextMenu(e, node.id, "node", {
+      setLastRightClickItemId(anchorId);
+      handleContextMenu(e, anchorId, "node", {
         timelineSpineArcRatio: arcRatio,
         timelineEntryId: undefined,
       });
@@ -2128,6 +2230,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       onResetConnectionSettingsTrigger,
       handleContextMenu,
       suppressContextMenuIfRightClickPanned,
+      getOverlapStackAtClientPoint,
+      connectionSlots.sortedItemIds,
     ],
   );
 
@@ -2174,6 +2278,42 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const handleZoneClick = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
+    const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+    const useOverlapClickThrough = !additive && !isConnectMode && !simulationModeEnabled;
+    if (useOverlapClickThrough) {
+      const { targetId, nextLastClickPoint } = resolveClickThroughSelectId({
+        clientX: e.clientX,
+        clientY: e.clientY,
+        domHitId: zone.id,
+        selectedItemId: selectedItemIdRef.current,
+        lastClickPoint: clickThroughLastPointRef.current,
+        sortedItemIds: connectionSlots.sortedItemIds,
+        nodesById,
+        skipLocked: true,
+        overlapStackTopFirst: getOverlapStackAtClientPoint(e.clientX, e.clientY),
+      });
+      clickThroughLastPointRef.current = nextLastClickPoint;
+      if (targetId !== zone.id) {
+        const targetNode = nodesById[targetId];
+        if (targetNode) {
+          closeContextMenu();
+          setSimulationMenuState(null);
+          onResetConnectionSettingsTrigger?.();
+          onCardElementSelect?.(targetNode.id, null);
+          onItemSelect({ ...targetNode, itemType: "node" }, false);
+          return;
+        }
+        const targetZone = zonesById[targetId];
+        if (targetZone) {
+          closeContextMenu();
+          setSimulationMenuState(null);
+          onResetConnectionSettingsTrigger?.();
+          onItemSelect({ ...targetZone, itemType: "node" } as Parameters<typeof onItemSelect>[0], false);
+          return;
+        }
+      }
+    }
+
     closeContextMenu();
     setSimulationMenuState(null);
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a zone
@@ -2191,7 +2331,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
       onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], isAdditiveSelection);
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, handleSimulationElementPrimaryClick]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, handleSimulationElementPrimaryClick, connectionSlots.sortedItemIds, nodesById, zonesById, onCardElementSelect, getOverlapStackAtClientPoint]);
 
   const handleZoneContextMenu = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     if (isEventFromEditableElement(e)) return;
@@ -2203,11 +2343,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       openSimulationMenu(e, zone.id, "zone");
       return;
     }
+    const overlapStack = getOverlapStackAtClientPoint(e.clientX, e.clientY);
     if (selectedItemIdsRef.current.size > 1) {
       const ids = selectedItemIdsRef.current;
       const primaryId = selectedItemIdRef.current;
       const anchorId =
-        findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids) ??
+        findTopSelectedCanvasObjectIdAtPoint(e.clientX, e.clientY, ids, overlapStack) ??
         (ids.has(zone.id) ? zone.id : null) ??
         primaryId ??
         Array.from(ids)[0];
@@ -2220,23 +2361,41 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       handleContextMenu(e, anchorId, "zone");
       return;
     }
-    if (selectedItemIdRef.current !== zone.id) {
-      onItemSelect({ ...zone, itemType: "node" } as Parameters<typeof onItemSelect>[0], false);
+    const primaryId = selectedItemIdRef.current;
+    const anchorId = resolveContextMenuAnchorId({
+      clientX: e.clientX,
+      clientY: e.clientY,
+      domHitId: zone.id,
+      primaryItemId: primaryId,
+      sortedItemIds: connectionSlots.sortedItemIds,
+      overlapStackTopFirst: overlapStack,
+    });
+    const anchorNode = nodesById[anchorId];
+    if (primaryId !== anchorId) {
+      if (anchorNode) {
+        onItemSelect({ ...anchorNode, itemType: "node" }, false);
+      } else {
+        const z = zonesById[anchorId] ?? zone;
+        onItemSelect({ ...z, itemType: "node" } as Parameters<typeof onItemSelect>[0], false);
+      }
     }
     onResetConnectionSettingsTrigger?.();
-    setLastRightClickItemId(zone.id);
-    handleContextMenu(e, zone.id, "zone");
+    setLastRightClickItemId(anchorId);
+    handleContextMenu(e, anchorId, anchorNode ? "node" : "zone");
   }, [
     simulationModeEnabled,
     openSimulationMenu,
     selectedItemIds,
     selectedItemId,
     zonesById,
+    nodesById,
     onItemSelect,
     setSelectedItem,
     onResetConnectionSettingsTrigger,
     handleContextMenu,
     suppressContextMenuIfRightClickPanned,
+    connectionSlots.sortedItemIds,
+    getOverlapStackAtClientPoint,
   ]);
 
   const allSimulationCanvasElements = useMemo(() => {

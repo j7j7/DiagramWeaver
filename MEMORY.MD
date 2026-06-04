@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Overlap click-through: wrap + geometry stack
+Click-through cycling now uses **diagram-space bounds** (not DOM-only) so the full overlap stack stays available when the bottom item is selected and upper layers are `pointer-events: none` — **A → C** wrap works. **`getCanvasOverlapStackAtDiagramPoint`** / **`mergeOverlapStacks`** in **`canvas-click-through.ts`**; **`getOverlapStackAtClientPoint`** in **`editor-canvas.tsx`**. Patch bumped.
+
+### 2026-06-04 – Overlap click-through selection (editor canvas)
+Repeated **left-clicks** at the same screen point (±4px) cycle selection through the overlap stack **top → bottom** by render order (e.g. semi-transparent overlay → icon → large rect → wrap). **Locked** nodes are skipped on left-click but still selectable via **right-click** context menu. When an item is already selected under the cursor, **right-click** anchors the menu to that selection (not the topmost DOM hit). Lib: **`canvas-click-through.ts`**; wired in **`editor-canvas.tsx`** (`handleNodeClick`, `handleZoneClick`, context menus). Patch bumped.
+
 ### 2026-06-04 – Interaction recorder: canvas transform timeline
 Pointer/click/wheel/contextmenu events now store **`canvasTransform`** at event time; **`dwCanvasTransform`** emits more frequently during pan/zoom (~16ms). Playback applies the recording’s start transform and **waits until the live canvas matches** before events; each spatial event syncs canvas pan/zoom from its snapshot or transform timeline. **Re-record** for per-event transforms. Patch bumped.
 
