@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { nodeBoundingBoxForFit, type PositionedNode, type PositionedGroup } from "@/components/editor/canvas-constants";
 import { getCanvasElementSizeForImageCapture } from "@/lib/presentation-viewport-fit";
 
@@ -27,7 +27,13 @@ export function useCanvasTransform({
   wheelZoomDisabled = false,
 }: UseCanvasTransformOptions) {
   const [internalTransform, setInternalTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
-  const transform = externalTransform || internalTransform;
+  // Stabilize transform reference: only produce a new object when x/y/k actually change.
+  // Prevents downstream React.memo bailouts (DiagramNode, CanvasConnections) from being
+  // invalidated every render due to a fresh externalTransform object identity.
+  const _tx = externalTransform ? externalTransform.x : internalTransform.x;
+  const _ty = externalTransform ? externalTransform.y : internalTransform.y;
+  const _tk = externalTransform ? externalTransform.k : internalTransform.k;
+  const transform = useMemo<Transform>(() => ({ x: _tx, y: _ty, k: _tk }), [_tx, _ty, _tk]);
   
   const setTransform = useCallback((newTransform: Transform) => {
     if (onTransformChange) {

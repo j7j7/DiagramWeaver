@@ -157,6 +157,41 @@
     filter: none !important;
     animation: none !important;
   }
+  /* Suppress expensive SVG filters/shadows during pan, zoom, drag, and resize */
+  #canvas-container[data-perf-interacting="true"] {
+    --shape-shadow: none !important;
+    --shape-shadow-drop: none !important;
+    --shape-shadow-sm: none !important;
+    --shape-shadow-preview: none !important;
+    --shape-text-shadow: none !important;
+  }
+  #canvas-container[data-perf-interacting="true"] [class*="shadow"],
+  #canvas-container[data-perf-interacting="true"] [style*="box-shadow"],
+  #canvas-container[data-perf-interacting="true"] [style*="boxShadow"] {
+    box-shadow: none !important;
+  }
+  #canvas-container[data-perf-interacting="true"] [filter],
+  #canvas-container[data-perf-interacting="true"] [style*="filter:"],
+  #canvas-container[data-perf-interacting="true"] [style*="drop-shadow"],
+  #canvas-container[data-perf-interacting="true"] [style*="text-shadow"],
+  #canvas-container[data-perf-interacting="true"] [style*="textShadow"],
+  #canvas-container[data-perf-interacting="true"] .node-glow-static,
+  #canvas-container[data-perf-interacting="true"] .node-glow-green-static,
+  #canvas-container[data-perf-interacting="true"] .node-glow-hover,
+  #canvas-container[data-perf-interacting="true"] .node-glow-subdiagram,
+  #canvas-container[data-perf-interacting="true"] .node-glow-pulse,
+  #canvas-container[data-perf-interacting="true"] .node-glow-green-pulse,
+  #canvas-container[data-perf-interacting="true"] .connection-glow-hover,
+  #canvas-container[data-perf-interacting="true"] [data-dw-highlight-anim="true"],
+  #canvas-container[data-perf-interacting="true"] [data-dw-card-node="true"],
+  #canvas-container[data-perf-interacting="true"] [data-dw-card-node="true"] [data-dw-card-shell],
+  #canvas-container[data-perf-interacting="true"] [data-dw-card-node="true"] [data-dw-card-icon-slot],
+  #canvas-container[data-perf-interacting="true"] [data-dw-card-node="true"] [data-dw-card-icon-glyph],
+  #canvas-container[data-perf-interacting="true"] [data-dw-card-node="true"] .dw-icon-container {
+    filter: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+  }
 }
 
 @layer base {

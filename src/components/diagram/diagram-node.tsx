@@ -3818,6 +3818,7 @@ function DiagramNodeInner({
   return (
     <div
       data-node-id={node.id}
+      data-dw-card-node={isCardNode ? "true" : undefined}
       data-dw-highlight-anim={
         highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode ? 'true' : undefined
       }

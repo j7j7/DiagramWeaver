@@ -50,6 +50,7 @@ export function FramedHeadingCardShell({
   return (
     <div
       className="relative box-border h-full w-full"
+      data-dw-card-shell=""
       data-dw-highlight-anim={highlightAnim}
       style={outerStyle}
     >

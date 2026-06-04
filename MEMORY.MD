@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Canvas perf: resize freeze + card shadows
+**Resize**: **`freezeUnrelatedConnectionRouting`** + **`unrelatedConnectionRoutingDragIdsKey`** during resize (multi-select key from **`resizingItemIdsKey`**); **`hasEndpointInFrozenInteraction`** for partial endpoint resize like drag. **Cards**: **`data-dw-card-node`** on **`DiagramNode`**, **`data-dw-card-shell`** on card mask shells; perf CSS also clears inline **`filter`/`drop-shadow`/`text-shadow`**, icon slots, and **`.dw-icon-container`**. Patch bumped.
+
+### 2026-06-04 – Canvas perf: pan/drag/resize interaction mode
+**`editor-canvas`**: **`isCanvasItemResizing`** wired in resize start/end; **`data-perf-interacting`** on **`#canvas-container`** during pan, drag, or resize. **`orthogonalFastRouting`** also active while resizing (same L/Z fast path as drag). **`use-canvas-transform`**: **`transform`** **`useMemo`** by **`x/y/k`** so **`DiagramNode`** / **`CanvasConnections`** memo are not busted by fresh external transform object identity. **`globals.css`**: under **`[data-perf-interacting="true"]`**, suppress shape shadow CSS vars, box-shadow, SVG **`filter`**, and glow/highlight animations (mirrors GIF export scope). Patch bumped.
+
 ### 2026-06-04 – Delete: remove whole group/zone with selection
 **Delete/Backspace** (and context menu delete via **`deleteDiagramItemsByIds`**) expands targets: a **grouping** deletes all members + dissolves the grouping when the full group is selected or a single member is the only target; a **zone** deletes its descendant nodes and nested zones. **`handleItemDeletion`** + **`cleanupEmptyZones`** run on every bulk delete. Duplicate delete shortcut removed from **`use-diagram-editor-keyboard`** (canvas handles it). Patch bumped.
 

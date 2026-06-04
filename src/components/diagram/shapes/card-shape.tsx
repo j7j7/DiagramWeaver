@@ -2175,6 +2175,7 @@ export function CardShape(props: CardShapeProps) {
     maskedCard = (
       <div
         className="relative box-border h-full w-full"
+        data-dw-card-shell=""
         data-dw-highlight-anim={maskShellHighlightAnim}
         style={maskShellStyle}
       >
@@ -2199,6 +2200,7 @@ export function CardShape(props: CardShapeProps) {
     maskedCard = (
       <div
         className="box-border h-full w-full"
+        data-dw-card-shell=""
         data-dw-highlight-anim={maskShellHighlightAnim}
         style={{
           ...maskShellStyle,
@@ -2215,6 +2217,7 @@ export function CardShape(props: CardShapeProps) {
     maskedCard = (
       <div
         className="box-border h-full w-full"
+        data-dw-card-shell=""
         data-dw-highlight-anim={maskShellHighlightAnim}
         style={{
           ...maskShellStyle,
@@ -2231,6 +2234,7 @@ export function CardShape(props: CardShapeProps) {
     maskedCard = (
       <div
         className="box-border h-full w-full"
+        data-dw-card-shell=""
         data-dw-highlight-anim={maskShellHighlightAnim}
         style={maskShellStyle}
       >
