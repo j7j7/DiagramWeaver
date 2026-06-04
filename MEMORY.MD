@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Selection affordances hidden during canvas drag
+While a node moves on the canvas (mouse **`useDrag`**, touch drag, or multi-select **`multiDragPositions`**) or during rotation (**`isRotationDragging`**), green resize / connect / rotation / corner-radius / URL handles and line/vector vertex handles are hidden; they return when the drag ends. Resize drags still show handles (**`isResizing`**). **`hideSelectionAffordancesDuringCanvasDrag`** from **`editor-canvas`**. Patch bumped.
+
 ### 2026-06-04 – Selection: removed dashed corner brackets
 **`SelectionCornerBrackets`** removed — selection is indicated by green resize/connect/rotation handles and existing border/chrome only (no glow, no corner brackets). Group members no longer get a separate green corner outline. Patch bumped.
 

@@ -330,6 +330,8 @@ interface DiagramNodeProps {
   onResizeEnd?: () => void;
   onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
   onDraggingChange?: (isDragging: boolean) => void;
+  /** Hide resize / connect / rotation / URL affordances while this node moves on the canvas (incl. multi-drag). */
+  hideSelectionAffordancesDuringCanvasDrag?: boolean;
   /** Bar/line/pie chart value drag — parent may defer undo/redo snapshots until drag ends. */
   onChartValueDragSessionChange?: (active: boolean) => void;
   onUpdate?: (node: DiagramNodeData) => void;
@@ -547,6 +549,8 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onUpdate === next.onUpdate &&
     prev.onPositionUpdate === next.onPositionUpdate &&
     prev.onDraggingChange === next.onDraggingChange &&
+    prev.hideSelectionAffordancesDuringCanvasDrag ===
+      next.hideSelectionAffordancesDuringCanvasDrag &&
     prev.onChartValueDragSessionChange === next.onChartValueDragSessionChange &&
     prev.onHoverChange === next.onHoverChange &&
     prev.onConnect === next.onConnect &&
@@ -592,6 +596,7 @@ function DiagramNodeInner({
   onResizeEnd,
   onPositionUpdate,
   onDraggingChange,
+  hideSelectionAffordancesDuringCanvasDrag = false,
   onChartValueDragSessionChange,
   onUpdate,
   hoverEnabled = true,
@@ -2747,6 +2752,16 @@ function DiagramNodeInner({
     height: number;
   } | null>(null);
   const [isResizingTimelineEntry, setIsResizingTimelineEntry] = useState(false);
+  const hideSelectionAffordances =
+    hideSelectionAffordancesDuringCanvasDrag ||
+    isDragging ||
+    isTouchCanvasDrag ||
+    isRotationDragging;
+  const showSelectionAffordances =
+    showTransformHandles &&
+    !hideSelectionAffordances &&
+    !isResizing &&
+    !isResizingTimelineEntry;
   const [timelineEntryResizeActiveHandle, setTimelineEntryResizeActiveHandle] =
     useState<ResizeHandleType>(null);
   const timelineEntryResizeSessionRef = useRef<{
@@ -4234,7 +4249,7 @@ function DiagramNodeInner({
        </Popover>
 
        {/* Resize handles - textbox, text, shapes, or icon nodes (label width); timeline uses per-card handles only */}
-        {showTransformHandles && (isResizing || isSelected || isMultiSelected) &&
+        {showSelectionAffordances && (isResizing || isSelected || isMultiSelected) &&
          (isRichTextBoxLike || (isShapeNode && !isPointNode && !spineLikeNode) || isIconNode) && (
           <ResizeHandles
             visible={true}
@@ -4262,7 +4277,7 @@ function DiagramNodeInner({
        )}
 
         {/* Timeline: resize rails on selected card(s) — matches shape semantics; outer bbox stays line-like (no green hull) */}
-        {showTransformHandles &&
+        {showSelectionAffordances &&
           isTimelineNode &&
           isSelected &&
           timelineSelectedEntryIds &&
@@ -4304,7 +4319,7 @@ function DiagramNodeInner({
           })}
        
        {/* Line endpoint handles for line shapes - only show when THIS line is selected (not in multi-select with other items) */}
-       {showTransformHandles && spineLikeNode && isSelected && !isMultiSelected && (() => {
+       {showSelectionAffordances && spineLikeNode && isSelected && !isMultiSelected && (() => {
          const handleSynth = {
            ...node,
            ...(localStartPos && { __localStartPos: localStartPos }),
@@ -4338,7 +4353,7 @@ function DiagramNodeInner({
          );
        })()}
 
-       {showTransformHandles && isVectorPathNode && isSelected && !isMultiSelected && (() => {
+       {showSelectionAffordances && isVectorPathNode && isSelected && !isMultiSelected && (() => {
          const layout = vectorPathLayout;
          const rings = localVectorRings ?? node.vectorPath?.rings ?? [];
          const nx = layout?.x ?? node.x ?? 0;
@@ -4361,7 +4376,7 @@ function DiagramNodeInner({
        })()}
 
        {/* Connect handle - show when selected (not for lines) */}
-       {!isReadOnly && (isSelected || isMultiSelected) && onConnect && !spineLikeNode && (
+       {showSelectionAffordances && (isSelected || isMultiSelected) && onConnect && !spineLikeNode && (
          <ConnectHandle
            visible={true}
            onConnect={() => onConnect({ style: 'bezier', curvature: 0.6 })}
@@ -4372,7 +4387,11 @@ function DiagramNodeInner({
        )}
 
        {/* URL handle - icon nodes and shapes with configured URL (editor when selected, viewer when selected + showUrlHandleWhenReadOnly) */}
-       {((!isReadOnly || showUrlHandleWhenReadOnly) && (isIconNode || isShapeNode) && (isSelected || isMultiSelected) && !!node.linkUrl?.trim()) && (
+       {showSelectionAffordances &&
+        (!isReadOnly || showUrlHandleWhenReadOnly) &&
+        (isIconNode || isShapeNode) &&
+        (isSelected || isMultiSelected) &&
+        !!node.linkUrl?.trim() && (
          <UrlHandle
            visible={true}
            onOpen={() => {
@@ -4385,7 +4404,7 @@ function DiagramNodeInner({
        )}
 
        {/* Corner radius handle — rounded rect, grid chart, cards, etc.; single select */}
-       {showTransformHandles && isSelected && !isMultiSelected && showsCornerRadiusHandle && onUpdate && (
+       {showSelectionAffordances && isSelected && !isMultiSelected && showsCornerRadiusHandle && onUpdate && (
          <CornerRadiusHandle
            visible={true}
            onPointerDown={handleCornerRadiusDragStart}
@@ -4395,7 +4414,7 @@ function DiagramNodeInner({
        )}
 
        {/* Rotation handle — top-left; parent decides visibility (excludes lines/points) */}
-       {showTransformHandles && rotationHandleVisible && onRotationPointerDown && !spineLikeNode && (
+       {showSelectionAffordances && rotationHandleVisible && onRotationPointerDown && !spineLikeNode && (
          <RotationHandle
            visible={Boolean(isSelected || isMultiSelected)}
            onPointerDown={onRotationPointerDown}

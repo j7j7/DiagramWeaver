@@ -1315,6 +1315,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onCardIconDrop: handleCardIconDrop,
   });
 
+  /** Node ids currently moving on the canvas (single- or multi-drag) — hide green selection affordances. */
+  const canvasPositionDragNodeIds = useMemo(() => {
+    if (!isCanvasItemDragging) return null;
+    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) {
+      return new Set(Object.keys(multiDragPositions));
+    }
+    if (dragPosition?.itemId) return new Set([dragPosition.itemId]);
+    return null;
+  }, [isCanvasItemDragging, multiDragPositions, dragPosition?.itemId]);
+
   /**
    * While a canvas item is being dragged (not Alt+duplicate) or resized, connection routing for
    * lines that do not touch the moved item(s) can stay frozen. Non-endpoint-only drags/resizes
@@ -3529,6 +3539,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onLabelUpdate={onLabelUpdate}
                   onTagUpdate={onTagUpdate}
                   onDraggingChange={notifyDraggingChange}
+                  hideSelectionAffordancesDuringCanvasDrag={
+                    canvasPositionDragNodeIds?.has(node.id) ?? false
+                  }
                   onChartValueDragSessionChange={onChartValueDragSessionChange}
                   onUpdate={handleNodeUpdate}
                   hoverEnabled={hoverEnabled}
@@ -3655,6 +3668,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onLabelUpdate={onLabelUpdate}
                     onTagUpdate={onTagUpdate}
                     onDraggingChange={notifyDraggingChange}
+                    hideSelectionAffordancesDuringCanvasDrag={
+                      canvasPositionDragNodeIds?.has(node.id) ?? false
+                    }
                     onChartValueDragSessionChange={onChartValueDragSessionChange}
                     onUpdate={handleNodeUpdate}
                     hoverEnabled={hoverEnabled}
