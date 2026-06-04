@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ArrowRight, ArrowDown, ArrowUp, ArrowLeft, MoveDiagonal2 } from "lucide-react";
+import { computeResizeHandleEdgeOffsets } from "@/lib/resize-handle-offsets";
 
 export type ResizeHandleType = 'top' | 'left' | 'right' | 'bottom' | 'bottom-right' | null;
 
@@ -19,6 +20,9 @@ interface ResizeHandlesProps {
   className?: string;
   /** When set, only show these handles (e.g. ['right'] for icon node label width) */
   handles?: ('top' | 'left' | 'right' | 'bottom' | 'bottom-right')[];
+  /** Diagram px — used to push edge handles outward on very narrow / short boxes */
+  boxWidth?: number;
+  boxHeight?: number;
 }
 
 export function ResizeHandles({
@@ -30,8 +34,14 @@ export function ResizeHandles({
   zIndexClass = "z-50",
   className,
   handles = ['top', 'left', 'right', 'bottom', 'bottom-right'],
+  boxWidth,
+  boxHeight,
 }: ResizeHandlesProps) {
   const [localHoveredHandle, setLocalHoveredHandle] = useState<ResizeHandleType>(null);
+  const edgeOffsets = useMemo(
+    () => computeResizeHandleEdgeOffsets(boxWidth, boxHeight),
+    [boxWidth, boxHeight],
+  );
 
   // Use hoveredHandle prop if provided, otherwise fall back to local state
   const effectiveHoveredHandle = hoveredHandle ?? localHoveredHandle;
@@ -92,7 +102,7 @@ export function ResizeHandles({
           left: 0,
           width: '100%',
           height: '12px',
-          marginTop: '-10px',
+          marginTop: `-${edgeOffsets.top}px`,
           cursor: 'ns-resize',
           touchAction: 'none',
         }}
@@ -124,7 +134,7 @@ export function ResizeHandles({
           left: 0,
           width: '12px',
           height: '100%',
-          marginLeft: '-10px',
+          marginLeft: `-${edgeOffsets.left}px`,
           cursor: 'ew-resize',
           touchAction: 'none',
         }}
@@ -156,7 +166,7 @@ export function ResizeHandles({
           right: 0,
           width: '12px',
           height: '100%',
-          marginRight: '-10px',
+          marginRight: `-${edgeOffsets.right}px`,
           cursor: 'ew-resize',
           touchAction: 'none',
         }}
@@ -188,7 +198,7 @@ export function ResizeHandles({
           left: 0,
           width: '100%',
           height: '12px',
-          marginBottom: '-10px',
+          marginBottom: `-${edgeOffsets.bottom}px`,
           cursor: 'ns-resize',
           touchAction: 'none',
         }}
@@ -220,8 +230,8 @@ export function ResizeHandles({
           right: 0,
           width: '12px',
           height: '12px',
-          marginBottom: '-10px',
-          marginRight: '-10px',
+          marginBottom: `-${edgeOffsets.bottom}px`,
+          marginRight: `-${edgeOffsets.right}px`,
           cursor: 'nwse-resize',
           touchAction: 'none',
         }}

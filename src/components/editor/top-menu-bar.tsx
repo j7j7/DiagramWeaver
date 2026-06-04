@@ -34,6 +34,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Input } from '@/components/ui/input';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { cn } from '@/lib/utils';
+import type { ViewportCullDebugStats } from '@/lib/viewport-culling';
+import { ViewportCullDebugBadge } from './viewport-cull-debug-badge';
 
 const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
 
@@ -294,6 +296,8 @@ interface TopMenuBarProps {
     onNextSlide: () => void;
     onEnterPlayMode: () => void;
   };
+  /** Live canvas vs rendered counts (viewport culling debug). */
+  viewportCullStats?: ViewportCullDebugStats | null;
 }
 
 export function TopMenuBar({
@@ -392,6 +396,7 @@ export function TopMenuBar({
   onToggleReadOnly,
   onStartTutorial,
   presentationToolbar,
+  viewportCullStats,
 }: TopMenuBarProps) {
   const animMenuPreferenceOn = animationConnectionsUserEnabled ?? animationConnectionsEnabled;
 
@@ -1365,6 +1370,8 @@ export function TopMenuBar({
           }
         </div>
       )}
+
+      <ViewportCullDebugBadge stats={viewportCullStats} className="mx-1" />
 
       <Menubar className="ml-auto shrink-0 rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto">
         <MenubarMenu>

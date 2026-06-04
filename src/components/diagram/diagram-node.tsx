@@ -4246,6 +4246,20 @@ function DiagramNodeInner({
             disabled={isLocked}
             zIndexClass={cardHandleZIndex}
             handles={isIconNode ? ['right'] : undefined}
+            boxWidth={
+              typeof displayWidth === "number"
+                ? displayWidth
+                : isIconNode
+                  ? iconNodeDims?.width
+                  : undefined
+            }
+            boxHeight={
+              typeof displayHeight === "number"
+                ? displayHeight
+                : isIconNode
+                  ? iconNodeDims?.height
+                  : undefined
+            }
           />
        )}
 
@@ -4283,6 +4297,8 @@ function DiagramNodeInner({
                     disabled={false}
                     zIndexClass="z-[125]"
                     className="pointer-events-auto"
+                    boxWidth={b.width}
+                    boxHeight={b.height}
                   />
                 </div>
               </div>

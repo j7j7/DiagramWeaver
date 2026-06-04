@@ -1,8 +1,20 @@
 import type { DiagramData, DiagramNodeData, DiagramConnectionData } from "@/lib/types";
-import { measureNodeDims } from "@/components/editor/canvas-constants";
+import { measureNodeDims, type PositionedGroup, type PositionedNode } from "@/components/editor/canvas-constants";
+import { hostRectToDiagramViewRect } from "@/lib/connector-obstacle-viewport-freeze";
 
 export type ViewportBounds = { minX: number; minY: number; maxX: number; maxY: number };
 export type Transform = { x: number; y: number; k: number };
+
+/** Screen-space padding so items do not pop in/out at the viewport edge when panning. */
+export const VIEWPORT_CULL_SCREEN_MARGIN_PX = 128;
+
+/** Skip culling when the diagram has fewer items (everything is usually on screen). */
+export const VIEWPORT_CULL_MIN_ITEMS = 4;
+
+export function diagramMarginFromScreenPx(screenPx: number, scale: number): number {
+  if (!scale || scale <= 0) return screenPx;
+  return screenPx / scale;
+}
 
 /**
  * Calculate visible viewport bounds in diagram coordinates.
@@ -32,6 +44,34 @@ export function calculateViewportBounds(
   return { minX, minY, maxX, maxY };
 }
 
+export function viewportBoundsFromHost(
+  transform: Transform,
+  viewportWidth: number,
+  viewportHeight: number,
+): ViewportBounds | null {
+  return hostRectToDiagramViewRect(viewportWidth, viewportHeight, transform);
+}
+
+function rectIntersectsExpandedView(
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  view: ViewportBounds,
+  margin: number,
+): boolean {
+  const viewportMinX = view.minX - margin;
+  const viewportMinY = view.minY - margin;
+  const viewportMaxX = view.maxX + margin;
+  const viewportMaxY = view.maxY + margin;
+  return !(
+    maxX < viewportMinX ||
+    minX > viewportMaxX ||
+    maxY < viewportMinY ||
+    minY > viewportMaxY
+  );
+}
+
 /**
  * Check if a node's bounding box intersects with the viewport.
  *
@@ -56,18 +96,19 @@ export function isNodeInViewport(
   const nodeMaxX = nodeX + nodeWidth;
   const nodeMaxY = nodeY + nodeHeight;
 
-  const viewportMinX = viewportBounds.minX - margin;
-  const viewportMinY = viewportBounds.minY - margin;
-  const viewportMaxX = viewportBounds.maxX + margin;
-  const viewportMaxY = viewportBounds.maxY + margin;
+  return rectIntersectsExpandedView(nodeMinX, nodeMinY, nodeMaxX, nodeMaxY, viewportBounds, margin);
+}
 
-  // Check if node bounding box intersects with viewport
-  return !(
-    nodeMaxX < viewportMinX ||
-    nodeMinX > viewportMaxX ||
-    nodeMaxY < viewportMinY ||
-    nodeMinY > viewportMaxY
-  );
+export function isZoneInViewport(
+  zone: { x?: number; y?: number; width: number; height: number },
+  viewportBounds: ViewportBounds,
+  margin: number = 100,
+): boolean {
+  const nodeMinX = zone.x ?? 0;
+  const nodeMinY = zone.y ?? 0;
+  const nodeMaxX = nodeMinX + zone.width;
+  const nodeMaxY = nodeMinY + zone.height;
+  return rectIntersectsExpandedView(nodeMinX, nodeMinY, nodeMaxX, nodeMaxY, viewportBounds, margin);
 }
 
 /**
@@ -103,19 +144,65 @@ export function filterVisibleNodes(
   return visibleNodeIds;
 }
 
+type PositionedItemRef = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  type?: string;
+  sizeMode?: DiagramNodeData["sizeMode"];
+};
+
+function itemBounds(
+  item: PositionedItemRef,
+  asNode: boolean,
+): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  const x = item.x;
+  const y = item.y;
+  if (x === undefined || y === undefined) return null;
+  if (asNode) {
+    const dims = measureNodeDims(item as PositionedNode);
+    const w = item.sizeMode === "custom" && item.width ? item.width : dims.width;
+    const h = item.sizeMode === "custom" && item.height ? item.height : dims.height;
+    return { minX: x, minY: y, maxX: x + w, maxY: y + h };
+  }
+  const w = item.width ?? 300;
+  const h = item.height ?? 200;
+  return { minX: x, minY: y, maxX: x + w, maxY: y + h };
+}
+
 /**
- * Check if a connection should be rendered based on visible nodes.
- *
- * A connection is visible if both its endpoints (from and to nodes) are visible.
- * This prevents rendering connections that go off-screen.
- *
- * @param connection - Connection data
- * @param visibleNodeIds - Set of visible node IDs
- * @returns true if connection should be rendered
+ * Connection is drawn when either endpoint intersects the viewport, or the segment
+ * between endpoint bounds crosses the padded view (long lines spanning the screen).
  */
+export function isConnectionInViewport(
+  connection: DiagramConnectionData,
+  nodesById: Record<string, PositionedItemRef>,
+  zonesById: Record<string, PositionedGroup>,
+  viewportBounds: ViewportBounds,
+  margin: number,
+  visibleItemIds?: Set<string>,
+): boolean {
+  if (visibleItemIds?.has(connection.from) || visibleItemIds?.has(connection.to)) {
+    return true;
+  }
+  const fromItem = nodesById[connection.from] ?? zonesById[connection.from];
+  const toItem = nodesById[connection.to] ?? zonesById[connection.to];
+  if (!fromItem || !toItem) return false;
+  const fromBounds = itemBounds(fromItem, connection.from in nodesById);
+  const toBounds = itemBounds(toItem, connection.to in nodesById);
+  if (!fromBounds || !toBounds) return false;
+  const segMinX = Math.min(fromBounds.minX, toBounds.minX);
+  const segMinY = Math.min(fromBounds.minY, toBounds.minY);
+  const segMaxX = Math.max(fromBounds.maxX, toBounds.maxX);
+  const segMaxY = Math.max(fromBounds.maxY, toBounds.maxY);
+  return rectIntersectsExpandedView(segMinX, segMinY, segMaxX, segMaxY, viewportBounds, margin);
+}
+
+/** @deprecated Prefer {@link isConnectionInViewport} — both endpoints visible is too strict for panning. */
 export function isConnectionVisible(
   connection: DiagramConnectionData,
-  visibleNodeIds: Set<string>
+  visibleNodeIds: Set<string>,
 ): boolean {
   return visibleNodeIds.has(connection.from) && visibleNodeIds.has(connection.to);
 }
@@ -135,9 +222,164 @@ export function filterVisibleConnections(
     return [];
   }
 
-  return connections.filter((conn) =>
-    isConnectionVisible(conn, visibleNodeIds)
+  return connections.filter((conn) => isConnectionVisible(conn, visibleNodeIds));
+}
+
+export function filterVisibleConnectionIndices(
+  connections: DiagramConnectionData[],
+  nodesById: Record<string, PositionedNode>,
+  zonesById: Record<string, PositionedGroup>,
+  viewportBounds: ViewportBounds,
+  margin: number,
+  visibleItemIds: Set<string>,
+): Set<number> {
+  const indices = new Set<number>();
+  connections.forEach((conn, index) => {
+    if (
+      isConnectionInViewport(conn, nodesById, zonesById, viewportBounds, margin, visibleItemIds)
+    ) {
+      indices.add(index);
+    }
+  });
+  return indices;
+}
+
+/** Intersect slot connection indices with a viewport cull set (for interleaved layering). */
+export function intersectConnectionIndexSet(
+  slotIndices: number[] | undefined,
+  visibleIndices: Set<number> | null,
+): Set<number> | undefined {
+  if (!slotIndices?.length) return undefined;
+  if (!visibleIndices) return new Set(slotIndices);
+  const merged: number[] = [];
+  for (const idx of slotIndices) {
+    if (visibleIndices.has(idx)) merged.push(idx);
+  }
+  return merged.length > 0 ? new Set(merged) : undefined;
+}
+
+export interface ViewportRenderCullInput {
+  nodesById: Record<string, PositionedNode>;
+  zonesById: Record<string, PositionedGroup>;
+  connections: DiagramConnectionData[];
+  transform: Transform;
+  viewportWidth: number;
+  viewportHeight: number;
+  forceIncludeItemIds?: Iterable<string>;
+  forceIncludeConnectionIndices?: Iterable<number>;
+  screenMarginPx?: number;
+  enabled?: boolean;
+}
+
+export interface ViewportRenderCullResult {
+  enabled: boolean;
+  visibleItemIds: Set<string>;
+  visibleConnectionIndices: Set<number>;
+}
+
+/** Live stats for the editor menubar viewport-cull debug readout. */
+export interface ViewportCullDebugStats {
+  totalItems: number;
+  renderedItems: number;
+  totalConnections: number;
+  renderedConnections: number;
+  cullingActive: boolean;
+}
+
+export function buildViewportCullDebugStats(
+  nodesById: Record<string, PositionedNode>,
+  zonesById: Record<string, PositionedGroup>,
+  connections: DiagramConnectionData[],
+  cull: ViewportRenderCullResult,
+): ViewportCullDebugStats {
+  const totalItems = Object.keys(nodesById).length + Object.keys(zonesById).length;
+  return {
+    totalItems,
+    renderedItems: cull.visibleItemIds.size,
+    totalConnections: connections.length,
+    renderedConnections: cull.visibleConnectionIndices.size,
+    cullingActive: cull.enabled,
+  };
+}
+
+/**
+ * Compute which canvas items and connections should mount for the current pan/zoom.
+ */
+export function computeViewportRenderCull({
+  nodesById,
+  zonesById,
+  connections,
+  transform,
+  viewportWidth,
+  viewportHeight,
+  forceIncludeItemIds = [],
+  forceIncludeConnectionIndices = [],
+  screenMarginPx = VIEWPORT_CULL_SCREEN_MARGIN_PX,
+  enabled = true,
+}: ViewportRenderCullInput): ViewportRenderCullResult {
+  const allItemIds = [...Object.keys(nodesById), ...Object.keys(zonesById)];
+  const totalItems = allItemIds.length;
+  const allConnectionIndices = new Set(connections.map((_, i) => i));
+
+  if (
+    !enabled ||
+    viewportWidth <= 0 ||
+    viewportHeight <= 0 ||
+    totalItems < VIEWPORT_CULL_MIN_ITEMS
+  ) {
+    return {
+      enabled: false,
+      visibleItemIds: new Set(allItemIds),
+      visibleConnectionIndices: allConnectionIndices,
+    };
+  }
+
+  const view = viewportBoundsFromHost(transform, viewportWidth, viewportHeight);
+  if (!view) {
+    return {
+      enabled: false,
+      visibleItemIds: new Set(allItemIds),
+      visibleConnectionIndices: allConnectionIndices,
+    };
+  }
+
+  const margin = diagramMarginFromScreenPx(screenMarginPx, transform.k);
+  const visibleItemIds = new Set<string>();
+
+  for (const id of Object.keys(nodesById)) {
+    const node = nodesById[id];
+    if (node.x !== undefined && node.y !== undefined && isNodeInViewport(node, view, margin)) {
+      visibleItemIds.add(id);
+    }
+  }
+  for (const id of Object.keys(zonesById)) {
+    const zone = zonesById[id];
+    if (isZoneInViewport(zone, view, margin)) {
+      visibleItemIds.add(id);
+    }
+  }
+
+  for (const id of forceIncludeItemIds) {
+    if (id) visibleItemIds.add(id);
+  }
+
+  const visibleConnectionIndices = filterVisibleConnectionIndices(
+    connections,
+    nodesById,
+    zonesById,
+    view,
+    margin,
+    visibleItemIds,
   );
+  for (const index of forceIncludeConnectionIndices) {
+    visibleConnectionIndices.add(index);
+  }
+
+  return {
+    enabled: true,
+    visibleItemIds,
+    visibleConnectionIndices,
+  };
 }
 
 /**
@@ -186,8 +428,20 @@ export function applyViewportCulling(
   );
   const visibleNodeIds = filterVisibleNodes(nodesWithCoordinates, transform, viewportWidth, viewportHeight, margin);
 
-  // Filter visible connections
-  const visibleConnections = filterVisibleConnections(connections, visibleNodeIds);
+  const nodesByIdForCull = nodesWithCoordinates.reduce(
+    (acc, n) => {
+      acc[n.id] = n as PositionedNode;
+      return acc;
+    },
+    {} as Record<string, PositionedNode>,
+  );
+  const view = viewportBoundsFromHost(transform, viewportWidth, viewportHeight);
+  const visibleConnections =
+    view === null
+      ? connections
+      : connections.filter((conn) =>
+          isConnectionInViewport(conn, nodesByIdForCull, {}, view, margin, visibleNodeIds),
+        );
 
   // Return filtered data
   const visibleNodes = nodes.filter((n) => visibleNodeIds.has(n.id));

@@ -4,6 +4,15 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Resize handles: outward offset on tiny boxes
+**`computeResizeHandleEdgeOffsets`** (`resize-handle-offsets.ts`): when width is below **4× grid** (40px), top/bottom resize rails move further out (up to **+24px** at 1-grid width); when height is similarly short, left/right (and bottom-right corner) rails move outward so rotation / connect / corner controls do not block edge resize. **`ResizeHandles`** takes **`boxWidth`** / **`boxHeight`** from **`DiagramNode`** (and timeline card overlays). Patch bumped.
+
+### 2026-06-04 – Menubar: viewport cull debug readout
+**`ViewportCullDebugBadge`** on **`TopMenuBar`** (right side, before Help): live **`items rendered/total`** and **`conn rendered/total`**; highlights green when culling reduces counts; **`cull off`** when inactive. **`EditorCanvas`** reports via **`onViewportCullStatsChange`**. Patch bumped.
+
+### 2026-06-04 – Viewport culling: render only on-screen nodes and connections
+**`viewport-culling.ts`** + **`use-viewport-render-cull`**: pan/zoom computes visible diagram AABB (scale-aware **128px** margin); **`editor-canvas`** / **`viewer-canvas`** skip **`DiagramNode`** mounts and pass **`connectionIndices`** to **`CanvasConnections`** / **`CanvasConnectionText`** when **≥4** items. Selected, dragged, hovered, and selected-edge endpoints stay mounted. Connections render if either endpoint or the segment bbox hits the view. Disabled for GIF export. Patch bumped.
+
 ### 2026-06-04 – Context toolbar: hooks order on connection select
 **`context-toolbar`**: **`useInteractionRecordingPanelReplay`** ran only on the node toolbar path; selecting a connection (**`itemType === 'edge'`**) returned early → “Rendered fewer hooks than expected”. Hook now runs before edge/node branches; styling handlers wired via refs. Patch bumped.
 

@@ -61,7 +61,14 @@ import {
   getLinesBehindNodesStackZIndices,
   resolveCanvasNodeStackZIndex,
   stableDiagramConnectionId,
+  connectionSelectionIdMatches,
 } from "@/lib/connection-order-utils";
+import { useViewportRenderCull } from "@/hooks/use-viewport-render-cull";
+import {
+  buildViewportCullDebugStats,
+  intersectConnectionIndexSet,
+  type ViewportCullDebugStats,
+} from "@/lib/viewport-culling";
 import { generateSequentialId } from "@/lib/id-generator";
 import {
   MINDMAP_NODE_TYPE,
@@ -378,6 +385,8 @@ interface EditorCanvasProps {
    onTagUpdate?: (nodeId: string, newTag: string) => void;
    onZoneTagUpdate?: (zoneId: string, newTag: string) => void;
    onDraggingChange?: (isDragging: boolean) => void;
+  /** Live viewport cull counts for the menubar debug readout. */
+  onViewportCullStatsChange?: (stats: ViewportCullDebugStats) => void;
   /** While true, chart in-canvas value drag is active — defer undo/redo snapshots until drag ends. */
   onChartValueDragSessionChange?: (active: boolean) => void;
   onClipboardChange?: (hasClipboard: boolean) => void;
@@ -505,7 +514,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, globalVariableContext }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onViewportCullStatsChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, globalVariableContext }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -1580,6 +1589,89 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     transform,
     enabled: alignmentGuidesEnabled,
   });
+
+  const forceViewportIncludeItemIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (selectedItemId) ids.add(selectedItemId);
+    selectedItemIds?.forEach((id) => ids.add(id));
+    if (draggedItemId) ids.add(draggedItemId);
+    draggedItemIds.forEach((id) => ids.add(id));
+    if (hoveredItemId) ids.add(hoveredItemId);
+    if (selectedItem?.itemType === "edge") {
+      const conns = diagramData.connections ?? [];
+      for (let i = 0; i < conns.length; i++) {
+        const c = conns[i];
+        if (
+          selectedItem.id &&
+          connectionSelectionIdMatches(selectedItem.id, c, i, conns)
+        ) {
+          ids.add(c.from);
+          ids.add(c.to);
+        }
+      }
+    }
+    return ids;
+  }, [
+    selectedItemId,
+    selectedItemIds,
+    draggedItemId,
+    draggedItemIds,
+    hoveredItemId,
+    selectedItem,
+    diagramData.connections,
+  ]);
+
+  const forceViewportIncludeConnectionIndices = useMemo(() => {
+    if (selectedItem?.itemType !== "edge" || !selectedItem.id) return [];
+    const indices: number[] = [];
+    const conns = diagramData.connections ?? [];
+    conns.forEach((c, i) => {
+      if (connectionSelectionIdMatches(selectedItem.id!, c, i, conns)) {
+        indices.push(i);
+      }
+    });
+    return indices;
+  }, [selectedItem, diagramData.connections]);
+
+  const viewportRenderCull = useViewportRenderCull({
+    nodesById: displayNodesById,
+    zonesById: displayZonesById,
+    connections: diagramData.connections ?? [],
+    transform,
+    viewportWidth: canvasDimensions.width,
+    viewportHeight: canvasDimensions.height,
+    enabled: gifExportAnimationTimeSeconds === null,
+    forceIncludeItemIds: forceViewportIncludeItemIds,
+    forceIncludeConnectionIndices: forceViewportIncludeConnectionIndices,
+  });
+
+  const shouldRenderCanvasItem = useCallback(
+    (itemId: string) =>
+      !viewportRenderCull.enabled || viewportRenderCull.visibleItemIds.has(itemId),
+    [viewportRenderCull.enabled, viewportRenderCull.visibleItemIds],
+  );
+
+  const culledConnectionIndices = viewportRenderCull.enabled
+    ? viewportRenderCull.visibleConnectionIndices
+    : null;
+
+  useEffect(() => {
+    if (!onViewportCullStatsChange) return;
+    onViewportCullStatsChange(
+      buildViewportCullDebugStats(
+        displayNodesById,
+        displayZonesById,
+        diagramData.connections ?? [],
+        viewportRenderCull,
+      ),
+    );
+  }, [
+    onViewportCullStatsChange,
+    viewportRenderCull,
+    displayNodesById,
+    displayZonesById,
+    diagramData.connections,
+  ]);
 
   // ============================================================================
   // HOOK: useCanvasContextMenu
@@ -3383,6 +3475,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   orthogonalFastRouting={orthogonalFastRoutingActive}
                   viewportWidthPx={canvasDimensions.width}
                   viewportHeightPx={canvasDimensions.height}
+                  connectionIndices={culledConnectionIndices ?? undefined}
                   simulationModeEnabled={simulationModeEnabled}
                   isConnectMode={isConnectMode}
                   onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
@@ -3399,10 +3492,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   zonesById={displayZonesById}
                   processedZones={processedZones}
                   stackZIndex={linesBehindNodesConnectionZ.connectionTextZIndex}
+                  connectionIndices={culledConnectionIndices ?? undefined}
                   connectionAnimationStyles={connectionAnimationStyles}
                   connectionKey={connectionKey}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
+                  if (!shouldRenderCanvasItem(itemId)) return null;
                   const node = nodesById[itemId];
                   const zone = zonesById[itemId];
                   const nodeZIndex = resolveCanvasNodeStackZIndex({
@@ -3520,9 +3615,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               <>
               {connectionSlots.sortedItemIds.flatMap((itemId, i) => {
                 const slotConnections = connectionSlots.connectionsBySlot.get(i);
-                const connIndices = slotConnections?.length
-                  ? new Set(slotConnections)
-                  : undefined;
+                const connIndices = intersectConnectionIndexSet(
+                  slotConnections,
+                  culledConnectionIndices,
+                );
                 const node = nodesById[itemId];
                 const zone = zonesById[itemId];
                 const {
@@ -3536,7 +3632,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   backgroundBorderStack,
                   connectionsBehindNodesEnabled: false,
                 });
-                const nodeEl = node ? (
+                const nodeEl =
+                  node && shouldRenderCanvasItem(itemId) ? (
                   <DiagramNode
                     key={node.id}
                     node={displayNodesById[node.id] || node}
@@ -3608,6 +3705,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     diagramNodesForMindmap={diagramData.nodes}
                   />
                 ) : zone ? null : null;
+                if (!connIndices && !nodeEl) return [];
                 return [
                   connIndices ? (
                     <CanvasConnections
@@ -3699,7 +3797,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             {!connectionsBehindNodesEnabled && (() => {
               const n = connectionSlots.sortedItemIds.length;
               const lastSlot = connectionSlots.connectionsBySlot.get(n);
-              if (!lastSlot?.length) return null;
+              const lastConnIndices = intersectConnectionIndexSet(
+                lastSlot,
+                culledConnectionIndices,
+              );
+              if (!lastConnIndices?.size) return null;
               const lastStack = getInterleavedStackZIndices(n);
               return (
                 <>
@@ -3720,7 +3822,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onConnectionUpdate={onConnectionUpdate}
                     onConnectionWaypointAdd={onConnectionWaypointAdd}
                     onConnectionInsertNode={onConnectionInsertNode}
-                    connectionIndices={new Set(lastSlot)}
+                    connectionIndices={lastConnIndices}
                     stackZIndex={lastStack.connectionZIndex}
                     exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                     animationConnectionsEnabled={animationConnectionsEnabled}
@@ -3752,7 +3854,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     nodesById={displayNodesById}
                     zonesById={displayZonesById}
                     processedZones={processedZones}
-                    connectionIndices={new Set(lastSlot)}
+                    connectionIndices={lastConnIndices}
                     stackZIndex={lastStack.connectionTextZIndex}
                     connectionAnimationStyles={connectionAnimationStyles}
                     connectionKey={connectionKey}

@@ -21,6 +21,8 @@ import {
 } from "@/lib/connection-order-utils";
 import { cn } from "@/lib/utils";
 import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
+import { useViewportRenderCull } from "@/hooks/use-viewport-render-cull";
+import { intersectConnectionIndexSet } from "@/lib/viewport-culling";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { MetadataPopup } from "../editor/metadata-popup";
 import type { DiagramConnectionData } from "@/lib/types";
@@ -186,6 +188,36 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
 
   const transform = externalTransform || internalTransform;
   const setTransform = onTransformChange || setInternalTransform;
+
+  const forceViewportIncludeItemIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (selectedItemId) ids.add(selectedItemId);
+    if (selectedItem?.itemType === "edge") {
+      ids.add(selectedItem.from);
+      ids.add(selectedItem.to);
+    }
+    return ids;
+  }, [selectedItemId, selectedItem]);
+
+  const viewportRenderCull = useViewportRenderCull({
+    nodesById,
+    zonesById,
+    connections: diagramData.connections ?? [],
+    transform,
+    viewportWidth: canvasDimensions.width,
+    viewportHeight: canvasDimensions.height,
+    forceIncludeItemIds: forceViewportIncludeItemIds,
+  });
+
+  const shouldRenderCanvasItem = useCallback(
+    (itemId: string) =>
+      !viewportRenderCull.enabled || viewportRenderCull.visibleItemIds.has(itemId),
+    [viewportRenderCull.enabled, viewportRenderCull.visibleItemIds],
+  );
+
+  const culledConnectionIndices = viewportRenderCull.enabled
+    ? viewportRenderCull.visibleConnectionIndices
+    : null;
 
   // Measure selected item rect for metadata popup (anchored to object)
   useLayoutEffect(() => {
@@ -511,6 +543,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               transform={transform}
               viewportWidthPx={canvasDimensions.width}
               viewportHeightPx={canvasDimensions.height}
+              connectionIndices={culledConnectionIndices ?? undefined}
             />
             <CanvasConnectionText
               key="conn-text-all"
@@ -521,10 +554,12 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               zonesById={zonesById}
               processedZones={processedZones}
               stackZIndex={linesBehindNodesConnectionZ.connectionTextZIndex}
+              connectionIndices={culledConnectionIndices ?? undefined}
               connectionAnimationStyles={connectionTransitionStyles}
               connectionKey={connKey}
             />
             {connectionSlots.sortedItemIds.map((itemId, i) => {
+              if (!shouldRenderCanvasItem(itemId)) return null;
               const node = nodesById[itemId];
               const zone = zonesById[itemId];
               const nodeZIndex = resolveCanvasNodeStackZIndex({
@@ -562,7 +597,10 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
           <>
             {connectionSlots.sortedItemIds.flatMap((itemId, i) => {
               const slotConnections = connectionSlots.connectionsBySlot.get(i);
-              const connIndices = slotConnections?.length ? new Set(slotConnections) : undefined;
+              const connIndices = intersectConnectionIndexSet(
+                slotConnections,
+                culledConnectionIndices,
+              );
               const node = nodesById[itemId];
               const zone = zonesById[itemId];
               const {
@@ -576,7 +614,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                 backgroundBorderStack,
                 connectionsBehindNodesEnabled: false,
               });
-              const nodeEl = node ? (
+              const nodeEl =
+                node && shouldRenderCanvasItem(itemId) ? (
                 <DiagramNode
                   key={node.id}
                   node={node}
@@ -597,6 +636,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   diagramNodesForMindmap={diagramData.nodes}
                 />
                 ) : null;
+                if (!connIndices && !nodeEl) return [];
                 return [
                   connIndices ? (
                   <CanvasConnections
@@ -645,7 +685,11 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
             {(() => {
               const n = connectionSlots.sortedItemIds.length;
               const lastSlot = connectionSlots.connectionsBySlot.get(n);
-              if (!lastSlot?.length) return null;
+              const lastConnIndices = intersectConnectionIndexSet(
+                lastSlot,
+                culledConnectionIndices,
+              );
+              if (!lastConnIndices?.size) return null;
               const lastStack = getInterleavedStackZIndices(n);
               return (
                 <>
@@ -660,7 +704,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                     onItemSelect={handleViewerItemSelect}
                     closeContextMenu={() => {}}
                     onConnectionDelete={undefined}
-                    connectionIndices={new Set(lastSlot)}
+                    connectionIndices={lastConnIndices}
                     stackZIndex={lastStack.connectionZIndex}
                     animationConnectionsEnabled={animationConnectionsEnabled}
                     animationFilterSourceIds={animationFilterSourceIds}
@@ -681,7 +725,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                     nodesById={nodesById}
                     zonesById={zonesById}
                     processedZones={processedZones}
-                    connectionIndices={new Set(lastSlot)}
+                    connectionIndices={lastConnIndices}
                     stackZIndex={lastStack.connectionTextZIndex}
                     connectionAnimationStyles={connectionTransitionStyles}
                     connectionKey={connKey}

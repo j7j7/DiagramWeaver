@@ -32,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { buildPresentationGlobalVariableContext } from "@/lib/builtin-global-variables";
 import type { DiagramData, DiagramNodeData, PresentationDeck, Slide } from "@/lib/types";
+import type { ViewportCullDebugStats } from "@/lib/viewport-culling";
 import { isSegmentedRectangleNodeType } from "@/lib/segmented-rectangle";
 import { useTutorial } from "./tutorial/tutorial-provider";
 import { getTutorialSteps } from "./tutorial/tutorial-steps";
@@ -397,6 +398,7 @@ export function DiagramEditorInner({
   }, [presentationSnapshotsCollapsed]);
 
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
+  const [viewportCullStats, setViewportCullStats] = useState<ViewportCullDebugStats | null>(null);
 
   const { start, isOpen: tutorialOpen, steps: tutorialSteps, currentIndex: tutorialStepIndex } = useTutorial();
 
@@ -624,6 +626,7 @@ export function DiagramEditorInner({
                       onNextSlide: handleNextPresentationSlide,
                       onEnterPlayMode: handleEnterPresentationPlayMode,
                     }}
+                    viewportCullStats={viewportCullStats}
                 />
                 {!isLoaded ? (
                   <div className="flex items-center gap-1 border-b bg-card px-3 py-2 text-sm text-muted-foreground">
@@ -739,6 +742,7 @@ export function DiagramEditorInner({
                      onLabelUpdate={handleLabelUpdate}
                      onTagUpdate={handleTagUpdate}
                      onDraggingChange={setIsDragging}
+                     onViewportCullStatsChange={setViewportCullStats}
                      onChartValueDragSessionChange={setChartValueDragActive}
                     onClipboardChange={setCanPaste}
                     onMousePositionChange={setMousePosition}
