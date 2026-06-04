@@ -6,14 +6,24 @@ export type ViewportBounds = { minX: number; minY: number; maxX: number; maxY: n
 export type Transform = { x: number; y: number; k: number };
 
 /** Screen-space padding so items do not pop in/out at the viewport edge when panning. */
-export const VIEWPORT_CULL_SCREEN_MARGIN_PX = 128;
+export const VIEWPORT_CULL_SCREEN_MARGIN_PX = 32;
+
+/** Cap diagram-space margin so zoomed-out views do not keep distant items (128px at k=0.2 → 640 diagram units). */
+export const VIEWPORT_CULL_MAX_DIAGRAM_MARGIN = 48;
+
+/** Tighter margin for connection endpoint tests (lines use endpoints only, not segment bbox). */
+export const VIEWPORT_CULL_CONNECTION_SCREEN_MARGIN_PX = 16;
 
 /** Skip culling when the diagram has fewer items (everything is usually on screen). */
 export const VIEWPORT_CULL_MIN_ITEMS = 4;
 
-export function diagramMarginFromScreenPx(screenPx: number, scale: number): number {
-  if (!scale || scale <= 0) return screenPx;
-  return screenPx / scale;
+export function diagramMarginFromScreenPx(
+  screenPx: number,
+  scale: number,
+  maxDiagramMargin: number = VIEWPORT_CULL_MAX_DIAGRAM_MARGIN,
+): number {
+  if (!scale || scale <= 0) return Math.min(screenPx, maxDiagramMargin);
+  return Math.min(screenPx / scale, maxDiagramMargin);
 }
 
 /**
@@ -172,8 +182,8 @@ function itemBounds(
 }
 
 /**
- * Connection is drawn when either endpoint intersects the viewport, or the segment
- * between endpoint bounds crosses the padded view (long lines spanning the screen).
+ * Connection is drawn when either endpoint box intersects the padded view.
+ * (Segment-bbox tests kept long off-screen edges visible when zoomed out.)
  */
 export function isConnectionInViewport(
   connection: DiagramConnectionData,
@@ -192,11 +202,24 @@ export function isConnectionInViewport(
   const fromBounds = itemBounds(fromItem, connection.from in nodesById);
   const toBounds = itemBounds(toItem, connection.to in nodesById);
   if (!fromBounds || !toBounds) return false;
-  const segMinX = Math.min(fromBounds.minX, toBounds.minX);
-  const segMinY = Math.min(fromBounds.minY, toBounds.minY);
-  const segMaxX = Math.max(fromBounds.maxX, toBounds.maxX);
-  const segMaxY = Math.max(fromBounds.maxY, toBounds.maxY);
-  return rectIntersectsExpandedView(segMinX, segMinY, segMaxX, segMaxY, viewportBounds, margin);
+  return (
+    rectIntersectsExpandedView(
+      fromBounds.minX,
+      fromBounds.minY,
+      fromBounds.maxX,
+      fromBounds.maxY,
+      viewportBounds,
+      margin,
+    ) ||
+    rectIntersectsExpandedView(
+      toBounds.minX,
+      toBounds.minY,
+      toBounds.maxX,
+      toBounds.maxY,
+      viewportBounds,
+      margin,
+    )
+  );
 }
 
 /** @deprecated Prefer {@link isConnectionInViewport} — both endpoints visible is too strict for panning. */
@@ -343,18 +366,23 @@ export function computeViewportRenderCull({
     };
   }
 
-  const margin = diagramMarginFromScreenPx(screenMarginPx, transform.k);
+  const itemMargin = diagramMarginFromScreenPx(screenMarginPx, transform.k);
+  const connectionMargin = diagramMarginFromScreenPx(
+    VIEWPORT_CULL_CONNECTION_SCREEN_MARGIN_PX,
+    transform.k,
+    Math.min(VIEWPORT_CULL_MAX_DIAGRAM_MARGIN, 32),
+  );
   const visibleItemIds = new Set<string>();
 
   for (const id of Object.keys(nodesById)) {
     const node = nodesById[id];
-    if (node.x !== undefined && node.y !== undefined && isNodeInViewport(node, view, margin)) {
+    if (node.x !== undefined && node.y !== undefined && isNodeInViewport(node, view, itemMargin)) {
       visibleItemIds.add(id);
     }
   }
   for (const id of Object.keys(zonesById)) {
     const zone = zonesById[id];
-    if (isZoneInViewport(zone, view, margin)) {
+    if (isZoneInViewport(zone, view, itemMargin)) {
       visibleItemIds.add(id);
     }
   }
@@ -368,7 +396,7 @@ export function computeViewportRenderCull({
     nodesById,
     zonesById,
     view,
-    margin,
+    connectionMargin,
     visibleItemIds,
   );
   for (const index of forceIncludeConnectionIndices) {
