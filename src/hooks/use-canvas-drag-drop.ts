@@ -19,6 +19,7 @@ import {
   isIconPaletteDragItem,
   resolveCardIconDropFromPoint,
 } from "@/lib/card-utils";
+import { emitDwCanvasMove, emitDwPaletteDrop, DW_REPLAY_CANVAS_MOVE } from "@/lib/interaction-recording-bridge";
 
 /** Diagram-space radius around drag origin: inside = free movement; crossing = lock to dominant axis */
 const AXIS_CONSTRAINT_DEAD_ZONE = 15;
@@ -537,6 +538,19 @@ export function useCanvasDragDrop({
         if (monitor.didDrop()) return;
         // Pass full item data to preserve resource information
         addNode(item as any, { x, y }, targetGroupIdForFreeflow);
+        {
+          const clientOffset = monitor.getClientOffset();
+          if (clientOffset) {
+            emitDwPaletteDrop({
+              item,
+              clientX: clientOffset.x,
+              clientY: clientOffset.y,
+              itemType: ItemTypes.DIAGRAM_NODE,
+              diagramX: x,
+              diagramY: y,
+            });
+          }
+        }
       } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
         // Skip move operation if dropped on scratchpad
         if (!isDroppedOnScratchpad) {
@@ -655,6 +669,21 @@ export function useCanvasDragDrop({
             if (created.length > 0) onDuplicateNodesPlaced?.(created);
           } else if (itemsToMove.length > 0) {
             moveMultipleItems(itemsToMove, newPositions, targetGroupIdForFreeflow);
+            const clientOffset = monitor.getClientOffset();
+            if (clientOffset) {
+              itemsToMove.forEach((moved, idx) => {
+                const pos = newPositions[idx];
+                if (!moved.id || !pos) return;
+                emitDwCanvasMove({
+                  id: moved.id,
+                  itemType: moved.type,
+                  diagramX: pos.x,
+                  diagramY: pos.y,
+                  clientX: clientOffset.x,
+                  clientY: clientOffset.y,
+                });
+              });
+            }
           }
         } else if (wantDuplicate && item.id && nodesById[item.id] && !isDiagramNodeLocked(diagramData.nodes, item.id)) {
           const created = duplicateNodesAtPositions([{ id: item.id }], [{ x, y }], diagramData);
@@ -662,6 +691,17 @@ export function useCanvasDragDrop({
         } else if (!isDiagramNodeLocked(diagramData.nodes, item.id)) {
           // Single item movement
           moveItem({ id: item.id, type: item.type || "", x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
+          const clientOffset = monitor.getClientOffset();
+          if (clientOffset) {
+            emitDwCanvasMove({
+              id: item.id,
+              itemType: item.type || itemType,
+              diagramX: x,
+              diagramY: y,
+              clientX: clientOffset.x,
+              clientY: clientOffset.y,
+            });
+          }
         }
         }
       }
@@ -881,6 +921,40 @@ export function useCanvasDragDrop({
     selectedItemIds,
     diagramData,
   ]);
+
+  // Interaction recorder playback — apply diagram moves without HTML5 drag.
+  useLayoutEffect(() => {
+    if (isReadOnly) return;
+
+    type ReplayMoveDetail = {
+      id?: string;
+      itemType?: string;
+      diagramX?: number;
+      diagramY?: number;
+    };
+
+    const onReplayMove = (e: Event) => {
+      if (document.body.dataset.dwPlayback !== "active") return;
+      const { id, itemType, diagramX, diagramY } = (e as CustomEvent<ReplayMoveDetail>).detail ?? {};
+      if (!id || typeof diagramX !== "number" || typeof diagramY !== "number") return;
+      if (isDiagramNodeLocked(diagramData.nodes, id) && !zonesById[id]) return;
+
+      const entity = nodesById[id] || zonesById[id];
+      if (!entity) return;
+
+      const mvType =
+        itemType === ItemTypes.ZONE || zonesById[id] ? ItemTypes.ZONE : ItemTypes.CANVAS_NODE;
+
+      moveItem(
+        { id, type: mvType, x: entity.x, y: entity.y },
+        { x: diagramX, y: diagramY },
+        null,
+      );
+    };
+
+    document.addEventListener(DW_REPLAY_CANVAS_MOVE, onReplayMove as EventListener);
+    return () => document.removeEventListener(DW_REPLAY_CANVAS_MOVE, onReplayMove as EventListener);
+  }, [isReadOnly, moveItem, diagramData.nodes, nodesById, zonesById]);
 
   // Cleanup multi-drag state when drag ends outside of drop
   useEffect(() => {

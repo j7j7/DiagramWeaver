@@ -1,4 +1,6 @@
 import { useState, useCallback } from "react";
+import { emitDwContextMenuOpen } from "@/lib/interaction-recording-bridge";
+import type { DwContextMenuOpenDetail } from "@/lib/interaction-recording-bridge";
 
 interface ContextMenuState {
   visible: boolean;
@@ -78,7 +80,7 @@ export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: 
     y = Math.max(padding, y);
 
     onContextMenuOpen?.();
-    setContextMenu({
+    const menuState = {
       visible: true,
       x,
       y,
@@ -87,8 +89,32 @@ export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: 
       timelineEntryId: opts?.timelineEntryId,
       timelineSpineArcRatio: opts?.timelineSpineArcRatio,
       cardElementId: opts?.cardElementId,
+    };
+    setContextMenu(menuState);
+    emitDwContextMenuOpen({
+      itemId,
+      itemType,
+      x,
+      y,
+      timelineEntryId: opts?.timelineEntryId,
+      timelineSpineArcRatio: opts?.timelineSpineArcRatio,
+      cardElementId: opts?.cardElementId,
     });
   };
+
+  const openContextMenuForReplay = useCallback((detail: DwContextMenuOpenDetail) => {
+    onContextMenuOpen?.();
+    setContextMenu({
+      visible: true,
+      x: detail.x,
+      y: detail.y,
+      itemType: detail.itemType,
+      itemId: detail.itemId,
+      timelineEntryId: detail.timelineEntryId,
+      timelineSpineArcRatio: detail.timelineSpineArcRatio,
+      cardElementId: detail.cardElementId,
+    });
+  }, [onContextMenuOpen]);
 
   const closeContextMenu = useCallback(() => {
     setContextMenu((prev) => ({
@@ -104,6 +130,7 @@ export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: 
     contextMenu,
     handleContextMenu,
     closeContextMenu,
+    openContextMenuForReplay,
   };
 }
 

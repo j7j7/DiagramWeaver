@@ -16,6 +16,7 @@ import { PyramidEditorModal } from "./editor/pyramid-editor-modal";
 import { ZOrderListModal } from "./editor/z-order-list-modal";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
 import { PresentationPlayer } from "./editor/presentation-player";
+import { InteractionRecorderProvider } from "./editor/interaction-recorder-provider";
 import { TabBar } from "./editor/tab-bar";
 import { ExportDialog } from "./editor/export-dialog";
 import {
@@ -457,6 +458,7 @@ export function DiagramEditorInner({
 
   return (
     <DndProvider backend={HTML5Backend}>
+      <InteractionRecorderProvider>
       <div className="flex h-screen w-screen bg-background text-foreground font-body relative overflow-hidden">
         {/* Mobile sidebar overlay */}
         {isMobile && sidebarOpen && (
@@ -1146,6 +1148,7 @@ export function DiagramEditorInner({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+      </InteractionRecorderProvider>
     </DndProvider>
   );
 }

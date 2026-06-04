@@ -44,6 +44,7 @@ import { useCanvasClipboard } from "@/hooks/use-canvas-clipboard";
 import { pasteSpecialFamiliesCompatible } from "@/lib/paste-special-properties";
 import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
+import { useInteractionRecordingMenuReplay } from "@/hooks/use-interaction-recording-menu-replay";
 import { useCanvasOperations } from "./canvas-operations";
 import { CanvasConnections } from "./canvas-connections";
 import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
@@ -1512,7 +1513,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - handleContextMenu: Opens context menu at specific position
   // - closeContextMenu: Closes the context menu
   // See: src/hooks/use-canvas-context-menu.ts
-  const { contextMenu, handleContextMenu, closeContextMenu } = useCanvasContextMenu({
+  const { contextMenu, handleContextMenu, closeContextMenu, openContextMenuForReplay } = useCanvasContextMenu({
     isReadOnly,
     onContextMenuOpen: onPauseConnectionAnimationsForOverlayUi,
   });
@@ -2746,6 +2747,54 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const canPasteHandler = useCallback(() => {
     return canPaste();
   }, [canPaste]);
+
+  const menuReplayHandlers = React.useMemo(
+    () => ({
+      openContextMenu: openContextMenuForReplay,
+      closeContextMenu,
+      copy: copyHandler,
+      deleteItem: (itemId: string, itemType: "node" | "zone") => {
+        if (itemType === "node" && tryDeleteConnectorLineVertexBeforeNodeDelete?.(itemId)) {
+          return;
+        }
+        operations.handleDelete(itemId);
+      },
+      connect: () => {
+        requestAnimationFrame(() => {
+          onConnect?.({ style: "bezier", curvature: 0.6 });
+        });
+      },
+      disconnect: () => {
+        onDisconnect?.();
+      },
+      openTextStyling: () => {
+        onTriggerTextStylingPanel?.();
+      },
+      openVisualStyling: () => {
+        onTriggerVisualStylingPanel?.();
+      },
+      openLineStyling: () => {
+        onTriggerLineStylingPanel?.();
+      },
+      openConnectionSettings: () => {
+        onTriggerConnectionSettingsPanel?.();
+      },
+    }),
+    [
+      openContextMenuForReplay,
+      closeContextMenu,
+      copyHandler,
+      operations,
+      tryDeleteConnectorLineVertexBeforeNodeDelete,
+      onConnect,
+      onDisconnect,
+      onTriggerTextStylingPanel,
+      onTriggerVisualStylingPanel,
+      onTriggerLineStylingPanel,
+      onTriggerConnectionSettingsPanel,
+    ],
+  );
+  useInteractionRecordingMenuReplay(menuReplayHandlers);
 
   React.useImperativeHandle(ref, () => ({
     getCanvasHostViewportForFit: () => {

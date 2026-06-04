@@ -4,6 +4,27 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Interaction recorder: canvas transform timeline
+Pointer/click/wheel/contextmenu events now store **`canvasTransform`** at event time; **`dwCanvasTransform`** emits more frequently during pan/zoom (~16ms). Playback applies the recording’s start transform and **waits until the live canvas matches** before events; each spatial event syncs canvas pan/zoom from its snapshot or transform timeline. **Re-record** for per-event transforms. Patch bumped.
+
+### 2026-06-04 – Interaction recorder: semantic context menu replay
+Context menu open/actions now emit **`dwContextMenuOpen`** / **`dwContextMenuAction`** during recording; playback replays via **`dwReplayContextMenuOpen`** / **`dwReplayContextMenuAction`** (same code paths as real clicks — opens menu, triggers Visual Styling / Copy / Connect, etc.). DOM replay on menus/panels uses native **`.click()`** on resolved surface targets; Radix select options in portaled dropdowns resolve via **`role="option"`** when Visual Styling is open. Redundant menu pointer/click events stripped when semantic actions exist. **Re-record** after this change. Patch bumped.
+
+### 2026-06-04 – Interaction recorder: overlay-aware menus + playback cursors
+Context menu / Visual Styling panel tagged with **`data-dw-recording-surface`**; menu actions use **`data-dw-recording-action`** (or slugged labels). Replay finds controls inside open surfaces instead of fixed coords; waits for menu/panel after right-click or **Visual Styling**. Playback shows **green** left-click, **orange** right-click, **blue dashed** click-hold indicators. Patch bumped.
+
+### 2026-06-04 – Interaction recorder: canvas zoom/pan aware
+Recordings store **`canvasTransform`** at start/end, emit **`dwCanvasTransform`** on pan/zoom, and attach **diagram-space coordinates** to canvas pointer/click events. Playback restores the recorded transform timeline and remaps screen coords (palette drops use **`diagramX`/`diagramY`**). Patch bumped.
+
+### 2026-06-04 – Interaction recorder: semantic drag/drop replay
+Palette and canvas drags use react-dnd (HTML5 DnD) — not replayable via synthetic pointer events. Successful drops now emit **`dwPaletteDrop`** / **`dwCanvasMove`**; playback replays via **`mobileDrop`** and **`dwReplayCanvasMove`**. Pointer/click replay uses **`elementFromPoint`** first; also captures **`click`**, **`change`**, and mouse events. Save dialog shows event breakdown. Patch bumped.
+
+### 2026-06-04 – Interaction recorder: text input replay fix
+Recordings now capture **`input`** events (full field value) for search/text fields; replay resolves inputs by **`placeholder`** / **`data-testid="resource-search-input"`**, focuses the field, and sets values via the native React-safe path. Keyboard replay no longer falls back to **`elementFromPoint(0,0)`**; legacy keydown-only recordings still simulate typing on inputs. Patch bumped.
+
+### 2026-06-04 – Interaction recorder (Help menu)
+**Help → Interaction recorder…** arms JSON event capture (not video): pointer, wheel, keyboard, context menu, and palette **`mobileDrop`**. **F8** start · **F9** stop → save dialog downloads **`.dwrec.json`** and optionally stores in browser library; load file, play back (speed control), delete from library. Indicator pill when armed/recording/playing. Lib: **`interaction-recording-*`**; UI: **`interaction-recorder-*`**. Patch bumped.
+
 ### 2026-06-03 – Playwright E2E canvas performance harness
 Added **`e2e/perf/canvas-workflow.spec.ts`** (Playwright): new tab, palette drops (3× rounded rect, EC2, grid chart, segmented rect, agenda, element feature), connect rects→EC2, random theme on rects, resize segmented + agenda, right-drag pan, delete all nodes, close tab. Per-step + total timings in **`e2e/logs/perf-*.log`** / **`.json`**. Headed: **`npm run test:e2e:perf:headed`**; headless: **`npm run test:e2e:perf`**. See **`docs/e2e-perf-harness.md`**. Dev deps: `@playwright/test`; scripts **`test:e2e:perf`**, **`test:e2e:install`**.
 

@@ -43,6 +43,8 @@ import {
 } from "@/lib/icon-bevel";
 import { Slider } from "@/components/ui/slider";
 import Draggable from "react-draggable";
+import { RECORDING_SURFACE_VISUAL_STYLING } from "@/lib/interaction-recording-surfaces";
+import { emitDwOverlayClose, emitDwOverlayOpen } from "@/lib/interaction-recording-bridge";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
@@ -561,6 +563,11 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   const [segmentedRectangleSegmentGapDraft, setSegmentedRectangleSegmentGapDraft] = useState("");
 
   useEffect(() => {
+    emitDwOverlayOpen({ surface: RECORDING_SURFACE_VISUAL_STYLING });
+    return () => emitDwOverlayClose({ surface: RECORDING_SURFACE_VISUAL_STYLING });
+  }, []);
+
+  useEffect(() => {
     if (!borderWidthFocused) {
       const bw = styling.borderWidth;
       const shown = typeof bw === "number" && Number.isFinite(bw) ? bw : 2;
@@ -754,6 +761,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
     >
       <div
         ref={nodeRef}
+        data-dw-recording-surface={RECORDING_SURFACE_VISUAL_STYLING}
         className={cn(
           "fixed top-20 left-20 z-50 flex max-h-[min(75vh,calc(100vh-4rem))] flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-lg",
           showFullStyling ? "w-[640px]" : "w-[512px]",

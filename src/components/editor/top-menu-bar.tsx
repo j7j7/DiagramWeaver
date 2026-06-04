@@ -25,6 +25,7 @@ import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { IconMaintenanceDialog } from './icon-maintenance-dialog';
 import { ICON_MAINTENANCE_MENU_ENABLED } from '@/lib/maintenance-config';
 import { ViewerUrlDialog } from './viewer-url-dialog';
+import { InteractionRecorderHelpMenuItem } from './interaction-recorder-menu-item';
 import { useTheme } from '@/components/theme-provider';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData, PresentationDeck } from '@/lib/types';
@@ -1381,6 +1382,7 @@ export function TopMenuBar({
                 Interactive tutorial
               </MenubarItem>
             )}
+            <InteractionRecorderHelpMenuItem />
             {ICON_MAINTENANCE_MENU_ENABLED && (
               <MenubarItem onClick={() => setIconMaintenanceOpen(true)}>
                 <Wrench className="mr-2 h-4 w-4" />

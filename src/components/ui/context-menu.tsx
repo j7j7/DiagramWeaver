@@ -2,6 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from '@/lib/utils';
+import {
+  emitDwOverlayClose,
+  emitDwOverlayOpen,
+  emitDwContextMenuAction,
+} from "@/lib/interaction-recording-bridge";
+import { RECORDING_SURFACE_CANVAS_CONTEXT_MENU, slugifyRecordingAction } from "@/lib/interaction-recording-surfaces";
 import { isChartNodeType } from '@/lib/chart-node';
 import { isTimelineBarNodeType } from '@/lib/timeline-bar';
 import { isSegmentedRectangleNodeType } from '@/lib/segmented-rectangle';
@@ -241,6 +247,20 @@ export function ContextMenu({
   const [cardTemplateSubmenuOpen, setCardTemplateSubmenuOpen] = useState(false);
   const [pasteSpecialSubmenuOpen, setPasteSpecialSubmenuOpen] = useState(false);
 
+  const recordMenuAction = (event: React.MouseEvent) => {
+    const btn = (event.target as HTMLElement | null)?.closest("button");
+    if (!btn || !menuRef.current?.contains(btn)) return;
+    const explicit = btn.getAttribute("data-dw-recording-action");
+    const label = btn.textContent?.replace(/\s+/g, " ").trim();
+    const action = explicit ?? (label ? slugifyRecordingAction(label) : "");
+    if (!action) return;
+    emitDwContextMenuAction({
+      action,
+      itemId,
+      itemType,
+    });
+  };
+
   useEffect(() => {
     if (!visible) {
       setLayerSubmenuOpen(false);
@@ -250,8 +270,11 @@ export function ContextMenu({
       setBooleanSubmenuOpen(false);
       setCardTemplateSubmenuOpen(false);
       setPasteSpecialSubmenuOpen(false);
+      emitDwOverlayClose({ surface: RECORDING_SURFACE_CANVAS_CONTEXT_MENU });
+      return;
     }
-  }, [visible]);
+    emitDwOverlayOpen({ surface: RECORDING_SURFACE_CANVAS_CONTEXT_MENU, x, y });
+  }, [visible, x, y]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -295,6 +318,8 @@ export function ContextMenu({
   return (
     <div
       ref={menuRef}
+      data-dw-recording-surface={RECORDING_SURFACE_CANVAS_CONTEXT_MENU}
+      onClickCapture={recordMenuAction}
       className={cn(
         "context-menu fixed bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[150px]",
         "animate-in fade-in-0 zoom-in-95",
@@ -306,6 +331,7 @@ export function ContextMenu({
       }}
     >
       <button
+        data-dw-recording-action="copy"
         className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
         onClick={() => {
           onCopy();
@@ -492,6 +518,7 @@ export function ContextMenu({
         return cardIconContext || isCard || isShape || isTextbox || isLucide || isResourceItem || isEmoji || closedLineFill;
       })() && (
         <button
+          data-dw-recording-action="visual-styling"
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
           onClick={() => {
             onVisualStyling();

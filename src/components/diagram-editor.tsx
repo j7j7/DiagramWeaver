@@ -24,6 +24,8 @@ import { readThemeMenuHueStepDegFromStorage } from '@/lib/theme-menu-hue-step';
 import { orderSelectedIdsForThemeHue } from '@/lib/selection-theme-order';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { TutorialProvider } from './tutorial/tutorial-provider';
+import { emitDwCanvasTransform, DW_REPLAY_CANVAS_TRANSFORM } from '@/lib/interaction-recording-bridge';
+import type { InteractionRecordingCanvasTransform } from '@/lib/interaction-recording-types';
 import { TutorialOverlay } from './tutorial/tutorial-overlay';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { 
@@ -1138,6 +1140,14 @@ export default function DiagramEditor() {
     const sanitized = sanitizeCanvasTransform(transform);
     updateActiveTab({ canvasTransform: sanitized });
 
+    if (
+      typeof document !== "undefined" &&
+      document.body.dataset.dwRecording === "active" &&
+      document.body.dataset.dwPlayback !== "active"
+    ) {
+      emitDwCanvasTransform(sanitized);
+    }
+
     if (isPrimaryPresentationSlideActive) {
       viewStatePersistRef.current = sanitized;
       if (viewStatePersistTimeoutRef.current) clearTimeout(viewStatePersistTimeoutRef.current);
@@ -1164,6 +1174,21 @@ export default function DiagramEditor() {
     activeDiagramStack,
     setDiagramData,
   ]);
+
+  React.useEffect(() => {
+    const onReplayCanvasTransform = (e: Event) => {
+      if (document.body.dataset.dwPlayback !== "active") return;
+      const detail = (e as CustomEvent<InteractionRecordingCanvasTransform>).detail;
+      if (!detail || typeof detail.k !== "number") return;
+      const sanitized = sanitizeCanvasTransform(detail);
+      flushSync(() => {
+        setCanvasTransform(sanitized);
+      });
+    };
+    document.addEventListener(DW_REPLAY_CANVAS_TRANSFORM, onReplayCanvasTransform as EventListener);
+    return () =>
+      document.removeEventListener(DW_REPLAY_CANVAS_TRANSFORM, onReplayCanvasTransform as EventListener);
+  }, [setCanvasTransform, sanitizeCanvasTransform]);
 
   usePresentationSlideViewportSync({
     activeTabId,
