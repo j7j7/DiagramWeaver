@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Selection: removed dashed corner brackets
+**`SelectionCornerBrackets`** removed — selection is indicated by green resize/connect/rotation handles and existing border/chrome only (no glow, no corner brackets). Group members no longer get a separate green corner outline. Patch bumped.
+
 ### 2026-06-04 – Resize handles: outward offset on tiny boxes
 **`computeResizeHandleEdgeOffsets`** (`resize-handle-offsets.ts`): when width is below **4× grid** (40px), top/bottom resize rails move further out (up to **+24px** at 1-grid width); when height is similarly short, left/right (and bottom-right corner) rails move outward so rotation / connect / corner controls do not block edge resize. **`ResizeHandles`** takes **`boxWidth`** / **`boxHeight`** from **`DiagramNode`** (and timeline card overlays). Patch bumped.
 

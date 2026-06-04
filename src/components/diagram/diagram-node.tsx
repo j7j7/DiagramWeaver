@@ -3842,8 +3842,6 @@ function DiagramNodeInner({
         // Hover and selection effects - not for lines, and not when locked
         !spineLikeNode && !(isDragging || isTouchCanvasDrag) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && !isFrostedBackground && "node-glow-hover",
         !spineLikeNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !isFrostedBackground && "node-glow-subdiagram",
-        !spineLikeNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static",
-        !spineLikeNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && !isLocked && "node-glow-green-static",
         (isDragging || isTouchCanvasDrag) && "cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
