@@ -4,6 +4,15 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Overlap click-through: card re-click cycles stack
+Re-clicking an already-selected top card now advances the overlap stack (not only ±4px repeat); provider/icon nodes (e.g. EC2) join the geometry stack; **`trySelectCardElement`** calls overlap before sub-element select. Patch bumped.
+
+### 2026-06-04 – Overlap click-through: selected card inner clicks
+When a **card** is already selected, inner element clicks no longer block overlap cycling — **`onOverlapClickThroughAttempt`** runs in **`handleCardElementSelect`** before sub-element selection (same stack logic as **`handleNodeClick`**). Patch bumped.
+
+### 2026-06-04 – Overlap click-through: cards, borders, vector paths
+Click-through geometry uses **`isDiagramPointOnNode`** / **`nodeToCanvasPolygons`** (**`shape-to-polygon.ts`**) so **cards** (rounded rect + rotation), **border** templates, and **vector paths** (refitted ring bounds + even-odd fill) join primitives in the overlap stack. Patch bumped.
+
 ### 2026-06-04 – Overlap click-through: wrap + geometry stack
 Click-through cycling now uses **diagram-space bounds** (not DOM-only) so the full overlap stack stays available when the bottom item is selected and upper layers are `pointer-events: none` — **A → C** wrap works. **`getCanvasOverlapStackAtDiagramPoint`** / **`mergeOverlapStacks`** in **`canvas-click-through.ts`**; **`getOverlapStackAtClientPoint`** in **`editor-canvas.tsx`**. Patch bumped.
 

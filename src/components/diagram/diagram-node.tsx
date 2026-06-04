@@ -409,6 +409,8 @@ interface DiagramNodeProps {
   /** Selected card sub-element id (when this card node is selected) */
   cardSelectedElementId?: string | null;
   onCardElementSelect?: (nodeId: string, elementId: string | null) => void;
+  /** When a selected card captures the click, try overlap cycling before sub-element select. */
+  onOverlapClickThroughAttempt?: (e: React.MouseEvent, nodeId: string) => boolean;
   /** Right-click on a card icon-slot that has an icon assigned */
   onCardIconContextMenu?: (e: React.MouseEvent, node: DiagramNodeData, elementId: string) => void;
   /** Mind-map theme-hues: pass all diagram nodes so anchor cascade can resolve fill/border base. */
@@ -569,6 +571,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onTimelineSpineContextMenu === next.onTimelineSpineContextMenu &&
     prev.cardSelectedElementId === next.cardSelectedElementId &&
     prev.onCardElementSelect === next.onCardElementSelect &&
+    prev.onOverlapClickThroughAttempt === next.onOverlapClickThroughAttempt &&
     prev.onCardIconContextMenu === next.onCardIconContextMenu &&
     prev.visualStylingPanelOpen === next.visualStylingPanelOpen;
 }
@@ -620,6 +623,7 @@ function DiagramNodeInner({
   onTimelineSpineContextMenu,
   cardSelectedElementId = null,
   onCardElementSelect,
+  onOverlapClickThroughAttempt,
   onCardIconContextMenu,
   diagramNodesForMindmap,
   visualStylingPanelOpen = false,
@@ -1081,6 +1085,11 @@ function DiagramNodeInner({
           cardEditRuns={cardElementEditRuns}
           cardSelectedElementId={cardSelectedElementId}
           onCardElementSelect={handleCardElementSelect}
+          onOverlapClickThroughAttempt={
+            onOverlapClickThroughAttempt
+              ? (e) => onOverlapClickThroughAttempt(e, node.id)
+              : undefined
+          }
           onCardElementDoubleClick={handleCardElementDoubleClick}
           onCardElementRichSubmit={handleCardElementRichSubmit}
           onCardElementKeyDown={(e) => {
@@ -2349,9 +2358,10 @@ function DiagramNodeInner({
   const handleCardElementSelect = useCallback(
     (elementId: string, e: React.MouseEvent) => {
       if (isReadOnly || !onCardElementSelect) return;
+      if (onOverlapClickThroughAttempt?.(e, node.id)) return;
       onCardElementSelect(node.id, elementId);
     },
-    [isReadOnly, onCardElementSelect, node.id],
+    [isReadOnly, onCardElementSelect, onOverlapClickThroughAttempt, node.id],
   );
 
   const rotation = (node as any).rotation || 0;

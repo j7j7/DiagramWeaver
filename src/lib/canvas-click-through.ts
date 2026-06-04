@@ -39,20 +39,19 @@ function pointInBounds(diagramX: number, diagramY: number, b: CanvasObjectBounds
 }
 
 /**
- * All node/zone ids whose bounds contain the diagram point, topmost first
+ * All node/zone ids under the diagram point, topmost first
  * (uses render sort, not DOM — stable when upper layers use pointer-events: none).
  */
 export function getCanvasOverlapStackAtDiagramPoint(
   diagramX: number,
   diagramY: number,
   sortedItemIds: readonly string[],
-  getBounds: (id: string) => CanvasObjectBounds | null,
+  isPointOnItem: (id: string, diagramX: number, diagramY: number) => boolean,
 ): string[] {
   const stack: string[] = [];
   for (let i = sortedItemIds.length - 1; i >= 0; i--) {
     const id = sortedItemIds[i];
-    const b = getBounds(id);
-    if (b && pointInBounds(diagramX, diagramY, b)) {
+    if (isPointOnItem(id, diagramX, diagramY)) {
       stack.push(id);
     }
   }
@@ -162,14 +161,27 @@ export function resolveClickThroughSelectId(args: {
     };
   }
 
+  const topId = selectableStack[0];
+  // Selected card (or any top item) clicked again — cycle even if the pointer moved slightly
+  // (card inner elements stop propagation, so position-based repeat alone is unreliable).
+  if (
+    selectedItemId != null &&
+    selectedItemId === domHitId &&
+    selectedItemId === topId
+  ) {
+    const idx = selectableStack.indexOf(selectedItemId);
+    const nextId = selectableStack[(idx + 1) % selectableStack.length];
+    return { targetId: nextId, nextLastClickPoint: point };
+  }
+
   if (!isNearClickThroughPoint(lastClickPoint, point)) {
-    return { targetId: selectableStack[0], nextLastClickPoint: point };
+    return { targetId: topId, nextLastClickPoint: point };
   }
 
   const currentId =
     selectedItemId && selectableStack.includes(selectedItemId) ? selectedItemId : null;
   if (!currentId) {
-    return { targetId: selectableStack[0], nextLastClickPoint: point };
+    return { targetId: topId, nextLastClickPoint: point };
   }
 
   const idx = selectableStack.indexOf(currentId);

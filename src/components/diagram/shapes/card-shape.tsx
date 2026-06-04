@@ -258,6 +258,8 @@ interface CardShapeProps {
   presentationCardSlideStagger?: ChartSlideStagger;
   /** When false, element clicks bubble so the card node can be selected (resize/connect handles). */
   cardNodeSelected?: boolean;
+  /** When the card is selected, try overlap click-through before drilling into a sub-element. */
+  onOverlapClickThroughAttempt?: (e: React.MouseEvent) => boolean;
   cardTemplateId?: string;
   heroBoundaryInteractionEnabled?: boolean;
   onCardElementsPatch?: (elements: CardElementData) => void;
@@ -447,11 +449,13 @@ function trySelectCardElement(
   isReadOnly: boolean | undefined,
   cardNodeSelected: boolean | undefined,
   onCardElementSelect?: (elementId: string, e: React.MouseEvent) => void,
+  onOverlapClickThroughAttempt?: (e: React.MouseEvent) => boolean,
 ) {
   if (isReadOnly || !onCardElementSelect) return;
   // First click selects the card node (event bubbles); sub-elements only when card is already selected.
   if (!cardNodeSelected) return;
   e.stopPropagation();
+  if (onOverlapClickThroughAttempt?.(e)) return;
   onCardElementSelect(elementId, e);
 }
 
@@ -481,6 +485,7 @@ interface CardElementRendererProps {
   cardEditRuns?: RichTextRun[];
   cardSelectedElementId?: string | null;
   onCardElementSelect?: (elementId: string, e: React.MouseEvent) => void;
+  onOverlapClickThroughAttempt?: (e: React.MouseEvent) => boolean;
   onCardElementDoubleClick?: (elementId: string, e: React.MouseEvent) => void;
   onCardElementRichSubmit?: (elementId: string, plainText: string, runs: RichTextRun[]) => void;
   onCardElementKeyDown?: (e: React.KeyboardEvent) => void;
@@ -555,6 +560,7 @@ function CardIconSlot({
   popAnimOut,
   cardSelectedElementId,
   onCardElementSelect,
+  onOverlapClickThroughAttempt,
   cardNodeSelected,
   cardShellBorder,
   cardTemplateId,
@@ -570,6 +576,7 @@ function CardIconSlot({
   popAnimOut: string;
   cardSelectedElementId?: string | null;
   onCardElementSelect?: (elementId: string, e: React.MouseEvent) => void;
+  onOverlapClickThroughAttempt?: (e: React.MouseEvent) => boolean;
   cardNodeSelected?: boolean;
   cardShellBorder?: CardShellBorder;
   cardTemplateId?: string;
@@ -718,7 +725,7 @@ function CardIconSlot({
         boxSizing: "border-box",
       }}
       onClick={(e) =>
-        trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect)
+        trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect, onOverlapClickThroughAttempt)
       }
     >
       {meshLayer}
@@ -815,6 +822,7 @@ function CardElementRenderer({
   cardEditRuns,
   cardSelectedElementId,
   onCardElementSelect,
+  onOverlapClickThroughAttempt,
   onCardElementDoubleClick,
   onCardElementRichSubmit,
   onCardElementKeyDown,
@@ -1182,7 +1190,7 @@ function CardElementRenderer({
             )
           )
             return;
-          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect);
+          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect, onOverlapClickThroughAttempt);
         }}
       >
         {meshLayer}
@@ -1305,6 +1313,7 @@ function CardElementRenderer({
         popAnimOut={popAnimOut}
         cardSelectedElementId={cardSelectedElementId}
         onCardElementSelect={onCardElementSelect}
+        onOverlapClickThroughAttempt={onOverlapClickThroughAttempt}
         cardNodeSelected={cardNodeSelected}
         cardShellBorder={cardShellBorder}
         cardTemplateId={cardTemplateId}
@@ -1382,7 +1391,7 @@ function CardElementRenderer({
         }}
         className={cn(isSelected && !isReadOnly && "ring-2 ring-primary ring-inset")}
         onClick={(e) =>
-          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect)
+          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect, onOverlapClickThroughAttempt)
         }
       >
         {meshLayer}
@@ -1435,7 +1444,7 @@ function CardElementRenderer({
           isSelected && !isReadOnly && "ring-2 ring-primary ring-inset",
         )}
         onClick={(e) =>
-          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect)
+          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect, onOverlapClickThroughAttempt)
         }
       >
         {meshLayer}
@@ -1685,7 +1694,7 @@ function CardElementRenderer({
             )
           )
             return;
-          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect);
+          trySelectCardElement(e, element.id, isReadOnly, cardNodeSelected, onCardElementSelect, onOverlapClickThroughAttempt);
         }}
       >
         {meshLayer}
@@ -1748,6 +1757,7 @@ export function CardShape(props: CardShapeProps) {
     onCardIconContextMenu,
     presentationCardSlideStagger,
     cardNodeSelected,
+    onOverlapClickThroughAttempt,
     cardTemplateId,
     heroBoundaryInteractionEnabled,
     onCardElementsPatch,
@@ -1934,6 +1944,7 @@ export function CardShape(props: CardShapeProps) {
         cardEditRuns={cardEditRuns}
         cardSelectedElementId={cardSelectedElementId}
         onCardElementSelect={onCardElementSelect}
+        onOverlapClickThroughAttempt={onOverlapClickThroughAttempt}
         onCardElementDoubleClick={onCardElementDoubleClick}
         onCardElementRichSubmit={onCardElementRichSubmit}
         onCardElementKeyDown={onCardElementKeyDown}

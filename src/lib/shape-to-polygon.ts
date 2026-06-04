@@ -1,8 +1,21 @@
 import type { DiagramNodeData } from "@/lib/types";
+import { isCardNodeType } from "@/lib/card-utils";
+import { isBorderNodeType } from "@/lib/border-utils";
 import { objectKindSuffixFromNodeType } from "@/lib/shape-type-swap";
 import { parsePoints, getPolygonViewBoxAndPoints } from "@/components/diagram/shapes/shape-utils";
+import {
+  nodeBoundingBoxForFit,
+  type PositionedNode,
+} from "@/components/editor/canvas-constants";
+import type { CanvasObjectBounds } from "@/lib/canvas-click-through";
 import type { ClipMultiPolygon, ClipPair, ClipPolygon, ClipRing } from "@/lib/vector-path-utils";
-import { groupClipRingsToPolygons, isVectorPathNodeType } from "@/lib/vector-path-utils";
+import {
+  bboxOfClipMultiPolygon,
+  groupClipRingsToPolygons,
+  isVectorPathNodeType,
+  pointInClipMultiPolygon,
+  refitVectorPathNodeBounds,
+} from "@/lib/vector-path-utils";
 
 const CIRCLE_SEGMENTS = 48;
 
@@ -143,26 +156,103 @@ function primitiveLocalRing(node: DiagramNodeData, kind: string): ClipRing | nul
   }
 }
 
-/** Convert a diagram node to one or more polygons in canvas space for boolean ops. */
+/** Convert a diagram node to one or more polygons in canvas space for boolean ops and hit tests. */
 export function nodeToCanvasPolygons(node: DiagramNodeData): ClipMultiPolygon {
   const out: ClipMultiPolygon = [];
 
   if (isVectorPathNodeType(node.type)) {
-    for (const poly of vectorPathLocalPolygons(node)) {
-      const canvasPoly: ClipPolygon = poly.map((ring) => localToCanvasRing(ring, node));
+    const rings = node.vectorPath?.rings ?? [];
+    if (!rings.length) return out;
+    const fitted = refitVectorPathNodeBounds(node, rings);
+    const fitNode: DiagramNodeData = fitted
+      ? {
+          ...node,
+          x: fitted.x,
+          y: fitted.y,
+          width: fitted.width,
+          height: fitted.height,
+          vectorPath: { rings: fitted.rings },
+        }
+      : node;
+    for (const poly of vectorPathLocalPolygons(fitNode)) {
+      const canvasPoly: ClipPolygon = poly.map((ring) => localToCanvasRing(ring, fitNode));
       out.push(canvasPoly);
     }
     return out;
   }
 
+  if (isCardNodeType(node.type)) {
+    const { w, h } = nodeDimensions(node);
+    const ring = roundedRectLocalRing(w, h, node.cornerRadius ?? 0.12);
+    out.push([localToCanvasRing(ring, node)]);
+    return out;
+  }
+
+  if (isBorderNodeType(node.type)) {
+    const { w, h } = nodeDimensions(node);
+    const ring = rectLocalRing(w, h, 0);
+    out.push([localToCanvasRing(ring, node)]);
+    return out;
+  }
+
   const kind = objectKindSuffixFromNodeType(node.type);
-  if (!kind) return out;
+  if (!kind) {
+    const box = nodeBoundingBoxForFit(node as PositionedNode);
+    const ring: ClipRing = [
+      [box.minX, box.minY],
+      [box.maxX, box.minY],
+      [box.maxX, box.maxY],
+      [box.minX, box.maxY],
+      [box.minX, box.minY],
+    ];
+    out.push([ring]);
+    return out;
+  }
 
   const localRing = primitiveLocalRing(node, kind);
   if (!localRing || localRing.length < 4) return out;
 
   out.push([localToCanvasRing(localRing, node)]);
   return out;
+}
+
+/** Axis-aligned bounds for overlap click-through (matches painted card/border/vector extent). */
+export function getNodeClickThroughBounds(node: DiagramNodeData): CanvasObjectBounds | null {
+  const mp = nodeToCanvasPolygons(node);
+  const bbox = bboxOfClipMultiPolygon(mp);
+  if (bbox) {
+    return {
+      x: bbox.minX,
+      y: bbox.minY,
+      w: bbox.maxX - bbox.minX,
+      h: bbox.maxY - bbox.minY,
+    };
+  }
+  const box = nodeBoundingBoxForFit(node as PositionedNode);
+  const w = box.maxX - box.minX;
+  const h = box.maxY - box.minY;
+  if (w <= 0 || h <= 0) return null;
+  return { x: box.minX, y: box.minY, w, h };
+}
+
+/** Whether a diagram point hits the node's visible shape (respects rotation for primitives). */
+export function isDiagramPointOnNode(
+  node: DiagramNodeData,
+  diagramX: number,
+  diagramY: number,
+): boolean {
+  const mp = nodeToCanvasPolygons(node);
+  if (mp.length > 0) {
+    return pointInClipMultiPolygon([diagramX, diagramY], mp);
+  }
+  const bounds = getNodeClickThroughBounds(node);
+  if (!bounds) return false;
+  return (
+    diagramX >= bounds.x &&
+    diagramX < bounds.x + bounds.w &&
+    diagramY >= bounds.y &&
+    diagramY < bounds.y + bounds.h
+  );
 }
 
 /** Shapes eligible for boolean combine (closed palette primitives + existing vector paths). */

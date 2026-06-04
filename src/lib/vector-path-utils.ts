@@ -45,6 +45,23 @@ function clipRingAbsArea(ring: ClipRing): number {
   return Math.abs(sum / 2);
 }
 
+/** Even-odd fill: inside outer, outside holes. */
+export function pointInClipPolygon(point: ClipPair, poly: ClipPolygon): boolean {
+  if (!poly.length) return false;
+  if (!pointInClipRing(point, poly[0])) return false;
+  for (let i = 1; i < poly.length; i++) {
+    if (pointInClipRing(point, poly[i])) return false;
+  }
+  return true;
+}
+
+export function pointInClipMultiPolygon(point: ClipPair, mp: ClipMultiPolygon): boolean {
+  for (const poly of mp) {
+    if (pointInClipPolygon(point, poly)) return true;
+  }
+  return false;
+}
+
 /** Ray-cast point-in-polygon for a closed ring. */
 export function pointInClipRing(point: ClipPair, ring: ClipRing): boolean {
   const [x, y] = point;
