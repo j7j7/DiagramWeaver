@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Context toolbar: hooks order on connection select
+**`context-toolbar`**: **`useInteractionRecordingPanelReplay`** ran only on the node toolbar path; selecting a connection (**`itemType === 'edge'`**) returned early → “Rendered fewer hooks than expected”. Hook now runs before edge/node branches; styling handlers wired via refs. Patch bumped.
+
 ### 2026-06-04 – Canvas perf: resize freeze + card shadows
 **Resize**: **`freezeUnrelatedConnectionRouting`** + **`unrelatedConnectionRoutingDragIdsKey`** during resize (multi-select key from **`resizingItemIdsKey`**); **`hasEndpointInFrozenInteraction`** for partial endpoint resize like drag. **Cards**: **`data-dw-card-node`** on **`DiagramNode`**, **`data-dw-card-shell`** on card mask shells; perf CSS also clears inline **`filter`/`drop-shadow`/`text-shadow`**, icon slots, and **`.dw-icon-container`**. Patch bumped.
 

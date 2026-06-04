@@ -1182,6 +1182,13 @@ export function ContextToolbar({
     ],
   );
 
+  const visualStylingReplayRef = useRef<(styling: Record<string, unknown>) => void>(() => {});
+  const textStylingReplayRef = useRef<(styling: Record<string, unknown>) => void>(() => {});
+  useInteractionRecordingPanelReplay({
+    [RECORDING_SURFACE_VISUAL_STYLING]: (patch) => visualStylingReplayRef.current(patch),
+    [RECORDING_SURFACE_TEXT_STYLING]: (patch) => textStylingReplayRef.current(patch),
+  });
+
   if (!selectedItem) {
     return null;
   }
@@ -1809,10 +1816,8 @@ export function ContextToolbar({
     }
   };
 
-  useInteractionRecordingPanelReplay({
-    [RECORDING_SURFACE_VISUAL_STYLING]: handleVisualStylingChange,
-    [RECORDING_SURFACE_TEXT_STYLING]: handleTextStylingChange,
-  });
+  visualStylingReplayRef.current = handleVisualStylingChange;
+  textStylingReplayRef.current = handleTextStylingChange;
 
   const handleVisualStylingReset = () => {
     // Reset to default visual styling
