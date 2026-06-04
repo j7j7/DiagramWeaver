@@ -59,6 +59,72 @@ function sourceConnectionReferenceId(connection: DiagramConnectionData, index: n
   return connection.id ?? `${connection.from}-${connection.to}-${index}`;
 }
 
+/** Recreate `groupings` entries and set `groupId` on pasted nodes (must run before final node snapshots). */
+function createPastedGroupings(
+  newNodes: DiagramNodeData[],
+  idMapping: Map<string, string>,
+  originalGroupingRelationships: Map<string, string>,
+  originalGroupingMemberOrder: Map<string, string[]>,
+  diagramData: DiagramData,
+  pasteOccupied: Set<string>
+): DiagramGroupingData[] {
+  const groupingsToCreate = new Map<string, string[]>();
+
+  originalGroupingRelationships.forEach((groupingId, nodeId) => {
+    const newNodeId = idMapping.get(nodeId);
+    if (newNodeId) {
+      if (!groupingsToCreate.has(groupingId)) {
+        groupingsToCreate.set(groupingId, []);
+      }
+      groupingsToCreate.get(groupingId)!.push(newNodeId);
+    }
+  });
+
+  const newGroupings: DiagramGroupingData[] = [];
+  groupingsToCreate.forEach((nodeIds, originalGroupingId) => {
+    const originalGrouping = diagramData.groupings?.find((grouping) => grouping.id === originalGroupingId);
+    if (!originalGrouping || nodeIds.length === 0) return;
+
+    const newGroupingId = generateSequentialId("grouping", diagramData, pasteOccupied);
+    pasteOccupied.add(newGroupingId);
+
+    const originalOrder = originalGroupingMemberOrder.get(originalGroupingId);
+    let orderedMemberIds: string[];
+
+    if (originalOrder) {
+      orderedMemberIds = originalOrder
+        .map((originalId) => idMapping.get(originalId))
+        .filter(
+          (newId): newId is string => newId !== undefined && nodeIds.includes(newId)
+        );
+
+      const orderedSet = new Set(orderedMemberIds);
+      nodeIds.forEach((nodeId) => {
+        if (!orderedSet.has(nodeId)) {
+          orderedMemberIds.push(nodeId);
+        }
+      });
+    } else {
+      orderedMemberIds = nodeIds;
+    }
+
+    newGroupings.push({
+      ...originalGrouping,
+      id: newGroupingId,
+      memberIds: orderedMemberIds,
+    });
+
+    orderedMemberIds.forEach((nodeId) => {
+      const node = newNodes.find((n) => n.id === nodeId);
+      if (node) {
+        node.groupId = newGroupingId;
+      }
+    });
+  });
+
+  return newGroupings;
+}
+
 interface ClipboardData {
   node?: DiagramNodeData;
   zone?: DiagramZoneData;
@@ -572,6 +638,15 @@ export function useCanvasClipboard({
         });
       });
 
+      const newGroupings = createPastedGroupings(
+        newNodes,
+        idMapping,
+        clipboard.originalGroupingRelationships || new Map(),
+        clipboard.originalGroupingMemberOrder || new Map(),
+        diagramData,
+        pasteOccupied
+      );
+
       const fullIdMapping = new Map<string, string>([...idMapping, ...connectionIdMapping]);
       const remappedNewNodes = newNodes.map((node) => ({
         ...node,
@@ -585,71 +660,6 @@ export function useCanvasClipboard({
         ...connection,
         metaData: remapSimulationGroupsMetaData(connection.metaData, fullIdMapping),
       }));
-
-      // Create new groupings for nodes that had original grouping relationships
-      const originalGroupingRelationships = clipboard.originalGroupingRelationships || new Map();
-      const originalGroupingMemberOrder = clipboard.originalGroupingMemberOrder || new Map();
-      const groupingsToCreate = new Map<string, string[]>(); // groupingId -> nodeIds
-       
-      // Group nodes by their original grouping
-      originalGroupingRelationships.forEach((groupingId, nodeId) => {
-        const newNodeId = idMapping.get(nodeId);
-        if (newNodeId) {
-          if (!groupingsToCreate.has(groupingId)) {
-            groupingsToCreate.set(groupingId, []);
-          }
-          groupingsToCreate.get(groupingId)!.push(newNodeId);
-        }
-      });
-
-      // Create new groupings
-      const newGroupings: DiagramGroupingData[] = [];
-      groupingsToCreate.forEach((nodeIds, originalGroupingId) => {
-        // Find original grouping to copy its properties
-        const originalGrouping = diagramData.groupings?.find(grouping => grouping.id === originalGroupingId);
-        if (originalGrouping && nodeIds.length > 0) {
-          const newGroupingId = generateSequentialId('grouping', diagramData, pasteOccupied);
-          pasteOccupied.add(newGroupingId);
-          
-          // Preserve the original order of memberIds
-          const originalOrder = originalGroupingMemberOrder.get(originalGroupingId);
-          let orderedMemberIds: string[];
-          
-          if (originalOrder) {
-            // Map original IDs to new IDs while preserving order
-            orderedMemberIds = originalOrder
-              .map((originalId: string) => idMapping.get(originalId))
-              .filter((newId: string | undefined): newId is string => newId !== undefined && nodeIds.includes(newId));
-            
-            // Add any nodes that weren't in the original order (shouldn't happen, but safety check)
-            const orderedSet = new Set(orderedMemberIds);
-            nodeIds.forEach(nodeId => {
-              if (!orderedSet.has(nodeId)) {
-                orderedMemberIds.push(nodeId);
-              }
-            });
-          } else {
-            // Fallback to unordered if original order not available
-            orderedMemberIds = nodeIds;
-          }
-          
-          const newGrouping: DiagramGroupingData = {
-            ...originalGrouping,
-            id: newGroupingId,
-            memberIds: orderedMemberIds
-          };
-          
-          newGroupings.push(newGrouping);
-          
-          // Update the copied nodes to reference the new grouping
-          orderedMemberIds.forEach(nodeId => {
-            const node = newNodes.find(n => n.id === nodeId);
-            if (node) {
-              node.groupId = newGroupingId;
-            }
-          });
-        }
-      });
 
       // Collect IDs of all newly pasted items
       const pastedItemIds: string[] = [];
@@ -899,10 +909,25 @@ export function useCanvasClipboard({
         }
       }
 
+      const zonePasteGroupings = createPastedGroupings(
+        newNodes,
+        idMapping,
+        clipboard.originalGroupingRelationships || new Map(),
+        clipboard.originalGroupingMemberOrder || new Map(),
+        diagramData,
+        pasteOccupied
+      );
+
+      const remappedZonePasteNodes = newNodes.map((node) => ({
+        ...node,
+        metaData: remapSimulationGroupsMetaData(node.metaData, idMapping),
+      }));
+
       setDiagramData(prev => ({
         ...prev,
-        nodes: [...prev.nodes, ...newNodes],
-        zones: [...(prev.zones || []), newZone, ...newChildGroups]
+        nodes: [...prev.nodes, ...remappedZonePasteNodes],
+        zones: [...(prev.zones || []), newZone, ...newChildGroups],
+        groupings: [...(prev.groupings || []), ...zonePasteGroupings],
       }));
 
       // Select the newly pasted group

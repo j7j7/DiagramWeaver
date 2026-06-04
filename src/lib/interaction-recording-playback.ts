@@ -9,6 +9,7 @@ import {
   DW_CANVAS_TRANSFORM,
   DW_CONTEXT_MENU_ACTION,
   DW_CONTEXT_MENU_OPEN,
+  DW_OVERLAY_ACTION,
   DW_OVERLAY_OPEN,
   DW_PALETTE_DROP,
   emitDwReplayCanvasTransform,
@@ -19,6 +20,7 @@ import {
   type DwCanvasMoveDetail,
   type DwContextMenuActionDetail,
   type DwContextMenuOpenDetail,
+  type DwOverlayActionDetail,
   type DwPaletteDropDetail,
 } from "@/lib/interaction-recording-bridge";
 import { ItemTypes } from "@/components/editor/draggable-item";
@@ -44,6 +46,11 @@ import {
   waitForCanvasTransform,
 } from "@/lib/interaction-recording-transform";
 import type { InteractionRecordingCanvasTransform } from "@/lib/interaction-recording-types";
+import {
+  collectSemanticActionMarkers,
+  replayOverlayAction,
+  shouldStripSurfaceDomEvent,
+} from "@/lib/interaction-recording-overlay";
 
 interface PlaybackRuntime {
   pointerDown?: { button: number };
@@ -558,6 +565,12 @@ async function dispatchCustom(
     return;
   }
 
+  if (event.name === DW_OVERLAY_ACTION) {
+    const actionDetail = detail as unknown as DwOverlayActionDetail;
+    await replayOverlayAction(actionDetail, runtime.signal);
+    return;
+  }
+
   if (event.name === DW_PALETTE_DROP || event.name === "mobileDrop") {
     dispatchPaletteDrop(detail as unknown as DwPaletteDropDetail, ctx);
     return;
@@ -731,44 +744,38 @@ export function dedupePointerClicks(recording: InteractionRecording): Interactio
   return { ...recording, events };
 }
 
-/** Drop DOM pointer/click on context menu when a semantic menu action was recorded. */
-export function stripSemanticMenuDomEvents(
+/** Drop DOM pointer/click on floating surfaces when a semantic action was recorded. */
+export function stripSemanticOverlayDomEvents(
   recording: InteractionRecording,
 ): InteractionRecording {
-  const actionTimes = new Map<string, number>();
+  const markers = collectSemanticActionMarkers(recording);
   let contextMenuOpenAt: number | null = null;
 
-  for (const e of recording.events) {
-    if (e.kind === "custom" && e.name === DW_CONTEXT_MENU_ACTION) {
-      const action = (e.detail as DwContextMenuActionDetail | null)?.action;
-      if (action) actionTimes.set(action, e.t);
-    }
-    if (e.kind === "custom" && e.name === DW_CONTEXT_MENU_OPEN) {
-      contextMenuOpenAt = e.t;
+  for (const event of recording.events) {
+    if (event.kind === "custom" && event.name === DW_CONTEXT_MENU_OPEN) {
+      contextMenuOpenAt = event.t;
     }
   }
 
-  if (actionTimes.size === 0 && contextMenuOpenAt == null) return recording;
+  if (markers.length === 0 && contextMenuOpenAt == null) return recording;
 
-  const events = recording.events.filter((e) => {
-    if (e.kind === "contextmenu" && contextMenuOpenAt != null && Math.abs(e.t - contextMenuOpenAt) < 120) {
+  const events = recording.events.filter((event) => {
+    if (
+      event.kind === "contextmenu" &&
+      contextMenuOpenAt != null &&
+      Math.abs(event.t - contextMenuOpenAt) < 120
+    ) {
       return false;
     }
-    if (
-      (e.kind === "pointer" || e.kind === "click") &&
-      "target" in e &&
-      e.target.recordingSurface === RECORDING_SURFACE_CANVAS_CONTEXT_MENU
-    ) {
-      const action = e.target.recordingAction;
-      if (action && actionTimes.has(action)) {
-        const dt = Math.abs(e.t - actionTimes.get(action)!);
-        if (dt < 180) return false;
-      }
-    }
-    return true;
+    return !shouldStripSurfaceDomEvent(event, markers);
   });
 
   return { ...recording, events };
+}
+
+/** @deprecated Use stripSemanticOverlayDomEvents */
+export function stripSemanticMenuDomEvents(recording: InteractionRecording): InteractionRecording {
+  return stripSemanticOverlayDomEvents(recording);
 }
 
 export function ensureStartTransformEvent(
@@ -794,7 +801,7 @@ export function ensureStartTransformEvent(
 }
 
 export function prepareRecordingForPlayback(recording: InteractionRecording): InteractionRecording {
-  return stripSemanticMenuDomEvents(
+  return stripSemanticOverlayDomEvents(
     dedupePointerClicks(optimizeRecordingForPlayback(ensureStartTransformEvent(recording))),
   );
 }

@@ -9,7 +9,7 @@ import {
   RECORDER_STOP_KEY,
 } from "@/lib/interaction-recording-types";
 import { describeInteractionTarget } from "@/lib/interaction-recording-target";
-import { DW_CANVAS_MOVE, DW_CANVAS_TRANSFORM, DW_PALETTE_DROP, DW_OVERLAY_OPEN, DW_OVERLAY_CLOSE, DW_CONTEXT_MENU_OPEN, DW_CONTEXT_MENU_ACTION, resetCanvasTransformEmitCache } from "@/lib/interaction-recording-bridge";
+import { DW_CANVAS_MOVE, DW_CANVAS_TRANSFORM, DW_PALETTE_DROP, DW_OVERLAY_OPEN, DW_OVERLAY_CLOSE, DW_OVERLAY_ACTION, DW_CONTEXT_MENU_OPEN, DW_CONTEXT_MENU_ACTION, resetCanvasTransformEmitCache } from "@/lib/interaction-recording-bridge";
 import {
   clientToDiagram,
   isClientPointOverCanvas,
@@ -27,6 +27,7 @@ const RECORDED_CUSTOM_EVENTS = new Set([
   DW_CANVAS_TRANSFORM,
   DW_OVERLAY_OPEN,
   DW_OVERLAY_CLOSE,
+  DW_OVERLAY_ACTION,
   DW_CONTEXT_MENU_OPEN,
   DW_CONTEXT_MENU_ACTION,
 ]);
@@ -247,6 +248,7 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
   document.addEventListener(DW_CANVAS_TRANSFORM, onCustom, active);
   document.addEventListener(DW_OVERLAY_OPEN, onCustom, active);
   document.addEventListener(DW_OVERLAY_CLOSE, onCustom, active);
+  document.addEventListener(DW_OVERLAY_ACTION, onCustom, active);
   document.addEventListener(DW_CONTEXT_MENU_OPEN, onCustom, active);
   document.addEventListener(DW_CONTEXT_MENU_ACTION, onCustom, active);
 
@@ -274,6 +276,7 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
       document.removeEventListener(DW_CANVAS_TRANSFORM, onCustom, active);
       document.removeEventListener(DW_OVERLAY_OPEN, onCustom, active);
       document.removeEventListener(DW_OVERLAY_CLOSE, onCustom, active);
+      document.removeEventListener(DW_OVERLAY_ACTION, onCustom, active);
       document.removeEventListener(DW_CONTEXT_MENU_OPEN, onCustom, active);
       document.removeEventListener(DW_CONTEXT_MENU_ACTION, onCustom, active);
       delete document.body.dataset.dwRecording;

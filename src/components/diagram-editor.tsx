@@ -35,7 +35,7 @@ import {
   ungroup, 
   getItemGroup,
   getGroupMembers,
-  handleItemDeletion as cleanupGroupsAfterDeletion
+  deleteDiagramItemsByIds,
 } from '@/lib/grouping-utils';
 import { 
   moveItemToBack,
@@ -1958,39 +1958,26 @@ export default function DiagramEditor() {
         return;
       }
 
-      let newNodes = currentDiagramData.nodes;
-      let newConnections = currentDiagramData.connections;
+      const deleteIds =
+        itemToDelete.itemType === 'edge'
+          ? [
+              itemToDelete.id ||
+                `${(itemToDelete as { from: string; to: string }).from}-${(itemToDelete as { from: string; to: string }).to}`,
+            ]
+          : [itemToDelete.id];
 
-      if (itemToDelete.itemType === 'node') {
-        newNodes = currentDiagramData.nodes.filter((n) => n.id !== itemToDelete.id);
-        newConnections = currentDiagramData.connections.filter(
-          (e: { from: string; to: string }) => e.from !== itemToDelete.id && e.to !== itemToDelete.id,
-        );
-      } else if (itemToDelete.itemType === 'edge') {
-        const edgeItem = itemToDelete as { from: string; to: string; id?: string };
-        const hasExactIdMatch = Boolean(
-          edgeItem.id &&
-            currentDiagramData.connections.some(
-              (e: DiagramConnectionData) => (e as DiagramConnectionData).id === edgeItem.id,
-            ),
-        );
-        newConnections = currentDiagramData.connections.filter((e: DiagramConnectionData) => {
-          if (hasExactIdMatch && edgeItem.id && (e as DiagramConnectionData).id) {
-            return (e as DiagramConnectionData).id !== edgeItem.id;
-          }
-          return !(e.from === edgeItem.from && e.to === edgeItem.to);
-        });
-      }
+      const nextDiagram = deleteDiagramItemsByIds(currentDiagramData, deleteIds);
+      if (!nextDiagram) return;
 
-      const updatedData = { ...currentDiagramData, nodes: newNodes, connections: newConnections };
-      const nextDiagram = cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
       setCurrentDiagramData(nextDiagram);
       setSelectedItem(null);
+      setSelectedItemIds(new Set());
     },
     [
       currentDiagramData,
       setCurrentDiagramData,
       setSelectedItem,
+      setSelectedItemIds,
       tryDeleteConnectorLineVertexBeforeNodeDelete,
     ],
   );
@@ -4792,7 +4779,6 @@ export default function DiagramEditor() {
     animationToggleOnClickEnabled,
     setAnimationToggleOnClickEnabled,
     isReadOnly,
-    handleItemDelete,
     handleMenuCopy,
     handleMenuPaste,
     presentationPlayerOpen,

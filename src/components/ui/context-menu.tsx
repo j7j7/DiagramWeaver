@@ -7,6 +7,7 @@ import {
   emitDwOverlayOpen,
   emitDwContextMenuAction,
 } from "@/lib/interaction-recording-bridge";
+import { captureOverlayActionFromClick } from "@/lib/interaction-recording-overlay";
 import { RECORDING_SURFACE_CANVAS_CONTEXT_MENU, slugifyRecordingAction } from "@/lib/interaction-recording-surfaces";
 import { isChartNodeType } from '@/lib/chart-node';
 import { isTimelineBarNodeType } from '@/lib/timeline-bar';
@@ -248,6 +249,7 @@ export function ContextMenu({
   const [pasteSpecialSubmenuOpen, setPasteSpecialSubmenuOpen] = useState(false);
 
   const recordMenuAction = (event: React.MouseEvent) => {
+    captureOverlayActionFromClick(event, RECORDING_SURFACE_CANVAS_CONTEXT_MENU);
     const btn = (event.target as HTMLElement | null)?.closest("button");
     if (!btn || !menuRef.current?.contains(btn)) return;
     const explicit = btn.getAttribute("data-dw-recording-action");

@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Delete: remove whole group/zone with selection
+**Delete/Backspace** (and context menu delete via **`deleteDiagramItemsByIds`**) expands targets: a **grouping** deletes all members + dissolves the grouping when the full group is selected or a single member is the only target; a **zone** deletes its descendant nodes and nested zones. **`handleItemDeletion`** + **`cleanupEmptyZones`** run on every bulk delete. Duplicate delete shortcut removed from **`use-diagram-editor-keyboard`** (canvas handles it). Patch bumped.
+
+### 2026-06-04 – Copy/paste: preserve grouping on paste
+**`use-canvas-clipboard`**: pasted duplicates now keep **`groupId`** and new **`groupings`** records — grouping creation runs **before** the final node snapshot (previously **`remappedNewNodes`** was built first, so **`groupId`** was dropped). **`createPastedGroupings`** helper also applied on zone-tree paste. Patch bumped.
+
 ### 2026-06-04 – Overlap click-through: card re-click cycles stack
 Re-clicking an already-selected top card now advances the overlap stack (not only ±4px repeat); provider/icon nodes (e.g. EC2) join the geometry stack; **`trySelectCardElement`** calls overlap before sub-element select. Patch bumped.
 
@@ -18,6 +24,12 @@ Click-through cycling now uses **diagram-space bounds** (not DOM-only) so the fu
 
 ### 2026-06-04 – Overlap click-through selection (editor canvas)
 Repeated **left-clicks** at the same screen point (±4px) cycle selection through the overlap stack **top → bottom** by render order (e.g. semi-transparent overlay → icon → large rect → wrap). **Locked** nodes are skipped on left-click but still selectable via **right-click** context menu. When an item is already selected under the cursor, **right-click** anchors the menu to that selection (not the topmost DOM hit). Lib: **`canvas-click-through.ts`**; wired in **`editor-canvas.tsx`** (`handleNodeClick`, `handleZoneClick`, context menus). Patch bumped.
+
+### 2026-06-04 – Interaction recorder: panel value replay hooks
+Visual / Text Styling panels emit **`dwOverlayAction`** with **`kind: "patch"`** or **`"set-property"`** (color, slider, select, switch) via **`applyStylingChange`**; playback applies through **`useInteractionRecordingPanelReplay`** → same **`handleVisualStylingChange` / `handleTextStylingChange`** paths. Text panel tagged + overlay open/close. DOM drags on panels stripped when value events present. Lib: **`interaction-recording-panel-value.ts`**. **Re-record**. Patch bumped.
+
+### 2026-06-04 – Interaction recorder: semantic overlay actions + JSON timeline
+Floating panels/menus emit **`dwOverlayAction`** (surface + action id from click capture) alongside pointer coords; playback resolves controls inside open surfaces (buttons, Radix **combobox**/**option**/**switch**) and uses native **`.click()`** instead of recorded x/y. Save dialog lists **semantic action timeline** and warns when panel clicks lack action ids. Lib: **`interaction-recording-overlay.ts`**. **Re-record** for overlay actions. Patch bumped.
 
 ### 2026-06-04 – Interaction recorder: canvas transform timeline
 Pointer/click/wheel/contextmenu events now store **`canvasTransform`** at event time; **`dwCanvasTransform`** emits more frequently during pan/zoom (~16ms). Playback applies the recording’s start transform and **waits until the live canvas matches** before events; each spatial event syncs canvas pan/zoom from its snapshot or transform timeline. **Re-record** for per-event transforms. Patch bumped.

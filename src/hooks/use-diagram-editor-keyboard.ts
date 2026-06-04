@@ -5,7 +5,6 @@ import type { EditorCanvasHandle } from "@/components/editor/editor-canvas";
 import type { DiagramData } from "@/lib/types";
 import type { SelectedItem } from "@/components/editor/diagram-editor-types";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
-import { isDiagramNodeLocked } from "@/lib/utils";
 
 export interface UseDiagramEditorKeyboardParams {
   jsonPanelOpen: boolean;
@@ -24,7 +23,6 @@ export interface UseDiagramEditorKeyboardParams {
   animationToggleOnClickEnabled: boolean;
   setAnimationToggleOnClickEnabled: Dispatch<SetStateAction<boolean>>;
   isReadOnly: boolean;
-  handleItemDelete: (item: SelectedItem) => void;
   handleMenuCopy: () => void;
   handleMenuPaste: () => void;
   presentationPlayerOpen: boolean;
@@ -62,7 +60,6 @@ export function useDiagramEditorKeyboard(p: UseDiagramEditorKeyboardParams): voi
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
     isReadOnly,
-    handleItemDelete,
     handleMenuCopy,
     handleMenuPaste,
     presentationPlayerOpen,
@@ -153,21 +150,7 @@ export function useDiagramEditorKeyboard(p: UseDiagramEditorKeyboardParams): voi
         return;
       }
 
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedItem && !isReadOnly) {
-        if (selectedItemIds.size > 1) {
-          return;
-        }
-        if (
-          selectedItem.itemType === "node" &&
-          isDiagramNodeLocked(diagramData.nodes, selectedItem.id)
-        ) {
-          e.preventDefault();
-          return;
-        }
-        e.preventDefault();
-        handleItemDelete(selectedItem);
-        return;
-      }
+      // Delete/Backspace: handled on EditorCanvas (supports multi-select, group/zone expansion).
 
       if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "g" && !e.shiftKey) {
         e.preventDefault();
@@ -311,7 +294,6 @@ export function useDiagramEditorKeyboard(p: UseDiagramEditorKeyboardParams): voi
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
     isReadOnly,
-    handleItemDelete,
     handleMenuCopy,
     handleMenuPaste,
     presentationPlayerOpen,

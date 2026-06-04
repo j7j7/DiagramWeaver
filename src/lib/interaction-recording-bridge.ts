@@ -9,6 +9,8 @@ export const DW_REPLAY_CANVAS_MOVE = "dwReplayCanvasMove";
 export const DW_REPLAY_CANVAS_TRANSFORM = "dwReplayCanvasTransform";
 export const DW_OVERLAY_OPEN = "dwOverlayOpen";
 export const DW_OVERLAY_CLOSE = "dwOverlayClose";
+export const DW_OVERLAY_ACTION = "dwOverlayAction";
+export const DW_REPLAY_OVERLAY_ACTION = "dwReplayOverlayAction";
 export const DW_CONTEXT_MENU_OPEN = "dwContextMenuOpen";
 export const DW_CONTEXT_MENU_ACTION = "dwContextMenuAction";
 export const DW_REPLAY_CONTEXT_MENU_OPEN = "dwReplayContextMenuOpen";
@@ -27,6 +29,19 @@ export interface DwOverlayOpenDetail {
   surface: string;
   x?: number;
   y?: number;
+}
+
+export type DwOverlayActionKind = "click" | "set-property" | "patch";
+
+export interface DwOverlayActionDetail {
+  surface: string;
+  action: string;
+  kind?: DwOverlayActionKind;
+  property?: string;
+  value?: unknown;
+  patch?: Record<string, unknown>;
+  role?: string;
+  tag?: string;
 }
 
 export interface DwContextMenuOpenDetail {
@@ -169,6 +184,27 @@ export function emitDwContextMenuAction(detail: DwContextMenuActionDetail): void
   if (typeof document === "undefined") return;
   if (document.body.dataset.dwPlayback === "active") return;
   document.dispatchEvent(new CustomEvent(DW_CONTEXT_MENU_ACTION, { bubbles: true, detail }));
+}
+
+export function emitDwOverlayAction(detail: DwOverlayActionDetail): void {
+  if (typeof document === "undefined") return;
+  if (document.body.dataset.dwPlayback === "active") return;
+  document.dispatchEvent(
+    new CustomEvent(DW_OVERLAY_ACTION, {
+      bubbles: true,
+      detail: {
+        ...detail,
+        kind: detail.kind ?? "click",
+        value: detail.value !== undefined ? cloneForRecording(detail.value) : undefined,
+        patch: detail.patch ? cloneForRecording(detail.patch) : undefined,
+      },
+    }),
+  );
+}
+
+export function emitDwReplayOverlayAction(detail: DwOverlayActionDetail): void {
+  if (typeof document === "undefined") return;
+  document.dispatchEvent(new CustomEvent(DW_REPLAY_OVERLAY_ACTION, { bubbles: true, detail }));
 }
 
 export function emitDwReplayContextMenuOpen(detail: DwContextMenuOpenDetail): void {

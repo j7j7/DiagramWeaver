@@ -24,7 +24,6 @@ import {
   isMindmapNodeType,
   isShapeNodeType,
   isTimelineNodeType,
-  filterUnlockedDiagramItemIds,
   isDiagramNodeLocked,
 } from "@/lib/utils";
 import { isVectorPathNodeType, scaleVectorPathRings } from "@/lib/vector-path-utils";
@@ -33,6 +32,7 @@ import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { defaultPaletteSegmentedRectangleNodeProps } from "@/lib/segmented-rectangle";
 import { getCardTemplateIdFromNodeType, createInitialCardSpec } from "@/lib/card-utils";
+import { deleteDiagramItemsByIds, expandIdsForDeletion } from "@/lib/grouping-utils";
 import {
   getBorderTemplateIdFromNodeType,
   createInitialBorderSpec,
@@ -1082,106 +1082,36 @@ export function useCanvasOperations({
   }, [setDiagramData, processedNodes, processedZones]);
 
   const handleDelete = useCallback((itemId: string) => {
-    let didDelete = false;
-    setDiagramData(prev => {
-      if (isDiagramNodeLocked(prev.nodes, itemId)) {
-        return prev;
-      }
-
-      const isNode = prev.nodes.some(n => n.id === itemId);
-      const isZone = (prev.zones ?? []).some(zone => zone.id === itemId);
-      const hasConnectionIdMatch = prev.connections.some((e: any) => e.id === itemId);
-      const hasConnectionKeyMatch = prev.connections.some((e: any) => `${e.from}-${e.to}` === itemId);
-      
-      let updatedData;
-      if (isNode) {
-        updatedData = {
-          ...prev,
-          nodes: prev.nodes.filter(n => n.id !== itemId),
-          connections: prev.connections.filter((e: any) => e.from !== itemId && e.to !== itemId),
-          zones: (prev.zones ?? []).map(zone => ({
-            ...zone,
-            children: zone.children.filter((n: string) => n !== itemId)
-          }))
-        };
-      } else if (hasConnectionIdMatch || hasConnectionKeyMatch) {
-        updatedData = {
-          ...prev,
-          connections: prev.connections.filter((e: any) => {
-            if (hasConnectionIdMatch) return e.id !== itemId;
-            return `${e.from}-${e.to}` !== itemId;
-          })
-        };
-      } else if (isZone) {
-        updatedData = {
-          ...prev,
-          zones: (prev.zones ?? []).filter(zone => zone.id !== itemId)
-        };
-      } else {
-        updatedData = {
-          ...prev,
-          zones: (prev.zones ?? []).filter(zone => zone.id !== itemId)
-        };
-      }
-
-      didDelete = true;
-      return updatedData;
+    let deletedCount = 0;
+    setDiagramData((prev) => {
+      const expanded = expandIdsForDeletion([itemId], prev);
+      const deletableCount = expanded.filter((id) => !isDiagramNodeLocked(prev.nodes, id)).length;
+      const next = deleteDiagramItemsByIds(prev, [itemId]);
+      if (!next) return prev;
+      deletedCount = deletableCount;
+      return next;
     });
 
-    if (!didDelete) return;
+    if (deletedCount === 0) return;
 
     onItemSelect(null);
     toast({
-      title: "Item Deleted",
-      description: "The selected item has been deleted.",
+      title: deletedCount === 1 ? "Item Deleted" : "Items Deleted",
+      description:
+        deletedCount === 1
+          ? "The selected item has been deleted."
+          : `${deletedCount} items have been deleted.`,
     });
   }, [setDiagramData, onItemSelect, toast]);
 
   const handleDeleteMultiple = useCallback((itemIds: string[]) => {
     let deletedCount = 0;
-    setDiagramData(prev => {
-      const deletableIds = filterUnlockedDiagramItemIds(prev.nodes, itemIds);
-      if (deletableIds.length === 0) {
-        return prev;
-      }
-      deletedCount = deletableIds.length;
-      const idsToDelete = new Set(deletableIds);
-      // Filter out nodes that are being deleted
-      const remainingNodes = prev.nodes.filter(n => !idsToDelete.has(n.id));
-
-      // Separate edge identifiers from node/zone identifiers
-      const edgeIdsToDelete = new Set<string>();
-      const edgeKeysToDelete = new Set<string>();
-      idsToDelete.forEach((id) => {
-        if (prev.connections.some((e: any) => e.id === id)) edgeIdsToDelete.add(id);
-        else if (prev.connections.some((e: any) => `${e.from}-${e.to}` === id)) edgeKeysToDelete.add(id);
-      });
-      
-      // Filter out zones that are being deleted
-      const remainingZones = prev.zones?.filter(zone => !idsToDelete.has(zone.id));
-      
-      // Remove deleted items from zone children
-      const updatedZones = remainingZones?.map(zone => ({
-        ...zone,
-        children: zone.children.filter(childId => !idsToDelete.has(childId))
-      }));
-      
-      // Remove connections that involve deleted items
-      const remainingConnections = prev.connections?.filter((e: any) => 
-        !idsToDelete.has(e.from) &&
-        !idsToDelete.has(e.to) &&
-        !(e.id && edgeIdsToDelete.has(e.id)) &&
-        !edgeKeysToDelete.has(`${e.from}-${e.to}`)
-      );
-      
-      const dataBeforeCleanup = {
-        ...prev,
-        nodes: remainingNodes,
-        zones: updatedZones,
-        connections: remainingConnections
-      };
-      
-      return dataBeforeCleanup;
+    setDiagramData((prev) => {
+      const expanded = expandIdsForDeletion(itemIds, prev);
+      deletedCount = expanded.filter((id) => !isDiagramNodeLocked(prev.nodes, id)).length;
+      const next = deleteDiagramItemsByIds(prev, itemIds);
+      if (!next) return prev;
+      return next;
     });
 
     if (deletedCount === 0) return;

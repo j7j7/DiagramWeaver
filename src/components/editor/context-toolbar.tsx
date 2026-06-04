@@ -48,6 +48,8 @@ import { ColorPicker } from '@/components/ui/color-picker';
 import { Label } from '@/components/ui/label';
 import { resolveBezierConnectionPaint, type ConnectionEndpointOutline } from '@/lib/connection-line-style';
 import { applyMindmapHueAnchorsAfterVisualChanges } from '@/lib/mindmap-layout';
+import { RECORDING_SURFACE_TEXT_STYLING, RECORDING_SURFACE_VISUAL_STYLING } from '@/lib/interaction-recording-surfaces';
+import { useInteractionRecordingPanelReplay } from '@/hooks/use-interaction-recording-panel-replay';
 
 import { TextStylingPanel } from './text-styling-panel';
 import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
@@ -1806,6 +1808,11 @@ export function ContextToolbar({
       );
     }
   };
+
+  useInteractionRecordingPanelReplay({
+    [RECORDING_SURFACE_VISUAL_STYLING]: handleVisualStylingChange,
+    [RECORDING_SURFACE_TEXT_STYLING]: handleTextStylingChange,
+  });
 
   const handleVisualStylingReset = () => {
     // Reset to default visual styling

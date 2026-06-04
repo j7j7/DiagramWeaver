@@ -353,6 +353,101 @@ export function cleanupEmptyZones(
   };
 }
 
+/**
+ * Expands delete targets so removing a grouping or zone removes its contained items.
+ * - **Grouping**: all members are deleted when every member is already in the set, or when
+ *   a single member is the sole delete target (same “group as unit” behavior as copy/drag).
+ * - **Zone**: deleting a zone also deletes its descendant nodes and nested zones.
+ */
+export function expandIdsForDeletion(
+  itemIds: string[],
+  diagramData: DiagramData
+): string[] {
+  const result = new Set(itemIds);
+  const zones = diagramData.zones || [];
+
+  const collectZoneSubtree = (zoneId: string) => {
+    const zone = zones.find((z) => z.id === zoneId);
+    if (!zone?.children?.length) return;
+    for (const childId of zone.children) {
+      if (zones.some((z) => z.id === childId)) {
+        result.add(childId);
+        collectZoneSubtree(childId);
+      } else {
+        result.add(childId);
+      }
+    }
+  };
+
+  for (const id of [...result]) {
+    if (zones.some((z) => z.id === id)) {
+      collectZoneSubtree(id);
+    }
+  }
+
+  for (const grouping of diagramData.groupings || []) {
+    const touched = grouping.memberIds.filter((id) => result.has(id));
+    if (touched.length === 0) continue;
+
+    const deleteWholeGrouping =
+      grouping.memberIds.every((id) => result.has(id)) ||
+      (itemIds.length === 1 && touched.length === 1);
+
+    if (!deleteWholeGrouping || grouping.locked) continue;
+
+    grouping.memberIds.forEach((id) => result.add(id));
+  }
+
+  return [...result];
+}
+
+/** Remove nodes, zones, connections, groupings, and empty zones for the given ids (after expansion). */
+export function deleteDiagramItemsByIds(
+  diagramData: DiagramData,
+  itemIds: string[]
+): DiagramData | null {
+  const expanded = expandIdsForDeletion(itemIds, diagramData);
+  const deletableIds = expanded.filter((id) => {
+    const node = diagramData.nodes.find((n) => n.id === id);
+    return !node?.locked;
+  });
+  if (deletableIds.length === 0) return null;
+
+  const idsToDelete = new Set(deletableIds);
+
+  const edgeIdsToDelete = new Set<string>();
+  const edgeKeysToDelete = new Set<string>();
+  idsToDelete.forEach((id) => {
+    if (diagramData.connections.some((e) => e.id === id)) edgeIdsToDelete.add(id);
+    else if (diagramData.connections.some((e) => `${e.from}-${e.to}` === id)) {
+      edgeKeysToDelete.add(id);
+    }
+  });
+
+  const remainingNodes = diagramData.nodes.filter((n) => !idsToDelete.has(n.id));
+  const remainingZones = (diagramData.zones ?? []).filter((zone) => !idsToDelete.has(zone.id));
+  const updatedZones = remainingZones.map((zone) => ({
+    ...zone,
+    children: zone.children.filter((childId) => !idsToDelete.has(childId)),
+  }));
+  const remainingConnections = (diagramData.connections ?? []).filter(
+    (e) =>
+      !idsToDelete.has(e.from) &&
+      !idsToDelete.has(e.to) &&
+      !(e.id && edgeIdsToDelete.has(e.id)) &&
+      !edgeKeysToDelete.has(`${e.from}-${e.to}`)
+  );
+
+  const dataBeforeCleanup: DiagramData = {
+    ...diagramData,
+    nodes: remainingNodes,
+    zones: updatedZones,
+    connections: remainingConnections,
+  };
+
+  return cleanupEmptyZones(handleItemDeletion(deletableIds, dataBeforeCleanup));
+}
+
 export function handleItemDeletion(
   deletedItemIds: string[],
   diagramData: DiagramData

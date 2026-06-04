@@ -21,6 +21,10 @@ import {
   useInteractionRecorder,
 } from "./interaction-recorder-provider";
 import { downloadInteractionRecording, summarizeRecordingEvents } from "@/lib/interaction-recording-playback";
+import {
+  countEventsMissingSemanticTarget,
+  summarizeSemanticRecordingTimeline,
+} from "@/lib/interaction-recording-overlay";
 import { RECORDER_START_KEY, RECORDER_STOP_KEY } from "@/lib/interaction-recording-types";
 
 function Kbd({ children }: { children: React.ReactNode }) {
@@ -233,6 +237,34 @@ export function InteractionRecorderDialog() {
                       .map(([k, n]) => `${n} ${k}`)
                       .join(" · ")}
                   </span>
+                  {(() => {
+                    const semantic = summarizeSemanticRecordingTimeline(pendingRecording, 12);
+                    const missing = countEventsMissingSemanticTarget(pendingRecording);
+                    if (semantic.length === 0 && missing === 0) return null;
+                    return (
+                      <span className="mt-2 block rounded-md border border-border/80 bg-muted/40 p-2 text-left text-[11px] leading-relaxed">
+                        {semantic.length > 0 && (
+                          <>
+                            <span className="font-medium text-foreground">Semantic actions</span>
+                            <ul className="mt-1 list-inside list-disc text-muted-foreground">
+                              {semantic.map((line) => (
+                                <li key={`${line.t}-${line.label}`}>
+                                  {(line.t / 1000).toFixed(2)}s — {line.label}
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                        {missing > 0 && (
+                          <span className="mt-1 block text-amber-700 dark:text-amber-400">
+                            {missing} panel/menu click{missing === 1 ? "" : "s"} lack action ids — replay may miss.
+                            Re-record after updating, or check JSON{" "}
+                            <code className="rounded bg-background px-1">custom:dwOverlayAction</code>.
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })()}
                 </>
               ) : (
                 ""

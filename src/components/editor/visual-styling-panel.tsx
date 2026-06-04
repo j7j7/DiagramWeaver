@@ -45,6 +45,10 @@ import { Slider } from "@/components/ui/slider";
 import Draggable from "react-draggable";
 import { RECORDING_SURFACE_VISUAL_STYLING } from "@/lib/interaction-recording-surfaces";
 import { emitDwOverlayClose, emitDwOverlayOpen } from "@/lib/interaction-recording-bridge";
+import { captureOverlayActionFromClick } from "@/lib/interaction-recording-overlay";
+import {
+  recordOverlayPatch,
+} from "@/lib/interaction-recording-panel-value";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
@@ -547,7 +551,7 @@ function IconBevelMatchColorPreview({
   );
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, bulletListUseItemIcons, onBulletListUseItemIconsChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange: onStylingChangeProp, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, bulletListUseItemIcons, onBulletListUseItemIconsChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -635,31 +639,35 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
     }
   }, [position, isMounted]);
 
+  const applyStylingChange = useCallback(
+    (patch: Partial<VisualStyling>) => {
+      recordOverlayPatch(RECORDING_SURFACE_VISUAL_STYLING, patch as Record<string, unknown>);
+      onStylingChangeProp(patch);
+    },
+    [onStylingChangeProp],
+  );
+
   // Debounced property change to prevent excessive updates during color dragging
   const propertyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const handlePropertyChange = useCallback((property: keyof VisualStyling, value: any, immediate = false) => {
-    // Clear existing timeout
     if (propertyTimeoutRef.current) {
       clearTimeout(propertyTimeoutRef.current);
     }
-    
-    // Only update the specific property that changed
+
     const updatedStyling = { [property]: value };
-    
-    // If multiple items are selected, always use immediate updates to avoid debouncing conflicts
     const isMultiSelect = selectedItemIds && selectedItemIds.size > 1;
-    
+
+    const commit = () => {
+      applyStylingChange(updatedStyling);
+    };
+
     if (immediate || isMultiSelect) {
-      // Immediate update for final values or multi-select
-      onStylingChange(updatedStyling);
+      commit();
     } else {
-      // Debounced update during dragging for single select
-      propertyTimeoutRef.current = setTimeout(() => {
-        onStylingChange(updatedStyling);
-      }, 150);
+      propertyTimeoutRef.current = setTimeout(commit, 150);
     }
-  }, [onStylingChange, selectedItemIds]);
+  }, [applyStylingChange, selectedItemIds]);
 
   const iconBevelMatchSampleGenRef = useRef(0);
   const iconBevelSupportsRasterMatch = useMemo(() => {
@@ -682,12 +690,12 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
 
   const handlePredefinedStyleChange = (styleKey: keyof typeof VISUAL_STYLES) => {
     const predefinedStyle = getPredefinedVisualStyle(styleKey);
-    onStylingChange(predefinedStyle);
+    applyStylingChange(predefinedStyle);
   };
 
   const handleBackgroundStyleSelect = (value: string) => {
     if (value === "frosted") {
-      onStylingChange({
+      applyStylingChange({
         backgroundStyle: "frosted" as const,
         frostedDiffusion: styling.frostedDiffusion ?? 0.45,
         frostedTransparency: styling.frostedTransparency ?? 0.55,
@@ -702,13 +710,13 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         : ((styling.backgroundColor as string | undefined) || MESH_GRADIENT_INITIAL_BASE_COLOR);
       const points =
         existing && existing.length === 3 ? existing : createRandomMeshGradientPoints(base);
-      onStylingChange({
+      applyStylingChange({
         backgroundStyle: "mesh_gradient" as const,
         meshGradientPoints: points,
         backgroundColor: base,
       });
     } else if (value === "none") {
-      onStylingChange({ backgroundStyle: "none" as const });
+      applyStylingChange({ backgroundStyle: "none" as const });
     } else {
       handlePropertyChange("backgroundStyle", value as "solid" | "gradient", true);
     }
@@ -762,6 +770,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
       <div
         ref={nodeRef}
         data-dw-recording-surface={RECORDING_SURFACE_VISUAL_STYLING}
+        onClickCapture={(e) => captureOverlayActionFromClick(e, RECORDING_SURFACE_VISUAL_STYLING)}
         className={cn(
           "fixed top-20 left-20 z-50 flex max-h-[min(75vh,calc(100vh-4rem))] flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-lg",
           showFullStyling ? "w-[640px]" : "w-[512px]",
@@ -776,7 +785,13 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             </h3>
           </div>
           {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 shrink-0 p-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              data-dw-recording-action="close"
+              onClick={onClose}
+              className="h-8 w-8 shrink-0 p-0"
+            >
               <X className="h-4 w-4" />
             </Button>
           )}
@@ -807,7 +822,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     <Label className="text-sm font-semibold text-foreground">Remove background</Label>
                     <Switch
                       checked={noIconBackground}
-                      onCheckedChange={(checked) => onStylingChange({ noIconBackground: checked })}
+                      onCheckedChange={(checked) => applyStylingChange({ noIconBackground: checked })}
                     />
                   </div>
                 </div>
@@ -845,7 +860,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   <Switch
                     checked={Boolean(styling.iconBevel)}
                     onCheckedChange={(checked) =>
-                      onStylingChange({
+                      applyStylingChange({
                         iconBevel: checked,
                         ...(checked && styling.iconBevelRotation == null
                           ? { iconBevelRotation: ICON_BEVEL_DEFAULT_ROTATION }
@@ -871,14 +886,14 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                         onCheckedChange={(checked) => {
                           iconBevelMatchSampleGenRef.current += 1;
                           const gen = iconBevelMatchSampleGenRef.current;
-                          onStylingChange({ iconBevelMatchIconBackground: checked });
+                          applyStylingChange({ iconBevelMatchIconBackground: checked });
                           if (!checked) return;
                           void resolveIconBevelSampleSrcAsync(buildIconBevelSampleNode(iconBevelSampleNode)).then((url) => {
                             if (gen !== iconBevelMatchSampleGenRef.current || !url) return;
                             return sampleIconPlateColorFromUrl(url);
                           }).then((hex) => {
                             if (gen !== iconBevelMatchSampleGenRef.current || !hex) return;
-                            onStylingChange({
+                            applyStylingChange({
                               iconBevelMatchIconBackground: true,
                               iconBevelBlockColor: hex,
                             });
@@ -974,7 +989,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               <HighlightAnimEffectControls
                 styling={styling}
                 handlePropertyChange={handlePropertyChange}
-                onStylingChange={onStylingChange}
+                onStylingChange={applyStylingChange}
               />
             </div>
           )}
@@ -989,7 +1004,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               </div>
               <Select
                 value={styling.nodeSize || 'normal'}
-                onValueChange={(value) => onStylingChange({ nodeSize: value as NodeSize })}
+                onValueChange={(value) => applyStylingChange({ nodeSize: value as NodeSize })}
               >
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue placeholder="Normal" />
@@ -1013,7 +1028,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               <Select
                 value={styling.iconSizeMode ?? "scaled"}
                 onValueChange={(value) =>
-                  onStylingChange({ iconSizeMode: value as CardIconSizeMode })
+                  applyStylingChange({ iconSizeMode: value as CardIconSizeMode })
                 }
               >
                 <SelectTrigger className="h-9 text-sm">
@@ -1039,7 +1054,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               <Select
                 value={styling.iconPlacement ?? "center"}
                 onValueChange={(value) =>
-                  onStylingChange({ iconPlacement: value as CardIconPlacement })
+                  applyStylingChange({ iconPlacement: value as CardIconPlacement })
                 }
               >
                 <SelectTrigger className="h-9 text-sm">
@@ -2340,7 +2355,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   <HighlightAnimEffectControls
                     styling={styling}
                     handlePropertyChange={handlePropertyChange}
-                    onStylingChange={onStylingChange}
+                    onStylingChange={applyStylingChange}
                   />
                   {isRoundedRectangle && !isProgressBar && !isTimelineBar && !isSegmentedRectangle && !isPyramid && (
                     <div className="space-y-1">

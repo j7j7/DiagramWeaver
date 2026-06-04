@@ -43,6 +43,9 @@ export function readRecordingSurfaceFromElement(el: Element | null): string | un
     if (queryRecordingSurface(RECORDING_SURFACE_VISUAL_STYLING)) {
       return RECORDING_SURFACE_VISUAL_STYLING;
     }
+    if (queryRecordingSurface(RECORDING_SURFACE_TEXT_STYLING)) {
+      return RECORDING_SURFACE_TEXT_STYLING;
+    }
   }
   return undefined;
 }
@@ -64,6 +67,26 @@ export function readRecordingActionFromElement(el: Element | null): string | und
     if (!surface) return undefined;
     const name = accessibleButtonName(option);
     return name ? slugifyRecordingAction(name) : undefined;
+  }
+  const combobox = el.closest('[role="combobox"]');
+  if (combobox) {
+    const surface = readRecordingSurfaceFromElement(combobox);
+    if (!surface) return undefined;
+    const explicit = combobox.getAttribute("data-dw-recording-action");
+    if (explicit) return explicit;
+    const fieldLabel = combobox.closest("[class*='space-y']")?.querySelector("label")?.textContent;
+    const value = combobox.textContent?.replace(/\s+/g, " ").trim();
+    const parts = [fieldLabel, value].filter(Boolean).join(" ");
+    return parts ? slugifyRecordingAction(parts) : undefined;
+  }
+  const switchEl = el.closest('[role="switch"]');
+  if (switchEl) {
+    const surface = readRecordingSurfaceFromElement(switchEl);
+    if (!surface) return undefined;
+    const fieldLabel = switchEl.closest("[class*='space-y']")?.querySelector("label")?.textContent;
+    const aria = switchEl.getAttribute("aria-label");
+    const parts = [fieldLabel, aria].filter(Boolean).join(" ");
+    return parts ? slugifyRecordingAction(parts) : undefined;
   }
   return undefined;
 }
@@ -91,11 +114,13 @@ export function resolveRecordingSurfaceTarget(target: InteractionRecordingTarget
     const byAction = scope.querySelector(`[data-dw-recording-action="${CSS.escape(action)}"]`);
     if (byAction instanceof Element) return byAction;
 
-    for (const btn of scope.querySelectorAll("button")) {
-      const explicit = btn.getAttribute("data-dw-recording-action");
-      const label = accessibleButtonName(btn);
+    for (const node of scope.querySelectorAll(
+      "button, [role='combobox'], [role='switch'], [role='option'], [role='tab']",
+    )) {
+      const explicit = node.getAttribute("data-dw-recording-action");
+      const label = accessibleButtonName(node);
       const slug = label ? slugifyRecordingAction(label) : "";
-      if (explicit === action || slug === action) return btn;
+      if (explicit === action || slug === action) return node;
     }
 
     for (const option of document.querySelectorAll('[role="option"]')) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import { TextStyling, COMMON_FONT_FAMILIES, DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw, Move3D, Box, X } from "lucide-react";
 import Draggable from 'react-draggable';
+import { RECORDING_SURFACE_TEXT_STYLING } from "@/lib/interaction-recording-surfaces";
+import { emitDwOverlayClose, emitDwOverlayOpen } from "@/lib/interaction-recording-bridge";
+import { captureOverlayActionFromClick } from "@/lib/interaction-recording-overlay";
+import {
+  recordOverlayPatch,
+} from "@/lib/interaction-recording-panel-value";
 
 interface TextStylingPanelProps {
   styling: Partial<TextStyling>;
@@ -23,7 +29,7 @@ interface TextStylingPanelProps {
   onTextPositionChange?: (position: string) => void; // Handler for text position changes
 }
 
-export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItem, selectedItemIds, textPosition, onTextPositionChange }: TextStylingPanelProps) {
+export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, onStylingChange: onStylingChangeProp, onReset, onClose, selectedItem, selectedItemIds, textPosition, onTextPositionChange }: TextStylingPanelProps) {
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -98,19 +104,23 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
     selectedItem?.type === "generic.object.text-box-heading" ||
     (typeof selectedItem?.type === "string" && selectedItem.type.endsWith(".text-box-heading"));
 
+  useEffect(() => {
+    emitDwOverlayOpen({ surface: RECORDING_SURFACE_TEXT_STYLING });
+    return () => emitDwOverlayClose({ surface: RECORDING_SURFACE_TEXT_STYLING });
+  }, []);
+
+  const applyStylingChange = useCallback(
+    (patch: Partial<TextStyling>) => {
+      recordOverlayPatch(RECORDING_SURFACE_TEXT_STYLING, patch as Record<string, unknown>);
+      onStylingChangeProp(patch);
+    },
+    [onStylingChangeProp],
+  );
+
   const dropShadowOn = styling.textDropShadowEnabled === true;
 
-  const handlePropertyChange = (property: keyof TextStyling, value: any) => {
-    // Only update the specific property that changed
-    const updatedStyling = { [property]: value };
-    
-    // If multiple items are selected, apply change immediately to avoid debouncing conflicts
-    const isMultiSelect = selectedItemIds && selectedItemIds.size > 1;
-    if (isMultiSelect) {
-      onStylingChange(updatedStyling);
-    } else {
-      onStylingChange(updatedStyling);
-    }
+  const handlePropertyChange = (property: keyof TextStyling, value: unknown) => {
+    applyStylingChange({ [property]: value } as Partial<TextStyling>);
   };
 
   const handleReset = () => {
@@ -127,7 +137,12 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[640px] max-w-[calc(100vw-2rem)] cursor-move">
+      <div
+        ref={nodeRef}
+        data-dw-recording-surface={RECORDING_SURFACE_TEXT_STYLING}
+        onClickCapture={(e) => captureOverlayActionFromClick(e, RECORDING_SURFACE_TEXT_STYLING)}
+        className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[640px] max-w-[calc(100vw-2rem)] cursor-move"
+      >
         <div className="flex items-center justify-between border-b px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-2">
             <Type className="h-4 w-4 shrink-0 text-primary" />
@@ -137,6 +152,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             <Button
               variant="ghost"
               size="sm"
+              data-dw-recording-action="close"
               onClick={onClose}
               className="h-8 w-8 shrink-0 p-0"
             >
