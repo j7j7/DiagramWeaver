@@ -278,6 +278,8 @@ export default function DiagramEditor() {
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
   const [defaultTextLabelsEnabled, setDefaultTextLabelsEnabled] = React.useState<boolean>(true);
   const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(true);
+  const [simplifyFillsDuringCanvasDragEnabled, setSimplifyFillsDuringCanvasDragEnabled] =
+    React.useState<boolean>(true);
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(false);
   const [animationConnectionsUserEnabled, setAnimationConnectionsUserEnabled] = React.useState<boolean>(true);
   const [animationConnectionsMenuPaused, setAnimationConnectionsMenuPaused] = React.useState(false);
@@ -4807,6 +4809,7 @@ export default function DiagramEditor() {
     connectionsBehindNodesEnabled,
     animationConnectionsUserEnabled,
     animationToggleOnClickEnabled,
+    simplifyFillsDuringCanvasDragEnabled,
     setRightPanelCollapsed,
     setPropertiesPanelVisible,
     setMetadataPopupsEnabled,
@@ -4814,6 +4817,7 @@ export default function DiagramEditor() {
     setConnectionsBehindNodesEnabled,
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
+    setSimplifyFillsDuringCanvasDragEnabled,
   });
 
   // Reset click-to-toggle disabled sources when it's enabled
@@ -4965,6 +4969,8 @@ export default function DiagramEditor() {
         setDefaultTextLabelsEnabled={setDefaultTextLabelsEnabled}
         alignmentGuidesEnabled={alignmentGuidesEnabled}
         setAlignmentGuidesEnabled={setAlignmentGuidesEnabled}
+        simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
+        setSimplifyFillsDuringCanvasDragEnabled={setSimplifyFillsDuringCanvasDragEnabled}
         connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
         setConnectionsBehindNodesEnabled={setConnectionsBehindNodesEnabled}
         animationConnectionsEnabled={animationConnectionsEnabled}

@@ -12,6 +12,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   connectionsBehindNodesEnabled: boolean;
   animationConnectionsUserEnabled: boolean;
   animationToggleOnClickEnabled: boolean;
+  simplifyFillsDuringCanvasDragEnabled: boolean;
   setRightPanelCollapsed: Dispatch<SetStateAction<boolean>>;
   setPropertiesPanelVisible: Dispatch<SetStateAction<boolean>>;
   setMetadataPopupsEnabled: Dispatch<SetStateAction<boolean>>;
@@ -19,6 +20,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   setConnectionsBehindNodesEnabled: Dispatch<SetStateAction<boolean>>;
   setAnimationConnectionsUserEnabled: Dispatch<SetStateAction<boolean>>;
   setAnimationToggleOnClickEnabled: Dispatch<SetStateAction<boolean>>;
+  setSimplifyFillsDuringCanvasDragEnabled: Dispatch<SetStateAction<boolean>>;
 }
 
 /**
@@ -34,6 +36,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     connectionsBehindNodesEnabled,
     animationConnectionsUserEnabled,
     animationToggleOnClickEnabled,
+    simplifyFillsDuringCanvasDragEnabled,
     setRightPanelCollapsed,
     setPropertiesPanelVisible,
     setMetadataPopupsEnabled,
@@ -41,6 +44,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setConnectionsBehindNodesEnabled,
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
+    setSimplifyFillsDuringCanvasDragEnabled,
   } = p;
 
   useEffect(() => {
@@ -83,6 +87,10 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     if (savedAnimationConnections !== null) setAnimationConnectionsUserEnabled(savedAnimationConnections !== "false");
     const savedAnimationToggleOnClick = getItemSafe("dw:animationToggleOnClick:enabled");
     if (savedAnimationToggleOnClick !== null) setAnimationToggleOnClickEnabled(savedAnimationToggleOnClick === "true");
+    const savedSimplifyFillsDrag = getItemSafe("dw:simplifyFillsDuringCanvasDrag:enabled");
+    if (savedSimplifyFillsDrag !== null) {
+      setSimplifyFillsDuringCanvasDragEnabled(savedSimplifyFillsDrag !== "false");
+    }
   }, [
     setRightPanelCollapsed,
     setPropertiesPanelVisible,
@@ -91,6 +99,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setConnectionsBehindNodesEnabled,
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
+    setSimplifyFillsDuringCanvasDragEnabled,
   ]);
 
   useEffect(() => {
@@ -110,4 +119,13 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
       setBooleanDebounced("dw:animationToggleOnClick:enabled", animationToggleOnClickEnabled);
     }
   }, [animationToggleOnClickEnabled, isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      setBooleanDebounced(
+        "dw:simplifyFillsDuringCanvasDrag:enabled",
+        simplifyFillsDuringCanvasDragEnabled,
+      );
+    }
+  }, [simplifyFillsDuringCanvasDragEnabled, isClient]);
 }

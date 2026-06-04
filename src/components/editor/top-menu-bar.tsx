@@ -225,6 +225,8 @@ interface TopMenuBarProps {
   onToggleIconBackground?: () => void;
   alignmentGuidesEnabled?: boolean;
   onToggleAlignmentGuides?: () => void;
+  simplifyFillsDuringCanvasDragEnabled?: boolean;
+  onToggleSimplifyFillsDuringCanvasDrag?: () => void;
   connectionsBehindNodesEnabled?: boolean;
   onToggleConnectionsBehindNodes?: () => void;
   animationConnectionsEnabled?: boolean;
@@ -349,6 +351,8 @@ export function TopMenuBar({
   onToggleIconBackground,
   alignmentGuidesEnabled,
   onToggleAlignmentGuides,
+  simplifyFillsDuringCanvasDragEnabled = true,
+  onToggleSimplifyFillsDuringCanvasDrag,
   connectionsBehindNodesEnabled,
   onToggleConnectionsBehindNodes,
   animationConnectionsEnabled,
@@ -860,6 +864,23 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onToggleSimplifyFillsDuringCanvasDrag !== undefined && (
+              <>
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleDefaultTextLabels !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleSimplifyFillsDuringCanvasDrag}>
+                  <PaintBucket className="mr-2 h-4 w-4" />
+                  {simplifyFillsDuringCanvasDragEnabled
+                    ? "Disable Simplified Fills While Dragging"
+                    : "Enable Simplified Fills While Dragging"}
+                </MenubarItem>
+              </>
+            )}
             {onToggleIconBackground !== undefined && (
               <>
                 {(onToggleMetadataPopups ||
@@ -867,6 +888,7 @@ export function TopMenuBar({
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
                   onToggleDefaultTextLabels !== undefined ||
+                  onToggleSimplifyFillsDuringCanvasDrag !== undefined ||
                   onToggleJsonPanel ||
                   hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleIconBackground}>

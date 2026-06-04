@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-04 – Canvas drag: simplified fills (Options toggle)
+While a shape, vector, card, chart, or text box **moves** on the canvas (mouse drag, touch drag, or multi-drag), paint can use **first solid colour** instead of gradients, mesh, or frosted glass for smoother motion; stored diagram data is unchanged and full styling returns on drop. **`simplifyVisualNodeForCanvasDrag`** (`canvas-drag-fill-simplify.ts`); **`DiagramNode`** applies via **`visualNodeForCanvasPaint`**. Options menu: **Enable/Disable Simplified Fills While Dragging** (persisted **`dw:simplifyFillsDuringCanvasDrag:enabled`**, default on). Patch bumped.
+
 ### 2026-06-04 – Selection affordances hidden during canvas drag
 While a node moves on the canvas (mouse **`useDrag`**, touch drag, or multi-select **`multiDragPositions`**) or during rotation (**`isRotationDragging`**), green resize / connect / rotation / corner-radius / URL handles and line/vector vertex handles are hidden; they return when the drag ends. Resize drags still show handles (**`isResizing`**). **`hideSelectionAffordancesDuringCanvasDrag`** from **`editor-canvas`**. Patch bumped.
 

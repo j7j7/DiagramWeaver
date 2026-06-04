@@ -199,6 +199,8 @@ export function DiagramEditorInner({
   setDefaultTextLabelsEnabled,
   alignmentGuidesEnabled,
   setAlignmentGuidesEnabled,
+  simplifyFillsDuringCanvasDragEnabled,
+  setSimplifyFillsDuringCanvasDragEnabled,
   connectionsBehindNodesEnabled,
   setConnectionsBehindNodesEnabled,
   animationConnectionsEnabled,
@@ -572,6 +574,10 @@ export function DiagramEditorInner({
                     onToggleDefaultTextLabels={() => setDefaultTextLabelsEnabled(!defaultTextLabelsEnabled)}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
                     onToggleAlignmentGuides={() => setAlignmentGuidesEnabled(!alignmentGuidesEnabled)}
+                    simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
+                    onToggleSimplifyFillsDuringCanvasDrag={() =>
+                      setSimplifyFillsDuringCanvasDragEnabled(!simplifyFillsDuringCanvasDragEnabled)
+                    }
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     onToggleConnectionsBehindNodes={() => setConnectionsBehindNodesEnabled(!connectionsBehindNodesEnabled)}
                     animationConnectionsEnabled={animationConnectionsEnabled}
@@ -772,6 +778,7 @@ export function DiagramEditorInner({
                     onMoveOneForward={handleMoveOneForward}
                     isReadOnly={isReadOnly}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
+                    simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     animationConnectionsEnabled={animationConnectionsEnabled}
                     animationToggleOnClickEnabled={animationToggleOnClickEnabled}

@@ -50,6 +50,7 @@ import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { diagramNodeVisualStylingSignature } from "@/lib/slide-visual-color";
+import { simplifyVisualNodeForCanvasDrag } from "@/lib/canvas-drag-fill-simplify";
 import { transitionShorthandWithDelay } from "@/lib/css-transition-with-delay";
 import { getHighlightAnimStyleForNode } from "@/lib/highlight-anim";
 import {
@@ -332,6 +333,8 @@ interface DiagramNodeProps {
   onDraggingChange?: (isDragging: boolean) => void;
   /** Hide resize / connect / rotation / URL affordances while this node moves on the canvas (incl. multi-drag). */
   hideSelectionAffordancesDuringCanvasDrag?: boolean;
+  /** Options → simplify gradients / mesh / frosted to first solid colour while this node moves (default on). */
+  simplifyFillsDuringCanvasDragEnabled?: boolean;
   /** Bar/line/pie chart value drag — parent may defer undo/redo snapshots until drag ends. */
   onChartValueDragSessionChange?: (active: boolean) => void;
   onUpdate?: (node: DiagramNodeData) => void;
@@ -551,6 +554,8 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onDraggingChange === next.onDraggingChange &&
     prev.hideSelectionAffordancesDuringCanvasDrag ===
       next.hideSelectionAffordancesDuringCanvasDrag &&
+    prev.simplifyFillsDuringCanvasDragEnabled ===
+      next.simplifyFillsDuringCanvasDragEnabled &&
     prev.onChartValueDragSessionChange === next.onChartValueDragSessionChange &&
     prev.onHoverChange === next.onHoverChange &&
     prev.onConnect === next.onConnect &&
@@ -597,6 +602,7 @@ function DiagramNodeInner({
   onPositionUpdate,
   onDraggingChange,
   hideSelectionAffordancesDuringCanvasDrag = false,
+  simplifyFillsDuringCanvasDragEnabled = true,
   onChartValueDragSessionChange,
   onUpdate,
   hoverEnabled = true,
@@ -990,6 +996,7 @@ function DiagramNodeInner({
   // Helper function to render shape based on node type (excludes icons/emojis - they use ResourceIcon)
   const renderShapeForVisualNode = (visualNode: DiagramNodeData, slideColorTransition?: string) => {
     if (isIconOrEmojiType(node.type)) return null
+    visualNode = visualNodeForCanvasPaint(visualNode);
     const nodeAny = node as any;
     const showMeshGradientHubIndicators =
       !isReadOnly &&
@@ -1798,6 +1805,7 @@ function DiagramNodeInner({
 
   // Textbox / plain text node: same rich editor, layout, and sizing; `plainChrome` skips border/background/shadow
   const renderRichTextBoxContentForVisualNode = (visualNode: DiagramNodeData, plainChrome: boolean) => {
+    visualNode = visualNodeForCanvasPaint(visualNode);
     const nodeAny = visualNode as any;
     const borderStyle = nodeAny.borderStyle || 'solid';
     const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#d1d5db', nodeAny.borderColor || '#d1d5db'];
@@ -2541,6 +2549,19 @@ function DiagramNodeInner({
 
   const [touchDragOffsetDiag, setTouchDragOffsetDiag] = useState<{ x: number; y: number } | null>(null);
   const [isTouchCanvasDrag, setIsTouchCanvasDrag] = useState(false);
+
+  const isCanvasPositionDragging =
+    hideSelectionAffordancesDuringCanvasDrag || isDragging || isTouchCanvasDrag;
+
+  const visualNodeForCanvasPaint = useCallback(
+    (visualNode: DiagramNodeData): DiagramNodeData => {
+      if (!simplifyFillsDuringCanvasDragEnabled || !isCanvasPositionDragging) {
+        return visualNode;
+      }
+      return simplifyVisualNodeForCanvasDrag(visualNode);
+    },
+    [simplifyFillsDuringCanvasDragEnabled, isCanvasPositionDragging],
+  );
 
   const clearTouchLongPressTimer = useCallback(() => {
     if (touchLongPressTimerRef.current !== null) {
