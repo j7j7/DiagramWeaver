@@ -228,48 +228,47 @@ export function InteractionRecorderDialog() {
           <DialogHeader>
             <DialogTitle>Save recording</DialogTitle>
             <DialogDescription>
-              {pendingRecording ? (
-                <>
-                  {pendingRecording.events.length} events ·{" "}
-                  {formatRecordingDuration(recordingDurationMs(pendingRecording))}
-                  <span className="mt-1 block text-xs">
-                    {Object.entries(summarizeRecordingEvents(pendingRecording))
-                      .map(([k, n]) => `${n} ${k}`)
-                      .join(" · ")}
-                  </span>
-                  {(() => {
-                    const semantic = summarizeSemanticRecordingTimeline(pendingRecording, 12);
-                    const missing = countEventsMissingSemanticTarget(pendingRecording);
-                    if (semantic.length === 0 && missing === 0) return null;
-                    return (
-                      <span className="mt-2 block rounded-md border border-border/80 bg-muted/40 p-2 text-left text-[11px] leading-relaxed">
-                        {semantic.length > 0 && (
-                          <>
-                            <span className="font-medium text-foreground">Semantic actions</span>
-                            <ul className="mt-1 list-inside list-disc text-muted-foreground">
-                              {semantic.map((line) => (
-                                <li key={`${line.t}-${line.label}`}>
-                                  {(line.t / 1000).toFixed(2)}s — {line.label}
-                                </li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-                        {missing > 0 && (
-                          <span className="mt-1 block text-amber-700 dark:text-amber-400">
-                            {missing} panel/menu click{missing === 1 ? "" : "s"} lack action ids — replay may miss.
-                            Re-record after updating, or check JSON{" "}
-                            <code className="rounded bg-background px-1">custom:dwOverlayAction</code>.
-                          </span>
-                        )}
-                      </span>
-                    );
-                  })()}
-                </>
-              ) : (
-                ""
-              )}
+              {pendingRecording
+                ? `${pendingRecording.events.length} events · ${formatRecordingDuration(recordingDurationMs(pendingRecording))}`
+                : "Review and save your interaction recording."}
             </DialogDescription>
+            {pendingRecording ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {Object.entries(summarizeRecordingEvents(pendingRecording))
+                    .map(([k, n]) => `${n} ${k}`)
+                    .join(" · ")}
+                </p>
+                {(() => {
+                  const semantic = summarizeSemanticRecordingTimeline(pendingRecording, 12);
+                  const missing = countEventsMissingSemanticTarget(pendingRecording);
+                  if (semantic.length === 0 && missing === 0) return null;
+                  return (
+                    <div className="mt-2 rounded-md border border-border/80 bg-muted/40 p-2 text-left text-[11px] leading-relaxed text-muted-foreground">
+                      {semantic.length > 0 && (
+                        <>
+                          <p className="font-medium text-foreground">Semantic actions</p>
+                          <ul className="mt-1 list-inside list-disc">
+                            {semantic.map((line) => (
+                              <li key={`${line.t}-${line.label}`}>
+                                {(line.t / 1000).toFixed(2)}s — {line.label}
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                      {missing > 0 && (
+                        <p className="mt-1 text-amber-700 dark:text-amber-400">
+                          {missing} panel/menu click{missing === 1 ? "" : "s"} lack action ids — replay may miss.
+                          Re-record after updating, or check JSON{" "}
+                          <code className="rounded bg-background px-1">custom:dwOverlayAction</code>.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </>
+            ) : null}
           </DialogHeader>
 
           <div className="space-y-3 py-2">

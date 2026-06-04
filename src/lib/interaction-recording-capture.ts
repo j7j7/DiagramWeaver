@@ -9,15 +9,88 @@ import {
   RECORDER_STOP_KEY,
 } from "@/lib/interaction-recording-types";
 import { describeInteractionTarget } from "@/lib/interaction-recording-target";
-import { DW_CANVAS_MOVE, DW_CANVAS_TRANSFORM, DW_PALETTE_DROP, DW_OVERLAY_OPEN, DW_OVERLAY_CLOSE, DW_OVERLAY_ACTION, DW_CONTEXT_MENU_OPEN, DW_CONTEXT_MENU_ACTION, resetCanvasTransformEmitCache } from "@/lib/interaction-recording-bridge";
+import {
+  DW_BATCH_SELECT,
+  DW_CANVAS_MOVE,
+  DW_CANVAS_TRANSFORM,
+  DW_CONTEXT_MENU_ACTION,
+  DW_CONTEXT_MENU_OPEN,
+  DW_OVERLAY_ACTION,
+  DW_OVERLAY_CLOSE,
+  DW_OVERLAY_OPEN,
+  DW_PALETTE_DROP,
+  DW_SEARCH_MODAL_OPEN,
+  DW_SEARCH_MODAL_QUERY,
+  DW_RESOURCE_ACTIVATE,
+  resetCanvasTransformEmitCache,
+} from "@/lib/interaction-recording-bridge";
 import {
   clientToDiagram,
   isClientPointOverCanvas,
   readLiveCanvasTransform,
 } from "@/lib/interaction-recording-transform";
 
+/** Minimum pointer travel (px) before another pointer sample is stored. */
 const MOVE_MIN_PX = 2;
-const MOVE_MIN_MS = 33;
+/** Min interval between recorded moves while the cursor is moving (limits 60fps flood). */
+const MOVE_MIN_MS = 16;
+
+function pointerMovedEnough(
+  x: number,
+  y: number,
+  last: { x: number; y: number } | null,
+): boolean {
+  if (!last) return true;
+  return Math.hypot(x - last.x, y - last.y) >= MOVE_MIN_PX;
+}
+
+function sameClientPoint(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  threshold = MOVE_MIN_PX,
+): boolean {
+  return Math.hypot(a.x - b.x, a.y - b.y) < threshold;
+}
+
+/** Drop stationary pointer moves and redundant click/wheel samples. */
+function compactCapturedEvents(events: InteractionRecordingEvent[]): InteractionRecordingEvent[] {
+  const out: InteractionRecordingEvent[] = [];
+  let lastPointerPos: { x: number; y: number } | null = null;
+
+  for (const ev of events) {
+    if (ev.kind === "wheel") {
+      if (ev.deltaX === 0 && ev.deltaY === 0 && ev.deltaZ === 0) continue;
+      out.push(ev);
+      continue;
+    }
+
+    if (ev.kind === "pointer") {
+      if (ev.phase === "move" && lastPointerPos && !pointerMovedEnough(ev.x, ev.y, lastPointerPos)) {
+        continue;
+      }
+      lastPointerPos = { x: ev.x, y: ev.y };
+      out.push(ev);
+      continue;
+    }
+
+    if (ev.kind === "click") {
+      const prev = out[out.length - 1];
+      if (
+        prev?.kind === "pointer" &&
+        prev.phase === "up" &&
+        sameClientPoint(prev, ev)
+      ) {
+        continue;
+      }
+      out.push(ev);
+      continue;
+    }
+
+    out.push(ev);
+  }
+
+  return out;
+}
 
 const RECORDED_CUSTOM_EVENTS = new Set([
   "mobileDrop",
@@ -30,6 +103,10 @@ const RECORDED_CUSTOM_EVENTS = new Set([
   DW_OVERLAY_ACTION,
   DW_CONTEXT_MENU_OPEN,
   DW_CONTEXT_MENU_ACTION,
+  DW_SEARCH_MODAL_OPEN,
+  DW_SEARCH_MODAL_QUERY,
+  DW_RESOURCE_ACTIVATE,
+  DW_BATCH_SELECT,
 ]);
 
 function readModifiers(e: KeyboardEvent | MouseEvent | WheelEvent) {
@@ -61,7 +138,8 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
   const startedAt = performance.now();
   const events: InteractionRecordingEvent[] = [];
   const canvasTransform = readLiveCanvasTransform();
-  let lastMove: { x: number; y: number; t: number } | null = null;
+  let lastRecordedPointerPos: { x: number; y: number } | null = null;
+  let lastRecordedMoveAt: number | null = null;
 
   const relT = () => Math.round(performance.now() - startedAt);
 
@@ -70,47 +148,50 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
   };
 
   const recordPointer = (phase: "down" | "move" | "up" | "cancel", e: PointerEvent) => {
+    const x = e.clientX;
+    const y = e.clientY;
+
     if (phase === "move") {
+      if (!pointerMovedEnough(x, y, lastRecordedPointerPos)) return;
       const t = relT();
-      if (
-        lastMove &&
-        Math.hypot(e.clientX - lastMove.x, e.clientY - lastMove.y) < MOVE_MIN_PX &&
-        t - lastMove.t < MOVE_MIN_MS
-      ) {
-        return;
-      }
-      lastMove = { x: e.clientX, y: e.clientY, t };
+      if (lastRecordedMoveAt != null && t - lastRecordedMoveAt < MOVE_MIN_MS) return;
+      lastRecordedMoveAt = t;
+      lastRecordedPointerPos = { x, y };
       push({
         t,
         kind: "pointer",
         phase,
-        x: e.clientX,
-        y: e.clientY,
+        x,
+        y,
         button: e.button,
         buttons: e.buttons,
         pointerId: e.pointerId,
         pointerType: e.pointerType,
         modifiers: readModifiers(e),
         target: describeInteractionTarget(e.target),
-        diagram: diagramAtClient(e.clientX, e.clientY),
+        diagram: diagramAtClient(x, y),
         canvasTransform: canvasTransformAtEvent(),
       });
       return;
     }
 
+    lastRecordedPointerPos = { x, y };
+    if (phase === "down") {
+      lastRecordedMoveAt = null;
+    }
     push({
       t: relT(),
       kind: "pointer",
       phase,
-      x: e.clientX,
-      y: e.clientY,
+      x,
+      y,
       button: e.button,
       buttons: e.buttons,
       pointerId: e.pointerId,
       pointerType: e.pointerType,
       modifiers: readModifiers(e),
       target: describeInteractionTarget(e.target),
-      diagram: diagramAtClient(e.clientX, e.clientY),
+      diagram: diagramAtClient(x, y),
       canvasTransform: canvasTransformAtEvent(),
     });
   };
@@ -121,6 +202,7 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
   const onPointerCancel = (e: PointerEvent) => recordPointer("cancel", e);
 
   const onWheel = (e: WheelEvent) => {
+    if (e.deltaX === 0 && e.deltaY === 0 && e.deltaZ === 0) return;
     push({
       t: relT(),
       kind: "wheel",
@@ -190,6 +272,14 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
 
   const onClick = (e: MouseEvent) => {
     if (e.button !== 0) return;
+    const last = events[events.length - 1];
+    if (
+      last?.kind === "pointer" &&
+      last.phase === "up" &&
+      sameClientPoint(last, { x: e.clientX, y: e.clientY })
+    ) {
+      return;
+    }
     push({
       t: relT(),
       kind: "click",
@@ -251,6 +341,10 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
   document.addEventListener(DW_OVERLAY_ACTION, onCustom, active);
   document.addEventListener(DW_CONTEXT_MENU_OPEN, onCustom, active);
   document.addEventListener(DW_CONTEXT_MENU_ACTION, onCustom, active);
+  document.addEventListener(DW_SEARCH_MODAL_OPEN, onCustom, active);
+  document.addEventListener(DW_SEARCH_MODAL_QUERY, onCustom, active);
+  document.addEventListener(DW_RESOURCE_ACTIVATE, onCustom, active);
+  document.addEventListener(DW_BATCH_SELECT, onCustom, active);
 
   document.body.dataset.dwRecording = "active";
   resetCanvasTransformEmitCache();
@@ -279,6 +373,10 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
       document.removeEventListener(DW_OVERLAY_ACTION, onCustom, active);
       document.removeEventListener(DW_CONTEXT_MENU_OPEN, onCustom, active);
       document.removeEventListener(DW_CONTEXT_MENU_ACTION, onCustom, active);
+      document.removeEventListener(DW_SEARCH_MODAL_OPEN, onCustom, active);
+      document.removeEventListener(DW_SEARCH_MODAL_QUERY, onCustom, active);
+      document.removeEventListener(DW_RESOURCE_ACTIVATE, onCustom, active);
+      document.removeEventListener(DW_BATCH_SELECT, onCustom, active);
       delete document.body.dataset.dwRecording;
 
       return {
@@ -292,7 +390,7 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
         },
         canvasTransform,
         canvasTransformEnd: readLiveCanvasTransform(),
-        events,
+        events: compactCapturedEvents(events),
       };
     },
   };

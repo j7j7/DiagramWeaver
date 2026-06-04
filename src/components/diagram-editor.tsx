@@ -24,7 +24,7 @@ import { readThemeMenuHueStepDegFromStorage } from '@/lib/theme-menu-hue-step';
 import { orderSelectedIdsForThemeHue } from '@/lib/selection-theme-order';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { TutorialProvider } from './tutorial/tutorial-provider';
-import { emitDwCanvasTransform, DW_REPLAY_CANVAS_TRANSFORM } from '@/lib/interaction-recording-bridge';
+import { emitDwCanvasTransform, emitDwResourceActivate, DW_REPLAY_CANVAS_TRANSFORM } from '@/lib/interaction-recording-bridge';
 import type { InteractionRecordingCanvasTransform } from '@/lib/interaction-recording-types';
 import { TutorialOverlay } from './tutorial/tutorial-overlay';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -1616,6 +1616,14 @@ export default function DiagramEditor() {
     const item = (fullItem as { type: string; label: string; provider: string; category: string }) ?? createPaletteItem(resource as PaletteResource, provider, category);
     setSelectedResource({ resource, provider, category });
     setPaletteClipboardItem(item);
+    emitDwResourceActivate({
+      item,
+      provider,
+      category,
+      diagramX: position.x,
+      diagramY: position.y,
+      resourceLabel: resource.name,
+    });
     if (editorRef.current) {
       editorRef.current.pastePaletteItem(item, position);
     }

@@ -15,6 +15,7 @@ import {
 export interface InteractionRecordingMenuReplayHandlers {
   openContextMenu: (detail: DwContextMenuOpenDetail) => void;
   closeContextMenu: () => void;
+  selectItem: (itemId: string, itemType: "node" | "zone") => void;
   copy: () => void;
   deleteItem: (itemId: string, itemType: "node" | "zone") => void;
   connect: () => void;
@@ -32,12 +33,20 @@ export function useInteractionRecordingMenuReplay(
     const onOpen = (event: Event) => {
       const detail = (event as CustomEvent<DwContextMenuOpenDetail>).detail;
       if (!detail?.itemId) return;
+      handlers.selectItem(detail.itemId, detail.itemType);
       handlers.openContextMenu(detail);
     };
 
     const onAction = async (event: Event) => {
       const detail = (event as CustomEvent<DwContextMenuActionDetail>).detail;
       if (!detail?.action) return;
+
+      if (detail.itemId && detail.itemType) {
+        handlers.selectItem(detail.itemId, detail.itemType);
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        });
+      }
 
       switch (detail.action) {
         case "copy":

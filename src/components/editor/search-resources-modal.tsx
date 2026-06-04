@@ -28,6 +28,12 @@ interface FlatResource {
 }
 
 import type { IconResourceItem } from "@/lib/icon-resources";
+import { RECORDING_SURFACE_SEARCH_RESOURCES } from "@/lib/interaction-recording-surfaces";
+import { captureOverlayActionFromClick } from "@/lib/interaction-recording-overlay";
+import {
+  DW_REPLAY_SEARCH_MODAL_QUERY,
+  emitDwSearchModalQuery,
+} from "@/lib/interaction-recording-bridge";
 
 interface ResourceIndex {
   providers: Record<string, { name: string; file: string; enabled: boolean }>;
@@ -95,6 +101,18 @@ export function SearchResourcesModal({
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
+
+  useEffect(() => {
+    const onReplayQuery = (event: Event) => {
+      const detail = (event as CustomEvent<{ query?: string }>).detail;
+      if (typeof detail?.query === "string") {
+        setSearchTerm(detail.query);
+      }
+    };
+    document.addEventListener(DW_REPLAY_SEARCH_MODAL_QUERY, onReplayQuery as EventListener);
+    return () =>
+      document.removeEventListener(DW_REPLAY_SEARCH_MODAL_QUERY, onReplayQuery as EventListener);
+  }, []);
 
   const flatResources = useMemo((): FlatResource[] => {
     const out: FlatResource[] = [];
@@ -210,6 +228,7 @@ export function SearchResourcesModal({
       />
       <div
         className="fixed z-[101] flex flex-col rounded-xl border bg-card shadow-2xl backdrop-blur-sm"
+        data-dw-recording-surface={RECORDING_SURFACE_SEARCH_RESOURCES}
         style={{
           left,
           top,
@@ -217,6 +236,9 @@ export function SearchResourcesModal({
           maxHeight: menuHeight,
         }}
         onClick={(e) => e.stopPropagation()}
+        onClickCapture={(e) =>
+          captureOverlayActionFromClick(e, RECORDING_SURFACE_SEARCH_RESOURCES)
+        }
       >
         <TooltipProvider>
         <div className="flex items-center gap-2 border-b px-3 py-2.5">
@@ -225,7 +247,11 @@ export function SearchResourcesModal({
             ref={inputRef}
             placeholder="Search resources..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setSearchTerm(next);
+              emitDwSearchModalQuery(next);
+            }}
             className="h-9 border-0 bg-muted/50 focus-visible:ring-1"
             onKeyDown={(e) => e.stopPropagation()}
           />

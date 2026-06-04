@@ -183,6 +183,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
       }}
       style={{ opacity: (isDragging || isTouchDragging) ? 0.5 : 1 }}
       className={`cursor-move min-w-0 ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+      data-dw-recording-action={derivedPaletteSlug}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
