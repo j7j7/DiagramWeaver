@@ -49,6 +49,7 @@ import { getGradientCoordinates, getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 import { roundedRectangleMeshGradientSvg, meshGradientHubMarkersSvg } from "@/lib/mesh-gradient";
 import { getHighlightAnimStyleForNode, mergeCardShellHighlightStyle } from "@/lib/highlight-anim";
+import { GridChartStructureChrome } from "./grid-chart-structure-chrome";
 
 interface GridChartShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
