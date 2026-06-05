@@ -5,6 +5,7 @@ import type {
   InteractionRecordingTarget,
 } from "@/lib/interaction-recording-types";
 import {
+  DW_BATCH_SELECT,
   DW_CANVAS_MOVE,
   DW_CANVAS_TRANSFORM,
   DW_CONTEXT_MENU_ACTION,
@@ -12,16 +13,31 @@ import {
   DW_OVERLAY_ACTION,
   DW_OVERLAY_OPEN,
   DW_PALETTE_DROP,
+  DW_SEARCH_MODAL_OPEN,
+  DW_SEARCH_MODAL_QUERY,
+  DW_RESOURCE_ACTIVATE,
+  emitDwReplayBatchSelect,
   emitDwReplayCanvasTransform,
   emitDwReplayCanvasMove,
+  emitDwReplayClipboardCopy,
+  emitDwReplayClipboardPaste,
   emitDwReplayContextMenuAction,
   emitDwReplayContextMenuOpen,
+  emitDwReplaySearchModalOpen,
+  emitDwReplaySearchModalQuery,
+  emitDwReplayResourceActivate,
+  emitDwReplaySearchModalClose,
+  emitDwReplaySelectNode,
   emitPlaybackCursor,
+  type DwBatchSelectDetail,
   type DwCanvasMoveDetail,
   type DwContextMenuActionDetail,
   type DwContextMenuOpenDetail,
   type DwOverlayActionDetail,
   type DwPaletteDropDetail,
+  type DwSearchModalOpenDetail,
+  type DwSearchModalQueryDetail,
+  type DwResourceActivateDetail,
 } from "@/lib/interaction-recording-bridge";
 import { ItemTypes } from "@/components/editor/draggable-item";
 import {
@@ -29,11 +45,13 @@ import {
   isEditableElement,
   resolveInteractionTargetForEvent,
   setNativeInputValue,
+  waitForInputByPlaceholder,
 } from "@/lib/interaction-recording-target";
 import {
   centerOfElement,
   isTargetInRecordingSurface,
   RECORDING_SURFACE_CANVAS_CONTEXT_MENU,
+  RECORDING_SURFACE_SEARCH_RESOURCES,
   RECORDING_SURFACE_VISUAL_STYLING,
   resolveRecordingSurfaceTarget,
   waitForRecordingSurface,
@@ -56,6 +74,8 @@ interface PlaybackRuntime {
   pointerDown?: { button: number };
   holdShown: boolean;
   signal?: AbortSignal;
+  lastNodeId?: string;
+  nodeIdRemap: Map<string, string>;
 }
 
 export interface InteractionRecordingPlaybackOptions {
@@ -251,6 +271,10 @@ async function dispatchPointer(
   if (event.phase === "down") {
     runtime.pointerDown = { button: event.button };
     runtime.holdShown = false;
+    if (event.target?.nodeId) {
+      runtime.lastNodeId =
+        runtime.nodeIdRemap.get(event.target.nodeId) ?? event.target.nodeId;
+    }
     showPlaybackCursor(point.x, point.y, event.button === 2 ? "right-down" : "left-down");
   } else if (event.phase === "move" && runtime.pointerDown && !runtime.holdShown) {
     runtime.holdShown = true;
@@ -402,7 +426,35 @@ function applyKeyToEditable(
   setNativeInputValue(el, next);
 }
 
-function dispatchKey(event: Extract<InteractionRecordingEvent, { kind: "keydown" | "keyup" }>) {
+async function waitReplayFrames(count = 2): Promise<void> {
+  for (let i = 0; i < count; i++) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+}
+
+async function dispatchKey(
+  event: Extract<InteractionRecordingEvent, { kind: "keydown" | "keyup" }>,
+  runtime: PlaybackRuntime,
+) {
+  if (event.kind === "keydown") {
+    const mod = event.modifiers.meta || event.modifiers.ctrl;
+    if (mod && !event.modifiers.alt) {
+      if (event.key === "c") {
+        if (runtime.lastNodeId) {
+          emitDwReplaySelectNode(runtime.lastNodeId);
+          await waitReplayFrames();
+        }
+        emitDwReplayClipboardCopy();
+        return;
+      }
+      if (event.key === "v") {
+        emitDwReplayClipboardPaste();
+        await waitReplayFrames();
+        return;
+      }
+    }
+  }
+
   const el = resolveInteractionTargetForEvent(event.target);
   if (!(el instanceof Element)) return;
   focusInteractionTarget(el);
@@ -419,8 +471,15 @@ function dispatchKey(event: Extract<InteractionRecordingEvent, { kind: "keydown"
   );
 }
 
-function dispatchInput(event: Extract<InteractionRecordingEvent, { kind: "input" }>) {
-  const el = resolveInteractionTargetForEvent(event.target);
+async function dispatchInput(
+  event: Extract<InteractionRecordingEvent, { kind: "input" }>,
+  signal?: AbortSignal,
+) {
+  const placeholder = event.target.placeholder ?? event.target.name;
+  let el = resolveInteractionTargetForEvent(event.target);
+  if ((!el || !isEditableElement(el)) && placeholder) {
+    el = await waitForInputByPlaceholder(placeholder, 2500, signal);
+  }
   if (!(el instanceof Element) || !isEditableElement(el)) return;
   focusInteractionTarget(el);
   setNativeInputValue(el, event.value);
@@ -471,7 +530,22 @@ async function dispatchContextMenu(
       view: window,
     }),
   );
-  await waitForRecordingSurface(RECORDING_SURFACE_CANVAS_CONTEXT_MENU, 2000, runtime.signal);
+  const opensSearch =
+    (event.target.testId === "editor-canvas" || event.target.tutorialId === "canvas") &&
+    !event.target.nodeId;
+  if (opensSearch) {
+    if (event.diagram) {
+      emitDwReplaySearchModalOpen({
+        clientX: point.x,
+        clientY: point.y,
+        diagramX: event.diagram.x,
+        diagramY: event.diagram.y,
+      });
+    }
+    await waitForRecordingSurface(RECORDING_SURFACE_SEARCH_RESOURCES, 2500, runtime.signal);
+  } else {
+    await waitForRecordingSurface(RECORDING_SURFACE_CANVAS_CONTEXT_MENU, 2000, runtime.signal);
+  }
   showPlaybackCursor(point.x, point.y, "right-up");
 }
 
@@ -506,13 +580,48 @@ function dispatchPaletteDrop(detail: DwPaletteDropDetail, ctx: ReplayPointContex
   );
 }
 
-function dispatchCanvasMove(detail: DwCanvasMoveDetail) {
+function nodeIdPrefixFromPaletteType(type: string): string {
+  return type.replace(/\./g, "-");
+}
+
+function findNodeIdOnCanvasForPaletteType(type: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = nodeIdPrefixFromPaletteType(type);
+  const nodes = document.querySelectorAll(`[data-node-id^="${prefix}-"]`);
+  if (nodes.length === 0) return null;
+  const last = nodes[nodes.length - 1] as HTMLElement;
+  return last.getAttribute("data-node-id");
+}
+
+function syncLastNodeFromPaletteDrop(
+  detail: DwPaletteDropDetail,
+  runtime: PlaybackRuntime,
+): void {
+  const item = detail.item as { type?: string } | null;
+  if (!item?.type) return;
+  const nodeId = findNodeIdOnCanvasForPaletteType(item.type);
+  if (nodeId) runtime.lastNodeId = nodeId;
+}
+
+function syncLastNodeFromResourceActivate(
+  detail: DwResourceActivateDetail,
+  runtime: PlaybackRuntime,
+): void {
+  const item = detail.item as { type?: string } | null;
+  if (!item?.type) return;
+  const nodeId = findNodeIdOnCanvasForPaletteType(item.type);
+  if (nodeId) runtime.lastNodeId = nodeId;
+}
+
+function dispatchCanvasMove(detail: DwCanvasMoveDetail, runtime: PlaybackRuntime) {
+  const id = runtime.nodeIdRemap.get(detail.id) ?? detail.id;
   emitDwReplayCanvasMove({
-    id: detail.id,
+    id,
     itemType: detail.itemType,
     diagramX: detail.diagramX,
     diagramY: detail.diagramY,
   });
+  runtime.lastNodeId = id;
 }
 
 async function maybeWaitForSurfaceAfterAction(
@@ -565,6 +674,40 @@ async function dispatchCustom(
     return;
   }
 
+  if (event.name === DW_SEARCH_MODAL_OPEN) {
+    emitDwReplaySearchModalOpen(detail as unknown as DwSearchModalOpenDetail);
+    await waitForRecordingSurface(RECORDING_SURFACE_SEARCH_RESOURCES, 2500, runtime.signal);
+    return;
+  }
+
+  if (event.name === DW_SEARCH_MODAL_QUERY) {
+    const q = detail as unknown as DwSearchModalQueryDetail;
+    if (typeof q.query === "string") {
+      emitDwReplaySearchModalQuery(q.query);
+    }
+    return;
+  }
+
+  if (event.name === DW_RESOURCE_ACTIVATE) {
+    const activate = detail as unknown as DwResourceActivateDetail;
+    if (activate?.item) {
+      emitDwReplayResourceActivate(activate);
+      emitDwReplaySearchModalClose();
+      await waitReplayFrames();
+      syncLastNodeFromResourceActivate(activate, runtime);
+    }
+    return;
+  }
+
+  if (event.name === DW_BATCH_SELECT) {
+    const batch = detail as unknown as DwBatchSelectDetail;
+    if (Array.isArray(batch.itemIds) && batch.itemIds.length > 0) {
+      const itemIds = batch.itemIds.map((id) => runtime.nodeIdRemap.get(id) ?? id);
+      emitDwReplayBatchSelect(itemIds);
+    }
+    return;
+  }
+
   if (event.name === DW_OVERLAY_ACTION) {
     const actionDetail = detail as unknown as DwOverlayActionDetail;
     await replayOverlayAction(actionDetail, runtime.signal);
@@ -573,10 +716,13 @@ async function dispatchCustom(
 
   if (event.name === DW_PALETTE_DROP || event.name === "mobileDrop") {
     dispatchPaletteDrop(detail as unknown as DwPaletteDropDetail, ctx);
+    emitDwReplaySearchModalClose();
+    await waitReplayFrames();
+    syncLastNodeFromPaletteDrop(detail as unknown as DwPaletteDropDetail, runtime);
     return;
   }
   if (event.name === DW_CANVAS_MOVE) {
-    dispatchCanvasMove(detail as unknown as DwCanvasMoveDetail);
+    dispatchCanvasMove(detail as unknown as DwCanvasMoveDetail, runtime);
     return;
   }
   if (event.name === "mobileMove") {
@@ -605,10 +751,10 @@ async function dispatchRecordedEvent(
       break;
     case "keydown":
     case "keyup":
-      dispatchKey(event);
+      await dispatchKey(event, runtime);
       break;
     case "input":
-      dispatchInput(event);
+      await dispatchInput(event, runtime.signal);
       break;
     case "change":
       dispatchChange(event);
@@ -644,7 +790,7 @@ export function playInteractionRecording(
       applyCanvasTransform(ctx.activeTransform);
       await waitForCanvasTransform(ctx.activeTransform, 600, signal);
 
-      const runtime: PlaybackRuntime = { holdShown: false, signal };
+      const runtime: PlaybackRuntime = { holdShown: false, signal, nodeIdRemap: new Map() };
 
       let prevT = 0;
       for (let i = 0; i < events.length; i++) {
@@ -750,14 +896,33 @@ export function stripSemanticOverlayDomEvents(
 ): InteractionRecording {
   const markers = collectSemanticActionMarkers(recording);
   let contextMenuOpenAt: number | null = null;
+  let resourceActivateAt: number | null = null;
+  let paletteDropAt: number | null = null;
+  let lastSearchQueryAt: number | null = null;
 
   for (const event of recording.events) {
     if (event.kind === "custom" && event.name === DW_CONTEXT_MENU_OPEN) {
       contextMenuOpenAt = event.t;
     }
+    if (event.kind === "custom" && event.name === DW_RESOURCE_ACTIVATE) {
+      resourceActivateAt = event.t;
+    }
+    if (event.kind === "custom" && event.name === DW_PALETTE_DROP) {
+      paletteDropAt = event.t;
+    }
+    if (event.kind === "custom" && event.name === DW_SEARCH_MODAL_QUERY) {
+      lastSearchQueryAt = event.t;
+    }
   }
 
-  if (markers.length === 0 && contextMenuOpenAt == null) return recording;
+  if (
+    markers.length === 0 &&
+    contextMenuOpenAt == null &&
+    resourceActivateAt == null &&
+    paletteDropAt == null
+  ) {
+    return recording;
+  }
 
   const events = recording.events.filter((event) => {
     if (
@@ -766,6 +931,32 @@ export function stripSemanticOverlayDomEvents(
       Math.abs(event.t - contextMenuOpenAt) < 120
     ) {
       return false;
+    }
+    if (
+      (event.kind === "pointer" || event.kind === "click") &&
+      "target" in event &&
+      event.target.recordingSurface === RECORDING_SURFACE_SEARCH_RESOURCES
+    ) {
+      if (
+        resourceActivateAt != null &&
+        Math.abs(event.t - resourceActivateAt) < 700
+      ) {
+        return false;
+      }
+      if (
+        paletteDropAt != null &&
+        Math.abs(event.t - paletteDropAt) < 900
+      ) {
+        return false;
+      }
+      if (
+        lastSearchQueryAt != null &&
+        paletteDropAt != null &&
+        event.t > lastSearchQueryAt &&
+        event.t < paletteDropAt + 50
+      ) {
+        return false;
+      }
     }
     return !shouldStripSurfaceDomEvent(event, markers);
   });
@@ -776,6 +967,131 @@ export function stripSemanticOverlayDomEvents(
 /** @deprecated Use stripSemanticOverlayDomEvents */
 export function stripSemanticMenuDomEvents(recording: InteractionRecording): InteractionRecording {
   return stripSemanticOverlayDomEvents(recording);
+}
+
+function buildPaletteItemFromNodeId(
+  nodeId: string,
+  label: string,
+): { type: string; label: string; provider: string; category: string } | null {
+  const base = nodeId.replace(/-\d+$/, "");
+  const parts = base.split("-");
+  if (parts.length < 3) return null;
+  const provider = parts[0]!;
+  const category = parts[1]!;
+  const type = `${provider}.${category}.${parts.slice(2).join("-")}`;
+  return { type, label, provider, category };
+}
+
+/** Older recordings typed in search but only placed the icon via click — infer `dwResourceActivate`. */
+/** Drags that end without react-dnd `dwCanvasMove` still leave pointer-up diagram coords — infer moves. */
+export function injectMissingCanvasMovesFromPointerDrags(
+  recording: InteractionRecording,
+): InteractionRecording {
+  const injected: InteractionRecordingEvent[] = [];
+
+  for (const event of recording.events) {
+    if (event.kind !== "pointer" || event.phase !== "up") continue;
+    if (!("target" in event) || !event.target.nodeId || !event.diagram) continue;
+
+    const nodeId = event.target.nodeId;
+    const hasNearbyMove = recording.events.some(
+      (ev) =>
+        ev.kind === "custom" &&
+        ev.name === DW_CANVAS_MOVE &&
+        (ev.detail as DwCanvasMoveDetail | null)?.id === nodeId &&
+        Math.abs(ev.t - event.t) < 500,
+    );
+    if (hasNearbyMove) continue;
+
+    const duplicateInject = injected.some(
+      (ev) =>
+        ev.kind === "custom" &&
+        ev.name === DW_CANVAS_MOVE &&
+        (ev.detail as DwCanvasMoveDetail).id === nodeId &&
+        Math.abs(ev.t - event.t) < 800,
+    );
+    if (duplicateInject) continue;
+
+    injected.push({
+      t: event.t + 30,
+      kind: "custom",
+      name: DW_CANVAS_MOVE,
+      detail: {
+        id: nodeId,
+        itemType: "canvas_node",
+        diagramX: event.diagram.x,
+        diagramY: event.diagram.y,
+      } satisfies DwCanvasMoveDetail,
+    });
+  }
+
+  if (injected.length === 0) return recording;
+  const events = [...recording.events, ...injected].sort((a, b) => a.t - b.t);
+  return { ...recording, events };
+}
+
+export function injectMissingSearchResourceActivations(
+  recording: InteractionRecording,
+): InteractionRecording {
+  if (
+    recording.events.some((e) => e.kind === "custom" && e.name === DW_RESOURCE_ACTIVATE)
+  ) {
+    return recording;
+  }
+
+  const openEv = recording.events.find(
+    (e) => e.kind === "custom" && e.name === DW_SEARCH_MODAL_OPEN,
+  );
+  const queryEvs = recording.events.filter(
+    (e) => e.kind === "custom" && e.name === DW_SEARCH_MODAL_QUERY,
+  );
+  if (!openEv || queryEvs.length === 0) return recording;
+
+  const lastQuery = queryEvs[queryEvs.length - 1]!;
+  let pickT: number | null = null;
+  let nodeId: string | null = null;
+  let label: string | null = null;
+
+  for (const e of recording.events) {
+    if (e.t <= lastQuery.t) continue;
+    if ("target" in e && e.target?.nodeId?.match(/-\d+$/)) {
+      pickT = e.t;
+      nodeId = e.target.nodeId;
+      label = e.target.name ?? e.target.paletteLabel ?? null;
+      break;
+    }
+    if (e.kind === "custom" && e.name === DW_CANVAS_MOVE) {
+      const move = e.detail as { id?: string } | null;
+      if (move?.id?.match(/-\d+$/)) {
+        pickT = e.t;
+        nodeId = move.id;
+        break;
+      }
+    }
+  }
+
+  if (!pickT || !nodeId) return recording;
+  const item = buildPaletteItemFromNodeId(nodeId, label ?? nodeId);
+  if (!item) return recording;
+
+  if (openEv.kind !== "custom") return recording;
+  const openDetail = openEv.detail as DwSearchModalOpenDetail;
+  const activateEv: InteractionRecordingEvent = {
+    t: lastQuery.t + 80,
+    kind: "custom",
+    name: DW_RESOURCE_ACTIVATE,
+    detail: {
+      item,
+      provider: item.provider,
+      category: item.category,
+      diagramX: openDetail.diagramX,
+      diagramY: openDetail.diagramY,
+      resourceLabel: label ?? undefined,
+    } satisfies DwResourceActivateDetail,
+  };
+
+  const events = [...recording.events, activateEv].sort((a, b) => a.t - b.t);
+  return { ...recording, events };
 }
 
 export function ensureStartTransformEvent(
@@ -802,6 +1118,12 @@ export function ensureStartTransformEvent(
 
 export function prepareRecordingForPlayback(recording: InteractionRecording): InteractionRecording {
   return stripSemanticOverlayDomEvents(
-    dedupePointerClicks(optimizeRecordingForPlayback(ensureStartTransformEvent(recording))),
+    dedupePointerClicks(
+      optimizeRecordingForPlayback(
+        injectMissingCanvasMovesFromPointerDrags(
+          injectMissingSearchResourceActivations(ensureStartTransformEvent(recording)),
+        ),
+      ),
+    ),
   );
 }

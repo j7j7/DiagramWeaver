@@ -170,3 +170,19 @@ export function focusInteractionTarget(el: Element): void {
     el.focus({ preventScroll: true });
   }
 }
+
+/** Wait for a search/panel input to mount (e.g. after a modal opens). */
+export async function waitForInputByPlaceholder(
+  placeholder: string,
+  timeoutMs = 2500,
+  signal?: AbortSignal,
+): Promise<HTMLInputElement | HTMLTextAreaElement | null> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (signal?.aborted) return null;
+    const hit = queryByPlaceholder(placeholder);
+    if (hit && isEditableElement(hit)) return hit;
+    await new Promise((r) => window.setTimeout(r, 32));
+  }
+  return null;
+}

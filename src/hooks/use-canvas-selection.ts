@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { emitDwBatchSelect } from "@/lib/interaction-recording-bridge";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import type { Transform } from "./use-canvas-transform";
 
@@ -310,6 +311,7 @@ export function useCanvasSelection({
       const selectedIds = plan.itemIds;
 
       if (selectedIds.length > 0 && onBatchSelect) {
+        emitDwBatchSelect(selectedIds);
         onBatchSelect(selectedIds);
       } else if (selectedIds.length > 0) {
         const firstId = selectedIds[0];

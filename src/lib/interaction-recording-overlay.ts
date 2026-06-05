@@ -7,11 +7,18 @@ import {
   DW_CONTEXT_MENU_OPEN,
   DW_OVERLAY_ACTION,
   DW_OVERLAY_OPEN,
+  DW_PALETTE_DROP,
+  DW_RESOURCE_ACTIVATE,
+  DW_SEARCH_MODAL_OPEN,
+  DW_SEARCH_MODAL_QUERY,
   emitDwOverlayAction,
   emitDwReplayOverlayAction,
   type DwContextMenuActionDetail,
   type DwContextMenuOpenDetail,
   type DwOverlayActionDetail,
+  type DwResourceActivateDetail,
+  type DwSearchModalOpenDetail,
+  type DwSearchModalQueryDetail,
   type DwOverlayActionKind,
 } from "@/lib/interaction-recording-bridge";
 import type { InteractionRecording, InteractionRecordingEvent } from "@/lib/interaction-recording-types";
@@ -20,6 +27,7 @@ import {
   readRecordingActionFromElement,
   readRecordingSurfaceFromElement,
   RECORDING_SURFACE_CANVAS_CONTEXT_MENU,
+  RECORDING_SURFACE_SEARCH_RESOURCES,
   resolveRecordingSurfaceTarget,
   slugifyRecordingAction,
   waitForRecordingSurface,
@@ -178,6 +186,14 @@ export function collectSemanticActionMarkers(recording: InteractionRecording): S
         });
       }
     }
+    if (event.name === DW_RESOURCE_ACTIVATE) {
+      const detail = event.detail as DwResourceActivateDetail | null;
+      markers.push({
+        t: event.t,
+        surface: RECORDING_SURFACE_SEARCH_RESOURCES,
+        action: slugifyRecordingAction(detail?.resourceLabel ?? "pick"),
+      });
+    }
   }
   return markers;
 }
@@ -256,6 +272,29 @@ export function summarizeSemanticRecordingTimeline(
       if (detail?.action) {
         lines.push({ t: event.t, label: `menu → ${detail.action}` });
       }
+    }
+    if (event.kind === "custom" && event.name === DW_SEARCH_MODAL_OPEN) {
+      lines.push({ t: event.t, label: "Open search-resources-modal" });
+    }
+    if (event.kind === "custom" && event.name === DW_SEARCH_MODAL_QUERY) {
+      const detail = event.detail as DwSearchModalQueryDetail | null;
+      if (detail?.query) {
+        lines.push({ t: event.t, label: `search query → ${detail.query}` });
+      }
+    }
+    if (event.kind === "custom" && event.name === DW_RESOURCE_ACTIVATE) {
+      const detail = event.detail as DwResourceActivateDetail | null;
+      lines.push({
+        t: event.t,
+        label: `search pick → ${detail?.resourceLabel ?? "resource"}`,
+      });
+    }
+    if (event.kind === "custom" && event.name === DW_PALETTE_DROP) {
+      const detail = event.detail as { item?: { label?: string } } | null;
+      lines.push({
+        t: event.t,
+        label: `search drop → ${detail?.item?.label ?? "resource"}`,
+      });
     }
   }
 

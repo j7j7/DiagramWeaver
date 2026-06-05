@@ -45,6 +45,8 @@ import { pasteSpecialFamiliesCompatible } from "@/lib/paste-special-properties";
 import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
 import { useInteractionRecordingMenuReplay } from "@/hooks/use-interaction-recording-menu-replay";
+import { useInteractionRecordingCanvasReplay } from "@/hooks/use-interaction-recording-canvas-replay";
+import { emitDwSearchModalOpen } from "@/lib/interaction-recording-bridge";
 import { useCanvasOperations } from "./canvas-operations";
 import { CanvasConnections } from "./canvas-connections";
 import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
@@ -3048,10 +3050,71 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return canPaste();
   }, [canPaste]);
 
+  const selectItemForReplay = React.useCallback(
+    (itemId: string, itemType: "node" | "zone") => {
+      if (itemType === "node") {
+        const node = nodesById[itemId] ?? diagramData.nodes.find((n) => n.id === itemId);
+        if (node) {
+          onItemSelect({ ...node, itemType: "node" }, false);
+          return;
+        }
+      }
+      const zone = zonesById[itemId] ?? diagramData.zones?.find((z) => z.id === itemId);
+      if (zone) {
+        onItemSelect({ ...zone, itemType: "node" } as Parameters<typeof onItemSelect>[0], false);
+      }
+    },
+    [nodesById, zonesById, diagramData.nodes, diagramData.zones, onItemSelect],
+  );
+
+  const canvasReplayHandlers = React.useMemo(
+    () => ({
+      openSearchModal: (detail: {
+        clientX: number;
+        clientY: number;
+        diagramX: number;
+        diagramY: number;
+      }) => {
+        onPauseConnectionAnimationsForOverlayUi?.();
+        setSearchModalPosition({ x: detail.clientX, y: detail.clientY });
+        setSearchModalDiagramPosition({ x: detail.diagramX, y: detail.diagramY });
+        setSearchModalOpen(true);
+      },
+      closeSearchModal: () => {
+        setSearchModalOpen(false);
+        setSearchModalDiagramPosition(null);
+      },
+      activateResource: (detail: {
+        item: unknown;
+        diagramX: number;
+        diagramY: number;
+      }) => {
+        pastePaletteItemHandler(detail.item, { x: detail.diagramX, y: detail.diagramY });
+        setSearchModalOpen(false);
+        setSearchModalDiagramPosition(null);
+      },
+      selectNode: selectItemForReplay,
+      batchSelect: (itemIds: string[]) => {
+        onBatchSelect?.(itemIds);
+      },
+      copy: copyHandler,
+      paste: pasteHandler,
+    }),
+    [
+      onPauseConnectionAnimationsForOverlayUi,
+      pastePaletteItemHandler,
+      selectItemForReplay,
+      onBatchSelect,
+      copyHandler,
+      pasteHandler,
+    ],
+  );
+
   const menuReplayHandlers = React.useMemo(
     () => ({
       openContextMenu: openContextMenuForReplay,
       closeContextMenu,
+      selectItem: selectItemForReplay,
       copy: copyHandler,
       deleteItem: (itemId: string, itemType: "node" | "zone") => {
         if (itemType === "node" && tryDeleteConnectorLineVertexBeforeNodeDelete?.(itemId)) {
@@ -3095,6 +3158,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     ],
   );
   useInteractionRecordingMenuReplay(menuReplayHandlers);
+  useInteractionRecordingCanvasReplay(canvasReplayHandlers);
 
   React.useImperativeHandle(ref, () => ({
     getCanvasHostViewportForFit: () => {
@@ -3187,6 +3251,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             setSearchModalPosition({ x: e.clientX, y: e.clientY });
             setSearchModalDiagramPosition({ x: diagramX, y: diagramY });
             setSearchModalOpen(true);
+            emitDwSearchModalOpen({
+              clientX: e.clientX,
+              clientY: e.clientY,
+              diagramX,
+              diagramY,
+            });
           }}
         >
           {simulationModeEnabled && (

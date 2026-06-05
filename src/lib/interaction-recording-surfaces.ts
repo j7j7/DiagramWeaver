@@ -2,6 +2,7 @@ import type { InteractionRecordingTarget } from "@/lib/interaction-recording-typ
 
 /** Stable ids for floating UI the recorder orients against during replay. */
 export const RECORDING_SURFACE_CANVAS_CONTEXT_MENU = "canvas-context-menu";
+export const RECORDING_SURFACE_SEARCH_RESOURCES = "search-resources-modal";
 export const RECORDING_SURFACE_VISUAL_STYLING = "visual-styling-panel";
 export const RECORDING_SURFACE_TEXT_STYLING = "text-styling-panel";
 export const RECORDING_SURFACE_CONNECTION_SETTINGS = "connection-settings-panel";
@@ -97,6 +98,12 @@ export function queryRecordingSurface(surfaceId: string): Element | null {
   if (surfaceId === RECORDING_SURFACE_CANVAS_CONTEXT_MENU) {
     const menu = document.querySelector(".context-menu");
     return menu instanceof Element ? menu : null;
+  }
+  if (surfaceId === RECORDING_SURFACE_SEARCH_RESOURCES) {
+    const modal = document.querySelector(
+      `[data-dw-recording-surface="${CSS.escape(RECORDING_SURFACE_SEARCH_RESOURCES)}"]`,
+    );
+    return modal instanceof Element ? modal : null;
   }
   return null;
 }

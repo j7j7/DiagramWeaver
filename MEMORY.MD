@@ -34,6 +34,18 @@ Item cull margin **128px → 32px** screen with **48** diagram-unit cap (fixes h
 ### 2026-06-04 – Canvas perf: pan/drag/resize interaction mode
 **`editor-canvas`**: **`isCanvasItemResizing`** wired in resize start/end; **`data-perf-interacting`** on **`#canvas-container`** during pan, drag, or resize. **`orthogonalFastRouting`** also active while resizing (same L/Z fast path as drag). **`use-canvas-transform`**: **`transform`** **`useMemo`** by **`x/y/k`** so **`DiagramNode`** / **`CanvasConnections`** memo are not busted by fresh external transform object identity. **`globals.css`**: under **`[data-perf-interacting="true"]`**, suppress shape shadow CSS vars, box-shadow, SVG **`filter`**, and glow/highlight animations (mirrors GIF export scope). Patch bumped.
 
+### 2026-06-04 – Interaction recorder: icon4 paste/drag replay fixes
+Playback strips **search-modal** pointer noise around **`dwPaletteDrop`** / **`dwResourceActivate`**; infers missing **`dwCanvasMove`** from pointer-up diagram coords (drags that never hit react-dnd drop); **selects `lastNodeId`** before **Cmd+C** replay; closes search modal after semantic place; batch/move ids pass through **`nodeIdRemap`**. Patch bumped.
+
+### 2026-06-04 – Interaction recorder: search resource pick replay
+Search modal **click-to-place** records **`dwResourceActivate`** (full palette item + diagram anchor from right-click); playback calls **`pastePaletteItem`** via **`dwReplayResourceActivate`**. Older `.dwrec.json` files (e.g. icons3) get an inferred activate after the last **`dwSearchModalQuery`** when the first new **`nodeId`** appears. Search tiles tag **`data-dw-recording-action`**; modal uses overlay click capture. Strip search-modal pointer clicks near activate during prepare. Patch bumped.
+
+### 2026-06-04 – Interaction recorder: skip stationary pointer samples
+Capture drops **pointer move** events when the cursor has not moved ≥2px (previously also required under 33ms between samples, so idle jitter still flooded recordings). While moving, moves are capped to ~60Hz; **zero-delta wheel**, **click** after **pointer up** at the same point, and a final **compactCapturedEvents** pass on stop reduce `.dwrec.json` size. Patch bumped.
+
+### 2026-06-04 – Interaction recorder playback: search, clipboard, marquee, context menu
+Playback fixes: **Cmd+C/V** replay via **`dwReplayClipboard*`** (recorded keydown had empty target); empty-canvas **right-click** opens **search resources** modal and waits for **`search-resources-modal`** surface; **input** replay waits for **`Search resources...`** placeholder; **marquee** records **`dwBatchSelect`**; context-menu replay **selects `itemId`** before visual styling / group actions. Capture: **`dwSearchModalOpen`**, **`dwSearchModalQuery`**, **`dwBatchSelect`**. Re-record for marquee semantic on old `.dwrec.json` files. Patch bumped.
+
 ### 2026-06-04 – Delete: remove whole group/zone with selection
 **Delete/Backspace** (and context menu delete via **`deleteDiagramItemsByIds`**) expands targets: a **grouping** deletes all members + dissolves the grouping when the full group is selected or a single member is the only target; a **zone** deletes its descendant nodes and nested zones. **`handleItemDeletion`** + **`cleanupEmptyZones`** run on every bulk delete. Duplicate delete shortcut removed from **`use-diagram-editor-keyboard`** (canvas handles it). Patch bumped.
 
