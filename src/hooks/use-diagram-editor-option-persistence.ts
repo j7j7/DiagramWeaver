@@ -14,6 +14,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   animationConnectionsUserEnabled: boolean;
   animationToggleOnClickEnabled: boolean;
   simplifyFillsDuringCanvasDragEnabled: boolean;
+  suppressShadowsOnAllObjectsDuringCanvasDragEnabled: boolean;
   setRightPanelCollapsed: Dispatch<SetStateAction<boolean>>;
   setPropertiesPanelVisible: Dispatch<SetStateAction<boolean>>;
   setMetadataPopupsEnabled: Dispatch<SetStateAction<boolean>>;
@@ -23,6 +24,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   setAnimationConnectionsUserEnabled: Dispatch<SetStateAction<boolean>>;
   setAnimationToggleOnClickEnabled: Dispatch<SetStateAction<boolean>>;
   setSimplifyFillsDuringCanvasDragEnabled: Dispatch<SetStateAction<boolean>>;
+  setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled: Dispatch<SetStateAction<boolean>>;
 }
 
 /**
@@ -40,6 +42,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     animationConnectionsUserEnabled,
     animationToggleOnClickEnabled,
     simplifyFillsDuringCanvasDragEnabled,
+    suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
     setRightPanelCollapsed,
     setPropertiesPanelVisible,
     setMetadataPopupsEnabled,
@@ -49,6 +52,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
     setSimplifyFillsDuringCanvasDragEnabled,
+    setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
   } = p;
 
   useEffect(() => {
@@ -103,6 +107,12 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     if (savedSimplifyFillsDrag !== null) {
       setSimplifyFillsDuringCanvasDragEnabled(savedSimplifyFillsDrag !== "false");
     }
+    const savedSuppressAllShadowsDrag = getItemSafe(
+      "dw:suppressShadowsOnAllObjectsDuringCanvasDrag:enabled",
+    );
+    if (savedSuppressAllShadowsDrag !== null) {
+      setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled(savedSuppressAllShadowsDrag !== "false");
+    }
   }, [
     setRightPanelCollapsed,
     setPropertiesPanelVisible,
@@ -113,6 +123,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
     setSimplifyFillsDuringCanvasDragEnabled,
+    setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
   ]);
 
   useEffect(() => {
@@ -141,4 +152,13 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
       );
     }
   }, [simplifyFillsDuringCanvasDragEnabled, isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      setBooleanDebounced(
+        "dw:suppressShadowsOnAllObjectsDuringCanvasDrag:enabled",
+        suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+      );
+    }
+  }, [suppressShadowsOnAllObjectsDuringCanvasDragEnabled, isClient]);
 }

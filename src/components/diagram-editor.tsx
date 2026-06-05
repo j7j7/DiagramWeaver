@@ -25,6 +25,14 @@ import { orderSelectedIdsForThemeHue } from '@/lib/selection-theme-order';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { TutorialProvider } from './tutorial/tutorial-provider';
 import { emitDwCanvasTransform, emitDwResourceActivate, DW_REPLAY_CANVAS_TRANSFORM } from '@/lib/interaction-recording-bridge';
+import { useInteractionRecordingDiagramReplay } from '@/hooks/use-interaction-recording-diagram-replay';
+import {
+  applyDiagramChange,
+  extractDiagramItemPatch,
+  recordDiagramChange,
+  recordDiagramReplace,
+} from '@/lib/interaction-recording-diagram';
+import type { DwDiagramChangeDetail } from '@/lib/interaction-recording-bridge';
 import type { InteractionRecordingCanvasTransform } from '@/lib/interaction-recording-types';
 import { TutorialOverlay } from './tutorial/tutorial-overlay';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -304,6 +312,10 @@ export default function DiagramEditor() {
   const [dotGridEnabled, setDotGridEnabled] = React.useState<boolean>(true);
   const [simplifyFillsDuringCanvasDragEnabled, setSimplifyFillsDuringCanvasDragEnabled] =
     React.useState<boolean>(true);
+  const [
+    suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+  ] = React.useState<boolean>(true);
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(false);
   const [animationConnectionsUserEnabled, setAnimationConnectionsUserEnabled] = React.useState<boolean>(true);
   const [animationConnectionsMenuPaused, setAnimationConnectionsMenuPaused] = React.useState(false);
@@ -912,6 +924,9 @@ export default function DiagramEditor() {
     updateActiveTab,
     setDiagramData,
     setSelectedItem,
+    onHistoryNavigate: (nextDiagram) => {
+      recordDiagramReplace(nextDiagram);
+    },
   });
 
   const selectedItemForSyncRef = React.useRef(selectedItem);
@@ -1424,6 +1439,27 @@ export default function DiagramEditor() {
 
   const handleItemUpdate = React.useCallback((updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'edge') return;
+
+    const existingNode = currentDiagramData.nodes.find((n) => n.id === updatedItem.id);
+    if (existingNode) {
+      const { patch, removeKeys } = extractDiagramItemPatch(
+        updatedItem as unknown as Record<string, unknown>,
+      );
+      if (Object.keys(patch).length > 0 || removeKeys.length > 0) {
+        recordDiagramChange({ op: "update-node", nodeId: updatedItem.id, patch, removeKeys });
+      }
+    } else {
+      const existingZone = (currentDiagramData.zones ?? []).find((z) => z.id === updatedItem.id);
+      if (existingZone) {
+        const { patch, removeKeys } = extractDiagramItemPatch(
+        updatedItem as unknown as Record<string, unknown>,
+      );
+        if (Object.keys(patch).length > 0 || removeKeys.length > 0) {
+          recordDiagramChange({ op: "update-zone", zoneId: updatedItem.id, patch, removeKeys });
+        }
+      }
+    }
+
     setCurrentDiagramData(prevData => {
             // Find the existing node to preserve its properties
             const existingNode = prevData.nodes.find(n => n.id === updatedItem.id);
@@ -1483,7 +1519,23 @@ export default function DiagramEditor() {
     if (selectedItem?.id === updatedItem.id) {
         setSelectedItem(updatedItem);
     }
-  }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
+  }, [selectedItem, setCurrentDiagramData, setSelectedItem, currentDiagramData]);
+
+  const diagramReplayApplyRef = useRef<(detail: DwDiagramChangeDetail) => void>(() => {});
+  diagramReplayApplyRef.current = (detail) => {
+    setCurrentDiagramData((prev) => applyDiagramChange(detail, prev));
+  };
+  useInteractionRecordingDiagramReplay({
+    applyChange: (detail) => diagramReplayApplyRef.current(detail),
+  });
+
+  const handleDiagramDataUpdate = React.useCallback(
+    (nextDiagram: DiagramData) => {
+      recordDiagramReplace(nextDiagram);
+      setDiagramData(nextDiagram);
+    },
+    [setDiagramData],
+  );
 
   /** Apply tag, description (`info`), and/or plain toolbar **label** to every selected node and zone (multi-select). */
   const handleBulkMetadataUpdate = React.useCallback(
@@ -1494,33 +1546,37 @@ export default function DiagramEditor() {
       const hasLabel = 'label' in patch;
       if (!hasTag && !hasInfo && !hasLabel) return;
 
-      setCurrentDiagramData((prevData) => ({
-        ...prevData,
-        nodes: prevData.nodes.map((n) => {
-          if (!selectedItemIds.has(n.id)) return n;
-          let next = n;
-          if (hasTag) next = { ...next, tag: patch.tag };
-          if (hasInfo) next = { ...next, info: patch.info };
-          if (hasLabel) {
-            const isPlainTextNode =
-              n.type === 'generic.text.textbox' || n.type === 'generic.text.text';
-            next = {
-              ...next,
-              label: patch.label,
-              ...(isPlainTextNode ? { richLabel: undefined } : {}),
-            };
-          }
-          return next;
-        }),
-        zones: (prevData.zones || []).map((z) => {
-          if (!selectedItemIds.has(z.id)) return z;
-          let next = z;
-          if (hasTag) next = { ...next, tag: patch.tag };
-          if (hasInfo) next = { ...next, info: patch.info };
-          if (hasLabel) next = { ...next, label: patch.label };
-          return next;
-        }),
-      }));
+      setCurrentDiagramData((prevData) => {
+        const nextData = {
+          ...prevData,
+          nodes: prevData.nodes.map((n) => {
+            if (!selectedItemIds.has(n.id)) return n;
+            let next = n;
+            if (hasTag) next = { ...next, tag: patch.tag };
+            if (hasInfo) next = { ...next, info: patch.info };
+            if (hasLabel) {
+              const isPlainTextNode =
+                n.type === 'generic.text.textbox' || n.type === 'generic.text.text';
+              next = {
+                ...next,
+                label: patch.label,
+                ...(isPlainTextNode ? { richLabel: undefined } : {}),
+              };
+            }
+            return next;
+          }),
+          zones: (prevData.zones || []).map((z) => {
+            if (!selectedItemIds.has(z.id)) return z;
+            let next = z;
+            if (hasTag) next = { ...next, tag: patch.tag };
+            if (hasInfo) next = { ...next, info: patch.info };
+            if (hasLabel) next = { ...next, label: patch.label };
+            return next;
+          }),
+        };
+        recordDiagramReplace(nextData);
+        return nextData;
+      });
 
       if (
         selectedItem?.itemType === 'node' &&
@@ -1547,29 +1603,31 @@ export default function DiagramEditor() {
 
   const handleLabelUpdate = React.useCallback((nodeId: string, newLabel: string, richLabel?: import("@/lib/types").RichTextRun[]) => {
     React.startTransition(() => {
-      setCurrentDiagramData(prevData => {
-        const propagateToSelection =
-          selectedItemIds.size > 1 && selectedItemIds.has(nodeId);
-        const targetIds: Set<string> = propagateToSelection
-          ? new Set(
-              [...selectedItemIds].filter((id) =>
-                prevData.nodes.some((n) => n.id === id),
-              ),
-            )
-          : new Set([nodeId]);
-
-        return {
-          ...prevData,
-          nodes: prevData.nodes.map((n) =>
-            targetIds.has(n.id)
-              ? { ...n, label: newLabel, richLabel: richLabel ?? undefined }
-              : n,
-          ),
-        };
-      });
-
       const propagateToSelection =
         selectedItemIds.size > 1 && selectedItemIds.has(nodeId);
+      const targetIds: Set<string> = propagateToSelection
+        ? new Set(
+            [...selectedItemIds].filter((id) =>
+              currentDiagramData.nodes.some((n) => n.id === id),
+            ),
+          )
+        : new Set([nodeId]);
+
+      setCurrentDiagramData(prevData => ({
+        ...prevData,
+        nodes: prevData.nodes.map((n) =>
+          targetIds.has(n.id)
+            ? { ...n, label: newLabel, richLabel: richLabel ?? undefined }
+            : n,
+        ),
+      }));
+
+      for (const id of targetIds) {
+        const patch: Record<string, unknown> = { label: newLabel };
+        if (richLabel !== undefined) patch.richLabel = richLabel;
+        recordDiagramChange({ op: "update-node", nodeId: id, patch });
+      }
+
       if (
         selectedItem?.itemType === 'node' &&
         selectedItemIds.has(selectedItem.id) &&
@@ -1584,7 +1642,7 @@ export default function DiagramEditor() {
         }
       }
     });
-  }, [selectedItem, selectedItemIds, setCurrentDiagramData, setSelectedItem]);
+  }, [selectedItem, selectedItemIds, currentDiagramData.nodes, setCurrentDiagramData, setSelectedItem]);
 
   const handleTagUpdate = React.useCallback((nodeId: string, newTag: string) => {
     const propagateToSelection =
@@ -1593,15 +1651,25 @@ export default function DiagramEditor() {
       ? new Set([...selectedItemIds])
       : new Set([nodeId]);
 
-    setCurrentDiagramData((prevData) => ({
-      ...prevData,
-      nodes: prevData.nodes.map((n) =>
-        targetIds.has(n.id) ? { ...n, tag: newTag } : n,
-      ),
-      zones: (prevData.zones || []).map((z) =>
-        targetIds.has(z.id) ? { ...z, tag: newTag } : z,
-      ),
-    }));
+    setCurrentDiagramData((prevData) => {
+      const nextData = {
+        ...prevData,
+        nodes: prevData.nodes.map((n) =>
+          targetIds.has(n.id) ? { ...n, tag: newTag } : n,
+        ),
+        zones: (prevData.zones || []).map((z) =>
+          targetIds.has(z.id) ? { ...z, tag: newTag } : z,
+        ),
+      };
+      for (const id of targetIds) {
+        if (prevData.nodes.some((n) => n.id === id)) {
+          recordDiagramChange({ op: "update-node", nodeId: id, patch: { tag: newTag } });
+        } else if ((prevData.zones ?? []).some((z) => z.id === id)) {
+          recordDiagramChange({ op: "update-zone", zoneId: id, patch: { tag: newTag } });
+        }
+      }
+      return nextData;
+    });
 
     if (
       selectedItem?.itemType === 'node' &&
@@ -2121,6 +2189,8 @@ export default function DiagramEditor() {
       connections: [...prevData.connections, ...newConnections],
     }));
 
+    recordDiagramChange({ op: "add-connections", connections: newConnections });
+
     setIsConnectMode(false);
     setSelectedItem(null); // Deselect after connecting
   };
@@ -2209,6 +2279,7 @@ export default function DiagramEditor() {
       const nextDiagram = deleteDiagramItemsByIds(currentDiagramData, deleteIds);
       if (!nextDiagram) return;
 
+      recordDiagramChange({ op: "delete-items", ids: deleteIds });
       setCurrentDiagramData(nextDiagram);
       setSelectedItem(null);
       setSelectedItemIds(new Set());
@@ -2225,6 +2296,7 @@ export default function DiagramEditor() {
   const disconnectSelected = () => {
     if (!selectedItem || selectedItem.itemType !== 'node') return;
     const id = selectedItem.id;
+    recordDiagramChange({ op: "disconnect-node", nodeId: id });
     setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.filter((e: any) => e.from !== id && e.to !== id),
@@ -2857,6 +2929,15 @@ export default function DiagramEditor() {
     const multiById =
       applyToConnectionIds && applyToConnectionIds.length > 0 ? new Set(applyToConnectionIds) : null;
 
+    recordDiagramChange({
+      op: "update-connection",
+      connectionId,
+      from,
+      to,
+      patch: updates as Record<string, unknown>,
+      applyToConnectionIds,
+    });
+
     setCurrentDiagramData((prevData) => ({
       ...prevData,
       connections: (prevData.connections ?? []).map((conn, idx) => {
@@ -3148,18 +3229,29 @@ export default function DiagramEditor() {
   }, [pendingAnimationUpdate, applyAnimationToCurrentAndSelected, applyConnectionUpdates, resetPendingAnimationDialogs]);
 
   const handleConnectionWaypointMove = (from: string, to: string, index: number, newPos: { x: number; y: number }, connectionId?: string) => {
-    setDiagramData(prevData => ({
-      ...prevData,
-      connections: prevData.connections.map(conn => {
+    setDiagramData(prevData => {
+      let nextWaypoints: Array<{ x: number; y: number; id?: string }> | undefined;
+      const connections = prevData.connections.map((conn, idx) => {
         const match = connectionId ? (conn as DiagramConnectionData).id === connectionId : (conn.from === from && conn.to === to);
         if (!match || !conn.waypoints) return conn;
         const updated = [...conn.waypoints];
         if (index >= 0 && index < updated.length) {
           updated[index] = { ...updated[index], x: newPos.x, y: newPos.y };
         }
+        nextWaypoints = updated;
         return { ...conn, waypoints: updated };
-      })
-    }));
+      });
+      if (nextWaypoints) {
+        recordDiagramChange({
+          op: "update-connection",
+          connectionId,
+          from,
+          to,
+          patch: { waypoints: nextWaypoints },
+        });
+      }
+      return { ...prevData, connections };
+    });
   };
 
   const handleConnectionWaypointAdd = (from: string, to: string, connectionId?: string) => {
@@ -3566,6 +3658,7 @@ export default function DiagramEditor() {
 
   const handleJsonValidChange = (newDiagramData: DiagramData) => {
     absorbDiagramUserDefinedObjects(newDiagramData, { notify: true });
+    recordDiagramReplace(newDiagramData);
     setDiagramData(newDiagramData);
   };
 
@@ -3624,7 +3717,9 @@ export default function DiagramEditor() {
           updatedNodes,
           selectedItemIds,
         );
-        return { ...prevData, nodes: nextNodes, connections: updatedConnections };
+        const nextData = { ...prevData, nodes: nextNodes, connections: updatedConnections };
+        recordDiagramReplace(nextData);
+        return nextData;
       });
       const count = selectedItemIds.size;
       toast({
@@ -5054,6 +5149,7 @@ export default function DiagramEditor() {
     animationConnectionsUserEnabled,
     animationToggleOnClickEnabled,
     simplifyFillsDuringCanvasDragEnabled,
+    suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
     setRightPanelCollapsed,
     setPropertiesPanelVisible,
     setMetadataPopupsEnabled,
@@ -5063,6 +5159,7 @@ export default function DiagramEditor() {
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
     setSimplifyFillsDuringCanvasDragEnabled,
+    setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
   });
 
   // Reset click-to-toggle disabled sources when it's enabled
@@ -5179,6 +5276,7 @@ export default function DiagramEditor() {
         pyramidEditorModal={pyramidEditorModal}
         setPyramidEditorModal={setPyramidEditorModal}
         setDiagramData={setDiagramData}
+        onDiagramDataUpdate={handleDiagramDataUpdate}
         updateTutorialDiagramData={updateTutorialDiagramData}
         layers={layers}
         layerAnimationsEnabled={layerAnimationsEnabled}
@@ -5218,6 +5316,12 @@ export default function DiagramEditor() {
         setDotGridEnabled={setDotGridEnabled}
         simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
         setSimplifyFillsDuringCanvasDragEnabled={setSimplifyFillsDuringCanvasDragEnabled}
+        suppressShadowsOnAllObjectsDuringCanvasDragEnabled={
+          suppressShadowsOnAllObjectsDuringCanvasDragEnabled
+        }
+        setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled={
+          setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled
+        }
         connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
         setConnectionsBehindNodesEnabled={setConnectionsBehindNodesEnabled}
         animationConnectionsEnabled={animationConnectionsEnabled}

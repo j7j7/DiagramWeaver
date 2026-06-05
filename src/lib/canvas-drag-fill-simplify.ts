@@ -11,6 +11,10 @@ import type {
 export const SIMPLIFY_FILLS_DURING_CANVAS_DRAG_STORAGE_KEY =
   "dw:simplifyFillsDuringCanvasDrag:enabled";
 
+/** Options → suppress shadows on every canvas object while dragging (default on). */
+export const SUPPRESS_SHADOWS_ON_ALL_OBJECTS_DURING_CANVAS_DRAG_STORAGE_KEY =
+  "dw:suppressShadowsOnAllObjectsDuringCanvasDrag:enabled";
+
 const SOLID_FALLBACK = "#6b7280";
 
 /** Read persisted Options preference (default **on** when unset). */

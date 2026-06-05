@@ -20,6 +20,10 @@ import {
   resolveCardIconDropFromPoint,
 } from "@/lib/card-utils";
 import { emitDwCanvasMove, emitDwPaletteDrop, DW_REPLAY_CANVAS_MOVE } from "@/lib/interaction-recording-bridge";
+import {
+  recordPositionNodeChange,
+  recordPositionZoneChange,
+} from "@/lib/interaction-recording-diagram";
 
 /** Diagram-space radius around drag origin: inside = free movement; crossing = lock to dominant axis */
 const AXIS_CONSTRAINT_DEAD_ZONE = 15;
@@ -682,6 +686,11 @@ export function useCanvasDragDrop({
                   clientX: clientOffset.x,
                   clientY: clientOffset.y,
                 });
+                if (moved.type === ItemTypes.ZONE) {
+                  recordPositionZoneChange(moved.id, pos.x, pos.y);
+                } else {
+                  recordPositionNodeChange(moved.id, pos.x, pos.y);
+                }
               });
             }
           }
@@ -701,6 +710,11 @@ export function useCanvasDragDrop({
               clientX: clientOffset.x,
               clientY: clientOffset.y,
             });
+            if (item.type === ItemTypes.ZONE || zonesById[item.id]) {
+              recordPositionZoneChange(item.id, x, y);
+            } else {
+              recordPositionNodeChange(item.id, x, y);
+            }
           }
         }
         }

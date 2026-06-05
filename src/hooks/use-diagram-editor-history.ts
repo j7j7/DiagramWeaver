@@ -17,6 +17,8 @@ export interface UseDiagramEditorHistoryParams {
   setSelectedItem: (
     updater: SelectedItem | null | ((prev: SelectedItem | null) => SelectedItem | null),
   ) => void;
+  /** Fired before undo/redo applies a history snapshot (e.g. interaction recorder). */
+  onHistoryNavigate?: (diagram: DiagramData) => void;
 }
 
 /**
@@ -32,6 +34,7 @@ export function useDiagramEditorHistory({
   updateActiveTab,
   setDiagramData,
   setSelectedItem,
+  onHistoryNavigate,
 }: UseDiagramEditorHistoryParams) {
   const history =
     activeTab?.history || [JSON.stringify({ nodes: [], connections: [], groupings: [] })];
@@ -114,11 +117,12 @@ export function useDiagramEditorHistory({
       historyRef.current.index = newIndex;
       setHistoryIndex(newIndex);
       const newDiagramData = JSON.parse(currentHistory[newIndex]) as DiagramData;
+      onHistoryNavigate?.(newDiagramData);
       setDiagramData(newDiagramData);
       setSelectedItem(null);
       setHistoryRef(activeTabId, historyRef.current);
     }
-  }, [activeTabId, setHistoryIndex, setDiagramData, setSelectedItem, setHistoryRef]);
+  }, [activeTabId, setHistoryIndex, setDiagramData, setSelectedItem, setHistoryRef, onHistoryNavigate]);
 
   const redo = useCallback(() => {
     if (!activeTabId) return;
@@ -129,11 +133,12 @@ export function useDiagramEditorHistory({
       historyRef.current.index = newIndex;
       setHistoryIndex(newIndex);
       const newDiagramData = JSON.parse(currentHistory[newIndex]) as DiagramData;
+      onHistoryNavigate?.(newDiagramData);
       setDiagramData(newDiagramData);
       setSelectedItem(null);
       setHistoryRef(activeTabId, historyRef.current);
     }
-  }, [activeTabId, setHistoryIndex, setDiagramData, setSelectedItem, setHistoryRef]);
+  }, [activeTabId, setHistoryIndex, setDiagramData, setSelectedItem, setHistoryRef, onHistoryNavigate]);
 
   return {
     history,

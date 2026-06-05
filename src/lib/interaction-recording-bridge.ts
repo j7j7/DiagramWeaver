@@ -30,14 +30,39 @@ export const DW_REPLAY_CLIPBOARD_PASTE = "dwReplayClipboardPaste";
 export const DW_REPLAY_SELECT_NODE = "dwReplaySelectNode";
 export const DW_REPLAY_SEARCH_MODAL_CLOSE = "dwReplaySearchModalClose";
 export const DW_PLAYBACK_CURSOR = "dwPlaybackCursor";
+export const DW_DIAGRAM_CHANGE = "dwDiagramChange";
+export const DW_REPLAY_DIAGRAM_CHANGE = "dwReplayDiagramChange";
+export const DW_REPLAY_CLOSE_OVERLAYS = "dwReplayCloseOverlays";
 
 export type PlaybackCursorKind =
   | "left-down"
   | "left-up"
   | "right-down"
   | "right-up"
+  | "left-drag-start"
+  | "left-drag-move"
+  | "left-drag-end"
+  | "right-drag-start"
+  | "right-drag-move"
+  | "right-drag-end"
   | "hold-start"
-  | "hold-end";
+  | "hold-end"
+  | "copy"
+  | "paste"
+  | "pointer";
+
+export interface DwPlaybackCursorDetail {
+  x: number;
+  y: number;
+  kind: PlaybackCursorKind;
+  /** Drag segment start (client px) for trail rendering. */
+  fromX?: number;
+  fromY?: number;
+  /** Optional sampled drag path (client px). */
+  path?: Array<{ x: number; y: number }>;
+  /** Override default action label (e.g. "Resize"). */
+  label?: string;
+}
 
 export interface DwOverlayOpenDetail {
   surface: string;
@@ -72,6 +97,8 @@ export interface DwContextMenuActionDetail {
   action: string;
   itemId?: string;
   itemType?: "node" | "zone";
+  /** When true, replay shows the menu flash only — diagram change event applies the effect. */
+  cosmeticOnly?: boolean;
 }
 
 export interface DwSearchModalOpenDetail {
@@ -99,12 +126,6 @@ export interface DwResourceActivateDetail {
   resourceLabel?: string;
 }
 
-export interface DwPlaybackCursorDetail {
-  x: number;
-  y: number;
-  kind: PlaybackCursorKind;
-}
-
 export interface DwPaletteDropDetail {
   item: unknown;
   clientX: number;
@@ -130,7 +151,36 @@ export interface DwCanvasResizeDetail {
   x?: number;
   y?: number;
   handle?: string;
+  itemType?: "node" | "zone";
 }
+
+/** Direct diagram JSON mutation — replay applies to state without driving UI controls. */
+export type DwDiagramChangeDetail =
+  | { op: "set-diagram"; diagram: import("@/lib/types").DiagramData }
+  | {
+      op: "update-node";
+      nodeId: string;
+      patch: Record<string, unknown>;
+      removeKeys?: string[];
+    }
+  | {
+      op: "update-zone";
+      zoneId: string;
+      patch: Record<string, unknown>;
+      removeKeys?: string[];
+    }
+  | {
+      op: "update-connection";
+      connectionId?: string;
+      from?: string;
+      to?: string;
+      patch: Record<string, unknown>;
+      removeKeys?: string[];
+      applyToConnectionIds?: string[];
+    }
+  | { op: "delete-items"; ids: string[] }
+  | { op: "disconnect-node"; nodeId: string }
+  | { op: "add-connections"; connections: import("@/lib/types").DiagramConnectionData[] };
 
 function cloneForRecording<T>(value: T): T {
   try {
@@ -393,4 +443,30 @@ export function emitDwReplaySearchModalClose(): void {
 export function emitPlaybackCursor(detail: DwPlaybackCursorDetail): void {
   if (typeof document === "undefined") return;
   document.dispatchEvent(new CustomEvent(DW_PLAYBACK_CURSOR, { bubbles: true, detail }));
+}
+
+export function emitDwDiagramChange(detail: DwDiagramChangeDetail): void {
+  if (typeof document === "undefined") return;
+  if (document.body.dataset.dwPlayback === "active") return;
+  document.dispatchEvent(
+    new CustomEvent(DW_DIAGRAM_CHANGE, {
+      bubbles: true,
+      detail: cloneForRecording(detail),
+    }),
+  );
+}
+
+export function emitDwReplayDiagramChange(detail: DwDiagramChangeDetail): void {
+  if (typeof document === "undefined") return;
+  document.dispatchEvent(
+    new CustomEvent(DW_REPLAY_DIAGRAM_CHANGE, {
+      bubbles: true,
+      detail: cloneForRecording(detail),
+    }),
+  );
+}
+
+export function emitDwReplayCloseOverlays(): void {
+  if (typeof document === "undefined") return;
+  document.dispatchEvent(new CustomEvent(DW_REPLAY_CLOSE_OVERLAYS, { bubbles: true }));
 }

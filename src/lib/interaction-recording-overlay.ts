@@ -5,6 +5,7 @@
 import {
   DW_CONTEXT_MENU_ACTION,
   DW_CONTEXT_MENU_OPEN,
+  DW_DIAGRAM_CHANGE,
   DW_OVERLAY_ACTION,
   DW_OVERLAY_OPEN,
   DW_PALETTE_DROP,
@@ -20,6 +21,7 @@ import {
   type DwSearchModalOpenDetail,
   type DwSearchModalQueryDetail,
   type DwOverlayActionKind,
+  type DwDiagramChangeDetail,
 } from "@/lib/interaction-recording-bridge";
 import type { InteractionRecording, InteractionRecordingEvent } from "@/lib/interaction-recording-types";
 import {
@@ -226,6 +228,27 @@ export interface SemanticRecordingSummaryLine {
   eventIndex: number;
 }
 
+function formatDiagramChangeLabel(detail: DwDiagramChangeDetail): string {
+  switch (detail.op) {
+    case "set-diagram":
+      return "diagram → replace all";
+    case "update-node":
+      return `diagram → update node ${detail.nodeId} (${Object.keys(detail.patch).join(", ") || "patch"})`;
+    case "update-zone":
+      return `diagram → update zone ${detail.zoneId}`;
+    case "update-connection":
+      return `diagram → update connection`;
+    case "delete-items":
+      return `diagram → delete ${detail.ids.length} item(s)`;
+    case "disconnect-node":
+      return `diagram → disconnect ${detail.nodeId}`;
+    case "add-connections":
+      return `diagram → add ${detail.connections.length} connection(s)`;
+    default:
+      return "diagram → change";
+  }
+}
+
 export function summarizeSemanticRecordingTimeline(
   recording: InteractionRecording,
   limit = 24,
@@ -303,6 +326,16 @@ export function summarizeSemanticRecordingTimeline(
         label: `search drop → ${detail?.item?.label ?? "resource"}`,
         eventIndex,
       });
+    }
+    if (event.kind === "custom" && event.name === DW_DIAGRAM_CHANGE) {
+      const detail = event.detail as DwDiagramChangeDetail | null;
+      if (detail?.op) {
+        lines.push({
+          t: event.t,
+          label: formatDiagramChangeLabel(detail),
+          eventIndex,
+        });
+      }
     }
   }
 

@@ -157,6 +157,7 @@ export function DiagramEditorInner({
   pyramidEditorModal,
   setPyramidEditorModal,
   setDiagramData,
+  onDiagramDataUpdate,
   updateTutorialDiagramData,
   setCurrentDiagramData,
   currentDiagramData,
@@ -208,6 +209,8 @@ export function DiagramEditorInner({
   setDotGridEnabled,
   simplifyFillsDuringCanvasDragEnabled,
   setSimplifyFillsDuringCanvasDragEnabled,
+  suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+  setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
   connectionsBehindNodesEnabled,
   setConnectionsBehindNodesEnabled,
   animationConnectionsEnabled,
@@ -586,7 +589,7 @@ export function DiagramEditorInner({
                     onConnectionWaypointAdd={handleConnectionWaypointAdd}
                     onConnectionWaypointRemove={handleConnectionWaypointRemove}
                     diagramData={diagramData}
-                    onDiagramDataUpdate={setDiagramData}
+                    onDiagramDataUpdate={onDiagramDataUpdate ?? setDiagramData}
                     currentDiagramData={currentDiagramData}
                     onCurrentDiagramDataUpdate={setCurrentDiagramData}
                     hoverEnabled={hoverEnabled}
@@ -602,6 +605,14 @@ export function DiagramEditorInner({
                     simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
                     onToggleSimplifyFillsDuringCanvasDrag={() =>
                       setSimplifyFillsDuringCanvasDragEnabled(!simplifyFillsDuringCanvasDragEnabled)
+                    }
+                    suppressShadowsOnAllObjectsDuringCanvasDragEnabled={
+                      suppressShadowsOnAllObjectsDuringCanvasDragEnabled
+                    }
+                    onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag={() =>
+                      setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled(
+                        !suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+                      )
                     }
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     onToggleConnectionsBehindNodes={() => setConnectionsBehindNodesEnabled(!connectionsBehindNodesEnabled)}
@@ -809,6 +820,9 @@ export function DiagramEditorInner({
                     isReadOnly={isReadOnly}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
                     simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
+                    suppressShadowsOnAllObjectsDuringCanvasDragEnabled={
+                      suppressShadowsOnAllObjectsDuringCanvasDragEnabled
+                    }
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     animationConnectionsEnabled={animationConnectionsEnabled}
                     animationToggleOnClickEnabled={animationToggleOnClickEnabled}

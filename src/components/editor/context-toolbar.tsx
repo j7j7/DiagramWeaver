@@ -50,6 +50,7 @@ import { resolveBezierConnectionPaint, type ConnectionEndpointOutline } from '@/
 import { applyMindmapHueAnchorsAfterVisualChanges } from '@/lib/mindmap-layout';
 import { RECORDING_SURFACE_TEXT_STYLING, RECORDING_SURFACE_VISUAL_STYLING } from '@/lib/interaction-recording-surfaces';
 import { useInteractionRecordingPanelReplay } from '@/hooks/use-interaction-recording-panel-replay';
+import { DW_REPLAY_CLOSE_OVERLAYS } from '@/lib/interaction-recording-bridge';
 
 import { TextStylingPanel } from './text-styling-panel';
 import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
@@ -1192,6 +1193,17 @@ export function ContextToolbar({
     [RECORDING_SURFACE_VISUAL_STYLING]: (patch) => visualStylingReplayRef.current(patch),
     [RECORDING_SURFACE_TEXT_STYLING]: (patch) => textStylingReplayRef.current(patch),
   });
+
+  useEffect(() => {
+    const closeAll = () => {
+      handleTextStylingOpenChange(false);
+      handleVisualStylingOpenChange(false);
+      handleLineStylingOpenChange(false);
+      setConnectionsOpen(false);
+    };
+    document.addEventListener(DW_REPLAY_CLOSE_OVERLAYS, closeAll);
+    return () => document.removeEventListener(DW_REPLAY_CLOSE_OVERLAYS, closeAll);
+  }, [handleTextStylingOpenChange, handleVisualStylingOpenChange, handleLineStylingOpenChange]);
 
   if (!selectedItem) {
     return null;

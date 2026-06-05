@@ -49,8 +49,13 @@ import { useInteractionRecordingCanvasReplay } from "@/hooks/use-interaction-rec
 import {
   emitDwCanvasResize,
   emitDwSearchModalOpen,
+  DW_REPLAY_CLOSE_OVERLAYS,
   type DwCanvasResizeDetail,
 } from "@/lib/interaction-recording-bridge";
+import {
+  recordGeometryNodeChange,
+  recordGeometryZoneChange,
+} from "@/lib/interaction-recording-diagram";
 import { useCanvasOperations } from "./canvas-operations";
 import { CanvasConnections } from "./canvas-connections";
 import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
@@ -445,6 +450,8 @@ interface EditorCanvasProps {
   alignmentGuidesEnabled?: boolean;
   /** Options → solid-first fill while nodes move on canvas (see `simplifyVisualNodeForCanvasDrag`). */
   simplifyFillsDuringCanvasDragEnabled?: boolean;
+  /** Options → strip shadows on every object during pan/drag/resize (default on). */
+  suppressShadowsOnAllObjectsDuringCanvasDragEnabled?: boolean;
   onResourceActivateAtPosition?: (
     resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions },
     provider: string,
@@ -527,7 +534,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onViewportCullStatsChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, simplifyFillsDuringCanvasDragEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, globalVariableContext }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onViewportCullStatsChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, simplifyFillsDuringCanvasDragEnabled = true, suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, globalVariableContext }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -1247,7 +1254,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       height: newHeight,
       x: newX,
       y: newY,
+      itemType: "node",
     });
+    recordGeometryNodeChange(nodeId, { width: newWidth, height: newHeight, x: newX, y: newY });
   }, [selectedItemIds, nodesById, zonesById, operations]);
 
   const handleZoneResize = useCallback((zoneId: string, newWidth: number, newHeight: number) => {
@@ -1282,6 +1291,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     } else {
       operations.resizeGroup(zoneId, newWidth, newHeight);
     }
+    emitDwCanvasResize({
+      id: zoneId,
+      width: newWidth,
+      height: newHeight,
+      itemType: "zone",
+    });
+    recordGeometryZoneChange(zoneId, { width: newWidth, height: newHeight });
   }, [selectedItemIds, nodesById, zonesById, operations]);
 
   // ============================================================================
@@ -1344,6 +1360,29 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (dragPosition?.itemId) return new Set([dragPosition.itemId]);
     return null;
   }, [isCanvasItemDragging, multiDragPositions, dragPosition?.itemId]);
+
+  /** Node ids moving or resizing — per-node shadow suppression when global mode is off. */
+  const canvasInteractItemIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (dragPosition?.itemId) ids.add(dragPosition.itemId);
+    if (multiDragPositions) {
+      for (const id of Object.keys(multiDragPositions)) ids.add(id);
+    }
+    if (isCanvasItemResizing && resizingItemIdsKey) {
+      const parts = resizingItemIdsKey.includes("\t")
+        ? resizingItemIdsKey.split("\t")
+        : [resizingItemIdsKey];
+      for (const id of parts) ids.add(id);
+    }
+    return ids.size > 0 ? ids : null;
+  }, [dragPosition?.itemId, multiDragPositions, isCanvasItemResizing, resizingItemIdsKey]);
+
+  const shouldSuppressNodeShadowsDuringCanvasDrag = useCallback(
+    (itemId: string) =>
+      !suppressShadowsOnAllObjectsDuringCanvasDragEnabled &&
+      (canvasInteractItemIds?.has(itemId) ?? false),
+    [suppressShadowsOnAllObjectsDuringCanvasDragEnabled, canvasInteractItemIds],
+  );
 
   /**
    * While a canvas item is being dragged (not Alt+duplicate) or resized, connection routing for
@@ -3204,6 +3243,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   useInteractionRecordingMenuReplay(menuReplayHandlers);
   useInteractionRecordingCanvasReplay(canvasReplayHandlers);
 
+  React.useEffect(() => {
+    const closeFloating = () => {
+      closeContextMenu();
+      setSearchModalOpen(false);
+    };
+    document.addEventListener(DW_REPLAY_CLOSE_OVERLAYS, closeFloating);
+    return () => document.removeEventListener(DW_REPLAY_CLOSE_OVERLAYS, closeFloating);
+  }, [closeContextMenu]);
+
   React.useImperativeHandle(ref, () => ({
     getCanvasHostViewportForFit: () => {
       const el = canvasRef.current;
@@ -3260,7 +3308,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           id="canvas-container"
           data-testid="editor-canvas"
           data-perf-interacting={
-            isCanvasItemDragging || isCanvasItemResizing || isPanning ? "true" : undefined
+            suppressShadowsOnAllObjectsDuringCanvasDragEnabled &&
+            (isCanvasItemDragging || isCanvasItemResizing || isPanning)
+              ? "true"
+              : undefined
           }
           className={cn("relative w-full h-full overflow-hidden", !useCustomCanvasBg && "bg-background")}
           style={useCustomCanvasBg ? { backgroundColor: customCanvasBg } : undefined}
@@ -3660,6 +3711,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     canvasPositionDragNodeIds?.has(node.id) ?? false
                   }
                   simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
+                  suppressShadowsDuringCanvasDrag={shouldSuppressNodeShadowsDuringCanvasDrag(node.id)}
                   onChartValueDragSessionChange={onChartValueDragSessionChange}
                   onUpdate={handleNodeUpdate}
                   hoverEnabled={hoverEnabled}
@@ -3735,6 +3787,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onUpdate={handleNodeUpdate}
                     hoverEnabled={false}
                     isReadOnly={true}
+                    suppressShadowsDuringCanvasDrag={!suppressShadowsOnAllObjectsDuringCanvasDragEnabled}
                     transform={transform}
                     canvasRef={canvasRef}
                     hasLinkedSubDiagram={getHasLinkedSubDiagram?.(previewNode) ?? Boolean(previewNode.subDiagramId)}
@@ -3790,6 +3843,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       canvasPositionDragNodeIds?.has(node.id) ?? false
                     }
                     simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
+                    suppressShadowsDuringCanvasDrag={shouldSuppressNodeShadowsDuringCanvasDrag(node.id)}
                     onChartValueDragSessionChange={onChartValueDragSessionChange}
                     onUpdate={handleNodeUpdate}
                     hoverEnabled={hoverEnabled}

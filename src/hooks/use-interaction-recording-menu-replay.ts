@@ -4,9 +4,11 @@ import { useEffect } from "react";
 import {
   DW_REPLAY_CONTEXT_MENU_ACTION,
   DW_REPLAY_CONTEXT_MENU_OPEN,
+  emitPlaybackCursor,
   type DwContextMenuActionDetail,
   type DwContextMenuOpenDetail,
 } from "@/lib/interaction-recording-bridge";
+import { normalizeContextMenuReplayAction } from "@/lib/interaction-recording-diagram";
 import {
   RECORDING_SURFACE_VISUAL_STYLING,
   waitForRecordingSurface,
@@ -26,13 +28,18 @@ export interface InteractionRecordingMenuReplayHandlers {
   openConnectionSettings: () => void;
 }
 
+const MENU_FLASH_MS = 380;
+
 export function useInteractionRecordingMenuReplay(
   handlers: InteractionRecordingMenuReplayHandlers,
 ): void {
   useEffect(() => {
+    let lastMenuOpen: DwContextMenuOpenDetail | null = null;
+
     const onOpen = (event: Event) => {
       const detail = (event as CustomEvent<DwContextMenuOpenDetail>).detail;
       if (!detail?.itemId) return;
+      lastMenuOpen = detail;
       handlers.selectItem(detail.itemId, detail.itemType);
       handlers.openContextMenu(detail);
     };
@@ -48,8 +55,21 @@ export function useInteractionRecordingMenuReplay(
         });
       }
 
-      switch (detail.action) {
+      if (detail.cosmeticOnly) {
+        await new Promise<void>((resolve) => setTimeout(resolve, MENU_FLASH_MS));
+        handlers.closeContextMenu();
+        return;
+      }
+
+      const action = normalizeContextMenuReplayAction(detail.action);
+
+      switch (action) {
         case "copy":
+          emitPlaybackCursor({
+            x: lastMenuOpen?.x ?? window.innerWidth / 2,
+            y: lastMenuOpen?.y ?? window.innerHeight / 2,
+            kind: "copy",
+          });
           handlers.copy();
           handlers.closeContextMenu();
           break;
@@ -87,6 +107,8 @@ export function useInteractionRecordingMenuReplay(
           handlers.closeContextMenu();
           break;
         default:
+          await new Promise<void>((resolve) => setTimeout(resolve, MENU_FLASH_MS));
+          handlers.closeContextMenu();
           break;
       }
     };

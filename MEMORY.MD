@@ -4,6 +4,30 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-05 – Interaction recorder: drag trail 0,0 spike fix
+Move/resize playback trails used **`resolveReplayClientPoint`** (diagram-first), so react-dnd ghost **`clientX/Y ≈ 0`** and bad remaps drew a line to the screen corner. Trail building now uses **`resolveTrailClientPoint`** (client-first + event transform) and **`sanitizeDragTrail`** (drop origin ghosts and teleport outliers). Patch bumped.
+
+### 2026-06-05 – Interaction recorder: playback transport controls
+Bottom **Playing** bar has **Pause / Resume**, **Stop**, and event progress (`current/total`). Playback engine supports pause between events. Patch bumped.
+
+### 2026-06-05 – Interaction recorder: semantic resize/move drag visuals
+Resize/move pointer replay is stripped for accuracy, so playback now **animates drag trails** from the original recording (`sourceRecording`) for **`dwCanvasResize` / geometry `dwDiagramChange`** and canvas moves — labeled **Resize** / **Move**. Patch bumped.
+
+### 2026-06-05 – Interaction recorder: live playback pointer
+Persistent white circle follows replayed mouse position during playback (`pointer` cursor kind + overlay `livePointer` while `data-dw-playback=active`). Patch bumped.
+
+### 2026-06-05 – Interaction recorder: playback drag + clipboard visuals
+Playback overlay shows **left/right drag** trails (pointer replay + reconstructed paths for semantic canvas moves), plus **Copy** / **Paste** markers (keyboard and context-menu copy). Patch bumped.
+
+### 2026-06-05 – Interaction recorder: click/drag playback position fix
+**Root cause:** `injectMissingCanvasMovesFromPointerDrags` used pointer-up **cursor** diagram coords as node **top-left**; clicks after drags looked like drags (scanned all prior pointer moves); pointer-down vs pointer-up replay used different client points → micro-drag. **Fix:** disabled spurious move injection; **`stripCanvasDragPointerDomEvents`** (semantic move only); moves replay via **`dwReplayDiagramChange`** `{ x, y }`; **`recordPositionNodeChange`** on drag drop; **`canDrag` off during playback**; click replay reuses pointer-down coords on pointer-up. Patch bumped.
+
+### 2026-06-05 – Interaction recorder: resize playback fix + diagram hooks
+**Resize playback bug:** `injectMissingCanvasMovesFromPointerDrags` treated resize handle pointer-up as a canvas drag (moving node to handle release coords). Now skips handle targets, nearby `dwCanvasResize` / geometry `dwDiagramChange`, and pure clicks (no move events / &lt;8 diagram-unit drift). **`stripResizePointerDomEvents`** drops handle pointer replay when semantic resize exists; **`dedupeResizeSemanticEvents`** drops redundant `dwCanvasResize` when diagram geometry change follows. Resize replay applies via **`dwReplayDiagramChange`** (not interactive handle drag). **`recordGeometryNodeChange` / `recordGeometryZoneChange`** on resize. Additional hooks: bulk metadata, labels/tags, connect (`add-connections`), JSON panel (`set-diagram`), theme multi-select, waypoint move, context-toolbar bulk updates (`onDiagramDataUpdate`), undo/redo (`onHistoryNavigate`). Patch bumped.
+
+### 2026-06-05 – Interaction recorder: diagram-change hybrid replay
+New **`dwDiagramChange`** semantic events record JSON mutations at source (`recordDiagramChange` in **`interaction-recording-diagram.ts`**) — node/zone patch, connection patch, delete items, disconnect — hooked from **`handleItemUpdate`**, **`handleItemDelete`**, **`applyConnectionUpdates`**, **`disconnectSelected`**. Playback applies via **`dwReplayDiagramChange`** → **`applyDiagramChange`** (no UI click-through). Hybrid UX: context menu still **opens** on replay (~600ms flash); when a menu action is followed by **`dwDiagramChange`**, **`annotateCosmeticMenuActions`** marks it **`cosmeticOnly`** so replay skips opening panels/deleting via menu handlers. Styling **`patch`** replay closes overlays via **`dwReplayCloseOverlays`**. Context menu delete uses **`data-dw-recording-action="delete"`** + slug normalization. Patch bumped.
+
 ### 2026-06-05 – Interaction recorder: unique semantic summary keys
 Save-recording dialog listed semantic actions with `key={t-label}`; repeated actions at the same timestamp (e.g. multiple **Recent Colors** clicks in visual styling) duplicated keys. **`SemanticRecordingSummaryLine.eventIndex`** + **`key={line.eventIndex}`** in **`interaction-recorder-dialog.tsx`**. Patch bumped.
 
@@ -93,6 +117,9 @@ Internal **column/row divider** drag resizes only the **track on the left / abov
 
 ### 2026-06-05 – Grid chart: column/row divider resize restored
 **`GridChartShape`**: internal **column/row boundary** hit targets render **above** cell paint hit rects (paint layer had blocked hover/drag since canvas paint shipped). **`adjustColumnWeightsAtPointer`** / **`adjustRowWeightsAtPointer`** only update the **adjacent track pair**; other **`columnWeights`** / **`rowWeights`** stay unchanged. Patch bumped.
+
+### 2026-06-05 – Canvas drag: shadow suppression Options toggle
+**Options** menu: **Keep Shadows on Other Objects While Dragging** / **Disable Shadows on All Objects While Dragging** (persisted **`dw:suppressShadowsOnAllObjectsDuringCanvasDrag:enabled`**, default **on** = strip shadows on every object during pan/drag/resize via **`data-perf-interacting`**). When **off**, only moving/resizing nodes get **`data-perf-shadow-suppressed`**; other objects keep shadows. Patch bumped.
 
 ### 2026-06-04 – Canvas drag: simplified fills (Options toggle)
 While a shape, vector, card, chart, or text box **moves** on the canvas (mouse drag, touch drag, or multi-drag), paint can use **first solid colour** instead of gradients, mesh, or frosted glass for smoother motion; stored diagram data is unchanged and full styling returns on drop. **`simplifyVisualNodeForCanvasDrag`** (`canvas-drag-fill-simplify.ts`); **`DiagramNode`** applies via **`visualNodeForCanvasPaint`**. Options menu: **Enable/Disable Simplified Fills While Dragging** (persisted **`dw:simplifyFillsDuringCanvasDrag:enabled`**, default on). Patch bumped.

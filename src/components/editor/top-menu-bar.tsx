@@ -229,6 +229,8 @@ interface TopMenuBarProps {
   onToggleDotGrid?: () => void;
   simplifyFillsDuringCanvasDragEnabled?: boolean;
   onToggleSimplifyFillsDuringCanvasDrag?: () => void;
+  suppressShadowsOnAllObjectsDuringCanvasDragEnabled?: boolean;
+  onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag?: () => void;
   connectionsBehindNodesEnabled?: boolean;
   onToggleConnectionsBehindNodes?: () => void;
   animationConnectionsEnabled?: boolean;
@@ -362,6 +364,8 @@ export function TopMenuBar({
   onToggleDotGrid,
   simplifyFillsDuringCanvasDragEnabled = true,
   onToggleSimplifyFillsDuringCanvasDrag,
+  suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true,
+  onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag,
   connectionsBehindNodesEnabled,
   onToggleConnectionsBehindNodes,
   animationConnectionsEnabled,
@@ -940,6 +944,25 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag !== undefined && (
+              <>
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
+                  onToggleDefaultTextLabels !== undefined ||
+                  onToggleSimplifyFillsDuringCanvasDrag !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag}>
+                  <Sun className="mr-2 h-4 w-4" />
+                  {suppressShadowsOnAllObjectsDuringCanvasDragEnabled
+                    ? "Keep Shadows on Other Objects While Dragging"
+                    : "Disable Shadows on All Objects While Dragging"}
+                </MenubarItem>
+              </>
+            )}
             {onToggleIconBackground !== undefined && (
               <>
                 {(onToggleMetadataPopups ||
@@ -949,6 +972,7 @@ export function TopMenuBar({
                   onToggleDotGrid !== undefined ||
                   onToggleDefaultTextLabels !== undefined ||
                   onToggleSimplifyFillsDuringCanvasDrag !== undefined ||
+                  onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag !== undefined ||
                   onToggleJsonPanel ||
                   hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleIconBackground}>

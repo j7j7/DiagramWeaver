@@ -35,12 +35,15 @@ interface InteractionRecorderContextValue {
   library: InteractionRecordingLibraryEntry[];
   pendingRecording: InteractionRecording | null;
   playbackProgress: { current: number; total: number } | null;
+  playbackPaused: boolean;
   startRecording: () => void;
   stopRecording: () => void;
   dismissPendingSave: () => void;
   savePendingRecording: (title: string, description: string, saveToLibrary: boolean) => void;
   loadFromFile: (file: File) => Promise<void>;
   playRecording: (recording: InteractionRecording, speed?: number) => void;
+  pausePlayback: () => void;
+  resumePlayback: () => void;
   stopPlayback: () => void;
   removeFromLibrary: (id: string) => void;
   refreshLibrary: () => void;
@@ -62,6 +65,7 @@ export function InteractionRecorderProvider({ children }: { children: React.Reac
   const [library, setLibrary] = useState<InteractionRecordingLibraryEntry[]>([]);
   const [pendingRecording, setPendingRecording] = useState<InteractionRecording | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState<{ current: number; total: number } | null>(null);
+  const [playbackPaused, setPlaybackPaused] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
 
   const captureRef = useRef<ReturnType<typeof startInteractionRecordingCapture> | null>(null);
@@ -141,15 +145,28 @@ export function InteractionRecorderProvider({ children }: { children: React.Reac
     playbackRef.current?.abort();
     playbackRef.current = null;
     setPlaybackProgress(null);
+    setPlaybackPaused(false);
+  }, []);
+
+  const pausePlayback = useCallback(() => {
+    playbackRef.current?.pause();
+    setPlaybackPaused(true);
+  }, []);
+
+  const resumePlayback = useCallback(() => {
+    playbackRef.current?.resume();
+    setPlaybackPaused(false);
   }, []);
 
   const playRecording = useCallback(
     (recording: InteractionRecording, speed = 1) => {
       stopPlayback();
       setDialogOpen(false);
+      setPlaybackPaused(false);
       const optimized = prepareRecordingForPlayback(recording);
       const handle = playInteractionRecording(optimized, {
         speed,
+        sourceRecording: recording,
         onEvent: (current, total) => setPlaybackProgress({ current, total }),
       });
       playbackRef.current = handle;
@@ -158,6 +175,7 @@ export function InteractionRecorderProvider({ children }: { children: React.Reac
         .finally(() => {
           playbackRef.current = null;
           setPlaybackProgress(null);
+          setPlaybackPaused(false);
         });
     },
     [stopPlayback],
@@ -208,12 +226,15 @@ export function InteractionRecorderProvider({ children }: { children: React.Reac
       library,
       pendingRecording,
       playbackProgress,
+      playbackPaused,
       startRecording,
       stopRecording,
       dismissPendingSave,
       savePendingRecording,
       loadFromFile,
       playRecording,
+      pausePlayback,
+      resumePlayback,
       stopPlayback,
       removeFromLibrary,
       refreshLibrary,
@@ -225,12 +246,15 @@ export function InteractionRecorderProvider({ children }: { children: React.Reac
       library,
       pendingRecording,
       playbackProgress,
+      playbackPaused,
       startRecording,
       stopRecording,
       dismissPendingSave,
       savePendingRecording,
       loadFromFile,
       playRecording,
+      pausePlayback,
+      resumePlayback,
       stopPlayback,
       removeFromLibrary,
       refreshLibrary,

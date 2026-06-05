@@ -16,6 +16,7 @@ import {
   DW_CANVAS_TRANSFORM,
   DW_CONTEXT_MENU_ACTION,
   DW_CONTEXT_MENU_OPEN,
+  DW_DIAGRAM_CHANGE,
   DW_OVERLAY_ACTION,
   DW_OVERLAY_CLOSE,
   DW_OVERLAY_OPEN,
@@ -109,6 +110,7 @@ const RECORDED_CUSTOM_EVENTS = new Set([
   DW_SEARCH_MODAL_QUERY,
   DW_RESOURCE_ACTIVATE,
   DW_BATCH_SELECT,
+  DW_DIAGRAM_CHANGE,
 ]);
 
 function readModifiers(e: KeyboardEvent | MouseEvent | WheelEvent) {
@@ -348,6 +350,7 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
   document.addEventListener(DW_SEARCH_MODAL_QUERY, onCustom, active);
   document.addEventListener(DW_RESOURCE_ACTIVATE, onCustom, active);
   document.addEventListener(DW_BATCH_SELECT, onCustom, active);
+  document.addEventListener(DW_DIAGRAM_CHANGE, onCustom, active);
 
   document.body.dataset.dwRecording = "active";
   resetCanvasTransformEmitCache();
@@ -381,6 +384,7 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
       document.removeEventListener(DW_SEARCH_MODAL_QUERY, onCustom, active);
       document.removeEventListener(DW_RESOURCE_ACTIVATE, onCustom, active);
       document.removeEventListener(DW_BATCH_SELECT, onCustom, active);
+      document.removeEventListener(DW_DIAGRAM_CHANGE, onCustom, active);
       delete document.body.dataset.dwRecording;
 
       return {

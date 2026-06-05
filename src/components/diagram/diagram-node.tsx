@@ -335,6 +335,8 @@ interface DiagramNodeProps {
   hideSelectionAffordancesDuringCanvasDrag?: boolean;
   /** Options → simplify gradients / mesh / frosted to first solid colour while this node moves (default on). */
   simplifyFillsDuringCanvasDragEnabled?: boolean;
+  /** When global shadow suppression is off, strip shadows on this node only while it moves or resizes. */
+  suppressShadowsDuringCanvasDrag?: boolean;
   /** Bar/line/pie chart value drag — parent may defer undo/redo snapshots until drag ends. */
   onChartValueDragSessionChange?: (active: boolean) => void;
   onUpdate?: (node: DiagramNodeData) => void;
@@ -556,6 +558,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
       next.hideSelectionAffordancesDuringCanvasDrag &&
     prev.simplifyFillsDuringCanvasDragEnabled ===
       next.simplifyFillsDuringCanvasDragEnabled &&
+    prev.suppressShadowsDuringCanvasDrag === next.suppressShadowsDuringCanvasDrag &&
     prev.onChartValueDragSessionChange === next.onChartValueDragSessionChange &&
     prev.onHoverChange === next.onHoverChange &&
     prev.onConnect === next.onConnect &&
@@ -603,6 +606,7 @@ function DiagramNodeInner({
   onDraggingChange,
   hideSelectionAffordancesDuringCanvasDrag = false,
   simplifyFillsDuringCanvasDragEnabled = true,
+  suppressShadowsDuringCanvasDrag = false,
   onChartValueDragSessionChange,
   onUpdate,
   hoverEnabled = true,
@@ -2518,6 +2522,8 @@ function DiagramNodeInner({
       !isDuplicateDragPreview &&
       !isLocked &&
       !isReadOnly &&
+      typeof document !== "undefined" &&
+      document.body.dataset.dwPlayback !== "active" &&
       !isEditingLabel &&
       !isEditingTag &&
       !isEditingTimelineEntryLabel &&
@@ -3856,6 +3862,7 @@ function DiagramNodeInner({
   return (
     <div
       data-node-id={node.id}
+      data-perf-shadow-suppressed={suppressShadowsDuringCanvasDrag ? "true" : undefined}
       data-dw-card-node={isCardNode ? "true" : undefined}
       data-dw-highlight-anim={
         highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode
