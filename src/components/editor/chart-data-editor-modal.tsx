@@ -76,6 +76,7 @@ import {
 import {
   GRID_CELL_FILL_GLOBAL_PROPERTY,
   resolveGridCanvasPaintFill,
+  resolveGridCellPadPx,
 } from "@/lib/grid-chart-layout";
 
 type ChartModalSectionTint = "muted" | "amber" | "emerald" | "purple" | "sky" | "teal";
@@ -474,7 +475,7 @@ export function ChartDataEditorModal({
   const [gridTitle, setGridTitle] = useState("");
   const [gridColumnTitlesStr, setGridColumnTitlesStr] = useState("");
   const [gridRowTitlesStr, setGridRowTitlesStr] = useState("");
-  const [gridCellGap, setGridCellGap] = useState(0.1);
+  const [gridCellGap, setGridCellGap] = useState(4);
   const [gridShowLines, setGridShowLines] = useState(true);
   const [gridLineColor, setGridLineColor] = useState("");
   const [gridAxisColor, setGridAxisColor] = useState("");
@@ -551,11 +552,7 @@ export function ChartDataEditorModal({
         setGridTitle(spec.title ?? "");
         setGridColumnTitlesStr((spec.columnTitles ?? []).join(", "));
         setGridRowTitlesStr((spec.rowTitles ?? []).join(", "));
-        setGridCellGap(
-          typeof spec.cellGap === "number" && spec.cellGap >= 0
-            ? Math.min(0.45, spec.cellGap)
-            : 0.1
-        );
+        setGridCellGap(resolveGridCellPadPx(spec.cellGap));
         setGridShowLines(spec.showGridLines !== false);
         setGridLineColor(spec.gridLineColor ?? "");
         setGridAxisColor(spec.axisColor ?? "");
@@ -1420,7 +1417,7 @@ export function ChartDataEditorModal({
         gridRowTitlesStr.trim() === (existingGrid.rowTitles ?? []).join(", ").trim()
           ? { richRowTitles: existingGrid.richRowTitles }
           : {}),
-        cellGap: Math.min(0.45, Math.max(0, gridCellGap)),
+        cellGap: Math.min(24, Math.max(0, Math.round(gridCellGap))),
         ...(gridShowLines ? { showGridLines: true } : { showGridLines: false }),
         ...(gridLineColor.trim() ? { gridLineColor: gridLineColor.trim() } : {}),
         ...(gridAxisColor.trim() ? { axisColor: gridAxisColor.trim() } : {}),
@@ -3095,13 +3092,13 @@ export function ChartDataEditorModal({
                     </div>
                     <div className="col-span-2 space-y-1">
                       <Label className="text-[10px] text-muted-foreground">
-                        Cell gap ({Math.round(gridCellGap * 100)}%)
+                        Cell padding ({Math.round(gridCellGap)}px)
                       </Label>
                       <Slider
                         value={[gridCellGap]}
                         min={0}
-                        max={0.45}
-                        step={0.01}
+                        max={24}
+                        step={1}
                         onValueChange={([v]) => setGridCellGap(v ?? 0)}
                         disabled={isReadOnly}
                       />

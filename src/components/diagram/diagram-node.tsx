@@ -1348,6 +1348,8 @@ function DiagramNodeInner({
           presentationChartLerpU={animationStyle?.chartLerpU}
           presentationChartLerpFromJson={animationStyle?.chartLerpFromJson}
           presentationChartStagger={animationStyle?.chartSlideStagger}
+          highlightAnimStaggerIndex={highlightAnimStaggerIndex}
+          highlightAnimStaggerCount={highlightAnimStaggerCount}
           isReadOnly={isReadOnly}
           gridCellPaintInteractive={gridCellPaintInteractive}
           gridTrackResizeInteractive={gridTrackResizeInteractive}
@@ -1408,21 +1410,21 @@ function DiagramNodeInner({
                 }
               : undefined
           }
-          onColumnWeightsChange={
+          onColumnTrackResize={
             onUpdate && gridTrackResizeInteractive
-              ? (columnWeights) => {
+              ? ({ columnWeights, width }) => {
                   const c = node.chart;
                   if (c?.kind !== "grid") return;
-                  onUpdate({ ...node, chart: { ...c, columnWeights } });
+                  onUpdate({ ...node, width, chart: { ...c, columnWeights } });
                 }
               : undefined
           }
-          onRowWeightsChange={
+          onRowTrackResize={
             onUpdate && gridTrackResizeInteractive
-              ? (rowWeights) => {
+              ? ({ rowWeights, height }) => {
                   const c = node.chart;
                   if (c?.kind !== "grid") return;
-                  onUpdate({ ...node, chart: { ...c, rowWeights } });
+                  onUpdate({ ...node, height, chart: { ...c, rowWeights } });
                 }
               : undefined
           }
@@ -3856,7 +3858,9 @@ function DiagramNodeInner({
       data-node-id={node.id}
       data-dw-card-node={isCardNode ? "true" : undefined}
       data-dw-highlight-anim={
-        highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode ? 'true' : undefined
+        highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode
+          ? "true"
+          : undefined
       }
       ref={(el) => {
         if (el && !isDuplicateDragPreview && !isLocked) {
@@ -3872,7 +3876,10 @@ function DiagramNodeInner({
           ? "overflow-visible"
           : "rounded-lg",
         // Highlight pulse animates box-shadow; transitioning `filter` here can fight keyframes on some browsers (e.g. Chrome/Win).
-        node.highlightAnim && !isDuplicateDragPreview && !spineLikeNode && (highlightPulseUsesShapeSilhouette || isCardNode)
+        node.highlightAnim &&
+        !isDuplicateDragPreview &&
+        !spineLikeNode &&
+        (highlightPulseUsesShapeSilhouette || isCardNode || isGridChartNode)
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
@@ -3955,7 +3962,9 @@ function DiagramNodeInner({
         ...(spineLikeNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
-        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode ? highlightAnimStyle : {}),
+        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode
+          ? highlightAnimStyle
+          : {}),
         // Layer show/hide animation (opacity, transition, transform)
         ...(animationStyle && !isDuplicateDragPreview && {
           opacity: animationStyle.opacity,

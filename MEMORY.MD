@@ -4,6 +4,18 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-05 – Grid chart: constant glow follows rounded shell
+**`GridChartShape`** applies **`roundedShellGlow`** on a rounded **mask shell** (same pattern as cards) with **`borderRadius`** + **`overflow: hidden`** on **`ShapeWrapper`**; outer node frame no longer gets rectangular box-shadow. Patch bumped.
+
+### 2026-06-05 – Grid chart: fixed px cell padding
+Cell fill inset uses **`resolveGridCellPadPx`** (default **4px**, max **24px**) instead of a fraction of slot size — padding stays consistent when columns/rows are non-uniform. Legacy **`cellGap`** ≤0.45 still maps to px on read; Chart data slider is **Cell padding (px)**. Patch bumped.
+
+### 2026-06-05 – Grid chart: divider drag grows container
+Internal **column/row divider** drag resizes only the **track on the left / above** the boundary; other tracks keep their **pixel size** and the chart **`width`** / **`height`** grows or shrinks (`adjustGridColumnTracksGrowContainer`, `solveGridChartNodeWidthForPlotW`, `computeGridChartPlotInsets`). Patch bumped.
+
+### 2026-06-05 – Grid chart: column/row divider resize restored
+**`GridChartShape`**: internal **column/row boundary** hit targets render **above** cell paint hit rects (paint layer had blocked hover/drag since canvas paint shipped). **`adjustColumnWeightsAtPointer`** / **`adjustRowWeightsAtPointer`** only update the **adjacent track pair**; other **`columnWeights`** / **`rowWeights`** stay unchanged. Patch bumped.
+
 ### 2026-06-04 – Canvas drag: simplified fills (Options toggle)
 While a shape, vector, card, chart, or text box **moves** on the canvas (mouse drag, touch drag, or multi-drag), paint can use **first solid colour** instead of gradients, mesh, or frosted glass for smoother motion; stored diagram data is unchanged and full styling returns on drop. **`simplifyVisualNodeForCanvasDrag`** (`canvas-drag-fill-simplify.ts`); **`DiagramNode`** applies via **`visualNodeForCanvasPaint`**. Options menu: **Enable/Disable Simplified Fills While Dragging** (persisted **`dw:simplifyFillsDuringCanvasDrag:enabled`**, default on). Patch bumped.
 

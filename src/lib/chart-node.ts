@@ -392,7 +392,7 @@ export function defaultGridChartSpec(): NodeChartSpecGrid {
     title: "HEADING",
     richTitle: GRID_CHART_DEFAULT_TITLE_RUNS.map((run) => ({ ...run })),
     richColumnTitles: Array.from({ length: cols }, () => undefined),
-    cellGap: 0.12,
+    cellGap: 4,
     showGridLines: true,
     canvasPaintFill: "theme-hue",
     hueStepDirection: "row",

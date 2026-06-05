@@ -107,6 +107,8 @@ const GRID_CHROME_BOTTOM = 44;
 
 const MIN_TRACK_WEIGHT = 0.06;
 const TRACK_EDGE_HIT_PAD = 3;
+/** Minimum column width / row height when dragging internal dividers (viewBox px). */
+const MIN_GRID_TRACK_PX = 12;
 
 const MIN_COLS = 1;
 const MAX_COLS = 24;
@@ -123,9 +125,21 @@ function clampRows(n: number | undefined, fallback: number): number {
   return Math.max(MIN_ROWS, Math.min(MAX_ROWS, v));
 }
 
-function clampCellGap(g: number | undefined): number {
-  if (g == null || !Number.isFinite(g)) return 0.1;
-  return Math.max(0, Math.min(0.45, g));
+
+const DEFAULT_GRID_CELL_PAD_PX = 4;
+const MAX_GRID_CELL_PAD_PX = 24;
+/** Legacy `cellGap` values ≤ this were a fraction of slot size, not pixels. */
+const LEGACY_GRID_CELL_GAP_FRACTION_MAX = 0.45;
+
+/** Fixed px inset between cell slot edge and fill rect (legacy `cellGap` ≤0.45 was a fraction). */
+export function resolveGridCellPadPx(cellGap: number | undefined): number {
+  if (cellGap == null || !Number.isFinite(cellGap)) return DEFAULT_GRID_CELL_PAD_PX;
+  if (cellGap > 0 && cellGap <= LEGACY_GRID_CELL_GAP_FRACTION_MAX) {
+    return Math.round(
+      Math.max(0, Math.min(MAX_GRID_CELL_PAD_PX, cellGap * (DEFAULT_GRID_CELL_PAD_PX / 0.12)))
+    );
+  }
+  return Math.max(0, Math.min(MAX_GRID_CELL_PAD_PX, Math.round(cellGap)));
 }
 
 export function gridChartHueStepDeg(
@@ -528,7 +542,7 @@ export function nextGridCellAfterPaintClick(
   return { ...base, fillStyle: "solid", color: prevSolid };
 }
 
-/** Drag internal column boundary; returns new raw column weights. */
+/** Drag internal column boundary; returns pixel-sized track weights (container resize handled separately). */
 export function adjustColumnWeightsAtPointer(
   weights: number[],
   boundaryIndex: number,
@@ -536,25 +550,17 @@ export function adjustColumnWeightsAtPointer(
   plotX: number,
   plotW: number
 ): number[] {
-  const n = weights.length;
-  if (boundaryIndex < 1 || boundaryIndex >= n || plotW <= 0) return weights.slice();
-  const w = normalizeGridTrackWeights(n, weights);
-  const left = boundaryIndex - 1;
-  const right = boundaryIndex;
-  const cumBefore = w.slice(0, left).reduce((a, b) => a + b, 0);
-  const pairSum = w[left]! + w[right]!;
-  const pairStartX = plotX + plotW * cumBefore;
-  const pairW = plotW * pairSum;
-  let leftFrac = pairW > 1e-6 ? (pointerX - pairStartX) / pairW : 0.5;
-  const minFrac = Math.min(0.45, MIN_TRACK_WEIGHT / Math.max(pairSum, 1e-6));
-  leftFrac = Math.max(minFrac, Math.min(1 - minFrac, leftFrac));
-  const out = [...w];
-  out[left] = pairSum * leftFrac;
-  out[right] = pairSum * (1 - leftFrac);
-  return out.map((x, i) => Math.max(MIN_TRACK_WEIGHT, x));
+  const frozenTrackPx = gridChartTrackPixelSizesFromWeights(plotW, weights.length, weights);
+  const { trackPx } = adjustGridColumnTracksGrowContainer(
+    frozenTrackPx,
+    boundaryIndex,
+    pointerX,
+    plotX
+  );
+  return trackPx;
 }
 
-/** Drag internal row boundary; returns new raw row weights. */
+/** Drag internal row boundary; returns pixel-sized track weights (container resize handled separately). */
 export function adjustRowWeightsAtPointer(
   weights: number[],
   boundaryIndex: number,
@@ -562,22 +568,151 @@ export function adjustRowWeightsAtPointer(
   plotY: number,
   plotH: number
 ): number[] {
-  const n = weights.length;
-  if (boundaryIndex < 1 || boundaryIndex >= n || plotH <= 0) return weights.slice();
-  const w = normalizeGridTrackWeights(n, weights);
+  const frozenTrackPx = gridChartTrackPixelSizesFromWeights(plotH, weights.length, weights);
+  const { trackPx } = adjustGridRowTracksGrowContainer(
+    frozenTrackPx,
+    boundaryIndex,
+    pointerY,
+    plotY
+  );
+  return trackPx;
+}
+
+export interface GridChartPlotInsets {
+  plotX: number;
+  plotY: number;
+  plotW: number;
+  plotH: number;
+}
+
+/** Plot area inside the grid chart body from body size and chart chrome (title / axis bands). */
+export function computeGridChartPlotInsets(
+  bodyW: number,
+  bodyH: number,
+  chart: Pick<NodeChartSpecGrid, "title" | "columnTitles" | "rowTitles">,
+  strokeWidth: number
+): GridChartPlotInsets {
+  const half = strokeWidth / 2;
+  const titleText = (chart.title ?? "").trim();
+  const colTitles = (chart.columnTitles ?? []).map((t) => String(t ?? "").trim());
+  const rowTitles = (chart.rowTitles ?? []).map((t) => String(t ?? "").trim());
+  const hasColTitles = colTitles.some(Boolean);
+  const hasRowTitles = rowTitles.some(Boolean);
+
+  const titleBand = titleText ? Math.min(28, bodyH * 0.14) : 0;
+  const colTitleBand = hasColTitles ? Math.min(22, bodyH * 0.1) : 0;
+  const rowTitleBand = hasRowTitles ? Math.min(36, bodyW * 0.14) : 0;
+  const pad = Math.min(10, Math.min(bodyW, bodyH) * 0.04);
+
+  const plotX = half + rowTitleBand + pad;
+  const plotY = half + titleBand + colTitleBand + pad;
+  const plotW = Math.max(8, bodyW - rowTitleBand - pad * 2);
+  const plotH = Math.max(8, bodyH - titleBand - colTitleBand - pad * 2);
+
+  return { plotX, plotY, plotW, plotH };
+}
+
+/** Body width so the plot area matches `targetPlotW` (iterative; chrome depends on width). */
+export function solveGridChartNodeWidthForPlotW(
+  targetPlotW: number,
+  bodyH: number,
+  chart: Pick<NodeChartSpecGrid, "title" | "columnTitles" | "rowTitles">,
+  strokeWidth = 2
+): number {
+  const minBodyW = 40;
+  let w = Math.max(minBodyW, targetPlotW + 24);
+  for (let i = 0; i < 10; i++) {
+    const { plotW } = computeGridChartPlotInsets(w, bodyH, chart, strokeWidth);
+    const delta = targetPlotW - plotW;
+    if (Math.abs(delta) < 0.25) break;
+    w += delta;
+  }
+  return Math.max(minBodyW, Math.round(w));
+}
+
+/** Body height so the plot area matches `targetPlotH`. */
+export function solveGridChartNodeHeightForPlotH(
+  targetPlotH: number,
+  bodyW: number,
+  chart: Pick<NodeChartSpecGrid, "title" | "columnTitles" | "rowTitles">,
+  strokeWidth = 2
+): number {
+  const minBodyH = 40;
+  let h = Math.max(minBodyH, targetPlotH + 24);
+  for (let i = 0; i < 10; i++) {
+    const { plotH } = computeGridChartPlotInsets(bodyW, h, chart, strokeWidth);
+    const delta = targetPlotH - plotH;
+    if (Math.abs(delta) < 0.25) break;
+    h += delta;
+  }
+  return Math.max(minBodyH, Math.round(h));
+}
+
+export function gridChartTrackPixelSizesFromEdges(edges: number[]): number[] {
+  const sizes: number[] = [];
+  for (let i = 0; i < edges.length - 1; i++) {
+    sizes.push(Math.max(0, edges[i + 1]! - edges[i]!));
+  }
+  return sizes;
+}
+
+export function gridChartTrackPixelSizesFromWeights(
+  plotSize: number,
+  trackCount: number,
+  weights: number[] | undefined
+): number[] {
+  const frac = normalizeGridTrackWeights(trackCount, weights);
+  return frac.map((f) => plotSize * f);
+}
+
+/**
+ * Drag an internal column divider: only the column to the left of the boundary changes width;
+ * all other columns keep their pixel width and the chart body grows or shrinks horizontally.
+ */
+export function adjustGridColumnTracksGrowContainer(
+  frozenTrackPx: number[],
+  boundaryIndex: number,
+  pointerX: number,
+  plotX: number
+): { trackPx: number[]; plotW: number } {
+  const n = frozenTrackPx.length;
+  if (boundaryIndex < 1 || boundaryIndex >= n) {
+    const plotW = frozenTrackPx.reduce((a, b) => a + b, 0);
+    return { trackPx: frozenTrackPx.slice(), plotW };
+  }
+  const left = boundaryIndex - 1;
+  const prefix = frozenTrackPx.slice(0, left).reduce((a, b) => a + b, 0);
+  let resizedW = pointerX - plotX - prefix;
+  resizedW = Math.max(MIN_GRID_TRACK_PX, resizedW);
+  const trackPx = frozenTrackPx.slice();
+  trackPx[left] = resizedW;
+  const plotW = trackPx.reduce((a, b) => a + b, 0);
+  return { trackPx, plotW };
+}
+
+/**
+ * Drag an internal row divider: only the row above the boundary changes height;
+ * other rows keep their pixel height and the chart body grows or shrinks vertically.
+ */
+export function adjustGridRowTracksGrowContainer(
+  frozenTrackPx: number[],
+  boundaryIndex: number,
+  pointerY: number,
+  plotY: number
+): { trackPx: number[]; plotH: number } {
+  const n = frozenTrackPx.length;
+  if (boundaryIndex < 1 || boundaryIndex >= n) {
+    const plotH = frozenTrackPx.reduce((a, b) => a + b, 0);
+    return { trackPx: frozenTrackPx.slice(), plotH };
+  }
   const top = boundaryIndex - 1;
-  const bottom = boundaryIndex;
-  const cumBefore = w.slice(0, top).reduce((a, b) => a + b, 0);
-  const pairSum = w[top]! + w[bottom]!;
-  const pairStartY = plotY + plotH * cumBefore;
-  const pairH = plotH * pairSum;
-  let topFrac = pairH > 1e-6 ? (pointerY - pairStartY) / pairH : 0.5;
-  const minFrac = Math.min(0.45, MIN_TRACK_WEIGHT / Math.max(pairSum, 1e-6));
-  topFrac = Math.max(minFrac, Math.min(1 - minFrac, topFrac));
-  const out = [...w];
-  out[top] = pairSum * topFrac;
-  out[bottom] = pairSum * (1 - topFrac);
-  return out.map((x) => Math.max(MIN_TRACK_WEIGHT, x));
+  const prefix = frozenTrackPx.slice(0, top).reduce((a, b) => a + b, 0);
+  let resizedH = pointerY - plotY - prefix;
+  resizedH = Math.max(MIN_GRID_TRACK_PX, resizedH);
+  const trackPx = frozenTrackPx.slice();
+  trackPx[top] = resizedH;
+  const plotH = trackPx.reduce((a, b) => a + b, 0);
+  return { trackPx, plotH };
 }
 
 export { TRACK_EDGE_HIT_PAD };
@@ -985,24 +1120,20 @@ export function buildGridChartLayout(
 
   const cols = clampGridDim(chart.cols, 4);
   const rows = clampRows(chart.rows, 4);
-  const cellGap = clampCellGap(chart.cellGap);
+  const cellPadPx = resolveGridCellPadPx(chart.cellGap);
   const cellsRaw = normalizeGridChartCells(chart.cells, cols, rows);
+
+  const { plotX, plotY, plotW, plotH } = computeGridChartPlotInsets(w, h, chart, strokeWidth);
 
   const titleText = (chart.title ?? "").trim();
   const colTitles = (chart.columnTitles ?? []).map((t) => String(t ?? "").trim());
   const rowTitles = (chart.rowTitles ?? []).map((t) => String(t ?? "").trim());
   const hasColTitles = colTitles.some(Boolean);
   const hasRowTitles = rowTitles.some(Boolean);
-
   const titleBand = titleText ? Math.min(28, h * 0.14) : 0;
   const colTitleBand = hasColTitles ? Math.min(22, h * 0.1) : 0;
   const rowTitleBand = hasRowTitles ? Math.min(36, w * 0.14) : 0;
   const pad = Math.min(10, minDim * 0.04);
-
-  const plotX = half + rowTitleBand + pad;
-  const plotY = half + titleBand + colTitleBand + pad;
-  const plotW = Math.max(8, w - rowTitleBand - pad * 2);
-  const plotH = Math.max(8, h - titleBand - colTitleBand - pad * 2);
 
   const colFrac = normalizeGridTrackWeights(cols, chart.columnWeights);
   const rowFrac = normalizeGridTrackWeights(rows, chart.rowWeights);
@@ -1075,16 +1206,19 @@ export function buildGridChartLayout(
       const slotY1 = rowEdges[r + 1]!;
       const slotW = slotX1 - slotX0;
       const slotH = slotY1 - slotY0;
-      const insetX = slotW * cellGap * 0.5;
-      const insetY = slotH * cellGap * 0.5;
-      const cellW = Math.max(1, slotW - insetX * 2);
-      const cellH = Math.max(1, slotH - insetY * 2);
+      const pad = Math.min(
+        cellPadPx,
+        Math.max(0, (slotW - 1) / 2),
+        Math.max(0, (slotH - 1) / 2)
+      );
+      const cellW = Math.max(1, slotW - pad * 2);
+      const cellH = Math.max(1, slotH - pad * 2);
 
       layoutCells.push({
         row: r,
         col: c,
-        x: slotX0 + insetX,
-        y: slotY0 + insetY,
+        x: slotX0 + pad,
+        y: slotY0 + pad,
         w: cellW,
         h: cellH,
         fillMode: fill.fillMode,

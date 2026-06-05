@@ -270,7 +270,7 @@ export interface NodeChartSpecGrid {
   richColumnTitles?: (RichTextRun[] | undefined)[];
   rowTitles?: string[];
   richRowTitles?: (RichTextRun[] | undefined)[];
-  /** Gap between cells as a fraction of cell slot size (0 = flush). */
+  /** Inset between cell slot edge and fill rect, in viewBox px (legacy values ≤0.45 were a fraction). */
   cellGap?: number;
   /** Draw lines between cell slots (independent of node border). */
   showGridLines?: boolean;

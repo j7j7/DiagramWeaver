@@ -54,6 +54,8 @@ interface SvgShapeBaseProps {
   svgPointerEvents?: React.CSSProperties["pointerEvents"];
   /** Allow handles/UI drawn outside the viewBox (e.g. grid row/column chrome). */
   preserveShellHalo?: boolean;
+  /** CSS border-radius for SVG shell clip (matches rounded body in viewBox). */
+  borderRadius?: string;
 }
 
 export function SvgShapeBase({
@@ -73,6 +75,7 @@ export function SvgShapeBase({
   frostedClipCircleInViewBox,
   svgPointerEvents,
   preserveShellHalo,
+  borderRadius,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -133,6 +136,7 @@ export function SvgShapeBase({
       omitShapeText={omitShapeText}
       frostedGlassClipPath={frostedGlassClipPath}
       preserveShellHalo={preserveShellHalo}
+      borderRadius={borderRadius}
       {...rest}
     >
       <svg

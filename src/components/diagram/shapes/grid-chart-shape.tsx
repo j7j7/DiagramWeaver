@@ -18,8 +18,12 @@ import { TextboxRichDisplay } from "../textbox-rich-display";
 import { DEFAULT_PIE_SLICE_COLORS } from "@/lib/chart-node";
 import { svgUserPointFromClient } from "@/lib/chart-pointer-geometry";
 import {
-  adjustColumnWeightsAtPointer,
-  adjustRowWeightsAtPointer,
+  adjustGridColumnTracksGrowContainer,
+  adjustGridRowTracksGrowContainer,
+  computeGridChartPlotInsets,
+  gridChartTrackPixelSizesFromEdges,
+  solveGridChartNodeHeightForPlotH,
+  solveGridChartNodeWidthForPlotW,
   buildGridChartLayout,
   gridCellCornerRx,
   isGridCellFilled,
@@ -44,7 +48,7 @@ import { SvgShapeBase } from "./svg-shape-base";
 import { getGradientCoordinates, getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 import { roundedRectangleMeshGradientSvg, meshGradientHubMarkersSvg } from "@/lib/mesh-gradient";
-import { GridChartStructureChrome } from "./grid-chart-structure-chrome";
+import { getHighlightAnimStyleForNode, mergeCardShellHighlightStyle } from "@/lib/highlight-anim";
 
 interface GridChartShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -82,8 +86,8 @@ interface GridChartShapeProps {
   onMoveGridColumn?: (fromCol: number, toCol: number) => void;
   onInsertGridRow?: (atRow: number) => void;
   onInsertGridColumn?: (atCol: number) => void;
-  onColumnWeightsChange?: (weights: number[]) => void;
-  onRowWeightsChange?: (weights: number[]) => void;
+  onColumnTrackResize?: (payload: { columnWeights: number[]; width: number }) => void;
+  onRowTrackResize?: (payload: { rowWeights: number[]; height: number }) => void;
   onGridCellPaint?: (cellIndex: number) => void;
   onGridCellTextChange?: (cellIndex: number, plainText: string, runs: RichTextRun[]) => void;
   onGridTitleChange?: (plainText: string, runs: RichTextRun[]) => void;
@@ -94,6 +98,8 @@ interface GridChartShapeProps {
   presentationChartLerpFromJson?: string;
   /** Reserved for segment pop-in when grid topology changes (no color lerp). */
   presentationChartStagger?: ChartSlideStagger;
+  highlightAnimStaggerIndex?: number;
+  highlightAnimStaggerCount?: number;
 }
 
 export function GridChartShape(props: GridChartShapeProps) {
@@ -111,8 +117,8 @@ export function GridChartShape(props: GridChartShapeProps) {
     onMoveGridColumn,
     onInsertGridRow,
     onInsertGridColumn,
-    onColumnWeightsChange,
-    onRowWeightsChange,
+    onColumnTrackResize,
+    onRowTrackResize,
     onGridCellPaint,
     onGridCellTextChange,
     onGridTitleChange,
@@ -121,6 +127,8 @@ export function GridChartShape(props: GridChartShapeProps) {
     presentationChartStagger,
     presentationChartLerpU,
     presentationChartLerpFromJson,
+    highlightAnimStaggerIndex,
+    highlightAnimStaggerCount,
     ...svgBaseProps
   } = props;
   const { node, slideColorTransition } = svgBaseProps;
@@ -241,8 +249,14 @@ export function GridChartShape(props: GridChartShapeProps) {
   const cellClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const colBoundaryDragRef = useRef(0);
   const rowBoundaryDragRef = useRef(0);
-  const workingColWeightsRef = useRef<number[]>([]);
-  const workingRowWeightsRef = useRef<number[]>([]);
+  const colTrackSnapshotRef = useRef<number[]>([]);
+  const rowTrackSnapshotRef = useRef<number[]>([]);
+  const gridStrokeWidth =
+    ((nodeAny.borderStyle as string) || "solid") === "none"
+      ? 0
+      : parseInt(String(nodeAny.borderWidth ?? 2), 10) || 2;
+  const gridBodyW = Math.max(40, node.width ?? 320);
+  const gridBodyH = Math.max(40, node.height ?? 260);
 
   useEffect(() => {
     if (!gridCellPaintInteractive) setHoveredCellIndex(null);
@@ -451,6 +465,42 @@ export function GridChartShape(props: GridChartShapeProps) {
   const strokeWidth = layout.strokeWidth;
   const { body } = layout;
 
+  const nodeW = Math.max(40, node.width ?? 320);
+  const nodeH = Math.max(40, node.height ?? 260);
+  const shellRadiusPx = useMemo(() => {
+    if (body.rx <= 0 && body.ry <= 0) return 0;
+    const sx = layout.vbW > 0 ? nodeW / layout.vbW : 1;
+    const sy = layout.vbH > 0 ? nodeH / layout.vbH : 1;
+    const rPx = Math.min(body.rx * sx, body.ry * sy);
+    return Math.min(rPx, 0.48 * Math.min(nodeW, nodeH));
+  }, [body.rx, body.ry, layout.vbH, layout.vbW, nodeH, nodeW]);
+  const shellBorderRadius = shellRadiusPx > 0.5 ? `${shellRadiusPx}px` : undefined;
+
+  const shellHighlightStyle = useMemo(
+    () =>
+      getHighlightAnimStyleForNode(node as DiagramNodeData & { x: number; y: number }, {
+        isLineNode: false,
+        isDuplicateDragPreview: false,
+        positionX: node.x ?? 0,
+        positionY: node.y ?? 0,
+        highlightAnimStaggerIndex,
+        highlightAnimStaggerCount,
+        roundedShellGlow: true,
+      }),
+    [
+      node,
+      highlightAnimStaggerIndex,
+      highlightAnimStaggerCount,
+      nodeAny.highlightAnim,
+      nodeAny.highlightAnimMode,
+      nodeAny.highlightAnimDurationSec,
+      nodeAny.highlightAnimIntervalSec,
+      nodeAny.highlightAnimGlowColor,
+      nodeAny.highlightAnimGlowIntensity,
+    ]
+  );
+  const preserveShellHalo = gridStructureInteractive || !!shellHighlightStyle;
+
   const { defs, fillRef, strokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? backgroundColors : [backgroundColors[0]],
     angle: gradientAngle,
@@ -499,7 +549,7 @@ export function GridChartShape(props: GridChartShapeProps) {
   const canResizeTracks =
     gridTrackResizeInteractive &&
     !isReadOnly &&
-    (!!onColumnWeightsChange || !!onRowWeightsChange);
+    (!!onColumnTrackResize || !!onRowTrackResize);
   const { plot } = layout;
 
   const endTrackDrag = useCallback(() => {
@@ -510,50 +560,78 @@ export function GridChartShape(props: GridChartShapeProps) {
 
   const applyColBoundaryClient = useCallback(
     (clientX: number, boundaryIndex: number, svg: SVGSVGElement) => {
-      if (!onColumnWeightsChange) return;
+      if (!onColumnTrackResize) return;
       const pt = svgUserPointFromClient(svg, clientX, 0);
       if (!pt) return;
-      const next = adjustColumnWeightsAtPointer(
-        workingColWeightsRef.current,
-        boundaryIndex,
-        pt.x,
-        plot.x,
-        plot.w
-      );
-      workingColWeightsRef.current = next;
-      onColumnWeightsChange(next);
+      const snapshot = colTrackSnapshotRef.current;
+      let nextWidth = gridBodyW;
+      let trackPx = snapshot;
+      for (let iter = 0; iter < 3; iter++) {
+        const { plotX } = computeGridChartPlotInsets(
+          nextWidth,
+          gridBodyH,
+          chartBase,
+          gridStrokeWidth
+        );
+        const result = adjustGridColumnTracksGrowContainer(
+          snapshot,
+          boundaryIndex,
+          pt.x,
+          plotX
+        );
+        trackPx = result.trackPx;
+        nextWidth = solveGridChartNodeWidthForPlotW(
+          result.plotW,
+          gridBodyH,
+          chartBase,
+          gridStrokeWidth
+        );
+      }
+      onColumnTrackResize({ columnWeights: trackPx, width: nextWidth });
     },
-    [onColumnWeightsChange, plot.x, plot.w]
+    [chartBase, gridBodyH, gridBodyW, gridStrokeWidth, onColumnTrackResize]
   );
 
   const applyRowBoundaryClient = useCallback(
     (clientY: number, boundaryIndex: number, svg: SVGSVGElement) => {
-      if (!onRowWeightsChange) return;
+      if (!onRowTrackResize) return;
       const pt = svgUserPointFromClient(svg, 0, clientY);
       if (!pt) return;
-      const next = adjustRowWeightsAtPointer(
-        workingRowWeightsRef.current,
-        boundaryIndex,
-        pt.y,
-        plot.y,
-        plot.h
-      );
-      workingRowWeightsRef.current = next;
-      onRowWeightsChange(next);
+      const snapshot = rowTrackSnapshotRef.current;
+      let nextHeight = gridBodyH;
+      let trackPx = snapshot;
+      for (let iter = 0; iter < 3; iter++) {
+        const { plotY } = computeGridChartPlotInsets(
+          gridBodyW,
+          nextHeight,
+          chartBase,
+          gridStrokeWidth
+        );
+        const result = adjustGridRowTracksGrowContainer(
+          snapshot,
+          boundaryIndex,
+          pt.y,
+          plotY
+        );
+        trackPx = result.trackPx;
+        nextHeight = solveGridChartNodeHeightForPlotH(
+          result.plotH,
+          gridBodyW,
+          chartBase,
+          gridStrokeWidth
+        );
+      }
+      onRowTrackResize({ rowWeights: trackPx, height: nextHeight });
     },
-    [onRowWeightsChange, plot.y, plot.h]
+    [chartBase, gridBodyH, gridBodyW, gridStrokeWidth, onRowTrackResize]
   );
 
   const onPointerDownColBoundary = useCallback(
     (boundaryIndex: number) => (e: React.PointerEvent<SVGRectElement>) => {
-      if (!canResizeTracks || !onColumnWeightsChange || layout.cols < 2) return;
+      if (!canResizeTracks || !onColumnTrackResize || layout.cols < 2) return;
       e.stopPropagation();
       e.preventDefault();
-      const cols = layout.cols;
-      workingColWeightsRef.current = Array.from({ length: cols }, (_, i) => {
-        const w = chartBase.columnWeights?.[i];
-        return typeof w === "number" && Number.isFinite(w) && w > 0 ? w : 1;
-      });
+      colTrackSnapshotRef.current = gridChartTrackPixelSizesFromEdges(layout.columnEdges);
       colBoundaryDragRef.current = boundaryIndex;
       trackDragActiveRef.current = true;
       onGridTrackDragSessionChange?.(true);
@@ -564,23 +642,19 @@ export function GridChartShape(props: GridChartShapeProps) {
     [
       applyColBoundaryClient,
       canResizeTracks,
-      chartBase.columnWeights,
+      layout.columnEdges,
       layout.cols,
-      onColumnWeightsChange,
+      onColumnTrackResize,
       onGridTrackDragSessionChange,
     ]
   );
 
   const onPointerDownRowBoundary = useCallback(
     (boundaryIndex: number) => (e: React.PointerEvent<SVGRectElement>) => {
-      if (!canResizeTracks || !onRowWeightsChange || layout.rows < 2) return;
+      if (!canResizeTracks || !onRowTrackResize || layout.rows < 2) return;
       e.stopPropagation();
       e.preventDefault();
-      const rows = layout.rows;
-      workingRowWeightsRef.current = Array.from({ length: rows }, (_, i) => {
-        const w = chartBase.rowWeights?.[i];
-        return typeof w === "number" && Number.isFinite(w) && w > 0 ? w : 1;
-      });
+      rowTrackSnapshotRef.current = gridChartTrackPixelSizesFromEdges(layout.rowEdges);
       rowBoundaryDragRef.current = boundaryIndex;
       trackDragActiveRef.current = true;
       onGridTrackDragSessionChange?.(true);
@@ -591,29 +665,29 @@ export function GridChartShape(props: GridChartShapeProps) {
     [
       applyRowBoundaryClient,
       canResizeTracks,
-      chartBase.rowWeights,
+      layout.rowEdges,
       layout.rows,
-      onRowWeightsChange,
+      onRowTrackResize,
       onGridTrackDragSessionChange,
     ]
   );
 
   const onPointerMoveColBoundary = useCallback(
     (e: React.PointerEvent<SVGRectElement>) => {
-      if (!trackDragActiveRef.current || !onColumnWeightsChange) return;
+      if (!trackDragActiveRef.current || !onColumnTrackResize) return;
       const svg = (e.currentTarget as SVGRectElement).ownerSVGElement;
       if (svg) applyColBoundaryClient(e.clientX, colBoundaryDragRef.current, svg);
     },
-    [applyColBoundaryClient, onColumnWeightsChange]
+    [applyColBoundaryClient, onColumnTrackResize]
   );
 
   const onPointerMoveRowBoundary = useCallback(
     (e: React.PointerEvent<SVGRectElement>) => {
-      if (!trackDragActiveRef.current || !onRowWeightsChange) return;
+      if (!trackDragActiveRef.current || !onRowTrackResize) return;
       const svg = (e.currentTarget as SVGRectElement).ownerSVGElement;
       if (svg) applyRowBoundaryClient(e.clientY, rowBoundaryDragRef.current, svg);
     },
-    [applyRowBoundaryClient, onRowWeightsChange]
+    [applyRowBoundaryClient, onRowTrackResize]
   );
 
   const onPointerUpTrackBoundary = useCallback(
@@ -928,84 +1002,6 @@ export function GridChartShape(props: GridChartShapeProps) {
           </g>
         );
       })}
-      {canResizeTracks && onColumnWeightsChange && layout.cols > 1
-        ? layout.colBoundaries.map((b) => {
-            const pad = TRACK_EDGE_HIT_PAD;
-            const hitW = Math.max(6, pad * 2);
-            const hovered = hoveredColBoundary === b.index;
-            return (
-              <g key={`col-bound-${b.index}`}>
-                {hovered ? (
-                  <line
-                    x1={b.x}
-                    y1={b.y0}
-                    x2={b.x}
-                    y2={b.y1}
-                    stroke="rgba(59,130,246,0.9)"
-                    strokeWidth={1.25}
-                    vectorEffect="non-scaling-stroke"
-                    pointerEvents="none"
-                  />
-                ) : null}
-                <rect
-                  x={b.x - hitW / 2}
-                  y={b.y0}
-                  width={hitW}
-                  height={b.y1 - b.y0}
-                  fill="transparent"
-                  style={{ cursor: "col-resize", touchAction: "none" }}
-                  onPointerEnter={() => setHoveredColBoundary(b.index)}
-                  onPointerLeave={() =>
-                    setHoveredColBoundary((prev) => (prev === b.index ? null : prev))
-                  }
-                  onPointerDown={onPointerDownColBoundary(b.index)}
-                  onPointerMove={onPointerMoveColBoundary}
-                  onPointerUp={onPointerUpTrackBoundary}
-                  onPointerCancel={onPointerUpTrackBoundary}
-                />
-              </g>
-            );
-          })
-        : null}
-      {canResizeTracks && onRowWeightsChange && layout.rows > 1
-        ? layout.rowBoundaries.map((b) => {
-            const pad = TRACK_EDGE_HIT_PAD;
-            const hitH = Math.max(6, pad * 2);
-            const hovered = hoveredRowBoundary === b.index;
-            return (
-              <g key={`row-bound-${b.index}`}>
-                {hovered ? (
-                  <line
-                    x1={b.x0}
-                    y1={b.y}
-                    x2={b.x1}
-                    y2={b.y}
-                    stroke="rgba(59,130,246,0.9)"
-                    strokeWidth={1.25}
-                    vectorEffect="non-scaling-stroke"
-                    pointerEvents="none"
-                  />
-                ) : null}
-                <rect
-                  x={b.x0}
-                  y={b.y - hitH / 2}
-                  width={b.x1 - b.x0}
-                  height={hitH}
-                  fill="transparent"
-                  style={{ cursor: "row-resize", touchAction: "none" }}
-                  onPointerEnter={() => setHoveredRowBoundary(b.index)}
-                  onPointerLeave={() =>
-                    setHoveredRowBoundary((prev) => (prev === b.index ? null : prev))
-                  }
-                  onPointerDown={onPointerDownRowBoundary(b.index)}
-                  onPointerMove={onPointerMoveRowBoundary}
-                  onPointerUp={onPointerUpTrackBoundary}
-                  onPointerCancel={onPointerUpTrackBoundary}
-                />
-              </g>
-            );
-          })
-        : null}
       {layout.cells.map((cell, i) => {
         const fontSize = Math.min(Math.min(cell.w, cell.h) * 0.38, 12);
         const raw = chartBase.cells?.[i];
@@ -1095,6 +1091,90 @@ export function GridChartShape(props: GridChartShapeProps) {
             );
           })
         : null}
+      {canResizeTracks && onColumnTrackResize && layout.cols > 1
+        ? layout.colBoundaries.map((b) => {
+            const pad = TRACK_EDGE_HIT_PAD;
+            const hitW = Math.max(6, pad * 2);
+            const hovered = hoveredColBoundary === b.index;
+            return (
+              <g key={`col-bound-${b.index}`}>
+                {hovered ? (
+                  <line
+                    x1={b.x}
+                    y1={b.y0}
+                    x2={b.x}
+                    y2={b.y1}
+                    stroke="rgba(59,130,246,0.9)"
+                    strokeWidth={1.25}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                ) : null}
+                <rect
+                  x={b.x - hitW / 2}
+                  y={b.y0}
+                  width={hitW}
+                  height={b.y1 - b.y0}
+                  fill="transparent"
+                  style={{ cursor: "col-resize", touchAction: "none" }}
+                  onPointerEnter={() => {
+                    setHoveredColBoundary(b.index);
+                    setHoveredCellIndex(null);
+                  }}
+                  onPointerLeave={() =>
+                    setHoveredColBoundary((prev) => (prev === b.index ? null : prev))
+                  }
+                  onPointerDown={onPointerDownColBoundary(b.index)}
+                  onPointerMove={onPointerMoveColBoundary}
+                  onPointerUp={onPointerUpTrackBoundary}
+                  onPointerCancel={onPointerUpTrackBoundary}
+                />
+              </g>
+            );
+          })
+        : null}
+      {canResizeTracks && onRowTrackResize && layout.rows > 1
+        ? layout.rowBoundaries.map((b) => {
+            const pad = TRACK_EDGE_HIT_PAD;
+            const hitH = Math.max(6, pad * 2);
+            const hovered = hoveredRowBoundary === b.index;
+            return (
+              <g key={`row-bound-${b.index}`}>
+                {hovered ? (
+                  <line
+                    x1={b.x0}
+                    y1={b.y}
+                    x2={b.x1}
+                    y2={b.y}
+                    stroke="rgba(59,130,246,0.9)"
+                    strokeWidth={1.25}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                ) : null}
+                <rect
+                  x={b.x0}
+                  y={b.y - hitH / 2}
+                  width={b.x1 - b.x0}
+                  height={hitH}
+                  fill="transparent"
+                  style={{ cursor: "row-resize", touchAction: "none" }}
+                  onPointerEnter={() => {
+                    setHoveredRowBoundary(b.index);
+                    setHoveredCellIndex(null);
+                  }}
+                  onPointerLeave={() =>
+                    setHoveredRowBoundary((prev) => (prev === b.index ? null : prev))
+                  }
+                  onPointerDown={onPointerDownRowBoundary(b.index)}
+                  onPointerMove={onPointerMoveRowBoundary}
+                  onPointerUp={onPointerUpTrackBoundary}
+                  onPointerCancel={onPointerUpTrackBoundary}
+                />
+              </g>
+            );
+          })
+        : null}
       {canStructureChrome && layout.structure ? (
         <GridChartStructureChrome
           layout={layout}
@@ -1123,16 +1203,28 @@ export function GridChartShape(props: GridChartShapeProps) {
   );
 
   return (
-    <SvgShapeBase
-      {...svgBaseProps}
-      defaultWidth={320}
-      defaultHeight={260}
-      viewBox={`0 0 ${layout.vbW} ${layout.vbH}`}
-      frostedClipRectInViewBox={{ x: body.x, y: body.y, w: body.w, h: body.h, rx: body.rx, ry: body.ry }}
-      slideColorTransition={isGridColorLerp ? undefined : slideColorTransition}
-      svgOverflowVisible={gridStructureInteractive}
-      preserveShellHalo={gridStructureInteractive}
-      svgContent={gridContent}
-    />
+    <div
+      data-dw-grid-chart-shell=""
+      data-dw-highlight-anim={shellHighlightStyle ? "true" : undefined}
+      className="relative box-border h-full w-full"
+      style={{
+        borderRadius: shellBorderRadius,
+        overflow: preserveShellHalo ? "visible" : "hidden",
+        ...mergeCardShellHighlightStyle(shellHighlightStyle, undefined),
+      }}
+    >
+      <SvgShapeBase
+        {...svgBaseProps}
+        defaultWidth={320}
+        defaultHeight={260}
+        viewBox={`0 0 ${layout.vbW} ${layout.vbH}`}
+        borderRadius={shellBorderRadius}
+        frostedClipRectInViewBox={{ x: body.x, y: body.y, w: body.w, h: body.h, rx: body.rx, ry: body.ry }}
+        slideColorTransition={isGridColorLerp ? undefined : slideColorTransition}
+        svgOverflowVisible={gridStructureInteractive}
+        preserveShellHalo={preserveShellHalo}
+        svgContent={gridContent}
+      />
+    </div>
   );
 }

@@ -313,7 +313,7 @@ const NodeChartGridSchema = z.object({
   richColumnTitles: z.array(z.array(RichTextRunSchema).optional()).optional(),
   rowTitles: z.array(z.string()).optional(),
   richRowTitles: z.array(z.array(RichTextRunSchema).optional()).optional(),
-  cellGap: z.number().min(0).max(0.45).optional(),
+  cellGap: z.number().min(0).max(24).optional(),
   showGridLines: z.boolean().optional(),
   gridLineColor: z.string().optional(),
   themeHueStepDeg: z.number().min(1).max(360).optional(),
