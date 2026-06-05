@@ -39,6 +39,7 @@ export interface CostScenarioInputs {
   quantity: number;
   utilization: number;
   periods: number;
+  periodUnit?: string;
 }
 
 export type ChargingRuleKind = "fixed";
@@ -51,6 +52,7 @@ export interface ChargingRule {
   value: number;
   period: string;
   enabled: boolean;
+  scenarioInputs?: CostScenarioInputs;
 }
 
 interface CanvasElement {
@@ -68,6 +70,7 @@ interface SimulationCostWorkspaceProps {
   currency: string;
   period: string;
   scenarioProfile: CostScenarioProfile;
+  scenarioInputs: CostScenarioInputs;
   chargingRules: ChargingRule[];
   contributors: CostContributor[];
   directCost: number;
@@ -85,11 +88,13 @@ interface SimulationCostWorkspaceProps {
     rulePeriods: string;
     contributors: number;
     scenarioProfile: CostScenarioProfile;
+    scenarioInputs: CostScenarioInputs;
   }>;
   onBaseCostChange: (value: number) => void;
   onCurrencyChange: (value: string) => void;
   onPeriodChange: (value: string) => void;
   onScenarioProfileChange: (value: CostScenarioProfile) => void;
+  onScenarioInputsChange: (value: CostScenarioInputs) => void;
   onChargingRulesChange: (rules: ChargingRule[]) => void;
   onContributorsChange: (contributors: CostContributor[]) => void;
 }
@@ -159,7 +164,19 @@ const PERIOD_OPTIONS = [
   { value: "year", label: "Per year" },
 ];
 
-const PERIOD_SECONDS: Record<string, number> = {
+const TIME_PERIOD_OPTIONS = PERIOD_OPTIONS.filter((option) =>
+  option.value === "second"
+  || option.value === "minute"
+  || option.value === "hour"
+  || option.value === "day"
+  || option.value === "week"
+  || option.value === "month"
+  || option.value === "quarter"
+  || option.value === "half-year"
+  || option.value === "year",
+);
+
+const TIME_PERIOD_SECONDS: Record<string, number> = {
   second: 1,
   minute: 60,
   hour: 60 * 60,
@@ -169,18 +186,76 @@ const PERIOD_SECONDS: Record<string, number> = {
   quarter: 60 * 60 * 24 * 90,
   "half-year": 60 * 60 * 24 * 182.5,
   year: 60 * 60 * 24 * 365,
-  request: 1,
-  transaction: 1,
-  event: 1,
-  build: 1,
-  deployment: 1,
 };
 
-function getPeriodMultiplier(fromPeriod: string, toPeriod: string): number {
-  const fromSeconds = PERIOD_SECONDS[fromPeriod];
-  const toSeconds = PERIOD_SECONDS[toPeriod];
-  if (!fromSeconds || !toSeconds) return 1;
-  return toSeconds / fromSeconds;
+const USAGE_PERIOD_SET = new Set(["request", "transaction", "event", "build", "deployment"]);
+
+function isUsagePeriod(period: string): boolean {
+  return USAGE_PERIOD_SET.has(period);
+}
+
+function getUsageUnitsPerSecond(inputs?: CostScenarioInputs): number {
+  const quantity = Number.isFinite(inputs?.quantity) ? Math.max(0, Number(inputs?.quantity)) : 0;
+  const utilization = Number.isFinite(inputs?.utilization) ? Math.min(Math.max(Number(inputs?.utilization), 0), 1) : 1;
+  const periods = Number.isFinite(inputs?.periods) ? Math.max(1, Number(inputs?.periods)) : 1;
+  const periodUnit = inputs?.periodUnit && TIME_PERIOD_SECONDS[inputs.periodUnit] ? inputs.periodUnit : "month";
+  const unitSeconds = TIME_PERIOD_SECONDS[periodUnit] ?? 0;
+  if (unitSeconds <= 0) return 0;
+  return (quantity * utilization) / (periods * unitSeconds);
+}
+
+function normalizeScenarioInputs(inputs?: CostScenarioInputs): CostScenarioInputs {
+  return {
+    quantity: Number.isFinite(inputs?.quantity) ? Math.max(0, Number(inputs?.quantity)) : 1,
+    utilization: Number.isFinite(inputs?.utilization)
+      ? Math.min(Math.max(Number(inputs?.utilization), 0), 1)
+      : 1,
+    periods: Number.isFinite(inputs?.periods) ? Math.max(1, Number(inputs?.periods)) : 1,
+    periodUnit:
+      inputs?.periodUnit && TIME_PERIOD_SECONDS[inputs.periodUnit]
+        ? inputs.periodUnit
+        : "month",
+  };
+}
+
+function getPeriodMultiplier(
+  fromPeriod: string,
+  toPeriod: string,
+  fromInputs?: CostScenarioInputs,
+  toInputs?: CostScenarioInputs,
+): number {
+  if (fromPeriod === toPeriod) return 1;
+
+  const fromIsUsage = isUsagePeriod(fromPeriod);
+  const toIsUsage = isUsagePeriod(toPeriod);
+
+  if (!fromIsUsage && !toIsUsage) {
+    const fromSeconds = TIME_PERIOD_SECONDS[fromPeriod];
+    const toSeconds = TIME_PERIOD_SECONDS[toPeriod];
+    if (!fromSeconds || !toSeconds) return 1;
+    return toSeconds / fromSeconds;
+  }
+
+  if (fromIsUsage && !toIsUsage) {
+    const toSeconds = TIME_PERIOD_SECONDS[toPeriod];
+    const fromRate = getUsageUnitsPerSecond(fromInputs);
+    if (!toSeconds || fromRate <= 0) return 0;
+    return fromRate * toSeconds;
+  }
+
+  if (!fromIsUsage && toIsUsage) {
+    const fromSeconds = TIME_PERIOD_SECONDS[fromPeriod];
+    const toRate = getUsageUnitsPerSecond(toInputs);
+    if (!fromSeconds || toRate <= 0) return 0;
+    const usageUnitsInFromPeriod = toRate * fromSeconds;
+    if (usageUnitsInFromPeriod <= 0) return 0;
+    return 1 / usageUnitsInFromPeriod;
+  }
+
+  const fromRate = getUsageUnitsPerSecond(fromInputs);
+  const toRate = getUsageUnitsPerSecond(toInputs);
+  if (fromRate <= 0 || toRate <= 0) return 0;
+  return fromRate / toRate;
 }
 
 export function SimulationCostWorkspace({
@@ -192,6 +267,7 @@ export function SimulationCostWorkspace({
   currency,
   period,
   scenarioProfile,
+  scenarioInputs,
   chargingRules,
   contributors,
   directCost,
@@ -202,6 +278,7 @@ export function SimulationCostWorkspace({
   onCurrencyChange,
   onPeriodChange,
   onScenarioProfileChange,
+  onScenarioInputsChange,
   onChargingRulesChange,
   onContributorsChange,
 }: SimulationCostWorkspaceProps) {
@@ -222,11 +299,20 @@ export function SimulationCostWorkspace({
 
   const currentTargetBasePeriod = currentTargetReportRow?.period || period;
   const summaryPeriodMultiplier = useMemo(
-    () => getPeriodMultiplier(currentTargetBasePeriod, summaryPeriod),
-    [currentTargetBasePeriod, summaryPeriod],
+    () => getPeriodMultiplier(currentTargetBasePeriod, summaryPeriod, scenarioInputs, scenarioInputs),
+    [currentTargetBasePeriod, scenarioInputs, summaryPeriod],
   );
   const summaryDirectCost = directCost * summaryPeriodMultiplier;
   const summaryTotalCost = totalCost * summaryPeriodMultiplier;
+  const targetIsUsagePeriod = isUsagePeriod(currentTargetBasePeriod);
+  const usagePeriodUnit =
+    scenarioInputs.periodUnit && TIME_PERIOD_SECONDS[scenarioInputs.periodUnit]
+      ? scenarioInputs.periodUnit
+      : "month";
+  const effectiveUsageRate =
+    Math.max(0, Number.isFinite(scenarioInputs.quantity) ? Number(scenarioInputs.quantity) : 0)
+    * Math.min(Math.max(Number.isFinite(scenarioInputs.utilization) ? Number(scenarioInputs.utilization) : 1, 0), 1);
+  const effectiveUsagePeriods = Math.max(1, Number.isFinite(scenarioInputs.periods) ? Number(scenarioInputs.periods) : 1);
   const summaryBaseline = baseline
     ? {
         direct: baseline.direct * summaryPeriodMultiplier,
@@ -344,19 +430,19 @@ export function SimulationCostWorkspace({
       "scenario_profile",
     ];
     const rows = reportRows.map((row) => {
-      const rowMultiplier = getPeriodMultiplier(row.period || period, summaryPeriod);
+      const rowMultiplier = getPeriodMultiplier(row.period || period, summaryPeriod, row.scenarioInputs, row.scenarioInputs);
       return [
-      row.id,
-      row.label,
-      row.type,
-      (row.direct * rowMultiplier).toFixed(2),
-      (row.total * rowMultiplier).toFixed(2),
-      String(row.rules),
-      row.currency,
-      summaryPeriod,
-      row.rulePeriods,
-      String(row.contributors),
-      row.scenarioProfile,
+        row.id,
+        row.label,
+        row.type,
+        (row.direct * rowMultiplier).toFixed(2),
+        (row.total * rowMultiplier).toFixed(2),
+        String(row.rules),
+        row.currency,
+        summaryPeriod,
+        row.rulePeriods,
+        String(row.contributors),
+        row.scenarioProfile,
       ];
     });
 
@@ -441,6 +527,69 @@ export function SimulationCostWorkspace({
               <div className="text-[11px] text-muted-foreground">Billing basis for the cost number above, such as per request, per hour, or per month.</div>
             </div>
           </div>
+
+          {isUsagePeriod(period) ? (
+            <div className="grid gap-3 rounded-md border border-border/60 bg-background p-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="usage-quantity">{`# of ${period}s`}</Label>
+                <Input
+                  id="usage-quantity"
+                  type="number"
+                  inputMode="decimal"
+                  value={String(Number.isFinite(scenarioInputs.quantity) ? scenarioInputs.quantity : 0)}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    onScenarioInputsChange({
+                      ...scenarioInputs,
+                      quantity: Number.isFinite(next) ? Math.max(0, next) : 0,
+                    });
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="usage-period-count">Per every</Label>
+                <Input
+                  id="usage-period-count"
+                  type="number"
+                  inputMode="decimal"
+                  value={String(Number.isFinite(scenarioInputs.periods) ? scenarioInputs.periods : 1)}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    onScenarioInputsChange({
+                      ...scenarioInputs,
+                      periods: Number.isFinite(next) ? Math.max(1, next) : 1,
+                    });
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="usage-period-unit">Time period</Label>
+                <Select
+                  value={scenarioInputs.periodUnit && TIME_PERIOD_SECONDS[scenarioInputs.periodUnit] ? scenarioInputs.periodUnit : "month"}
+                  onValueChange={(nextPeriodUnit) =>
+                    onScenarioInputsChange({
+                      ...scenarioInputs,
+                      periodUnit: nextPeriodUnit,
+                    })
+                  }
+                >
+                  <SelectTrigger id="usage-period-unit">
+                    <SelectValue placeholder="Select time period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_PERIOD_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:col-span-3 text-[11px] text-muted-foreground">
+                Used to normalize usage-based costs across time periods and mixed rollups.
+              </div>
+            </div>
+          ) : null}
 
           <div className="rounded-md border border-border/60 bg-background p-3">
             <div className="text-sm font-medium">Scenario profile</div>
@@ -602,6 +751,7 @@ export function SimulationCostWorkspace({
                     value: 0,
                     period,
                     enabled: true,
+                    scenarioInputs: normalizeScenarioInputs(scenarioInputs),
                   };
                   onChargingRulesChange([...chargingRules, nextRule]);
                 }}
@@ -618,6 +768,15 @@ export function SimulationCostWorkspace({
                 <div className="text-xs text-muted-foreground">No charging rules yet.</div>
               ) : (
                 chargingRules.map((rule) => (
+                  (() => {
+                    const ruleScenarioInputs = normalizeScenarioInputs(rule.scenarioInputs ?? scenarioInputs);
+                    const ruleEffectiveRate = Math.max(0, ruleScenarioInputs.quantity) * ruleScenarioInputs.utilization;
+                    const ruleEffectivePeriods = Math.max(1, ruleScenarioInputs.periods);
+                    const ruleEffectivePeriodUnit =
+                      ruleScenarioInputs.periodUnit && TIME_PERIOD_SECONDS[ruleScenarioInputs.periodUnit]
+                        ? ruleScenarioInputs.periodUnit
+                        : "month";
+                    return (
                   <div key={rule.id} className="grid gap-2 rounded border border-border/50 p-2 sm:grid-cols-[1fr_140px_120px_140px_auto_auto]">
                     <div className="space-y-2">
                       <div className="space-y-1">
@@ -695,7 +854,13 @@ export function SimulationCostWorkspace({
                         onValueChange={(nextPeriod) =>
                           onChargingRulesChange(
                             chargingRules.map((r) =>
-                              r.id === rule.id ? { ...r, period: nextPeriod } : r,
+                              r.id === rule.id
+                                ? {
+                                    ...r,
+                                    period: nextPeriod,
+                                    scenarioInputs: r.scenarioInputs ?? normalizeScenarioInputs(scenarioInputs),
+                                  }
+                                : r,
                             ),
                           )
                         }
@@ -712,6 +877,97 @@ export function SimulationCostWorkspace({
                         </SelectContent>
                       </Select>
                       <div className="text-[11px] text-muted-foreground">Billing period used by this rule.</div>
+                      {isUsagePeriod(rule.period || period) ? (
+                        <div className="mt-2 space-y-2 rounded border border-border/50 bg-muted/20 p-2">
+                          <div className="space-y-1">
+                            <Label className="text-[11px] text-foreground/80">{`# of ${rule.period || period}s`}</Label>
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={String(ruleScenarioInputs.quantity)}
+                              onChange={(e) => {
+                                const next = Number(e.target.value);
+                                onChargingRulesChange(
+                                  chargingRules.map((r) =>
+                                    r.id === rule.id
+                                      ? {
+                                          ...r,
+                                          scenarioInputs: {
+                                            ...ruleScenarioInputs,
+                                            quantity: Number.isFinite(next) ? Math.max(0, next) : 0,
+                                          },
+                                        }
+                                      : r,
+                                  ),
+                                );
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px] text-foreground/80">Per every</Label>
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={String(ruleScenarioInputs.periods)}
+                              onChange={(e) => {
+                                const next = Number(e.target.value);
+                                onChargingRulesChange(
+                                  chargingRules.map((r) =>
+                                    r.id === rule.id
+                                      ? {
+                                          ...r,
+                                          scenarioInputs: {
+                                            ...ruleScenarioInputs,
+                                            periods: Number.isFinite(next) ? Math.max(1, next) : 1,
+                                          },
+                                        }
+                                      : r,
+                                  ),
+                                );
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px] text-foreground/80">Time period</Label>
+                            <Select
+                              value={ruleScenarioInputs.periodUnit || "month"}
+                              onValueChange={(nextPeriodUnit) =>
+                                onChargingRulesChange(
+                                  chargingRules.map((r) =>
+                                    r.id === rule.id
+                                      ? {
+                                          ...r,
+                                          scenarioInputs: {
+                                            ...ruleScenarioInputs,
+                                            periodUnit: nextPeriodUnit,
+                                          },
+                                        }
+                                      : r,
+                                  ),
+                                )
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select time period" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {TIME_PERIOD_OPTIONS.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            Usage normalization for this rule when period is event/request/build/deployment.
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            Effective rule rate: {ruleEffectiveRate.toFixed(2)} {rule.period || period}
+                            {ruleEffectiveRate === 1 ? "" : "s"} per {ruleEffectivePeriods} {ruleEffectivePeriodUnit}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                     <Button
                       type="button"
@@ -736,6 +992,8 @@ export function SimulationCostWorkspace({
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                    );
+                  })()
                 ))
               )}
             </div>
@@ -850,6 +1108,12 @@ export function SimulationCostWorkspace({
             <div className="mt-1 text-xs text-muted-foreground">
               Rule periods: {currentTargetReportRow?.rulePeriods || currentTargetBasePeriod || "n/a"}
             </div>
+            {targetIsUsagePeriod ? (
+              <div className="mt-1 text-xs text-muted-foreground">
+                Effective rate: {effectiveUsageRate.toFixed(2)} {currentTargetBasePeriod}
+                {effectiveUsageRate === 1 ? "" : "s"} per {effectiveUsagePeriods} {usagePeriodUnit}
+              </div>
+            ) : null}
             {summaryBaseline ? (
               <div className="mt-1 text-xs text-muted-foreground">
                 Delta direct: {fmtMoney(summaryDirectCost - summaryBaseline.direct, currency || "USD")} | Delta total: {fmtMoney(summaryTotalCost - summaryBaseline.total, currency || "USD")}

@@ -457,6 +457,9 @@ function getSimulationCostScenarioInputs(metaData?: Record<string, string>): Cos
     quantity: Number.isFinite(parsed.quantity) ? Number(parsed.quantity) : DEFAULT_SIMULATION_COST_SCENARIO_INPUTS.quantity,
     utilization: normalizeUtilization(Number(parsed.utilization)),
     periods: Number.isFinite(parsed.periods) ? Number(parsed.periods) : DEFAULT_SIMULATION_COST_SCENARIO_INPUTS.periods,
+    periodUnit: typeof parsed.periodUnit === "string" && parsed.periodUnit.trim().length > 0
+      ? parsed.periodUnit.trim().toLowerCase()
+      : "month",
   };
 }
 
@@ -466,6 +469,24 @@ function getSimulationCostChargingRules(metaData?: Record<string, string>): Char
 
   const isRuleKind = (kind: string): kind is ChargingRuleKind =>
     kind === "fixed";
+
+  const normalizeRuleScenarioInputs = (inputs?: Partial<CostScenarioInputs>): CostScenarioInputs => {
+    const normalizeUtilization = (value: number): number => {
+      if (!Number.isFinite(value)) return DEFAULT_SIMULATION_COST_SCENARIO_INPUTS.utilization;
+      if (value > 1 && value <= 100) return value / 100;
+      return Math.min(Math.max(value, 0), 1);
+    };
+
+    return {
+      quantity: Number.isFinite(inputs?.quantity) ? Number(inputs?.quantity) : DEFAULT_SIMULATION_COST_SCENARIO_INPUTS.quantity,
+      utilization: normalizeUtilization(Number(inputs?.utilization)),
+      periods: Number.isFinite(inputs?.periods) ? Number(inputs?.periods) : DEFAULT_SIMULATION_COST_SCENARIO_INPUTS.periods,
+      periodUnit:
+        typeof inputs?.periodUnit === "string" && inputs.periodUnit.trim().length > 0
+          ? inputs.periodUnit.trim().toLowerCase()
+          : "month",
+    };
+  };
 
   return parsed
     .filter((rule) => rule && typeof rule.id === "string" && rule.id.trim().length > 0)
@@ -477,10 +498,11 @@ function getSimulationCostChargingRules(metaData?: Record<string, string>): Char
       value: Number.isFinite(rule.value) ? Number(rule.value) : 0,
       period: typeof rule.period === "string" && rule.period.trim().length > 0 ? rule.period.trim() : DEFAULT_SIMULATION_COST_PERIOD,
       enabled: rule.enabled !== false,
+      scenarioInputs: normalizeRuleScenarioInputs(rule.scenarioInputs),
     }));
 }
 
-const SIMULATION_PERIOD_SECONDS: Record<string, number> = {
+const SIMULATION_TIME_PERIOD_SECONDS: Record<string, number> = {
   second: 1,
   minute: 60,
   hour: 60 * 60,
@@ -490,22 +512,65 @@ const SIMULATION_PERIOD_SECONDS: Record<string, number> = {
   quarter: 60 * 60 * 24 * 90,
   "half-year": 60 * 60 * 24 * 182.5,
   year: 60 * 60 * 24 * 365,
-  request: 1,
-  transaction: 1,
-  event: 1,
-  build: 1,
-  deployment: 1,
 };
 
-function getSimulationPeriodSeconds(period: string): number {
-  return SIMULATION_PERIOD_SECONDS[period] ?? 0;
+const SIMULATION_USAGE_PERIOD_SET = new Set(["request", "transaction", "event", "build", "deployment"]);
+
+function isSimulationUsagePeriod(period: string): boolean {
+  return SIMULATION_USAGE_PERIOD_SET.has(period);
 }
 
-function getSimulationPeriodMultiplier(fromPeriod: string, toPeriod: string): number {
-  const fromSeconds = getSimulationPeriodSeconds(fromPeriod);
-  const toSeconds = getSimulationPeriodSeconds(toPeriod);
-  if (fromSeconds <= 0 || toSeconds <= 0) return 1;
-  return toSeconds / fromSeconds;
+function getSimulationUsageUnitsPerSecond(inputs?: CostScenarioInputs): number {
+  const quantity = Number.isFinite(inputs?.quantity) ? Math.max(0, Number(inputs?.quantity)) : 0;
+  const utilization = Number.isFinite(inputs?.utilization) ? Math.min(Math.max(Number(inputs?.utilization), 0), 1) : 1;
+  const periods = Number.isFinite(inputs?.periods) ? Math.max(1, Number(inputs?.periods)) : 1;
+  const periodUnit =
+    typeof inputs?.periodUnit === "string" && SIMULATION_TIME_PERIOD_SECONDS[inputs.periodUnit]
+      ? inputs.periodUnit
+      : "month";
+  const unitSeconds = SIMULATION_TIME_PERIOD_SECONDS[periodUnit] ?? 0;
+  if (unitSeconds <= 0) return 0;
+  return (quantity * utilization) / (periods * unitSeconds);
+}
+
+function getSimulationPeriodMultiplier(
+  fromPeriod: string,
+  toPeriod: string,
+  fromInputs?: CostScenarioInputs,
+  toInputs?: CostScenarioInputs,
+): number {
+  if (fromPeriod === toPeriod) return 1;
+
+  const fromIsUsage = isSimulationUsagePeriod(fromPeriod);
+  const toIsUsage = isSimulationUsagePeriod(toPeriod);
+
+  if (!fromIsUsage && !toIsUsage) {
+    const fromSeconds = SIMULATION_TIME_PERIOD_SECONDS[fromPeriod];
+    const toSeconds = SIMULATION_TIME_PERIOD_SECONDS[toPeriod];
+    if (fromSeconds <= 0 || toSeconds <= 0) return 1;
+    return toSeconds / fromSeconds;
+  }
+
+  if (fromIsUsage && !toIsUsage) {
+    const toSeconds = SIMULATION_TIME_PERIOD_SECONDS[toPeriod];
+    const fromRate = getSimulationUsageUnitsPerSecond(fromInputs);
+    if (toSeconds <= 0 || fromRate <= 0) return 0;
+    return fromRate * toSeconds;
+  }
+
+  if (!fromIsUsage && toIsUsage) {
+    const fromSeconds = SIMULATION_TIME_PERIOD_SECONDS[fromPeriod];
+    const toRate = getSimulationUsageUnitsPerSecond(toInputs);
+    if (fromSeconds <= 0 || toRate <= 0) return 0;
+    const usageUnitsInFromPeriod = toRate * fromSeconds;
+    if (usageUnitsInFromPeriod <= 0) return 0;
+    return 1 / usageUnitsInFromPeriod;
+  }
+
+  const fromRate = getSimulationUsageUnitsPerSecond(fromInputs);
+  const toRate = getSimulationUsageUnitsPerSecond(toInputs);
+  if (fromRate <= 0 || toRate <= 0) return 0;
+  return fromRate / toRate;
 }
 
 function summarizeSimulationRulePeriods(rules: ChargingRule[], fallbackPeriod: string): string {
@@ -527,14 +592,20 @@ function summarizeSimulationRulePeriods(rules: ChargingRule[], fallbackPeriod: s
 function resolveSimulationDirectCost(
   baseCost: number,
   itemPeriod: string,
+  scenarioInputs: CostScenarioInputs,
   chargingRules: ChargingRule[],
-  relatedSubtotal: number,
 ): number {
   let direct = baseCost;
 
   chargingRules.forEach((rule) => {
     if (!rule.enabled) return;
-    const periodMultiplier = getSimulationPeriodMultiplier(rule.period || itemPeriod, itemPeriod);
+    const ruleScenarioInputs = rule.scenarioInputs ?? scenarioInputs;
+    const periodMultiplier = getSimulationPeriodMultiplier(
+      rule.period || itemPeriod,
+      itemPeriod,
+      ruleScenarioInputs,
+      scenarioInputs,
+    );
     if (rule.kind === "fixed") {
       direct += rule.value * periodMultiplier;
     }
@@ -2814,12 +2885,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const simulationCostModelByItemId = useMemo(() => {
     const baseByItemId: Record<string, number> = {};
+    const periodByItemId: Record<string, string> = {};
     const contributorsByItemId: Record<string, CostContributor[]> = {};
     const scenarioInputsByItemId: Record<string, CostScenarioInputs> = {};
     const chargingRulesByItemId: Record<string, ChargingRule[]> = {};
 
     const readMeta = (itemId: string, metaData?: Record<string, string>) => {
       baseByItemId[itemId] = getSimulationCostBase(metaData);
+      periodByItemId[itemId] = getSimulationCostPeriod(metaData);
       contributorsByItemId[itemId] = getSimulationCostContributors(metaData);
       scenarioInputsByItemId[itemId] = getSimulationCostScenarioInputs(metaData);
       chargingRulesByItemId[itemId] = getSimulationCostChargingRules(metaData);
@@ -2844,20 +2917,30 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       const nextDirect: Record<string, number> = { ...directByItemId };
 
       Object.keys(baseByItemId).forEach((itemId) => {
+        const itemPeriod = periodByItemId[itemId] || DEFAULT_SIMULATION_COST_PERIOD;
+        const itemScenarioInputs = scenarioInputsByItemId[itemId] ?? DEFAULT_SIMULATION_COST_SCENARIO_INPUTS;
         const contributors = contributorsByItemId[itemId] ?? [];
         const relatedSubtotal = contributors.reduce(
-          (sum, contributor) => sum + (totalByItemId[contributor.id] ?? 0) * contributor.multiplier,
+          (sum, contributor) => {
+            const contributorPeriod = periodByItemId[contributor.id] || DEFAULT_SIMULATION_COST_PERIOD;
+            const contributorScenarioInputs =
+              scenarioInputsByItemId[contributor.id] ?? DEFAULT_SIMULATION_COST_SCENARIO_INPUTS;
+            const contributorTotal = totalByItemId[contributor.id] ?? 0;
+            const multiplier = getSimulationPeriodMultiplier(
+              contributorPeriod,
+              itemPeriod,
+              contributorScenarioInputs,
+              itemScenarioInputs,
+            );
+            return sum + contributorTotal * contributor.multiplier * multiplier;
+          },
           0,
         );
         const direct = resolveSimulationDirectCost(
           baseByItemId[itemId] ?? 0,
-          getSimulationCostPeriod(diagramData.nodes.find((node) => node.id === itemId)?.metaData)
-            || getSimulationCostPeriod(diagramData.zones?.find((zone) => zone.id === itemId)?.metaData)
-            || getSimulationCostPeriod(
-              diagramData.connections.find((connection, index) => stableDiagramConnectionId(connection, index) === itemId)?.metaData,
-            ),
+          itemPeriod,
+          itemScenarioInputs,
           chargingRulesByItemId[itemId] ?? [],
-          relatedSubtotal,
         );
         const total = direct + relatedSubtotal;
         nextDirect[itemId] = direct;
@@ -3012,6 +3095,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         rulePeriods: summarizeSimulationRulePeriods(rules, period),
         contributors: contributors.length,
         scenarioProfile: getSimulationCostScenarioProfile(node.metaData),
+        scenarioInputs: getSimulationCostScenarioInputs(node.metaData),
       };
     });
 
@@ -3031,6 +3115,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         rulePeriods: summarizeSimulationRulePeriods(rules, period),
         contributors: contributors.length,
         scenarioProfile: getSimulationCostScenarioProfile(zone.metaData),
+        scenarioInputs: getSimulationCostScenarioInputs(zone.metaData),
       };
     });
 
@@ -3051,6 +3136,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         rulePeriods: summarizeSimulationRulePeriods(rules, period),
         contributors: contributors.length,
         scenarioProfile: getSimulationCostScenarioProfile(connection.metaData),
+        scenarioInputs: getSimulationCostScenarioInputs(connection.metaData),
       };
     });
 
@@ -5529,6 +5615,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               onScenarioProfileChange={(value) => {
                 updateSimulationCostMetaDataForTarget({
                   [SIMULATION_COST_SCENARIO_PROFILE_KEY]: value,
+                });
+              }}
+              onScenarioInputsChange={(value) => {
+                updateSimulationCostMetaDataForTarget({
+                  [SIMULATION_COST_SCENARIO_INPUTS_KEY]: JSON.stringify(value),
                 });
               }}
               onChargingRulesChange={(rules) => {
