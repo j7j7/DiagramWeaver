@@ -112,109 +112,100 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   const isMindmapPalette =
     provider === 'generic' && category === 'object' && derivedPaletteSlug === 'mind-map-node';
 
+  const innerIconClass = `pointer-events-none select-none flex items-center justify-center text-muted-foreground ${invertInDarkMode && !isTextBoxHeadingResource ? 'dark:[&_img]:invert' : ''}`;
+  const paletteImgProps = {
+    draggable: false as const,
+    onDragStart: (e: React.DragEvent) => {
+      e.preventDefault();
+    },
+  };
+
+  const renderIconContent = (size: 'compact' | 'normal') => {
+    const dim = size === 'compact' ? 48 : 24;
+    const imgClass =
+      size === 'compact'
+        ? 'max-h-[92%] max-w-[92%] h-auto w-auto object-contain'
+        : 'w-6 h-6 object-contain';
+
+    if (isTextBoxHeadingResource) {
+      return <ResourceIcon type="generic.object.text-box-heading" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isPieChartPalette) {
+      return <ResourceIcon type="generic.chart.pie" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isBarChartPalette) {
+      return <ResourceIcon type="generic.chart.bar" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isLineChartPalette) {
+      return <ResourceIcon type="generic.chart.line" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isRingChartPalette) {
+      return <ResourceIcon type="generic.chart.ring" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isGridChartPalette) {
+      return <ResourceIcon type="generic.chart.grid" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isCloudPalette) {
+      return <ResourceIcon type="generic.object.cloud" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isProgressBarPalette) {
+      return <ResourceIcon type="generic.object.progress-bar" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isTimelineBarPalette) {
+      return <ResourceIcon type="generic.object.timeline-bar" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isSegmentedRectanglePalette) {
+      return <ResourceIcon type="generic.object.segmented-rectangle" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isPyramidPalette) {
+      return <ResourceIcon type="generic.object.pyramid" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isTimelinePalette) {
+      return <ResourceIcon type="generic.object.timeline" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isMindmapPalette) {
+      return <ResourceIcon type="generic.object.mind-map-node" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (!imageError && iconPath) {
+      return (
+        <img
+          src={iconPath}
+          alt={resource.name}
+          className={imgClass}
+          onError={handleImageError}
+          {...paletteImgProps}
+        />
+      );
+    }
+    return icon;
+  };
+
   return (
-    <div
-      {...pointerHandlers}
-      style={{ opacity: isDragging ? 0.5 : 1, ...pointerHandlers.style }}
-      className={`cursor-move min-w-0 ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-      data-dw-recording-action={derivedPaletteSlug}
-      onDoubleClick={() => onDoubleClick?.({ resource, provider, category })}
-    >
-      {isCompact ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full min-w-0 aspect-square">
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          {...pointerHandlers}
+          style={{ opacity: isDragging ? 0.5 : 1, ...pointerHandlers.style }}
+          className={`cursor-move min-w-0 ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+          data-dw-recording-action={derivedPaletteSlug}
+          onDoubleClick={() => onDoubleClick?.({ resource, provider, category })}
+        >
+          {isCompact ? (
+            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full min-w-0 aspect-square pointer-events-none select-none">
               <CardContent className="p-1 flex h-full min-h-0 w-full flex-col items-center justify-center gap-0.5 text-center min-w-0">
-                <div className={`flex h-full w-full min-h-0 flex-1 items-center justify-center text-muted-foreground ${invertInDarkMode && !isTextBoxHeadingResource ? 'dark:[&_img]:invert' : ''}`}>
-                  {isTextBoxHeadingResource ? (
-                    <ResourceIcon type="generic.object.text-box-heading" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isPieChartPalette ? (
-                    <ResourceIcon type="generic.chart.pie" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isBarChartPalette ? (
-                    <ResourceIcon type="generic.chart.bar" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isLineChartPalette ? (
-                    <ResourceIcon type="generic.chart.line" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isRingChartPalette ? (
-                    <ResourceIcon type="generic.chart.ring" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isGridChartPalette ? (
-                    <ResourceIcon type="generic.chart.grid" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isCloudPalette ? (
-                    <ResourceIcon type="generic.object.cloud" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isProgressBarPalette ? (
-                    <ResourceIcon type="generic.object.progress-bar" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isTimelineBarPalette ? (
-                    <ResourceIcon type="generic.object.timeline-bar" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isSegmentedRectanglePalette ? (
-                    <ResourceIcon type="generic.object.segmented-rectangle" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isPyramidPalette ? (
-                    <ResourceIcon type="generic.object.pyramid" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isTimelinePalette ? (
-                    <ResourceIcon type="generic.object.timeline" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : isMindmapPalette ? (
-                    <ResourceIcon type="generic.object.mind-map-node" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
-                  ) : !imageError && iconPath ? (
-                    <img
-                      src={iconPath}
-                      alt={resource.name}
-                      className="max-h-[92%] max-w-[92%] h-auto w-auto object-contain"
-                      onError={handleImageError}
-                    />
-                  ) : (
-                    icon
-                  )}
+                <div className={`${innerIconClass} h-full w-full min-h-0 flex-1`}>
+                  {renderIconContent('compact')}
                 </div>
                 {resource.hasWhiteVariant && (
                   <div className="text-[10px] text-muted-foreground leading-none">W</div>
                 )}
               </CardContent>
             </Card>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{resource.name}</p>
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors min-w-0">
+          ) : (
+            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors min-w-0 pointer-events-none select-none">
               <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16 min-w-0 w-full">
-                <div className={`w-6 h-6 flex items-center justify-center flex-shrink-0 text-muted-foreground ${invertInDarkMode && !isTextBoxHeadingResource ? 'dark:[&_img]:invert' : ''}`}>
-                  {isTextBoxHeadingResource ? (
-                    <ResourceIcon type="generic.object.text-box-heading" width={24} height={24} className="shrink-0" />
-                  ) : isPieChartPalette ? (
-                    <ResourceIcon type="generic.chart.pie" width={24} height={24} className="shrink-0" />
-                  ) : isBarChartPalette ? (
-                    <ResourceIcon type="generic.chart.bar" width={24} height={24} className="shrink-0" />
-                  ) : isLineChartPalette ? (
-                    <ResourceIcon type="generic.chart.line" width={24} height={24} className="shrink-0" />
-                  ) : isRingChartPalette ? (
-                    <ResourceIcon type="generic.chart.ring" width={24} height={24} className="shrink-0" />
-                  ) : isGridChartPalette ? (
-                    <ResourceIcon type="generic.chart.grid" width={24} height={24} className="shrink-0" />
-                  ) : isCloudPalette ? (
-                    <ResourceIcon type="generic.object.cloud" width={24} height={24} className="shrink-0" />
-                  ) : isProgressBarPalette ? (
-                    <ResourceIcon type="generic.object.progress-bar" width={24} height={24} className="shrink-0" />
-                  ) : isTimelineBarPalette ? (
-                    <ResourceIcon type="generic.object.timeline-bar" width={24} height={24} className="shrink-0" />
-                  ) : isSegmentedRectanglePalette ? (
-                    <ResourceIcon type="generic.object.segmented-rectangle" width={24} height={24} className="shrink-0" />
-                  ) : isPyramidPalette ? (
-                    <ResourceIcon type="generic.object.pyramid" width={24} height={24} className="shrink-0" />
-                  ) : isTimelinePalette ? (
-                    <ResourceIcon type="generic.object.timeline" width={24} height={24} className="shrink-0" />
-                  ) : isMindmapPalette ? (
-                    <ResourceIcon type="generic.object.mind-map-node" width={24} height={24} className="shrink-0" />
-                  ) : !imageError && iconPath ? (
-                    <img
-                      src={iconPath}
-                      alt={resource.name}
-                      className="w-6 h-6 object-contain"
-                      onError={handleImageError}
-                    />
-                  ) : (
-                    icon
-                  )}
+                <div className={`${innerIconClass} w-6 h-6 flex-shrink-0`}>
+                  {renderIconContent('normal')}
                 </div>
                 <div className="w-full min-w-0 overflow-hidden">
                   <span className="font-medium text-xs leading-tight truncate block">
@@ -226,13 +217,13 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                 )}
               </CardContent>
             </Card>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{resource.name}</p>
-          </TooltipContent>
-        </Tooltip>
-      )}
-    </div>
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{resource.name}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

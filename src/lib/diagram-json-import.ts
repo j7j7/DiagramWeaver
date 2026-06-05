@@ -5,6 +5,7 @@ import { ensureConnectionIds } from '@/lib/connection-order-utils';
 import { ensureDiagramLayersPersisted } from '@/lib/layers-utils';
 import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from '@/lib/custom-icon-utils';
 import { assertSubDiagramDepthWithinLimit } from '@/lib/import-json-limits';
+import { cleanupStaleGroupings } from '@/lib/grouping-utils';
 import { enrichDiagramResourceMetadata } from '@/lib/resource-catalog';
 
 /**
@@ -35,11 +36,13 @@ export function parseDiagramJsonSync(json: unknown): DiagramData {
     throw new Error(`Invalid diagram format: ${result.error.message}`);
   }
   const data = result.data as DiagramData;
-  return ensureDiagramLayersPersisted(
-    sanitizeCustomIconsInDiagram({
-      ...data,
-      connections: ensureConnectionIds(data.connections || []),
-    })
+  return cleanupStaleGroupings(
+    ensureDiagramLayersPersisted(
+      sanitizeCustomIconsInDiagram({
+        ...data,
+        connections: ensureConnectionIds(data.connections || []),
+      }),
+    ),
   );
 }
 

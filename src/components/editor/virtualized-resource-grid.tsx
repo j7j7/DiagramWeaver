@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const OVERSCAN_ROWS = 2;
-/** Below this count, mount every tile (DnD registration is cheap enough). */
-export const RESOURCE_GRID_VIRTUALIZE_MIN = 40;
 
 interface VirtualizedResourceGridProps {
   resources: unknown[];
   viewMode: "normal" | "compact";
   scrollRootRef: React.RefObject<HTMLElement | null>;
+  /** Bump when accordion expand/collapse shifts grid position in the scroll area. */
+  layoutEpoch?: number;
   className?: string;
   renderItem: (resource: unknown, index: number) => React.ReactNode;
 }
@@ -31,90 +31,81 @@ function rowMetrics(viewMode: "normal" | "compact") {
 
 /**
  * Windowed palette grid: only mounts visible rows (+ overscan) inside the sidebar scroll area.
- * Reduces react-dnd drag sources and DOM size when a category has many resources.
+ * Off-screen grids mount zero tiles so canvas drag stays light while the sidebar is open.
  */
 export function VirtualizedResourceGrid({
   resources,
   viewMode,
   scrollRootRef,
+  layoutEpoch = 0,
   className,
   renderItem,
 }: VirtualizedResourceGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
-  const offsetTopRef = useRef(0);
-  const [range, setRange] = useState({ start: 0, end: resources.length });
+  const [range, setRange] = useState({ start: 0, end: 0 });
   const [cols, setCols] = useState(3);
 
   const { rowHeight, gap, padding } = rowMetrics(viewMode);
   const rowCount = Math.ceil(resources.length / Math.max(cols, 1));
   const totalHeight = rowCount * (rowHeight + gap) + padding * 2;
 
-  const measureOffsetTop = useCallback(() => {
-    const scrollRoot = scrollRootRef.current;
-    const grid = gridRef.current;
-    if (!scrollRoot || !grid) return;
-    let top = 0;
-    let el: HTMLElement | null = grid;
-    while (el && el !== scrollRoot) {
-      top += el.offsetTop;
-      el = el.offsetParent as HTMLElement | null;
-    }
-    offsetTopRef.current = top;
-    setCols(measureColumnCount(grid.clientWidth, viewMode));
-  }, [scrollRootRef, viewMode]);
-
   const updateRange = useCallback(() => {
     const scrollRoot = scrollRootRef.current;
     const grid = gridRef.current;
     if (!scrollRoot || !grid || resources.length === 0) {
-      setRange({ start: 0, end: resources.length });
+      setRange((prev) => (prev.start === 0 && prev.end === 0 ? prev : { start: 0, end: 0 }));
       return;
     }
 
     const columnCount = measureColumnCount(grid.clientWidth, viewMode);
     setCols(columnCount);
-    const rows = Math.ceil(resources.length / columnCount);
     const metrics = rowMetrics(viewMode);
-    const scrollTop = scrollRoot.scrollTop;
-    const viewportBottom = scrollTop + scrollRoot.clientHeight;
-    const gridTop = offsetTopRef.current;
+    const rowStride = metrics.rowHeight + metrics.gap;
+    const rows = Math.ceil(resources.length / columnCount);
 
-    const startRow = Math.max(
-      0,
-      Math.floor((scrollTop - gridTop) / (metrics.rowHeight + metrics.gap)) - OVERSCAN_ROWS,
-    );
-    const endRow = Math.min(
-      rows,
-      Math.ceil((viewportBottom - gridTop) / (metrics.rowHeight + metrics.gap)) + OVERSCAN_ROWS,
-    );
-    const start = startRow * columnCount;
-    const end = Math.min(resources.length, endRow * columnCount);
+    const scrollRect = scrollRoot.getBoundingClientRect();
+    const gridRect = grid.getBoundingClientRect();
+
+    if (gridRect.bottom <= scrollRect.top || gridRect.top >= scrollRect.bottom) {
+      setRange((prev) => (prev.start === 0 && prev.end === 0 ? prev : { start: 0, end: 0 }));
+      return;
+    }
+
+    const visibleTopRel = Math.max(0, scrollRect.top - gridRect.top);
+    const visibleBottomRel = Math.min(gridRect.height || totalHeight, scrollRect.bottom - gridRect.top);
+
+    const startRow = Math.max(0, Math.floor(visibleTopRel / rowStride) - OVERSCAN_ROWS);
+    const endRow = Math.min(rows, Math.ceil(visibleBottomRel / rowStride) + OVERSCAN_ROWS);
+    const start = Math.min(resources.length, startRow * columnCount);
+    const end = Math.min(resources.length, Math.max(start, endRow * columnCount));
     setRange((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
-  }, [resources.length, scrollRootRef, viewMode]);
+  }, [resources.length, scrollRootRef, totalHeight, viewMode]);
 
-  useEffect(() => {
-    measureOffsetTop();
+  useLayoutEffect(() => {
     updateRange();
-  }, [measureOffsetTop, updateRange, resources.length, viewMode]);
+  }, [updateRange, resources.length, viewMode, layoutEpoch]);
 
   useEffect(() => {
     const scrollRoot = scrollRootRef.current;
     if (!scrollRoot) return;
+
     const onScroll = () => updateRange();
     scrollRoot.addEventListener("scroll", onScroll, { passive: true });
+
     const ro =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
-            measureOffsetTop();
             updateRange();
           })
         : null;
-    if (gridRef.current && ro) ro.observe(gridRef.current);
+    ro?.observe(scrollRoot);
+    if (gridRef.current) ro?.observe(gridRef.current);
+
     return () => {
       scrollRoot.removeEventListener("scroll", onScroll);
       ro?.disconnect();
     };
-  }, [scrollRootRef, updateRange, measureOffsetTop]);
+  }, [scrollRootRef, updateRange, layoutEpoch]);
 
   const startRow = Math.floor(range.start / Math.max(cols, 1));
   const endRow = Math.ceil(range.end / Math.max(cols, 1));

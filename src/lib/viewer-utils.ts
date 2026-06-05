@@ -7,6 +7,7 @@ import { extractEmbeddedPresentations, type ExtractedEmbeddedPresentations } fro
 import { collapsePresentationDecksToOne } from './presentation-deck-merge';
 import { migratePresentationDecks } from './presentation-primary-slide';
 import { ensureDiagramLayersPersisted } from './layers-utils';
+import { cleanupStaleGroupings } from './grouping-utils';
 import { enrichDiagramResourceMetadata } from './resource-catalog';
 import {
   IMPORT_MAX_JSON_BYTES,
@@ -245,10 +246,12 @@ function validateAndConvertJsonSync(json: unknown): DiagramData {
 
   const data = flatResult.data as DiagramData;
   // Spread full parsed diagram so connection fields (e.g. edgeAttachmentConstraint), viewState, and layers round-trip like the editor
-  return ensureDiagramLayersPersisted({
-    ...data,
-    connections: ensureConnectionIds(data.connections || []),
-  });
+  return cleanupStaleGroupings(
+    ensureDiagramLayersPersisted({
+      ...data,
+      connections: ensureConnectionIds(data.connections || []),
+    }),
+  );
 }
 
 /** Like {@link validateAndConvertJson} but backfills missing resource icon metadata. */

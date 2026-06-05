@@ -4,6 +4,15 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-05 – Resource browser: always windowed grids
+**`VirtualizedResourceGrid`** now applies to every category and icon section (removed **≥40** threshold). Viewport intersection uses **`getBoundingClientRect`** so fully off-screen grids mount **zero** tiles; **`layoutEpoch`** refreshes ranges when accordions expand/collapse. Patch bumped.
+
+### 2026-06-05 – Palette drag: consistent hit target
+Sidebar **`DraggableResourceItem`** tiles route all pointer input through the drag shell (**`pointer-events-none`** on card/icon children, **`draggable={false}`** on palette PNGs). **`usePalettePointerDrag`** calls **`preventDefault`** on pointer down so native **`<img>`** drag cannot steal the gesture. Patch bumped.
+
+### 2026-06-05 – Grouping cleanup on delete
+**`handleItemDeletion`** no longer uses **`getItemGroup`** (nodes were already removed from **`diagramData`** when **`deleteDiagramItemsByIds`** called it, so groupings never updated). Deletes now strip **`memberIds`** directly; **`cleanupStaleGroupings`** dissolves groups below two members, drops members that no longer exist, and removes grouping records nothing references via **`groupId`**. Also runs on **`parseDiagramJsonSync`** / **`validateAndConvertJson`**. Patch bumped.
+
 ### 2026-06-05 – Presentation thumbnails: slower auto refresh
 **`PRESENTATION_THUMB_INTERVAL_MS`** **10s → 20s**; **`PRESENTATION_THUMB_DEBOUNCE_MS`** **900 → 1800** (`editor-support`). Patch bumped.
 

@@ -448,31 +448,77 @@ export function deleteDiagramItemsByIds(
   return cleanupEmptyZones(handleItemDeletion(deletableIds, dataBeforeCleanup));
 }
 
+/**
+ * Prune groupings whose members no longer exist, dissolve groups below two members,
+ * and drop grouping records nothing references via `groupId`.
+ */
+export function cleanupStaleGroupings(diagramData: DiagramData): DiagramData {
+  const existingItemIds = new Set([
+    ...diagramData.nodes.map((n) => n.id),
+    ...(diagramData.zones ?? []).map((z) => z.id),
+  ]);
+
+  const referencedGroupIds = new Set<string>();
+  for (const node of diagramData.nodes) {
+    if (node.groupId) referencedGroupIds.add(node.groupId);
+  }
+  for (const zone of diagramData.zones ?? []) {
+    if (zone.groupId) referencedGroupIds.add(zone.groupId);
+  }
+
+  const updatedGroupings = (diagramData.groupings ?? [])
+    .filter((g) => referencedGroupIds.has(g.id))
+    .map((g) => ({
+      ...g,
+      memberIds: g.memberIds.filter((id) => existingItemIds.has(id)),
+    }))
+    .filter((g) => g.memberIds.length >= 2);
+
+  const validGroupIds = new Set(updatedGroupings.map((g) => g.id));
+
+  const updatedNodes = diagramData.nodes.map((node) => {
+    if (!node.groupId || !validGroupIds.has(node.groupId)) {
+      return node.groupId ? { ...node, groupId: undefined } : node;
+    }
+    const group = updatedGroupings.find((g) => g.id === node.groupId);
+    if (group && !group.memberIds.includes(node.id)) {
+      return { ...node, groupId: undefined };
+    }
+    return node;
+  });
+
+  const updatedZones = (diagramData.zones ?? []).map((zone) => {
+    if (!zone.groupId || !validGroupIds.has(zone.groupId)) {
+      return zone.groupId ? { ...zone, groupId: undefined } : zone;
+    }
+    const group = updatedGroupings.find((g) => g.id === zone.groupId);
+    if (group && !group.memberIds.includes(zone.id)) {
+      return { ...zone, groupId: undefined };
+    }
+    return zone;
+  });
+
+  return {
+    ...diagramData,
+    nodes: updatedNodes,
+    zones: diagramData.zones ? updatedZones : undefined,
+    groupings: updatedGroupings,
+  };
+}
+
 export function handleItemDeletion(
   deletedItemIds: string[],
   diagramData: DiagramData
 ): DiagramData {
-  const affectedGroupIds = new Set<string>();
+  const deletedSet = new Set(deletedItemIds);
 
-  deletedItemIds.forEach(id => {
-    const group = getItemGroup(id, diagramData);
-    if (group) {
-      affectedGroupIds.add(group.id);
-    }
-  });
-
-  const updatedGroupings = (diagramData.groupings || [])
-    .map(g => {
-      if (!affectedGroupIds.has(g.id)) return g;
-      return {
-        ...g,
-        memberIds: g.memberIds.filter(id => !deletedItemIds.includes(id)),
-      };
-    })
-    .filter(g => g.memberIds.length >= 2);
-
-  return {
+  const withMembersRemoved: DiagramData = {
     ...diagramData,
-    groupings: updatedGroupings,
+    groupings: (diagramData.groupings ?? []).map((g) => ({
+      ...g,
+      memberIds: g.memberIds.filter((id) => !deletedSet.has(id)),
+    })),
   };
+
+  return cleanupStaleGroupings(withMembersRemoved);
 }

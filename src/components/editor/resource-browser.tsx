@@ -56,10 +56,8 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { DraggableResourceItem } from './draggable-resource-item';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
-import {
-  RESOURCE_GRID_VIRTUALIZE_MIN,
-  VirtualizedResourceGrid,
-} from './virtualized-resource-grid';
+import { VirtualizedResourceGrid } from './virtualized-resource-grid';
+import type { IconResourceItem } from '@/lib/icon-resources';
 
 // Resource index is fetched at runtime from public/resources
 // This avoids duplicate JSON sources and keeps a single source of truth.
@@ -225,6 +223,10 @@ function ResourceBrowserInner({
   const [isLoading, setIsLoading] = useState(true);
   const [resourceIndex, setResourceIndex] = useState<ResourceIndex | null>(null);
   const scrollRootRef = useRef<HTMLDivElement>(null);
+  const [scrollLayoutEpoch, setScrollLayoutEpoch] = useState(0);
+  const bumpScrollLayout = useCallback(() => {
+    setScrollLayoutEpoch((n) => n + 1);
+  }, []);
   const loadingProvidersRef = useRef<Set<string>>(new Set());
   const fullProvidersRef = useRef(fullProviders);
   fullProvidersRef.current = fullProviders;
@@ -314,6 +316,10 @@ function ResourceBrowserInner({
   }, []);
 
   useEffect(() => {
+    bumpScrollLayout();
+  }, [searchTerm, isLoading, bumpScrollLayout]);
+
+  useEffect(() => {
     if (!resourceIndex) return;
     expandedProviders.forEach((key) => {
       void loadProvider(key);
@@ -345,6 +351,7 @@ function ResourceBrowserInner({
       const next = new Set(prev);
       if (open) next.add(provider);
       else next.delete(provider);
+      bumpScrollLayout();
       return next;
     });
   };
@@ -356,6 +363,7 @@ function ResourceBrowserInner({
       const next = new Set(prev);
       if (open) next.add(categoryFullKey);
       else next.delete(categoryFullKey);
+      bumpScrollLayout();
       return next;
     });
   };
@@ -381,16 +389,19 @@ function ResourceBrowserInner({
 
     setExpandedProviders(allProviders);
     setExpandedCategories(allCategories);
+    bumpScrollLayout();
   };
 
   const collapseAll = () => {
     setExpandedProviders(new Set());
     setExpandedCategories(new Set());
+    bumpScrollLayout();
   };
 
   const toggleViewMode = () => {
     const newMode = viewMode === 'normal' ? 'compact' : 'normal';
     setViewMode(newMode);
+    bumpScrollLayout();
     
     // Save to cookie
     const currentState = getBrowserState();
@@ -635,6 +646,7 @@ function ResourceBrowserInner({
       const next = new Set(prev);
       if (open) next.add(key);
       else next.delete(key);
+      bumpScrollLayout();
       return next;
     });
   };
@@ -663,30 +675,45 @@ function ResourceBrowserInner({
         );
       };
 
-      if (resources.length >= RESOURCE_GRID_VIRTUALIZE_MIN) {
-        return (
-          <VirtualizedResourceGrid
-            resources={resources}
-            viewMode={viewMode}
-            scrollRootRef={scrollRootRef}
-            renderItem={renderTile}
-          />
-        );
-      }
-
       return (
-        <div
-          className={`ml-4 grid touch-spacing ${
-            viewMode === 'compact'
-              ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1'
-              : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
-          }`}
-        >
-          {resources.map((resource, index) => renderTile(resource, index))}
-        </div>
+        <VirtualizedResourceGrid
+          resources={resources}
+          viewMode={viewMode}
+          scrollRootRef={scrollRootRef}
+          layoutEpoch={scrollLayoutEpoch}
+          renderItem={renderTile}
+        />
       );
     },
-    [viewMode, getResourceIcon, handleResourceClick, handleResourceActivate],
+    [viewMode, getResourceIcon, handleResourceClick, handleResourceActivate, scrollLayoutEpoch],
+  );
+
+  const renderIconResourceGrid = useCallback(
+    (icons: IconResourceItem[], keyPrefix: string) => {
+      const renderTile = (iconItem: unknown, index: number) => {
+        const item = iconItem as IconResourceItem;
+        return (
+          <DraggableIconItem
+            key={`${keyPrefix}-${index}-${item.name}`}
+            iconItem={item}
+            onClick={(dragItem) => handleIconSelect(dragItem)}
+            onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
+            viewMode={viewMode}
+          />
+        );
+      };
+
+      return (
+        <VirtualizedResourceGrid
+          resources={icons}
+          viewMode={viewMode}
+          scrollRootRef={scrollRootRef}
+          layoutEpoch={scrollLayoutEpoch}
+          renderItem={renderTile}
+        />
+      );
+    },
+    [viewMode, handleIconSelect, handleIconActivate, scrollLayoutEpoch],
   );
 
   const indexTotalResources = resourceIndex
@@ -929,21 +956,9 @@ return (
                                                 <Badge variant="outline" className="ml-auto text-xs">{icons.length}</Badge>
                                               </div>
                                             </Button>
-                                            {expandedIconCategories.has(sectionName) ? (
-                                              <div className={`ml-4 grid touch-spacing ${
-                                                viewMode === 'compact' ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
-                                              }`}>
-                                                {icons.map((iconItem, index) => (
-                                                  <DraggableIconItem
-                                                    key={`${sectionName}-${index}`}
-                                                    iconItem={iconItem}
-                                                    onClick={(dragItem) => handleIconSelect(dragItem)}
-                                                    onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
-                                                    viewMode={viewMode}
-                                                  />
-                                                ))}
-                                              </div>
-                                            ) : null}
+                                            {expandedIconCategories.has(sectionName)
+                                              ? renderIconResourceGrid(icons, sectionName)
+                                              : null}
                                           </div>
                                         ))}
                                         {filteredIconItems.emoji.length > 0 && (
@@ -962,21 +977,9 @@ return (
                                                 <Badge variant="outline" className="ml-auto text-xs">{filteredIconItems.emoji.length}</Badge>
                                               </div>
                                             </Button>
-                                            {expandedIconCategories.has('Emojis') ? (
-                                              <div className={`ml-4 grid touch-spacing ${
-                                                viewMode === 'compact' ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
-                                              }`}>
-                                                {filteredIconItems.emoji.map((iconItem, index) => (
-                                                  <DraggableIconItem
-                                                    key={`emoji-${index}`}
-                                                    iconItem={iconItem}
-                                                    onClick={(dragItem) => handleIconSelect(dragItem)}
-                                                    onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
-                                                    viewMode={viewMode}
-                                                  />
-                                                ))}
-                                              </div>
-                                            ) : null}
+                                            {expandedIconCategories.has('Emojis')
+                                              ? renderIconResourceGrid(filteredIconItems.emoji, 'emoji')
+                                              : null}
                                           </div>
                                         )}
                                       </div>

@@ -31,6 +31,8 @@ export function usePalettePointerDrag<T extends object>(
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
+    // Block native <img> drag so pointer capture always drives the palette ghost.
+    e.preventDefault();
     startRef.current = { x: e.clientX, y: e.clientY };
     dragPastThresholdRef.current = false;
     setIsDragging(true);
