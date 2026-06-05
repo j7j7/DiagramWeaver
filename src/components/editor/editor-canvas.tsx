@@ -32,6 +32,14 @@ import {
   type DependencyGroup,
   type SimulationElementState,
 } from "./simulation-availability-workspace";
+import {
+  SimulationCostWorkspace,
+  type ChargingRule,
+  type ChargingRuleKind,
+  type CostContributor,
+  type CostScenarioInputs,
+  type CostScenarioProfile,
+} from "./simulation-cost-workspace";
 import { CanvasRulers } from "./canvas-rulers";
 import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "./canvas-constants";
 import { calculateLayout } from "./canvas-layout-utils";
@@ -139,6 +147,13 @@ const SIMULATION_AVAILABILITY_STATUS_COLORS_KEY = "simulation:availability:statu
 const SIMULATION_AVAILABILITY_SELF_STATE_COLORS_KEY = "simulation:availability:self-state-colors";
 const SIMULATION_AVAILABILITY_STATUS_TEXTS_KEY = "simulation:availability:status-texts";
 const SIMULATION_AVAILABILITY_STATUS_SHADOW_COLORS_KEY = "simulation:availability:status-shadow-colors";
+const SIMULATION_COST_BASE_KEY = "simulation:cost:base";
+const SIMULATION_COST_CURRENCY_KEY = "simulation:cost:currency";
+const SIMULATION_COST_PERIOD_KEY = "simulation:cost:period";
+const SIMULATION_COST_CONTRIBUTORS_KEY = "simulation:cost:contributors";
+const SIMULATION_COST_SCENARIO_PROFILE_KEY = "simulation:cost:scenario-profile";
+const SIMULATION_COST_SCENARIO_INPUTS_KEY = "simulation:cost:scenario-inputs";
+const SIMULATION_COST_CHARGING_RULES_KEY = "simulation:cost:charging-rules";
 
 /** Stable empty set for timeline card multi-select highlights (`timelineSelectedEntryIdsByNodeId`). */
 const EMPTY_TIMELINE_CARD_SELECTION_IDS: ReadonlySet<string> = new Set();
@@ -166,6 +181,14 @@ const DEFAULT_SIMULATION_STATUS_SHADOW_COLORS: Record<AvailabilityStatus, string
 };
 const DEFAULT_SIMULATION_STATE_OPACITY = 0.35;
 const DEFAULT_SIMULATION_DEPENDENCY_OPACITY = 0.8;
+const DEFAULT_SIMULATION_COST_CURRENCY = "USD";
+const DEFAULT_SIMULATION_COST_PERIOD = "month";
+const DEFAULT_SIMULATION_COST_SCENARIO_PROFILE: CostScenarioProfile = "generic";
+const DEFAULT_SIMULATION_COST_SCENARIO_INPUTS: CostScenarioInputs = {
+  quantity: 1,
+  utilization: 1,
+  periods: 1,
+};
 
 function normalizeRotationDegrees(rotation: number): number {
   let r = rotation % 360;
@@ -359,6 +382,178 @@ function nextSimulationElementState(state: SimulationElementState): SimulationEl
   if (state === "active") return "degraded";
   if (state === "degraded") return "inactive";
   return "active";
+}
+
+function getSimulationCostBase(metaData?: Record<string, string>): number {
+  return parseSimulationNumber(metaData?.[SIMULATION_COST_BASE_KEY], 0);
+}
+
+function getSimulationCostCurrency(metaData?: Record<string, string>): string {
+  const raw = metaData?.[SIMULATION_COST_CURRENCY_KEY]?.trim().toUpperCase();
+  if (!raw) return DEFAULT_SIMULATION_COST_CURRENCY;
+  return raw.slice(0, 3);
+}
+
+function getSimulationCostPeriod(metaData?: Record<string, string>): string {
+  const raw = metaData?.[SIMULATION_COST_PERIOD_KEY]?.trim();
+  if (!raw) return DEFAULT_SIMULATION_COST_PERIOD;
+  const normalized = raw.toLowerCase();
+  if (normalized === "second" || normalized === "seconds" || normalized === "sec" || normalized === "secs") return "second";
+  if (normalized === "minute" || normalized === "minutes" || normalized === "min" || normalized === "mins") return "minute";
+  if (normalized === "hour" || normalized === "hours" || normalized === "hr" || normalized === "hrs") return "hour";
+  if (normalized === "request" || normalized === "requests" || normalized === "req" || normalized === "per-request") return "request";
+  if (normalized === "transaction" || normalized === "transactions" || normalized === "txn" || normalized === "per-transaction") return "transaction";
+  if (normalized === "event" || normalized === "events") return "event";
+  if (normalized === "build" || normalized === "builds") return "build";
+  if (normalized === "deployment" || normalized === "deployments" || normalized === "deploy" || normalized === "release") return "deployment";
+  if (normalized === "day" || normalized === "days") return "day";
+  if (normalized === "week" || normalized === "weeks") return "week";
+  if (normalized === "month" || normalized === "months" || normalized === "monthly") return "month";
+  if (normalized === "half-year" || normalized === "halfyear" || normalized === "semiannual" || normalized === "semi-annual") return "half-year";
+  if (normalized === "quarter" || normalized === "quarters" || normalized === "quarterly") return "quarter";
+  if (normalized === "year" || normalized === "years" || normalized === "yearly" || normalized === "annual") return "year";
+  return normalized;
+}
+
+function getSimulationCostContributors(metaData?: Record<string, string>): CostContributor[] {
+  const parsed = parseSimulationJson<CostContributor[]>(metaData?.[SIMULATION_COST_CONTRIBUTORS_KEY], []);
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter((entry) => entry && typeof entry.id === "string" && entry.id.trim().length > 0)
+    .map((entry) => ({
+      id: entry.id,
+      multiplier: Number.isFinite(entry.multiplier) ? entry.multiplier : 1,
+    }));
+}
+
+function getSimulationCostScenarioProfile(metaData?: Record<string, string>): CostScenarioProfile {
+  const raw = metaData?.[SIMULATION_COST_SCENARIO_PROFILE_KEY];
+  const valid: CostScenarioProfile[] = [
+    "cloud",
+    "onprem-datacenter",
+    "network",
+    "platform-engineering",
+    "data-ai-pipeline",
+    "sre-resilience",
+    "generic",
+  ];
+  if (raw && valid.includes(raw as CostScenarioProfile)) {
+    return raw as CostScenarioProfile;
+  }
+  return DEFAULT_SIMULATION_COST_SCENARIO_PROFILE;
+}
+
+function getSimulationCostScenarioInputs(metaData?: Record<string, string>): CostScenarioInputs {
+  const parsed = parseSimulationJson<Partial<CostScenarioInputs>>(
+    metaData?.[SIMULATION_COST_SCENARIO_INPUTS_KEY],
+    DEFAULT_SIMULATION_COST_SCENARIO_INPUTS,
+  );
+  const normalizeUtilization = (value: number): number => {
+    if (!Number.isFinite(value)) return DEFAULT_SIMULATION_COST_SCENARIO_INPUTS.utilization;
+    if (value > 1 && value <= 100) return value / 100;
+    return Math.min(Math.max(value, 0), 1);
+  };
+  return {
+    quantity: Number.isFinite(parsed.quantity) ? Number(parsed.quantity) : DEFAULT_SIMULATION_COST_SCENARIO_INPUTS.quantity,
+    utilization: normalizeUtilization(Number(parsed.utilization)),
+    periods: Number.isFinite(parsed.periods) ? Number(parsed.periods) : DEFAULT_SIMULATION_COST_SCENARIO_INPUTS.periods,
+  };
+}
+
+function getSimulationCostChargingRules(metaData?: Record<string, string>): ChargingRule[] {
+  const parsed = parseSimulationJson<ChargingRule[]>(metaData?.[SIMULATION_COST_CHARGING_RULES_KEY], []);
+  if (!Array.isArray(parsed)) return [];
+
+  const isRuleKind = (kind: string): kind is ChargingRuleKind =>
+    kind === "fixed";
+
+  return parsed
+    .filter((rule) => rule && typeof rule.id === "string" && rule.id.trim().length > 0)
+    .map((rule, index) => ({
+      id: rule.id || `rule-${index}`,
+      name: (rule.name || `Rule ${index + 1}`).trim(),
+      description: typeof rule.description === "string" ? rule.description.trim() : "",
+      kind: isRuleKind(String(rule.kind)) ? rule.kind : "fixed",
+      value: Number.isFinite(rule.value) ? Number(rule.value) : 0,
+      period: typeof rule.period === "string" && rule.period.trim().length > 0 ? rule.period.trim() : DEFAULT_SIMULATION_COST_PERIOD,
+      enabled: rule.enabled !== false,
+    }));
+}
+
+const SIMULATION_PERIOD_SECONDS: Record<string, number> = {
+  second: 1,
+  minute: 60,
+  hour: 60 * 60,
+  day: 60 * 60 * 24,
+  week: 60 * 60 * 24 * 7,
+  month: 60 * 60 * 24 * 30,
+  quarter: 60 * 60 * 24 * 90,
+  "half-year": 60 * 60 * 24 * 182.5,
+  year: 60 * 60 * 24 * 365,
+  request: 1,
+  transaction: 1,
+  event: 1,
+  build: 1,
+  deployment: 1,
+};
+
+function getSimulationPeriodSeconds(period: string): number {
+  return SIMULATION_PERIOD_SECONDS[period] ?? 0;
+}
+
+function getSimulationPeriodMultiplier(fromPeriod: string, toPeriod: string): number {
+  const fromSeconds = getSimulationPeriodSeconds(fromPeriod);
+  const toSeconds = getSimulationPeriodSeconds(toPeriod);
+  if (fromSeconds <= 0 || toSeconds <= 0) return 1;
+  return toSeconds / fromSeconds;
+}
+
+function summarizeSimulationRulePeriods(rules: ChargingRule[], fallbackPeriod: string): string {
+  const rulePeriods = Array.from(
+    new Set(
+      rules
+        .map((rule) => (rule.enabled ? rule.period.trim() : ""))
+        .filter((period) => period.length > 0),
+    ),
+  );
+
+  if (rulePeriods.length === 0) {
+    return fallbackPeriod;
+  }
+
+  return rulePeriods.join(", ");
+}
+
+function resolveSimulationDirectCost(
+  baseCost: number,
+  itemPeriod: string,
+  chargingRules: ChargingRule[],
+  relatedSubtotal: number,
+): number {
+  let direct = baseCost;
+
+  chargingRules.forEach((rule) => {
+    if (!rule.enabled) return;
+    const periodMultiplier = getSimulationPeriodMultiplier(rule.period || itemPeriod, itemPeriod);
+    if (rule.kind === "fixed") {
+      direct += rule.value * periodMultiplier;
+    }
+  });
+
+  return direct;
+}
+
+function formatSimulationMoney(value: number, currency: string): string {
+  const safeCurrency = (currency || DEFAULT_SIMULATION_COST_CURRENCY).toUpperCase();
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: safeCurrency,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${safeCurrency} ${value.toFixed(2)}`;
+  }
 }
 
 interface EditorCanvasProps {
@@ -697,6 +892,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     itemType: "node" | "zone" | "connection";
   } | null>(null);
   const [availabilityWorkspaceTarget, setAvailabilityWorkspaceTarget] = useState<{
+    itemId: string;
+    itemType: "node" | "zone" | "connection";
+  } | null>(null);
+  const [costWorkspaceTarget, setCostWorkspaceTarget] = useState<{
     itemId: string;
     itemType: "node" | "zone" | "connection";
   } | null>(null);
@@ -2613,6 +2812,108 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return statusByItemId;
   }, [diagramData.connections, diagramData.nodes, diagramData.zones, simulationItemStateById]);
 
+  const simulationCostModelByItemId = useMemo(() => {
+    const baseByItemId: Record<string, number> = {};
+    const contributorsByItemId: Record<string, CostContributor[]> = {};
+    const scenarioInputsByItemId: Record<string, CostScenarioInputs> = {};
+    const chargingRulesByItemId: Record<string, ChargingRule[]> = {};
+
+    const readMeta = (itemId: string, metaData?: Record<string, string>) => {
+      baseByItemId[itemId] = getSimulationCostBase(metaData);
+      contributorsByItemId[itemId] = getSimulationCostContributors(metaData);
+      scenarioInputsByItemId[itemId] = getSimulationCostScenarioInputs(metaData);
+      chargingRulesByItemId[itemId] = getSimulationCostChargingRules(metaData);
+    };
+
+    diagramData.nodes.forEach((node) => readMeta(node.id, node.metaData));
+    (diagramData.zones ?? []).forEach((zone) => readMeta(zone.id, zone.metaData));
+    diagramData.connections.forEach((connection, index) => {
+      readMeta(stableDiagramConnectionId(connection, index), connection.metaData);
+    });
+
+    const totalByItemId: Record<string, number> = {};
+    const directByItemId: Record<string, number> = {};
+    Object.keys(baseByItemId).forEach((id) => {
+      totalByItemId[id] = baseByItemId[id] ?? 0;
+      directByItemId[id] = baseByItemId[id] ?? 0;
+    });
+
+    for (let iteration = 0; iteration < 16; iteration++) {
+      let changed = false;
+      const nextTotals: Record<string, number> = { ...totalByItemId };
+      const nextDirect: Record<string, number> = { ...directByItemId };
+
+      Object.keys(baseByItemId).forEach((itemId) => {
+        const contributors = contributorsByItemId[itemId] ?? [];
+        const relatedSubtotal = contributors.reduce(
+          (sum, contributor) => sum + (totalByItemId[contributor.id] ?? 0) * contributor.multiplier,
+          0,
+        );
+        const direct = resolveSimulationDirectCost(
+          baseByItemId[itemId] ?? 0,
+          getSimulationCostPeriod(diagramData.nodes.find((node) => node.id === itemId)?.metaData)
+            || getSimulationCostPeriod(diagramData.zones?.find((zone) => zone.id === itemId)?.metaData)
+            || getSimulationCostPeriod(
+              diagramData.connections.find((connection, index) => stableDiagramConnectionId(connection, index) === itemId)?.metaData,
+            ),
+          chargingRulesByItemId[itemId] ?? [],
+          relatedSubtotal,
+        );
+        const total = direct + relatedSubtotal;
+        nextDirect[itemId] = direct;
+        nextTotals[itemId] = total;
+        if (Math.abs((totalByItemId[itemId] ?? 0) - total) > 0.0001) changed = true;
+      });
+
+      Object.assign(totalByItemId, nextTotals);
+      Object.assign(directByItemId, nextDirect);
+      if (!changed) break;
+    }
+
+    return {
+      totalByItemId,
+      directByItemId,
+    };
+  }, [diagramData.connections, diagramData.nodes, diagramData.zones]);
+
+  const simulationCostByItemId = simulationCostModelByItemId.totalByItemId;
+  const simulationCostDirectByItemId = simulationCostModelByItemId.directByItemId;
+
+  const simulationCostHeatStyleByItemId = useMemo(() => {
+    const values = Object.values(simulationCostByItemId).filter((value) => value > 0);
+    if (values.length === 0) return {} as Record<string, { color: string; opacity?: number; shadowColor?: string }>;
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = Math.max(1e-6, max - min);
+
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const mixColor = (from: [number, number, number], to: [number, number, number], t: number) => {
+      const r = Math.round(lerp(from[0], to[0], t));
+      const g = Math.round(lerp(from[1], to[1], t));
+      const b = Math.round(lerp(from[2], to[2], t));
+      return `rgb(${r}, ${g}, ${b})`;
+    };
+
+    const colorAt = (value: number) => {
+      const t = Math.min(1, Math.max(0, (value - min) / span));
+      if (t <= 0.5) return mixColor([34, 197, 94], [245, 158, 11], t / 0.5);
+      return mixColor([245, 158, 11], [239, 68, 68], (t - 0.5) / 0.5);
+    };
+
+    const result: Record<string, { color: string; opacity?: number; shadowColor?: string }> = {};
+    Object.entries(simulationCostByItemId).forEach(([itemId, value]) => {
+      if (value <= 0) return;
+      const color = colorAt(value);
+      result[itemId] = {
+        color,
+        opacity: 0.62,
+        shadowColor: color,
+      };
+    });
+    return result;
+  }, [simulationCostByItemId]);
+
   const availabilityWorkspaceItem = useMemo(() => {
     if (!availabilityWorkspaceTarget) return null;
     if (availabilityWorkspaceTarget.itemType === "node") {
@@ -2645,13 +2946,126 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     };
   }, [availabilityWorkspaceItem]);
 
+  const costWorkspaceItem = useMemo(() => {
+    if (!costWorkspaceTarget) return null;
+    if (costWorkspaceTarget.itemType === "node") {
+      return diagramData.nodes.find((node) => node.id === costWorkspaceTarget.itemId) || null;
+    }
+    if (costWorkspaceTarget.itemType === "zone") {
+      return diagramData.zones?.find((zone) => zone.id === costWorkspaceTarget.itemId) || null;
+    }
+    const connection = diagramData.connections.find((conn, index) => stableDiagramConnectionId(conn, index) === costWorkspaceTarget.itemId);
+    if (!connection) return null;
+    const fromLabel = nodesById[connection.from]?.label || zonesById[connection.from]?.label || connection.from;
+    const toLabel = nodesById[connection.to]?.label || zonesById[connection.to]?.label || connection.to;
+    return {
+      ...connection,
+      label: connection.text?.trim() || `${fromLabel} -> ${toLabel}`,
+    };
+  }, [costWorkspaceTarget, diagramData.nodes, diagramData.zones, diagramData.connections, nodesById, zonesById]);
+
+  const costWorkspaceConfig = useMemo(() => {
+    const metaData = costWorkspaceItem?.metaData;
+    return {
+      baseCost: getSimulationCostBase(metaData),
+      currency: getSimulationCostCurrency(metaData),
+      period: getSimulationCostPeriod(metaData),
+      scenarioProfile: getSimulationCostScenarioProfile(metaData),
+      scenarioInputs: getSimulationCostScenarioInputs(metaData),
+      chargingRules: getSimulationCostChargingRules(metaData),
+      contributors: getSimulationCostContributors(metaData),
+    };
+  }, [costWorkspaceItem]);
+
+  const costWorkspaceTotal = useMemo(() => {
+    if (!costWorkspaceTarget) return 0;
+    return simulationCostByItemId[costWorkspaceTarget.itemId] ?? costWorkspaceConfig.baseCost;
+  }, [costWorkspaceTarget, simulationCostByItemId, costWorkspaceConfig.baseCost]);
+
+  const costWorkspaceDirect = useMemo(() => {
+    if (!costWorkspaceTarget) return 0;
+    return simulationCostDirectByItemId[costWorkspaceTarget.itemId] ?? costWorkspaceConfig.baseCost;
+  }, [costWorkspaceTarget, simulationCostDirectByItemId, costWorkspaceConfig.baseCost]);
+
+  const simulationCostReportRows = useMemo(() => {
+    const connectionLabelById = new Map<string, string>();
+    diagramData.connections.forEach((connection, index) => {
+      const stableId = stableDiagramConnectionId(connection, index);
+      const fromLabel = nodesById[connection.from]?.label || zonesById[connection.from]?.label || connection.from;
+      const toLabel = nodesById[connection.to]?.label || zonesById[connection.to]?.label || connection.to;
+      connectionLabelById.set(stableId, connection.text?.trim() || `${fromLabel} -> ${toLabel}`);
+    });
+
+    const nodeRows = diagramData.nodes.map((node) => {
+      const contributors = getSimulationCostContributors(node.metaData);
+      const rules = getSimulationCostChargingRules(node.metaData);
+      const period = getSimulationCostPeriod(node.metaData);
+      return {
+        id: node.id,
+        label: node.label || node.id,
+        type: "node" as const,
+        direct: simulationCostDirectByItemId[node.id] ?? getSimulationCostBase(node.metaData),
+        total: simulationCostByItemId[node.id] ?? getSimulationCostBase(node.metaData),
+        rules: rules.length,
+        currency: getSimulationCostCurrency(node.metaData),
+        period,
+        rulePeriods: summarizeSimulationRulePeriods(rules, period),
+        contributors: contributors.length,
+        scenarioProfile: getSimulationCostScenarioProfile(node.metaData),
+      };
+    });
+
+    const zoneRows = (diagramData.zones ?? []).map((zone) => {
+      const contributors = getSimulationCostContributors(zone.metaData);
+      const rules = getSimulationCostChargingRules(zone.metaData);
+      const period = getSimulationCostPeriod(zone.metaData);
+      return {
+        id: zone.id,
+        label: zone.label || zone.id,
+        type: "zone" as const,
+        direct: simulationCostDirectByItemId[zone.id] ?? getSimulationCostBase(zone.metaData),
+        total: simulationCostByItemId[zone.id] ?? getSimulationCostBase(zone.metaData),
+        rules: rules.length,
+        currency: getSimulationCostCurrency(zone.metaData),
+        period,
+        rulePeriods: summarizeSimulationRulePeriods(rules, period),
+        contributors: contributors.length,
+        scenarioProfile: getSimulationCostScenarioProfile(zone.metaData),
+      };
+    });
+
+    const connectionRows = diagramData.connections.map((connection, index) => {
+      const id = stableDiagramConnectionId(connection, index);
+      const contributors = getSimulationCostContributors(connection.metaData);
+      const rules = getSimulationCostChargingRules(connection.metaData);
+      const period = getSimulationCostPeriod(connection.metaData);
+      return {
+        id,
+        label: connectionLabelById.get(id) || id,
+        type: "connection" as const,
+        direct: simulationCostDirectByItemId[id] ?? getSimulationCostBase(connection.metaData),
+        total: simulationCostByItemId[id] ?? getSimulationCostBase(connection.metaData),
+        rules: rules.length,
+        currency: getSimulationCostCurrency(connection.metaData),
+        period,
+        rulePeriods: summarizeSimulationRulePeriods(rules, period),
+        contributors: contributors.length,
+        scenarioProfile: getSimulationCostScenarioProfile(connection.metaData),
+      };
+    });
+
+    return [...nodeRows, ...zoneRows, ...connectionRows];
+  }, [diagramData.nodes, diagramData.zones, diagramData.connections, simulationCostByItemId, simulationCostDirectByItemId, nodesById, zonesById]);
+
   const availabilityWorkspaceStatus = useMemo(() => {
     if (!availabilityWorkspaceTarget) return "green";
     return simulationAvailabilityStatusByItemId[availabilityWorkspaceTarget.itemId] ?? "green";
   }, [availabilityWorkspaceTarget, simulationAvailabilityStatusByItemId]);
 
   const simulationStatusStyleByItemId = useMemo(() => {
-    const result: Record<string, { color: string; opacity?: number; shadowColor?: string }> = {};
+    const result: Record<string, { color: string; opacity?: number; shadowColor?: string }> = {
+      ...simulationCostHeatStyleByItemId,
+    };
 
     const applyFromMeta = (itemId: string, metaData?: Record<string, string>) => {
       const groups = getSimulationGroupsFromMetaData(metaData);
@@ -2674,7 +3088,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     });
 
     return result;
-  }, [diagramData, simulationItemStateById, simulationAvailabilityStatusByItemId]);
+  }, [diagramData, simulationItemStateById, simulationAvailabilityStatusByItemId, simulationCostHeatStyleByItemId]);
 
   const simulationStateStyleByItemId = useMemo(() => {
     const result: Record<string, { color: string; opacity?: number }> = {};
@@ -2727,6 +3141,27 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return result;
   }, [diagramData.nodes, diagramData.zones]);
 
+  const simulationCostBadgeByItemId = useMemo(() => {
+    const result: Record<string, { direct: number; total: number; currency: string }> = {};
+
+    const applyFromMeta = (itemId: string, metaData?: Record<string, string>) => {
+      const base = getSimulationCostBase(metaData);
+      const contributors = getSimulationCostContributors(metaData);
+      const rules = getSimulationCostChargingRules(metaData);
+      if (base === 0 && contributors.length === 0 && rules.length === 0) return;
+      result[itemId] = {
+        direct: simulationCostDirectByItemId[itemId] ?? base,
+        total: simulationCostByItemId[itemId] ?? base,
+        currency: getSimulationCostCurrency(metaData),
+      };
+    };
+
+    diagramData.nodes.forEach((node) => applyFromMeta(node.id, node.metaData));
+    (diagramData.zones ?? []).forEach((zone) => applyFromMeta(zone.id, zone.metaData));
+
+    return result;
+  }, [diagramData.nodes, diagramData.zones, simulationCostByItemId, simulationCostDirectByItemId]);
+
   const simulationNotificationTextByItemId = useMemo(() => {
     const result: Record<string, string> = {};
 
@@ -2742,8 +3177,27 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     diagramData.nodes.forEach((node) => applyFromMeta(node.id, node.metaData));
     (diagramData.zones ?? []).forEach((zone) => applyFromMeta(zone.id, zone.metaData));
 
+    const applyCostText = (itemId: string, metaData?: Record<string, string>) => {
+      const contributors = getSimulationCostContributors(metaData);
+      const base = getSimulationCostBase(metaData);
+      const rules = getSimulationCostChargingRules(metaData);
+      if (contributors.length === 0 && base === 0 && rules.length === 0) return;
+      const total = simulationCostByItemId[itemId] ?? base;
+      const direct = simulationCostDirectByItemId[itemId] ?? base;
+      const currency = getSimulationCostCurrency(metaData);
+      const period = getSimulationCostPeriod(metaData);
+      const costText = `Cost D:${formatSimulationMoney(direct, currency)} T:${formatSimulationMoney(total, currency)} / ${period}`;
+      result[itemId] = result[itemId] ? `${result[itemId]} | ${costText}` : costText;
+    };
+
+    diagramData.nodes.forEach((node) => applyCostText(node.id, node.metaData));
+    (diagramData.zones ?? []).forEach((zone) => applyCostText(zone.id, zone.metaData));
+    diagramData.connections.forEach((connection, index) => {
+      applyCostText(stableDiagramConnectionId(connection, index), connection.metaData);
+    });
+
     return result;
-  }, [diagramData, simulationItemStateById, simulationAvailabilityStatusByItemId]);
+  }, [diagramData, simulationItemStateById, simulationAvailabilityStatusByItemId, simulationCostByItemId, simulationCostDirectByItemId]);
 
   const simulationHoverMetrics = useMemo(() => {
     if (!simulationModeEnabled || !simulationHoveredItemId || !simulationHoveredItemType) return null;
@@ -2817,6 +3271,40 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     });
   }, [availabilityWorkspaceTarget, setDiagramData]);
 
+  const updateSimulationCostMetaDataForTarget = useCallback((updates: Record<string, string>) => {
+    if (!costWorkspaceTarget) return;
+    setDiagramData((prev) => {
+      if (costWorkspaceTarget.itemType === "node") {
+        return {
+          ...prev,
+          nodes: prev.nodes.map((node) =>
+            node.id === costWorkspaceTarget.itemId
+              ? { ...node, metaData: { ...(node.metaData ?? {}), ...updates } }
+              : node,
+          ),
+        };
+      }
+      if (costWorkspaceTarget.itemType === "connection") {
+        return {
+          ...prev,
+          connections: prev.connections.map((connection, index) => {
+            const stableId = stableDiagramConnectionId(connection, index);
+            if (stableId !== costWorkspaceTarget.itemId) return connection;
+            return { ...connection, metaData: { ...(connection.metaData ?? {}), ...updates } };
+          }),
+        };
+      }
+      return {
+        ...prev,
+        zones: (prev.zones ?? []).map((zone) =>
+          zone.id === costWorkspaceTarget.itemId
+            ? { ...zone, metaData: { ...(zone.metaData ?? {}), ...updates } }
+            : zone,
+        ),
+      };
+    });
+  }, [costWorkspaceTarget, setDiagramData]);
+
   const updateSimulationStateById = useCallback((itemId: string, state: SimulationElementState) => {
     setDiagramData((prev) => ({
       ...prev,
@@ -2848,12 +3336,22 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         itemId: simulationMenuState.itemId,
         itemType: simulationMenuState.itemType,
       });
+      setCostWorkspaceTarget(null);
+      setSimulationMenuState(null);
+      return;
+    }
+    if (feature === "cost") {
+      setCostWorkspaceTarget({
+        itemId: simulationMenuState.itemId,
+        itemType: simulationMenuState.itemType,
+      });
+      setAvailabilityWorkspaceTarget(null);
       setSimulationMenuState(null);
       return;
     }
     toast({
       title: "Simulation feature not restored yet",
-      description: `${feature.charAt(0).toUpperCase() + feature.slice(1)} simulation is not wired in this branch yet.`,
+      description: "Throughput simulation is not wired in this branch yet.",
     });
     setSimulationMenuState(null);
   }, [simulationMenuState, toast]);
@@ -3431,6 +3929,46 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               return null;
             })}
 
+            {simulationModeEnabled && Object.entries(simulationCostBadgeByItemId).map(([itemId, badge]) => {
+              const node = displayNodesById[itemId];
+              if (node) {
+                return (
+                  <div
+                    key={`sim-cost-badge-node-${itemId}`}
+                    className="pointer-events-none absolute rounded-full border border-border/70 bg-background/95 px-2 py-0.5 text-[10px] font-semibold text-foreground shadow-sm"
+                    style={{
+                      left: `${(node.x ?? 0) - 2}px`,
+                      top: `${(node.y ?? 0) - 10}px`,
+                      zIndex: 47,
+                    }}
+                    title={`Direct ${formatSimulationMoney(badge.direct, badge.currency)} | Total ${formatSimulationMoney(badge.total, badge.currency)}`}
+                  >
+                    D {formatSimulationMoney(badge.direct, badge.currency)} | T {formatSimulationMoney(badge.total, badge.currency)}
+                  </div>
+                );
+              }
+
+              const zone = displayZonesById[itemId];
+              if (zone) {
+                return (
+                  <div
+                    key={`sim-cost-badge-zone-${itemId}`}
+                    className="pointer-events-none absolute rounded-full border border-border/70 bg-background/95 px-2 py-0.5 text-[10px] font-semibold text-foreground shadow-sm"
+                    style={{
+                      left: `${(zone.x ?? 0) - 2}px`,
+                      top: `${(zone.y ?? 0) - 10}px`,
+                      zIndex: 47,
+                    }}
+                    title={`Direct ${formatSimulationMoney(badge.direct, badge.currency)} | Total ${formatSimulationMoney(badge.total, badge.currency)}`}
+                  >
+                    D {formatSimulationMoney(badge.direct, badge.currency)} | T {formatSimulationMoney(badge.total, badge.currency)}
+                  </div>
+                );
+              }
+
+              return null;
+            })}
+
             {simulationModeEnabled && Object.entries(simulationNotificationTextByItemId).map(([itemId, text]) => {
               const node = displayNodesById[itemId];
               if (node) {
@@ -3464,6 +4002,61 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   </div>
                 );
               }
+
+              const connectionEntry = diagramData.connections.find((connection, index) =>
+                stableDiagramConnectionId(connection, index) === itemId,
+              );
+              if (connectionEntry) {
+                const fromNode = displayNodesById[connectionEntry.from];
+                const toNode = displayNodesById[connectionEntry.to];
+                const fromZone = displayZonesById[connectionEntry.from];
+                const toZone = displayZonesById[connectionEntry.to];
+
+                const fromPoint = (() => {
+                  if (fromNode) {
+                    const dims = measureNodeDims(fromNode as PositionedNode);
+                    return { x: (fromNode.x ?? 0) + dims.width / 2, y: (fromNode.y ?? 0) + dims.height / 2 };
+                  }
+                  if (fromZone) {
+                    return {
+                      x: (fromZone.x ?? 0) + (fromZone.width ?? 300) / 2,
+                      y: (fromZone.y ?? 0) + (fromZone.height ?? 220) / 2,
+                    };
+                  }
+                  return null;
+                })();
+
+                const toPoint = (() => {
+                  if (toNode) {
+                    const dims = measureNodeDims(toNode as PositionedNode);
+                    return { x: (toNode.x ?? 0) + dims.width / 2, y: (toNode.y ?? 0) + dims.height / 2 };
+                  }
+                  if (toZone) {
+                    return {
+                      x: (toZone.x ?? 0) + (toZone.width ?? 300) / 2,
+                      y: (toZone.y ?? 0) + (toZone.height ?? 220) / 2,
+                    };
+                  }
+                  return null;
+                })();
+
+                if (fromPoint && toPoint) {
+                  return (
+                    <div
+                      key={`sim-notify-connection-${itemId}`}
+                      className="pointer-events-none absolute rounded bg-background/90 px-2 py-1 text-[11px] text-foreground shadow-sm"
+                      style={{
+                        left: `${(fromPoint.x + toPoint.x) / 2}px`,
+                        top: `${(fromPoint.y + toPoint.y) / 2 - 16}px`,
+                        zIndex: 45,
+                      }}
+                    >
+                      {text}
+                    </div>
+                  );
+                }
+              }
+
               return null;
             })}
 
@@ -4895,6 +5488,57 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               onDependencyOpacityChange={(opacity) => {
                 updateSimulationMetaDataForTarget({
                   [SIMULATION_AVAILABILITY_DEPENDENCY_OPACITY_KEY]: String(opacity),
+                });
+              }}
+            />
+          )}
+          {costWorkspaceTarget && (
+            <SimulationCostWorkspace
+              open={true}
+              onOpenChange={(open) => {
+                if (!open) setCostWorkspaceTarget(null);
+              }}
+              targetId={costWorkspaceTarget.itemId}
+              targetLabel={costWorkspaceItem?.label || costWorkspaceTarget.itemId}
+              baseCost={costWorkspaceConfig.baseCost}
+              currency={costWorkspaceConfig.currency}
+              period={costWorkspaceConfig.period}
+              scenarioProfile={costWorkspaceConfig.scenarioProfile}
+              scenarioInputs={costWorkspaceConfig.scenarioInputs}
+              chargingRules={costWorkspaceConfig.chargingRules}
+              contributors={costWorkspaceConfig.contributors}
+              directCost={costWorkspaceDirect}
+              totalCost={costWorkspaceTotal}
+              allCanvasElements={allSimulationCanvasElements}
+              reportRows={simulationCostReportRows}
+              onBaseCostChange={(value) => {
+                updateSimulationCostMetaDataForTarget({
+                  [SIMULATION_COST_BASE_KEY]: String(value),
+                });
+              }}
+              onCurrencyChange={(value) => {
+                updateSimulationCostMetaDataForTarget({
+                  [SIMULATION_COST_CURRENCY_KEY]: (value || DEFAULT_SIMULATION_COST_CURRENCY).toUpperCase().slice(0, 3),
+                });
+              }}
+              onPeriodChange={(value) => {
+                updateSimulationCostMetaDataForTarget({
+                  [SIMULATION_COST_PERIOD_KEY]: value || DEFAULT_SIMULATION_COST_PERIOD,
+                });
+              }}
+              onScenarioProfileChange={(value) => {
+                updateSimulationCostMetaDataForTarget({
+                  [SIMULATION_COST_SCENARIO_PROFILE_KEY]: value,
+                });
+              }}
+              onChargingRulesChange={(rules) => {
+                updateSimulationCostMetaDataForTarget({
+                  [SIMULATION_COST_CHARGING_RULES_KEY]: JSON.stringify(rules),
+                });
+              }}
+              onContributorsChange={(contributors) => {
+                updateSimulationCostMetaDataForTarget({
+                  [SIMULATION_COST_CONTRIBUTORS_KEY]: JSON.stringify(contributors),
                 });
               }}
             />
