@@ -1,5 +1,82 @@
 import type { DiagramData, DiagramGroupingData } from './types';
 import { generateSequentialId } from './id-generator';
+import {
+  nodeBoundingBoxForFit,
+  type PositionedGroup,
+  type PositionedNode,
+} from '@/components/editor/canvas-constants';
+
+export type GroupMemberBounds = { x: number; y: number; width: number; height: number };
+
+/** Union axis-aligned bounds for all group members (nodes + zones), with optional padding. */
+export function computeGroupMemberBounds(
+  memberIds: string[],
+  nodesById: Record<string, PositionedNode>,
+  zonesById: Record<string, PositionedGroup>,
+  padding = 4,
+): GroupMemberBounds | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let hasAny = false;
+
+  for (const id of memberIds) {
+    const node = nodesById[id];
+    if (node) {
+      const b = nodeBoundingBoxForFit(node);
+      minX = Math.min(minX, b.minX);
+      minY = Math.min(minY, b.minY);
+      maxX = Math.max(maxX, b.maxX);
+      maxY = Math.max(maxY, b.maxY);
+      hasAny = true;
+      continue;
+    }
+
+    const zone = zonesById[id];
+    if (zone && zone.x !== undefined && zone.y !== undefined) {
+      const w = zone.width ?? 300;
+      const h = zone.height ?? 220;
+      minX = Math.min(minX, zone.x);
+      minY = Math.min(minY, zone.y);
+      maxX = Math.max(maxX, zone.x + w);
+      maxY = Math.max(maxY, zone.y + h);
+      hasAny = true;
+    }
+  }
+
+  if (!hasAny || !Number.isFinite(minX)) return null;
+
+  return {
+    x: minX - padding,
+    y: minY - padding,
+    width: maxX - minX + padding * 2,
+    height: maxY - minY + padding * 2,
+  };
+}
+
+/**
+ * When the primary selection is in a group, return that group for a canvas outline.
+ * Hides the outline if multi-select spans items outside the group.
+ */
+export function resolveGroupSelectionForOutline(
+  selectedItemId: string | undefined,
+  selectedItemIds: Set<string> | undefined,
+  diagramData: DiagramData,
+): DiagramGroupingData | null {
+  if (!selectedItemId) return null;
+  const group = getItemGroup(selectedItemId, diagramData);
+  if (!group || group.memberIds.length < 2) return null;
+
+  const ids = selectedItemIds;
+  if (ids && ids.size > 1) {
+    for (const id of ids) {
+      if (!group.memberIds.includes(id)) return null;
+    }
+  }
+
+  return group;
+}
 
 export function createGroup(
   itemIds: string[],

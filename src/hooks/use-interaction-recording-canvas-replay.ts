@@ -10,7 +10,9 @@ import {
   DW_REPLAY_RESOURCE_ACTIVATE,
   DW_REPLAY_SEARCH_MODAL_CLOSE,
   DW_REPLAY_SELECT_NODE,
+  DW_REPLAY_CANVAS_RESIZE,
   type DwBatchSelectDetail,
+  type DwCanvasResizeDetail,
   type DwResourceActivateDetail,
   type DwSearchModalOpenDetail,
 } from "@/lib/interaction-recording-bridge";
@@ -20,6 +22,7 @@ export interface InteractionRecordingCanvasReplayHandlers {
   closeSearchModal: () => void;
   activateResource: (detail: DwResourceActivateDetail) => void;
   selectNode: (nodeId: string, itemType: "node" | "zone") => void;
+  resizeNode: (detail: DwCanvasResizeDetail) => void;
   batchSelect: (itemIds: string[]) => void;
   copy: () => void;
   paste: () => void;
@@ -65,9 +68,16 @@ export function useInteractionRecordingCanvasReplay(
       handlers.selectNode(detail.nodeId, detail.itemType ?? "node");
     };
 
+    const onResizeNode = (event: Event) => {
+      const detail = (event as CustomEvent<DwCanvasResizeDetail>).detail;
+      if (!detail?.id) return;
+      handlers.resizeNode(detail);
+    };
+
     document.addEventListener(DW_REPLAY_SEARCH_MODAL_OPEN, onSearchOpen as EventListener);
     document.addEventListener(DW_REPLAY_SEARCH_MODAL_CLOSE, onCloseSearch);
     document.addEventListener(DW_REPLAY_SELECT_NODE, onSelectNode as EventListener);
+    document.addEventListener(DW_REPLAY_CANVAS_RESIZE, onResizeNode as EventListener);
     document.addEventListener(DW_REPLAY_RESOURCE_ACTIVATE, onResourceActivate as EventListener);
     document.addEventListener(DW_REPLAY_BATCH_SELECT, onBatchSelect as EventListener);
     document.addEventListener(DW_REPLAY_CLIPBOARD_COPY, onCopy);
@@ -77,6 +87,7 @@ export function useInteractionRecordingCanvasReplay(
       document.removeEventListener(DW_REPLAY_SEARCH_MODAL_OPEN, onSearchOpen as EventListener);
       document.removeEventListener(DW_REPLAY_SEARCH_MODAL_CLOSE, onCloseSearch);
       document.removeEventListener(DW_REPLAY_SELECT_NODE, onSelectNode as EventListener);
+      document.removeEventListener(DW_REPLAY_CANVAS_RESIZE, onResizeNode as EventListener);
       document.removeEventListener(DW_REPLAY_RESOURCE_ACTIVATE, onResourceActivate as EventListener);
       document.removeEventListener(DW_REPLAY_BATCH_SELECT, onBatchSelect as EventListener);
       document.removeEventListener(DW_REPLAY_CLIPBOARD_COPY, onCopy);

@@ -4,8 +4,10 @@ import type { InteractionRecordingCanvasTransform } from "@/lib/interaction-reco
 
 export const DW_PALETTE_DROP = "dwPaletteDrop";
 export const DW_CANVAS_MOVE = "dwCanvasMove";
+export const DW_CANVAS_RESIZE = "dwCanvasResize";
 export const DW_CANVAS_TRANSFORM = "dwCanvasTransform";
 export const DW_REPLAY_CANVAS_MOVE = "dwReplayCanvasMove";
+export const DW_REPLAY_CANVAS_RESIZE = "dwReplayCanvasResize";
 export const DW_REPLAY_CANVAS_TRANSFORM = "dwReplayCanvasTransform";
 export const DW_OVERLAY_OPEN = "dwOverlayOpen";
 export const DW_OVERLAY_CLOSE = "dwOverlayClose";
@@ -121,6 +123,15 @@ export interface DwCanvasMoveDetail {
   clientY?: number;
 }
 
+export interface DwCanvasResizeDetail {
+  id: string;
+  width: number;
+  height: number;
+  x?: number;
+  y?: number;
+  handle?: string;
+}
+
 function cloneForRecording<T>(value: T): T {
   try {
     return JSON.parse(JSON.stringify(value)) as T;
@@ -156,6 +167,27 @@ export function emitDwReplayCanvasMove(detail: Omit<DwCanvasMoveDetail, "clientX
   if (typeof document === "undefined") return;
   document.dispatchEvent(
     new CustomEvent(DW_REPLAY_CANVAS_MOVE, {
+      bubbles: true,
+      detail,
+    }),
+  );
+}
+
+export function emitDwCanvasResize(detail: DwCanvasResizeDetail): void {
+  if (typeof document === "undefined") return;
+  if (document.body.dataset.dwPlayback === "active") return;
+  document.dispatchEvent(
+    new CustomEvent(DW_CANVAS_RESIZE, {
+      bubbles: true,
+      detail,
+    }),
+  );
+}
+
+export function emitDwReplayCanvasResize(detail: DwCanvasResizeDetail): void {
+  if (typeof document === "undefined") return;
+  document.dispatchEvent(
+    new CustomEvent(DW_REPLAY_CANVAS_RESIZE, {
       bubbles: true,
       detail,
     }),

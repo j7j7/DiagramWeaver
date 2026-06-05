@@ -4,6 +4,12 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-05 – Group selection outline
+Selecting a grouped item shows a **dashed primary-color rectangle** (no fill) around **all group members** on the canvas — **`computeGroupMemberBounds`** / **`resolveGroupSelectionForOutline`** in **`grouping-utils.ts`**, rendered in **`EditorCanvas`** above nodes (follows live drag positions via **`displayNodesById`**). Hidden when multi-select spans outside the group or in read-only. Patch bumped.
+
+### 2026-06-05 – Interaction recorder: resize handle replay
+Resize drags failed after palette drops because replay used stale **node ids**, missed the **12×12px** handle hit target, and dropped nodes were not **selected** (handles hidden). Playback now **remaps** recorded `nodeId` → live node (same type prefix), **auto-selects** after palette drop and before handle `pointerdown`, resolves **`data-handle`** targets before `elementFromPoint`, and snaps handle **pointerdown** to the live knob center. New semantic **`dwCanvasResize`** / **`dwReplayCanvasResize`** records final width/height (and optional x/y) on resize end for reliable fallback replay. **Re-record** for `dwCanvasResize` on older `.dwrec.json`. Patch bumped.
+
 ### 2026-06-05 – Resource browser: always windowed grids
 **`VirtualizedResourceGrid`** now applies to every category and icon section (removed **≥40** threshold). Viewport intersection uses **`getBoundingClientRect`** so fully off-screen grids mount **zero** tiles; **`layoutEpoch`** refreshes ranges when accordions expand/collapse. Patch bumped.
 

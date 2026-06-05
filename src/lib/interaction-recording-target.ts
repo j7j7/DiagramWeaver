@@ -84,6 +84,17 @@ function queryByPlaceholder(placeholder: string): Element | null {
   return hit instanceof Element ? hit : null;
 }
 
+export function nodeIdTypePrefix(nodeId: string): string {
+  return nodeId.replace(/-\d+$/, "");
+}
+
+/** Find a resize rail/knob inside a diagram node. */
+export function queryResizeHandleElement(nodeId: string, handle: string): Element | null {
+  const node = document.querySelector(`[data-node-id="${CSS.escape(nodeId)}"]`);
+  const knob = node?.querySelector(`[data-handle="${CSS.escape(handle)}"]`);
+  return knob instanceof Element ? knob : null;
+}
+
 /** Resolve the best element to dispatch replay events on. */
 export function resolveInteractionTarget(
   target: InteractionRecordingTarget,

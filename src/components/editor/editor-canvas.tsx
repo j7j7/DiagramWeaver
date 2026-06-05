@@ -46,7 +46,11 @@ import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
 import { useInteractionRecordingMenuReplay } from "@/hooks/use-interaction-recording-menu-replay";
 import { useInteractionRecordingCanvasReplay } from "@/hooks/use-interaction-recording-canvas-replay";
-import { emitDwSearchModalOpen } from "@/lib/interaction-recording-bridge";
+import {
+  emitDwCanvasResize,
+  emitDwSearchModalOpen,
+  type DwCanvasResizeDetail,
+} from "@/lib/interaction-recording-bridge";
 import { useCanvasOperations } from "./canvas-operations";
 import { CanvasConnections } from "./canvas-connections";
 import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
@@ -54,7 +58,11 @@ import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 import { GlobalPropertiesProvider } from "../diagram/global-properties-context";
 import type { GlobalVariableContext } from "@/lib/builtin-global-variables";
-import { getItemGroup } from "@/lib/grouping-utils";
+import {
+  computeGroupMemberBounds,
+  getItemGroup,
+  resolveGroupSelectionForOutline,
+} from "@/lib/grouping-utils";
 import {
   generateConnectionId,
   computeConnectionSlots,
@@ -1233,6 +1241,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     } else {
       operations.resizeNode(nodeId, newWidth, newHeight, newX, newY);
     }
+    emitDwCanvasResize({
+      id: nodeId,
+      width: newWidth,
+      height: newHeight,
+      x: newX,
+      y: newY,
+    });
   }, [selectedItemIds, nodesById, zonesById, operations]);
 
   const handleZoneResize = useCallback((zoneId: string, newWidth: number, newHeight: number) => {
@@ -1584,6 +1599,30 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
     return r;
   }, [zonesWithDragPositions, zonesById, altKeyHeld, dragPosition, multiDragPositions]);
+
+  const activeGroupSelectionOutline = useMemo(() => {
+    if (isReadOnly) return null;
+    const group = resolveGroupSelectionForOutline(
+      selectedItemId,
+      selectedItemIds,
+      diagramData,
+    );
+    if (!group) return null;
+    const bounds = computeGroupMemberBounds(
+      group.memberIds,
+      displayNodesById,
+      displayZonesById,
+    );
+    if (!bounds) return null;
+    return { groupId: group.id, bounds };
+  }, [
+    isReadOnly,
+    selectedItemId,
+    selectedItemIds,
+    diagramData,
+    displayNodesById,
+    displayZonesById,
+  ]);
 
   // ============================================================================
   // HOOK: useAlignmentGuides
@@ -3095,6 +3134,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         setSearchModalDiagramPosition(null);
       },
       selectNode: selectItemForReplay,
+      resizeNode: (detail: DwCanvasResizeDetail) => {
+        handleNodeResize(detail.id, detail.width, detail.height, detail.x, detail.y);
+      },
       batchSelect: (itemIds: string[]) => {
         onBatchSelect?.(itemIds);
       },
@@ -3105,6 +3147,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       onPauseConnectionAnimationsForOverlayUi,
       pastePaletteItemHandler,
       selectItemForReplay,
+      handleNodeResize,
       onBatchSelect,
       copyHandler,
       pasteHandler,
@@ -4001,6 +4044,21 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 />
               );
             })()}
+
+            {activeGroupSelectionOutline && (
+              <div
+                key={`group-outline-${activeGroupSelectionOutline.groupId}`}
+                className="pointer-events-none absolute rounded-sm border-2 border-dashed border-primary"
+                style={{
+                  left: `${activeGroupSelectionOutline.bounds.x}px`,
+                  top: `${activeGroupSelectionOutline.bounds.y}px`,
+                  width: `${activeGroupSelectionOutline.bounds.width}px`,
+                  height: `${activeGroupSelectionOutline.bounds.height}px`,
+                  zIndex: 42,
+                }}
+                aria-hidden
+              />
+            )}
 
             {/* ================================================================
                 ALIGNMENT GUIDES

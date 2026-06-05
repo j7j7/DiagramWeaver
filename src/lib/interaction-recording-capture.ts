@@ -12,6 +12,7 @@ import { describeInteractionTarget } from "@/lib/interaction-recording-target";
 import {
   DW_BATCH_SELECT,
   DW_CANVAS_MOVE,
+  DW_CANVAS_RESIZE,
   DW_CANVAS_TRANSFORM,
   DW_CONTEXT_MENU_ACTION,
   DW_CONTEXT_MENU_OPEN,
@@ -97,6 +98,7 @@ const RECORDED_CUSTOM_EVENTS = new Set([
   "mobileMove",
   DW_PALETTE_DROP,
   DW_CANVAS_MOVE,
+  DW_CANVAS_RESIZE,
   DW_CANVAS_TRANSFORM,
   DW_OVERLAY_OPEN,
   DW_OVERLAY_CLOSE,
@@ -335,6 +337,7 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
   document.addEventListener("mobileMove", onCustom, active);
   document.addEventListener(DW_PALETTE_DROP, onCustom, active);
   document.addEventListener(DW_CANVAS_MOVE, onCustom, active);
+  document.addEventListener(DW_CANVAS_RESIZE, onCustom, active);
   document.addEventListener(DW_CANVAS_TRANSFORM, onCustom, active);
   document.addEventListener(DW_OVERLAY_OPEN, onCustom, active);
   document.addEventListener(DW_OVERLAY_CLOSE, onCustom, active);
@@ -367,6 +370,7 @@ export function startInteractionRecordingCapture(): InteractionRecordingCaptureS
       document.removeEventListener("mobileMove", onCustom, active);
       document.removeEventListener(DW_PALETTE_DROP, onCustom, active);
       document.removeEventListener(DW_CANVAS_MOVE, onCustom, active);
+      document.removeEventListener(DW_CANVAS_RESIZE, onCustom, active);
       document.removeEventListener(DW_CANVAS_TRANSFORM, onCustom, active);
       document.removeEventListener(DW_OVERLAY_OPEN, onCustom, active);
       document.removeEventListener(DW_OVERLAY_CLOSE, onCustom, active);

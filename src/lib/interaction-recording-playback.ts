@@ -7,6 +7,7 @@ import type {
 import {
   DW_BATCH_SELECT,
   DW_CANVAS_MOVE,
+  DW_CANVAS_RESIZE,
   DW_CANVAS_TRANSFORM,
   DW_CONTEXT_MENU_ACTION,
   DW_CONTEXT_MENU_OPEN,
@@ -28,9 +29,11 @@ import {
   emitDwReplayResourceActivate,
   emitDwReplaySearchModalClose,
   emitDwReplaySelectNode,
+  emitDwReplayCanvasResize,
   emitPlaybackCursor,
   type DwBatchSelectDetail,
   type DwCanvasMoveDetail,
+  type DwCanvasResizeDetail,
   type DwContextMenuActionDetail,
   type DwContextMenuOpenDetail,
   type DwOverlayActionDetail,
@@ -43,6 +46,8 @@ import { ItemTypes } from "@/components/editor/draggable-item";
 import {
   focusInteractionTarget,
   isEditableElement,
+  nodeIdTypePrefix,
+  queryResizeHandleElement,
   resolveInteractionTargetForEvent,
   setNativeInputValue,
   waitForInputByPlaceholder,
@@ -108,15 +113,67 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-/** Prefer surface/action targets, then coordinate hit-testing. */
+function nodeExistsOnCanvas(nodeId: string): boolean {
+  return Boolean(document.querySelector(`[data-node-id="${CSS.escape(nodeId)}"]`));
+}
+
+/** Map recorded node ids to nodes created during replay (palette drops use new sequential suffixes). */
+function resolveEffectiveNodeId(recordedId: string, runtime: PlaybackRuntime): string {
+  const remapped = runtime.nodeIdRemap.get(recordedId);
+  if (remapped) return remapped;
+  if (nodeExistsOnCanvas(recordedId)) return recordedId;
+  if (runtime.lastNodeId && nodeIdTypePrefix(recordedId) === nodeIdTypePrefix(runtime.lastNodeId)) {
+    runtime.nodeIdRemap.set(recordedId, runtime.lastNodeId);
+    return runtime.lastNodeId;
+  }
+  return recordedId;
+}
+
+function effectiveTarget(
+  target: InteractionRecordingTarget | undefined,
+  runtime: PlaybackRuntime,
+): InteractionRecordingTarget | undefined {
+  if (!target?.nodeId) return target;
+  const nodeId = resolveEffectiveNodeId(target.nodeId, runtime);
+  return nodeId === target.nodeId ? target : { ...target, nodeId };
+}
+
+function resolveResizeHandleElement(
+  target: InteractionRecordingTarget | undefined,
+  runtime: PlaybackRuntime,
+): Element | null {
+  if (!target?.handle || !target.nodeId) return null;
+  const nodeId = resolveEffectiveNodeId(target.nodeId, runtime);
+  return queryResizeHandleElement(nodeId, target.handle);
+}
+
+async function waitReplayFrames(count = 2): Promise<void> {
+  for (let i = 0; i < count; i++) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+}
+
+async function ensureNodeSelectedForReplay(nodeId: string, runtime: PlaybackRuntime): Promise<void> {
+  emitDwReplaySelectNode(nodeId);
+  runtime.lastNodeId = nodeId;
+  await waitReplayFrames(2);
+}
+
+/** Prefer resize handles, surface/action targets, then coordinate hit-testing. */
 function resolveAtCoordinates(
   event: InteractionRecordingEvent,
   x: number,
   y: number,
+  runtime: PlaybackRuntime,
 ): Element | null {
-  if ("target" in event && isTargetInRecordingSurface(event.target)) {
-    const surfaceEl = resolveInteractionTargetForEvent(event.target, x, y);
-    if (surfaceEl instanceof Element) return surfaceEl;
+  if ("target" in event) {
+    const target = effectiveTarget(event.target, runtime);
+    const handleEl = resolveResizeHandleElement(target, runtime);
+    if (handleEl) return handleEl;
+    if (target && isTargetInRecordingSurface(target)) {
+      const surfaceEl = resolveInteractionTargetForEvent(target, x, y);
+      if (surfaceEl instanceof Element) return surfaceEl;
+    }
   }
   const atPoint =
     typeof document !== "undefined" && Number.isFinite(x) && Number.isFinite(y)
@@ -124,7 +181,8 @@ function resolveAtCoordinates(
       : null;
   if (atPoint instanceof Element) return atPoint;
   if ("target" in event) {
-    return resolveInteractionTargetForEvent(event.target, x, y);
+    const target = effectiveTarget(event.target, runtime);
+    return target ? resolveInteractionTargetForEvent(target, x, y) : null;
   }
   return null;
 }
@@ -135,12 +193,23 @@ function resolveEventPoint(
     y: number;
     diagram?: { x: number; y: number };
     canvasTransform?: InteractionRecordingCanvasTransform;
+    phase?: "down" | "move" | "up" | "cancel";
   },
   ctx: ReplayPointContext,
+  runtime: PlaybackRuntime,
 ): { x: number; y: number } {
-  if ("target" in event && isTargetInRecordingSurface(event.target)) {
-    const el = resolveInteractionTargetForEvent(event.target, event.x, event.y);
-    if (el instanceof Element) return centerOfElement(el);
+  if ("target" in event) {
+    const target = effectiveTarget(event.target, runtime);
+    if (target?.handle && target.nodeId) {
+      const handleEl = resolveResizeHandleElement(target, runtime);
+      if (handleEl instanceof Element && event.phase === "down") {
+        return centerOfElement(handleEl);
+      }
+    }
+    if (target && isTargetInRecordingSurface(target)) {
+      const el = resolveInteractionTargetForEvent(target, event.x, event.y);
+      if (el instanceof Element) return centerOfElement(el);
+    }
   }
   return resolveReplayClientPoint(
     event.x,
@@ -246,12 +315,13 @@ function activateElementClick(el: Element): void {
 function resolveClickTarget(
   event: InteractionRecordingEvent & { target?: InteractionRecordingTarget },
   point: { x: number; y: number },
+  runtime: PlaybackRuntime,
 ): Element | null {
   if ("target" in event && event.target && isTargetInRecordingSurface(event.target)) {
     const surfaceEl = resolveRecordingSurfaceTarget(event.target);
     if (surfaceEl instanceof Element) return surfaceEl;
   }
-  return resolveAtCoordinates(event, point.x, point.y);
+  return resolveAtCoordinates(event, point.x, point.y, runtime);
 }
 
 function applyCanvasTransform(transform: InteractionRecordingCanvasTransform) {
@@ -264,16 +334,23 @@ async function dispatchPointer(
   runtime: PlaybackRuntime,
 ) {
   await syncCanvasTransformForEvent(event, ctx, runtime);
-  const point = resolveEventPoint(event, ctx);
-  const el = resolveAtCoordinates(event, point.x, point.y);
+
+  if (event.phase === "down" && event.target?.handle && event.target.nodeId) {
+    const nodeId = resolveEffectiveNodeId(event.target.nodeId, runtime);
+    await ensureNodeSelectedForReplay(nodeId, runtime);
+  } else if (event.phase === "down" && event.target?.nodeId && !event.target.handle) {
+    runtime.lastNodeId = resolveEffectiveNodeId(event.target.nodeId, runtime);
+  }
+
+  const point = resolveEventPoint(event, ctx, runtime);
+  const el = resolveAtCoordinates(event, point.x, point.y, runtime);
   if (!(el instanceof Element)) return;
 
   if (event.phase === "down") {
     runtime.pointerDown = { button: event.button };
     runtime.holdShown = false;
     if (event.target?.nodeId) {
-      runtime.lastNodeId =
-        runtime.nodeIdRemap.get(event.target.nodeId) ?? event.target.nodeId;
+      runtime.lastNodeId = resolveEffectiveNodeId(event.target.nodeId, runtime);
     }
     showPlaybackCursor(point.x, point.y, event.button === 2 ? "right-down" : "left-down");
   } else if (event.phase === "move" && runtime.pointerDown && !runtime.holdShown) {
@@ -327,7 +404,7 @@ async function dispatchPointer(
   }
 
   if (event.phase === "up" && event.button === 0) {
-    const clickTarget = resolveClickTarget(event, point) ?? el;
+    const clickTarget = resolveClickTarget(event, point, runtime) ?? el;
     if (useNativeClick) {
       activateElementClick(clickTarget);
     } else {
@@ -354,8 +431,8 @@ async function dispatchClick(
   runtime: PlaybackRuntime,
 ) {
   await syncCanvasTransformForEvent(event, ctx, runtime);
-  const point = resolveEventPoint(event, ctx);
-  const el = resolveClickTarget(event, point);
+  const point = resolveEventPoint(event, ctx, runtime);
+  const el = resolveClickTarget(event, point, runtime);
   if (!(el instanceof Element)) return;
   showPlaybackCursor(point.x, point.y, "left-down");
   if ("target" in event && isTargetInRecordingSurface(event.target)) {
@@ -391,7 +468,7 @@ async function dispatchWheel(
     ctx,
     event.canvasTransform,
   );
-  const el = resolveAtCoordinates(event, point.x, point.y);
+  const el = resolveAtCoordinates(event, point.x, point.y, runtime);
   if (!(el instanceof Element)) return;
   const mods = modifierInit(event.modifiers);
   el.dispatchEvent(
@@ -424,12 +501,6 @@ function applyKeyToEditable(
     return;
   }
   setNativeInputValue(el, next);
-}
-
-async function waitReplayFrames(count = 2): Promise<void> {
-  for (let i = 0; i < count; i++) {
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-  }
 }
 
 async function dispatchKey(
@@ -515,7 +586,7 @@ async function dispatchContextMenu(
     ctx,
     event.canvasTransform,
   );
-  const el = resolveAtCoordinates(event, point.x, point.y);
+  const el = resolveAtCoordinates(event, point.x, point.y, runtime);
   if (!(el instanceof Element)) return;
   showPlaybackCursor(point.x, point.y, "right-down");
   const mods = modifierInit(event.modifiers);
@@ -596,11 +667,13 @@ function findNodeIdOnCanvasForPaletteType(type: string): string | null {
 function syncLastNodeFromPaletteDrop(
   detail: DwPaletteDropDetail,
   runtime: PlaybackRuntime,
-): void {
+): string | null {
   const item = detail.item as { type?: string } | null;
-  if (!item?.type) return;
+  if (!item?.type) return null;
   const nodeId = findNodeIdOnCanvasForPaletteType(item.type);
-  if (nodeId) runtime.lastNodeId = nodeId;
+  if (!nodeId) return null;
+  runtime.lastNodeId = nodeId;
+  return nodeId;
 }
 
 function syncLastNodeFromResourceActivate(
@@ -614,12 +687,25 @@ function syncLastNodeFromResourceActivate(
 }
 
 function dispatchCanvasMove(detail: DwCanvasMoveDetail, runtime: PlaybackRuntime) {
-  const id = runtime.nodeIdRemap.get(detail.id) ?? detail.id;
+  const id = resolveEffectiveNodeId(detail.id, runtime);
   emitDwReplayCanvasMove({
     id,
     itemType: detail.itemType,
     diagramX: detail.diagramX,
     diagramY: detail.diagramY,
+  });
+  runtime.lastNodeId = id;
+}
+
+function dispatchCanvasResize(detail: DwCanvasResizeDetail, runtime: PlaybackRuntime) {
+  const id = resolveEffectiveNodeId(detail.id, runtime);
+  emitDwReplayCanvasResize({
+    id,
+    width: detail.width,
+    height: detail.height,
+    x: detail.x,
+    y: detail.y,
+    handle: detail.handle,
   });
   runtime.lastNodeId = id;
 }
@@ -718,11 +804,22 @@ async function dispatchCustom(
     dispatchPaletteDrop(detail as unknown as DwPaletteDropDetail, ctx);
     emitDwReplaySearchModalClose();
     await waitReplayFrames();
-    syncLastNodeFromPaletteDrop(detail as unknown as DwPaletteDropDetail, runtime);
+    const droppedNodeId = syncLastNodeFromPaletteDrop(
+      detail as unknown as DwPaletteDropDetail,
+      runtime,
+    );
+    if (droppedNodeId) {
+      await ensureNodeSelectedForReplay(droppedNodeId, runtime);
+    }
     return;
   }
   if (event.name === DW_CANVAS_MOVE) {
     dispatchCanvasMove(detail as unknown as DwCanvasMoveDetail, runtime);
+    return;
+  }
+  if (event.name === DW_CANVAS_RESIZE) {
+    dispatchCanvasResize(detail as unknown as DwCanvasResizeDetail, runtime);
+    await waitReplayFrames();
     return;
   }
   if (event.name === "mobileMove") {
