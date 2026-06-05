@@ -1,16 +1,15 @@
 "use client";
-import React, { useMemo, useState, useRef } from 'react';
-import { useDrag } from 'react-dnd';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent } from '../ui/card';
-import { ItemTypes, emitMobilePaletteDropIfOverCanvas } from './draggable-item';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 import { buildResourceIconPath } from '@/lib/resource-mapping';
 import { ResourceIcon } from '@/components/diagram/resource-icon';
+import { usePalettePointerDrag } from '@/hooks/use-palette-pointer-drag';
 
 interface DraggableResourceItemProps {
   resource: {
     name: string;
-    file?: string; // Optional for icon resources (icons use DraggableIconItem)
+    file?: string;
     type?: string;
     hasWhiteVariant?: boolean;
     format?: string;
@@ -18,7 +17,6 @@ interface DraggableResourceItemProps {
   provider: string;
   category: string;
   icon: React.ReactNode;
-  /** When true, invert image in dark mode (for black shape icons) */
   invertInDarkMode?: boolean;
   onClick?: (args: { resource: DraggableResourceItemProps['resource']; provider: string; category: string }) => void;
   onDoubleClick?: (args: { resource: DraggableResourceItemProps['resource']; provider: string; category: string }) => void;
@@ -29,7 +27,6 @@ interface DraggableResourceItemProps {
 function DraggableResourceItemInner({ resource, provider, category, icon, onClick, onDoubleClick, isSelected, viewMode = 'normal', invertInDarkMode = false }: DraggableResourceItemProps) {
   const [imageError, setImageError] = useState(false);
 
-  // Icon path for display in sidebar - NEVER passed to node
   const iconPath = useMemo(() => {
     if (!resource.file) return '';
     const derivedSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
@@ -42,26 +39,17 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   
   const item = useMemo(() => {
     const derivedSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
-
-    // Pass file for initial rendering only (NOT stored in node)
-    // Check if this is a zone resource (either by type field or by category)
     const isZoneResource = (provider === 'generic' && category === 'grouping') || resource.type === 'zone';
     
     if (isZoneResource) {
-      // Zone should create zone type with subType
-      const subType = resource.name.toLowerCase(); // 'zone'
-      
-      const dragItem = {
-        type: 'zone', // Always create zone type
-        subType, // Preserve subType
+      return {
+        type: 'zone',
+        subType: resource.name.toLowerCase(),
         label: resource.name,
         provider,
         category,
-        file: resource.file, // For ResourceIcon lookup during drag
+        file: resource.file,
       };
-      
-
-      return dragItem;
     }
     
     const isTextPaletteTextBoxHeading =
@@ -94,64 +82,14 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
       label: resource.name,
       provider,
       category: isTextPaletteTextBoxHeading ? 'object' : category,
-      file: resource.file, // For ResourceIcon lookup during drag
+      file: resource.file,
     };
-  }, [resource.name, provider, category, resource.file]);
+  }, [resource.name, provider, category, resource.file, resource.type]);
 
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: ItemTypes.DIAGRAM_NODE,
-    item: item,
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  }), [item]);
+  const { isDragging, pointerHandlers } = usePalettePointerDrag(item, {
+    onTap: () => onClick?.({ resource, provider, category }),
+  });
 
-  const [isTouchDragging, setIsTouchDragging] = useState(false);
-  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-
-  // Touch event handlers for mobile drag and drop
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    setIsTouchDragging(true);
-    (e.currentTarget as HTMLElement).style.opacity = '0.5';
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartPos.current) return;
-    
-    const touch = e.touches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
-    const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
-    
-    // Only start dragging if moved enough to prevent accidental drags
-    if (deltaX > 10 || deltaY > 10) {
-      e.preventDefault(); // Prevent scrolling when dragging
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartPos.current) return;
-    
-    const touch = e.changedTouches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
-    const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
-    
-    if (deltaX > 10 || deltaY > 10) {
-      emitMobilePaletteDropIfOverCanvas({
-        touchClientX: touch.clientX,
-        touchClientY: touch.clientY,
-        item,
-      });
-    }
-    
-    // Reset styles
-    (e.currentTarget as HTMLElement).style.opacity = '1';
-    setIsTouchDragging(false);
-    touchStartPos.current = null;
-  };
-
-  // Handle image loading errors - show fallback icon
   const handleImageError = () => {
     setImageError(true);
   };
@@ -174,20 +112,12 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   const isMindmapPalette =
     provider === 'generic' && category === 'object' && derivedPaletteSlug === 'mind-map-node';
 
-  const dragWrapper = (
+  return (
     <div
-      ref={(node) => {
-        if (node) {
-          drag(node);
-        }
-      }}
-      style={{ opacity: (isDragging || isTouchDragging) ? 0.5 : 1 }}
+      {...pointerHandlers}
+      style={{ opacity: isDragging ? 0.5 : 1, ...pointerHandlers.style }}
       className={`cursor-move min-w-0 ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
       data-dw-recording-action={derivedPaletteSlug}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onClick={() => onClick?.({ resource, provider, category })}
       onDoubleClick={() => onDoubleClick?.({ resource, provider, category })}
     >
       {isCompact ? (
@@ -304,8 +234,6 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
       )}
     </div>
   );
-
-  return dragWrapper;
 }
 
 function areDraggableResourceItemPropsEqual(prev: DraggableResourceItemProps, next: DraggableResourceItemProps): boolean {

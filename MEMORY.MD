@@ -4,6 +4,39 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-05 – Presentation thumbnails: slower auto refresh
+**`PRESENTATION_THUMB_INTERVAL_MS`** **10s → 20s**; **`PRESENTATION_THUMB_DEBOUNCE_MS`** **900 → 1800** (`editor-support`). Patch bumped.
+
+### 2026-06-05 – Dot grid: no flicker during thumbnail capture
+PNG/GIF export no longer toggles live **`[data-dot-grid-overlay]`** — grid is removed on the **html-to-image clone** only (**`hideDotGridOverlayInExportClone`**). Fixes presentation strip thumbnail refresh flicker. Patch bumped.
+
+### 2026-06-05 – Dot grid: subtler SVG dots
+**`CanvasDotGridOverlay`**: opacity **~0.42–0.45**, smaller radius (**1–2px**), softer slate colours (**`#64748b`** / **`#94a3b8`**). Patch bumped.
+
+### 2026-06-05 – Dot grid: SVG viewport overlay
+CSS **`radial-gradient`** grid was unreliable (invisible in practice). **`CanvasDotGridOverlay`** renders an **`absolute inset-0 z-0`** SVG **`pattern`** aligned to pan/zoom (**`userSpaceOnUse`**, 20px diagram step). Theme colours: light **`#334155`**, dark **`#e2e8f0`**. Export hides **`[data-dot-grid-overlay]`**. Patch bumped.
+
+### 2026-06-05 – Dot grid: viewport layer (negative coords fix)
+Dots were on **`data-diagram-layer`** (origin **0,0** only) — invisible when panned into **negative** diagram space. Grid moved to **`#canvas-container`** via **`dot-grid-viewport`** + **`dotGridViewportStyle(transform)`** (pan/zoom-aligned **`background-position`** / **`background-size`**). Export strips **`DOT_GRID_VIEWPORT_CLASS`** from viewport. Patch bumped.
+
+### 2026-06-05 – Dot grid: theme-specific dot colour
+**`.dot-grid`** (`globals.css`): per-theme **`--dot-grid-color`** / **`--dot-grid-opacity`** — light **cool slate** (`215 14% 46%` @ **0.72**), dark **light neutral** (`0 0% 78%` @ **0.68**), **1.5px** dots (replaces foreground tint). Patch bumped.
+
+### 2026-06-05 – Palette pointer drag: floating tile ghost
+**`usePalettePointerDrag`** shows a fixed-position clone (**`palette-drag-preview`**) that follows the pointer after the drag threshold; source tile fades while the ghost moves. Patch bumped.
+
+### 2026-06-05 – Palette: pointer drag instead of per-tile react-dnd
+**`DraggableResourceItem`**, **`DraggableIconItem`**, and scratchpad **`DraggableItem`** use **`usePalettePointerDrag`** (pointer capture + **`mobileDrop`**) — no per-tile **`useDrag`**, so an open sidebar no longer registers thousands of DnD sources during canvas moves. Removed sidebar PNG snapshot deferral (too slow). Patch bumped.
+
+### 2026-06-05 – Resource browser sidebar performance
+Expanded sidebar no longer loads every provider JSON on mount — only the index plus **expanded** providers (search loads all in background). Large category grids (**≥40** tiles) use **`VirtualizedResourceGrid`** (visible rows only). Off-screen provider/category blocks use **`content-visibility: auto`**. Default expanded generic categories: **grouping, text, object** (not compute/database/network); icon sub-sections start collapsed. Patch bumped.
+
+### 2026-06-05 – Dot grid: stronger contrast
+**`.dot-grid`** (`globals.css`): dot opacity **0.12 → 0.28**, radius **1px → 1.25px** for easier alignment on light and dark themes. Patch bumped.
+
+### 2026-06-05 – Options: toggle dot grid overlay
+**Options** menu: **Show/Hide Dot Grid** (persisted **`dw:dotGrid:enabled`**, default on). **`dotGridEnabled`** gates **`EditorCanvas`** **`showDotGrid`** (still off during presentation play). Patch bumped.
+
 ### 2026-06-05 – Grid chart: constant glow follows rounded shell
 **`GridChartShape`** applies **`roundedShellGlow`** on a rounded **mask shell** (same pattern as cards) with **`borderRadius`** + **`overflow: hidden`** on **`ShapeWrapper`**; outer node frame no longer gets rectangular box-shadow. Patch bumped.
 

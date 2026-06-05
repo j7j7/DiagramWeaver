@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 
 // Cookie helper functions
 const RESOURCE_BROWSER_COOKIE = 'resource-browser-state';
@@ -56,6 +56,10 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { DraggableResourceItem } from './draggable-resource-item';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
+import {
+  RESOURCE_GRID_VIRTUALIZE_MIN,
+  VirtualizedResourceGrid,
+} from './virtualized-resource-grid';
 
 // Resource index is fetched at runtime from public/resources
 // This avoids duplicate JSON sources and keeps a single source of truth.
@@ -211,18 +215,24 @@ function ProviderIcon({ provider }: { provider: string }) {
   );
 }
 
-export function ResourceBrowser({ onResourceSelect, onResourceActivate }: ResourceBrowserProps) {
+function ResourceBrowserInner({
+  onResourceSelect,
+  onResourceActivate,
+}: ResourceBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [fullProviders, setFullProviders] = useState<Record<string, ResourceProvider>>({});
+  const [loadingProviderKeys, setLoadingProviderKeys] = useState<Set<string>>(() => new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [resourceIndex, setResourceIndex] = useState<ResourceIndex | null>(null);
+  const scrollRootRef = useRef<HTMLDivElement>(null);
+  const loadingProvidersRef = useRef<Set<string>>(new Set());
+  const fullProvidersRef = useRef(fullProviders);
+  fullProvidersRef.current = fullProviders;
   
   // Use fixed defaults for initial render to avoid hydration mismatch (cookies only exist on client)
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [expandedIconCategories, setExpandedIconCategories] = useState<Set<string>>(() =>
-    new Set(['People', 'Places', 'Tech', 'Emojis'])
-  );
+  const [expandedIconCategories, setExpandedIconCategories] = useState<Set<string>>(() => new Set());
   const [viewMode, setViewMode] = useState<'normal' | 'compact'>('normal');
   const [customIconUrl, setCustomIconUrl] = useState('');
   const [customIconError, setCustomIconError] = useState<string | null>(null);
@@ -230,72 +240,69 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
   const [customIconLoadedUrl, setCustomIconLoadedUrl] = useState<string | null>(null);
   const [customIconOptions, setCustomIconOptions] = useState<CustomImageOptions>(DEFAULT_CUSTOM_IMAGE_OPTIONS);
 
-  /** Avoid writing expansion cookies before initial `loadAll` finishes (pure state updaters only). */
+  /** Avoid writing expansion cookies before initial index load finishes (pure state updaters only). */
   const expansionCookieSyncRef = useRef(false);
 
+  const loadProvider = React.useCallback(async (providerKey: string) => {
+    if (fullProvidersRef.current[providerKey] || loadingProvidersRef.current.has(providerKey)) {
+      return;
+    }
+    const meta = resourceIndex?.providers[providerKey];
+    if (!meta?.enabled) return;
+
+    loadingProvidersRef.current.add(providerKey);
+    setLoadingProviderKeys((prev) => new Set(prev).add(providerKey));
+    try {
+      const res = await fetch(`/resources/${meta.file}`, { cache: 'no-cache' });
+      const data = (await res.json()) as ResourceProvider;
+      setFullProviders((prev) => ({ ...prev, [providerKey]: data }));
+    } catch (err) {
+      console.error(`Failed to load provider ${providerKey}:`, err);
+    } finally {
+      loadingProvidersRef.current.delete(providerKey);
+      setLoadingProviderKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(providerKey);
+        return next;
+      });
+    }
+  }, [resourceIndex]);
+
   useEffect(() => {
-    const loadAll = async () => {
+    const loadIndex = async () => {
       setIsLoading(true);
       try {
-        // Fetch the index from the canonical public location
         const indexRes = await fetch('/resources/resource-components.json', { cache: 'no-cache' });
         const indexJson: ResourceIndex = await indexRes.json();
         setResourceIndex(indexJson);
 
-        // Fetch enabled providers in parallel for responsiveness
-        const entries = Object.entries(indexJson.providers).filter(([, p]) => p.enabled);
-        const providerPairs = await Promise.all(entries.map(async ([key, provider]) => {
-          try {
-            const res = await fetch(`/resources/${provider.file}`, { cache: 'no-cache' });
-            const data = await res.json();
-            return [key, data as ResourceProvider] as const;
-          } catch (err) {
-            console.error(`Failed to load provider ${key}:`, err);
-            return null;
-          }
-        }));
-
-        const providers: Record<string, ResourceProvider> = {};
-        for (const pair of providerPairs) {
-          if (pair) providers[pair[0]] = pair[1];
-        }
-        setFullProviders(providers);
-
-        // Hydrate from cookie (client-only) and apply saved state or defaults
         const savedState = getBrowserState();
         setViewMode(savedState.viewMode || 'normal');
 
-        if (Object.keys(providers).length > 0) {
-          let defaultProvider = 'generic';
-          let newExpandedProviders = new Set<string>(savedState.expandedProviders);
-          let newExpandedCategories = new Set<string>(savedState.expandedCategories);
+        const enabledKeys = Object.entries(indexJson.providers)
+          .filter(([, p]) => p.enabled)
+          .map(([key]) => key);
+        if (enabledKeys.length === 0) return;
 
-          if (newExpandedProviders.size === 0 || !providers[defaultProvider]) {
-            if (providers[defaultProvider]) {
-              newExpandedProviders = new Set([defaultProvider]);
-            } else {
-              defaultProvider = Object.keys(providers)[0];
-              newExpandedProviders = new Set([defaultProvider]);
-            }
-          }
+        let defaultProvider = enabledKeys.includes('generic') ? 'generic' : enabledKeys[0];
+        let newExpandedProviders = new Set<string>(
+          savedState.expandedProviders.filter((k) => enabledKeys.includes(k)),
+        );
+        let newExpandedCategories = new Set<string>(savedState.expandedCategories);
 
-          const providerData = providers[Array.from(newExpandedProviders)[0]];
-          const defaultProviderKey = Array.from(newExpandedProviders)[0];
-          if (providerData?.categories && newExpandedCategories.size === 0) {
-            const categoriesToExpand = ['grouping', 'text', 'compute', 'database', 'network'];
-            Object.keys(providerData.categories).forEach(categoryKey => {
-              if (categoriesToExpand.includes(categoryKey)) {
-                newExpandedCategories.add(`${defaultProviderKey}-${categoryKey}`);
-              }
-            });
-            if (defaultProviderKey === 'generic') {
-              newExpandedCategories.add('generic-icons');
-            }
-          }
-
-          setExpandedProviders(newExpandedProviders);
-          setExpandedCategories(newExpandedCategories);
+        if (newExpandedProviders.size === 0) {
+          newExpandedProviders = new Set([defaultProvider]);
         }
+
+        if (newExpandedCategories.size === 0) {
+          const categoriesToExpand = ['grouping', 'text', 'object'];
+          categoriesToExpand.forEach((categoryKey) => {
+            newExpandedCategories.add(`${defaultProvider}-${categoryKey}`);
+          });
+        }
+
+        setExpandedProviders(newExpandedProviders);
+        setExpandedCategories(newExpandedCategories);
       } catch (e) {
         console.error('Failed to load resource index:', e);
       } finally {
@@ -303,8 +310,22 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
         setIsLoading(false);
       }
     };
-    loadAll();
+    loadIndex();
   }, []);
+
+  useEffect(() => {
+    if (!resourceIndex) return;
+    expandedProviders.forEach((key) => {
+      void loadProvider(key);
+    });
+  }, [expandedProviders, resourceIndex, loadProvider]);
+
+  useEffect(() => {
+    if (!resourceIndex || !searchTerm.trim()) return;
+    Object.entries(resourceIndex.providers).forEach(([key, meta]) => {
+      if (meta.enabled) void loadProvider(key);
+    });
+  }, [searchTerm, resourceIndex, loadProvider]);
 
   useEffect(() => {
     if (!expansionCookieSyncRef.current) return;
@@ -317,6 +338,7 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
   }, [expandedProviders, expandedCategories]);
 
   const onProviderOpenChange = (provider: string, open: boolean) => {
+    if (open) void loadProvider(provider);
     setExpandedProviders((prev) => {
       const has = prev.has(provider);
       if (has === open) return prev;
@@ -339,15 +361,24 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
   };
 
   const expandAll = () => {
-    const allProviders = new Set(Object.keys(filteredProviders));
+    if (!resourceIndex) return;
+    const enabledKeys = Object.entries(resourceIndex.providers)
+      .filter(([, p]) => p.enabled)
+      .map(([key]) => key);
+    enabledKeys.forEach((key) => void loadProvider(key));
+
+    const allProviders = new Set(enabledKeys);
     const allCategories = new Set<string>();
-    
-    Object.entries(filteredProviders).forEach(([providerKey, provider]) => {
-      Object.keys(provider.categories).forEach(categoryKey => {
+
+    Object.entries(fullProviders).forEach(([providerKey, provider]) => {
+      Object.keys(provider.categories).forEach((categoryKey) => {
         allCategories.add(`${providerKey}-${categoryKey}`);
       });
     });
-    
+    if (enabledKeys.includes('generic')) {
+      allCategories.add('generic-icons');
+    }
+
     setExpandedProviders(allProviders);
     setExpandedCategories(allCategories);
   };
@@ -380,62 +411,94 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     return { symbolSections: filteredSections, emoji: filteredEmoji };
   }, [searchTerm]);
 
-  const filteredProviders = useMemo(() => {
-    if (isLoading || Object.keys(fullProviders).length === 0) return {};
-    const providers = fullProviders;
-    
-    if (!searchTerm) {
-      // Reorder providers to put generic first (contains zones/groups)
+  const priorityProviderOrder = useMemo(
+    () =>
+      [
+        'generic',
+        'k8s',
+        'aws',
+        'azure',
+        'gcp',
+        'oci',
+        'onprem',
+        'saas',
+        'elastic',
+        'firebase',
+        'digitalocean',
+        'ibm',
+        'openstack',
+        'outscale',
+        'gis',
+        'programming',
+        'alibabacloud',
+      ] as const,
+    [],
+  );
+
+  const orderProviders = useCallback(
+    (providers: Record<string, ResourceProvider>) => {
       const orderedProviders: Record<string, ResourceProvider> = {};
-      const priorityOrder = ['generic', 'k8s', 'aws', 'azure', 'gcp', 'oci', 'onprem', 'saas', 'elastic', 'firebase', 'digitalocean', 'ibm', 'openstack', 'outscale', 'gis', 'programming', 'alibabacloud'];
-      
-      // Add providers in priority order
-      priorityOrder.forEach(key => {
-        if (providers[key]) {
-          orderedProviders[key] = providers[key];
-        }
+      priorityProviderOrder.forEach((key) => {
+        if (providers[key]) orderedProviders[key] = providers[key];
       });
-      
-      // Add any remaining providers
       Object.entries(providers).forEach(([key, provider]) => {
-        if (!orderedProviders[key]) {
-          orderedProviders[key] = provider;
-        }
+        if (!orderedProviders[key]) orderedProviders[key] = provider;
       });
-      
       return orderedProviders;
+    },
+    [priorityProviderOrder],
+  );
+
+  const filteredProviders = useMemo(() => {
+    if (isLoading || !resourceIndex) return {};
+
+    const enabledIndexEntries = Object.entries(resourceIndex.providers).filter(([, p]) => p.enabled);
+
+    if (!searchTerm) {
+      const merged: Record<string, ResourceProvider> = {};
+      enabledIndexEntries.forEach(([key, meta]) => {
+        merged[key] =
+          fullProviders[key] ??
+          ({
+            name: meta.name,
+            icon: meta.icon,
+            totalResources: meta.totalResources,
+            categories: {},
+          } as ResourceProvider);
+      });
+      return orderProviders(merged);
     }
 
     const filtered: Record<string, ResourceProvider> = {};
-    
-    Object.entries(providers).forEach(([providerKey, provider]) => {
+    Object.entries(fullProviders).forEach(([providerKey, provider]) => {
       const matchingCategories: Record<string, ResourceCategory> = {};
-      
+
       Object.entries(provider.categories).forEach(([categoryKey, category]) => {
-        const matchingResources = category.resources.filter(resource =>
-          resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          provider.name.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchingResources = category.resources.filter(
+          (resource) =>
+            resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            provider.name.toLowerCase().includes(searchTerm.toLowerCase()),
         );
-        
+
         if (matchingResources.length > 0) {
           matchingCategories[categoryKey] = {
             ...category,
-            resources: matchingResources
+            resources: matchingResources,
           };
         }
       });
-      
+
       if (Object.keys(matchingCategories).length > 0) {
         filtered[providerKey] = {
           ...provider,
-          categories: matchingCategories
+          categories: matchingCategories,
         };
       }
     });
-    
-    return filtered;
-  }, [searchTerm, fullProviders, isLoading]);
+
+    return orderProviders(filtered);
+  }, [searchTerm, fullProviders, isLoading, resourceIndex, orderProviders]);
 
   const getResourceIcon = (resource: ResourceItem, provider: string, category: string) => {
     // For generic object shapes, use ResourceIcon with theme-aware grey (works in light and dark mode)
@@ -576,6 +639,60 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     });
   };
 
+  const renderCategoryResourceGrid = useCallback(
+    (resources: ResourceItem[], providerKey: string, categoryKey: string) => {
+      const renderTile = (resource: unknown, index: number) => {
+        const r = resource as ResourceItem;
+        return (
+          <DraggableResourceItem
+            key={`${providerKey}-${categoryKey}-${index}-${r.name}`}
+            resource={r}
+            provider={providerKey}
+            category={categoryKey}
+            icon={getResourceIcon(r, providerKey, categoryKey)}
+            invertInDarkMode={
+              providerKey === 'generic' &&
+              (categoryKey === 'object' ||
+                (categoryKey === 'text' &&
+                  r.name.replace(/\s+/g, '-').toLowerCase() === 'text-box-heading'))
+            }
+            onClick={() => handleResourceClick(r, providerKey, categoryKey)}
+            onDoubleClick={() => handleResourceActivate(r, providerKey, categoryKey)}
+            viewMode={viewMode}
+          />
+        );
+      };
+
+      if (resources.length >= RESOURCE_GRID_VIRTUALIZE_MIN) {
+        return (
+          <VirtualizedResourceGrid
+            resources={resources}
+            viewMode={viewMode}
+            scrollRootRef={scrollRootRef}
+            renderItem={renderTile}
+          />
+        );
+      }
+
+      return (
+        <div
+          className={`ml-4 grid touch-spacing ${
+            viewMode === 'compact'
+              ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1'
+              : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
+          }`}
+        >
+          {resources.map((resource, index) => renderTile(resource, index))}
+        </div>
+      );
+    },
+    [viewMode, getResourceIcon, handleResourceClick, handleResourceActivate],
+  );
+
+  const indexTotalResources = resourceIndex
+    ? Object.values(resourceIndex.providers).reduce((acc, p) => acc + (p.enabled ? p.totalResources : 0), 0)
+    : 0;
+
 return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Search Bar */}
@@ -599,9 +716,10 @@ return (
                 acc + Object.values(provider.categories).reduce((catAcc, cat) => catAcc + cat.resources.length, 0), 0
               )} resources`
             ) : (
-              `${Object.values(fullProviders).reduce((acc, provider) =>
-                acc + provider.totalResources, 0
-              )} resources loaded`
+              `${indexTotalResources || Object.values(fullProviders).reduce(
+                (acc, provider) => acc + provider.totalResources,
+                0,
+              )} resources available`
             )}
           </div>
           <div className="ml-auto flex gap-1">
@@ -642,7 +760,10 @@ return (
 
       {/* Resource Tree - Vertical Scroll (native overflow avoids Radix ScrollArea measure/sync edge cases) */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden">
+        <div
+          ref={scrollRootRef}
+          className="h-full min-h-0 overflow-y-auto overflow-x-hidden dw-resource-browser-scroll"
+        >
           <TooltipProvider>
           <div className="p-2">
             {isLoading ? (
@@ -665,7 +786,10 @@ return (
             ) : (
                 <>
                 {Object.entries(filteredProviders).map(([providerKey, provider]) => (
-                  <div key={providerKey} className={`mb-2 rounded-md border ${getProviderTintClasses(providerKey)}`}>
+                  <div
+                    key={providerKey}
+                    className={`dw-resource-tree-section mb-2 rounded-md border ${getProviderTintClasses(providerKey)}`}
+                  >
                     <Button
                       type="button"
                       variant="ghost"
@@ -688,6 +812,9 @@ return (
 
                     {expandedProviders.has(providerKey) ? (
                       <div className="ml-4 pl-2 border-l-2 border-muted">
+                          {loadingProviderKeys.has(providerKey) && !fullProviders[providerKey] ? (
+                            <div className="py-3 px-2 text-xs text-muted-foreground">Loading resources…</div>
+                          ) : null}
                           {[
                             ...Object.entries(provider.categories),
                             ...(providerKey === 'generic' && (Object.keys(filteredIconItems.symbolSections).length > 0 || filteredIconItems.emoji.length > 0)
@@ -699,7 +826,10 @@ return (
                             const isIconCategory = (category as ResourceCategory & { _isIconCategory?: boolean })._isIconCategory;
 
                             return (
-                              <div key={categoryKey} className={`mb-1 rounded-md border ${getCategoryTintClasses(categoryKey)}`}>
+                              <div
+                                key={categoryKey}
+                                className={`dw-resource-tree-section mb-1 rounded-md border ${getCategoryTintClasses(categoryKey)}`}
+                              >
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -850,32 +980,9 @@ return (
                                           </div>
                                         )}
                                       </div>
-                                    ) : (
-                                    <div className={`ml-4 grid touch-spacing ${
-                                      viewMode === 'compact' 
-                                        ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' 
-                                        : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
-                                    }`}>
-                                      {category.resources.map((resource, index) => (
-                                        <DraggableResourceItem
-                                          key={index}
-                                          resource={resource}
-                                          provider={providerKey}
-                                          category={categoryKey}
-                                          icon={getResourceIcon(resource, providerKey, categoryKey)}
-                                          invertInDarkMode={
-                                            providerKey === 'generic' &&
-                                            (categoryKey === 'object' ||
-                                              (categoryKey === 'text' &&
-                                                resource.name.replace(/\s+/g, '-').toLowerCase() === 'text-box-heading'))
-                                          }
-                                          onClick={() => handleResourceClick(resource, providerKey, categoryKey)}
-                                          onDoubleClick={() => handleResourceActivate(resource, providerKey, categoryKey)}
-                                          viewMode={viewMode}
-                                        />
-                                      ))}
-                                    </div>
-                                  )
+                                    ) : category.resources.length > 0 ? (
+                                      renderCategoryResourceGrid(category.resources, providerKey, categoryKey)
+                                    ) : null
                                 ) : null}
                               </div>
                             );
@@ -893,3 +1000,5 @@ return (
     </div>
   );
 }
+
+export const ResourceBrowser = React.memo(ResourceBrowserInner);

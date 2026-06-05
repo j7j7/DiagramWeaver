@@ -195,107 +195,93 @@ export function useCanvasExport({
       throw new Error('Canvas is not ready');
     }
 
-    const contentDiv = (canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement | null)
-      ?? (canvasRef.current.querySelector('.dot-grid') as HTMLElement | null);
+    const contentDiv = canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement | null;
     if (!contentDiv) {
       throw new Error('Could not find diagram content');
     }
 
-    const hadGridClass = contentDiv.classList.contains('dot-grid');
-    if (hadGridClass) {
-      contentDiv.classList.remove('dot-grid');
+    const isDark = document.documentElement.classList.contains('dark');
+    const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' :
+      options?.backgroundColor === 'white' ? '#ffffff' :
+      options?.backgroundColor === 'dark' ? '#0f172a' :
+      isDark ? '#0f172a' :
+      getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
+
+    const quality = options?.quality || 'medium';
+    let pixelRatio: number;
+
+    switch (quality) {
+      case 'low':
+        pixelRatio = 1;
+        break;
+      case 'medium':
+        pixelRatio = 2;
+        break;
+      case 'high':
+        pixelRatio = 4;
+        break;
+      default:
+        pixelRatio = 2;
     }
 
-    try {
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const toPngOptions = {
+      pixelRatio,
+      cacheBust: true,
+      backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
+      skipFonts: true,
+    };
 
-      const isDark = document.documentElement.classList.contains('dark');
-      const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' :
-        options?.backgroundColor === 'white' ? '#ffffff' :
-        options?.backgroundColor === 'dark' ? '#0f172a' :
-        isDark ? '#0f172a' :
-        getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
+    if (options?.fitContent) {
+      const { width: vw, height: vh } = getCanvasElementSizeForImageCapture(canvasRef.current);
+      if (vw > 0 && vh > 0) {
+        const fitPadding = options.fitPadding ?? 40;
+        const union = options.unionDiagrams;
+        let fitTransform: Transform | null = null;
 
-      const quality = options?.quality || 'medium';
-      let pixelRatio: number;
-
-      switch (quality) {
-        case 'low':
-          pixelRatio = 1;
-          break;
-        case 'medium':
-          pixelRatio = 2;
-          break;
-        case 'high':
-          pixelRatio = 4;
-          break;
-        default:
-          pixelRatio = 2;
-      }
-
-      const toPngOptions = {
-        pixelRatio,
-        cacheBust: true,
-        backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
-        skipFonts: true,
-      };
-
-      if (options?.fitContent) {
-        const { width: vw, height: vh } = getCanvasElementSizeForImageCapture(canvasRef.current);
-        if (vw > 0 && vh > 0) {
-          const fitPadding = options.fitPadding ?? 40;
-          const union = options.unionDiagrams;
-          let fitTransform: Transform | null = null;
-
-          if (options.tightContentFrame) {
-            let boundsForTight: ContentBounds | null = null;
-            if (union && union.length > 0) {
-              const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
-              boundsForTight = computeUnionExportContentBounds(pruned);
-            } else {
-              boundsForTight = computeExportContentBounds(diagramData, processedNodes, processedZones);
-            }
-            if (boundsForTight) {
-              fitTransform = transformToFitBounds(boundsForTight, vw, vh, fitPadding);
-              const borderPx = options.frameBorderPx ?? 20;
-              const { width: tw, height: th, transform: tightTransform } = computeTightPngFrameForBounds(
-                boundsForTight,
-                fitTransform,
-                borderPx
-              );
-              return await toPngWithDotGridTransform(canvasRef.current, {
-                ...toPngOptions,
-                width: tw,
-                height: th,
-              }, tightTransform);
-            }
-          }
-
+        if (options.tightContentFrame) {
+          let boundsForTight: ContentBounds | null = null;
           if (union && union.length > 0) {
             const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
-            fitTransform = computeUnionFitTransformForDiagrams(pruned, vw, vh, fitPadding);
+            boundsForTight = computeUnionExportContentBounds(pruned);
           } else {
-            const bounds = computeContentBounds(processedNodes, processedZones);
-            if (bounds) {
-              fitTransform = transformToFitBounds(bounds, vw, vh, fitPadding);
-            }
+            boundsForTight = computeExportContentBounds(diagramData, processedNodes, processedZones);
           }
-          if (fitTransform) {
+          if (boundsForTight) {
+            fitTransform = transformToFitBounds(boundsForTight, vw, vh, fitPadding);
+            const borderPx = options.frameBorderPx ?? 20;
+            const { width: tw, height: th, transform: tightTransform } = computeTightPngFrameForBounds(
+              boundsForTight,
+              fitTransform,
+              borderPx
+            );
             return await toPngWithDotGridTransform(canvasRef.current, {
               ...toPngOptions,
-              width: vw,
-              height: vh,
-            }, fitTransform);
+              width: tw,
+              height: th,
+            }, tightTransform);
           }
         }
-      }
 
-      return await toPngWithDiagramExportFixes(canvasRef.current, toPngOptions);
-    } finally {
-      if (hadGridClass) {
-        contentDiv.classList.add('dot-grid');
+        if (union && union.length > 0) {
+          const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
+          fitTransform = computeUnionFitTransformForDiagrams(pruned, vw, vh, fitPadding);
+        } else {
+          const bounds = computeContentBounds(processedNodes, processedZones);
+          if (bounds) {
+            fitTransform = transformToFitBounds(bounds, vw, vh, fitPadding);
+          }
+        }
+        if (fitTransform) {
+          return await toPngWithDotGridTransform(canvasRef.current, {
+            ...toPngOptions,
+            width: vw,
+            height: vh,
+          }, fitTransform);
+        }
       }
     }
+
+    return await toPngWithDiagramExportFixes(canvasRef.current, toPngOptions);
   }, [canvasRef, diagramData, processedNodes, processedZones]);
 
   const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => {
@@ -367,21 +353,13 @@ export function useCanvasExport({
       }
     }
 
-    let gridElement: HTMLElement | null = null;
-    let hadGridClass = false;
     try {
       const { GIFEncoder, quantize, applyPalette } = await import('gifenc');
 
-      gridElement = (canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement | null)
-        ?? (canvasRef.current.querySelector('.dot-grid') as HTMLElement | null);
-      if (!gridElement) {
+      const diagramLayer = canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement | null;
+      if (!diagramLayer) {
         toast({ variant: 'destructive', title: 'Export failed', description: 'Could not find diagram content.' });
         return;
-      }
-
-      hadGridClass = gridElement.classList.contains('dot-grid');
-      if (hadGridClass) {
-        gridElement.classList.remove('dot-grid');
       }
 
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -528,10 +506,6 @@ export function useCanvasExport({
     } finally {
       onGifAnimationTimeUpdate?.(null);
       document.documentElement.classList.remove('gif-export-active');
-
-      if (hadGridClass && gridElement && !gridElement.classList.contains('dot-grid')) {
-        gridElement.classList.add('dot-grid');
-      }
     }
   }, [toast, canvasRef, onGifAnimationTimeUpdate]);
 

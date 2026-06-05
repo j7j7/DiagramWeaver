@@ -241,11 +241,9 @@ export function useCanvasSelection({
           target.closest('.context-menu')) return;
       
       if (!canvasRef.current) return;
-      const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
+      const contentDiv = canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement;
       if (!contentDiv) return;
-      
-      // Get bounding rects - we need both to calculate accurate coordinates
-      const contentRect = contentDiv.getBoundingClientRect();
+
       const canvasRect = canvasRef.current.getBoundingClientRect();
       
       // The content div's position in screen space (accounting for transform)
@@ -273,9 +271,9 @@ export function useCanvasSelection({
     // Handle selection when left mouse button is held and we have a selection start
     if (selectionStart && e.buttons === 1) { // e.buttons === 1 means left mouse is pressed
       if (!canvasRef.current) return;
-      const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
+      const contentDiv = canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement;
       if (!contentDiv) return;
-      
+
       const canvasRect = canvasRef.current.getBoundingClientRect();
       const canvasX = e.clientX - canvasRect.left;
       const canvasY = e.clientY - canvasRect.top;

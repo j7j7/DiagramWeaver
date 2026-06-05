@@ -95,6 +95,7 @@ import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
 import { SearchResourcesModal } from "./search-resources-modal";
 import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
+import { CanvasDotGridOverlay } from "./canvas-dot-grid-overlay";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isTimelineNodeType } from "@/lib/utils";
 import { shapeSwapMenuOptions, swapDiagramNodeObjectKind, type SwappableObjectKind } from "@/lib/shape-type-swap";
@@ -3259,6 +3260,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             });
           }}
         >
+          <CanvasDotGridOverlay transform={transform} visible={showDotGrid} />
           {simulationModeEnabled && (
             <div className="pointer-events-none absolute bottom-4 right-4 z-30">
               <div className="rounded-lg border border-border/60 bg-background/75 px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
@@ -3280,7 +3282,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           >
           <div
             data-diagram-layer
-            className={cn("relative", showDotGrid && "dot-grid")}
+            className="relative"
             style={{
               width: `${width}px`,
               height: `${height}px`,

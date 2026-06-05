@@ -199,6 +199,8 @@ export function DiagramEditorInner({
   setDefaultTextLabelsEnabled,
   alignmentGuidesEnabled,
   setAlignmentGuidesEnabled,
+  dotGridEnabled,
+  setDotGridEnabled,
   simplifyFillsDuringCanvasDragEnabled,
   setSimplifyFillsDuringCanvasDragEnabled,
   connectionsBehindNodesEnabled,
@@ -574,6 +576,8 @@ export function DiagramEditorInner({
                     onToggleDefaultTextLabels={() => setDefaultTextLabelsEnabled(!defaultTextLabelsEnabled)}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
                     onToggleAlignmentGuides={() => setAlignmentGuidesEnabled(!alignmentGuidesEnabled)}
+                    dotGridEnabled={dotGridEnabled}
+                    onToggleDotGrid={() => setDotGridEnabled(!dotGridEnabled)}
                     simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
                     onToggleSimplifyFillsDuringCanvasDrag={() =>
                       setSimplifyFillsDuringCanvasDragEnabled(!simplifyFillsDuringCanvasDragEnabled)
@@ -798,7 +802,7 @@ export function DiagramEditorInner({
                     simulationModeEnabled={simulationModeEnabled}
                     onOpenZOrderList={openZOrderList}
                     wheelZoomSuppressed={zOrderListModal.open}
-                    showDotGrid={!presentationPlayerOpen}
+                    showDotGrid={dotGridEnabled && !presentationPlayerOpen}
                     visualStylingPanelOpen={visualStylingPanelOpen}
                     />
                   </div>

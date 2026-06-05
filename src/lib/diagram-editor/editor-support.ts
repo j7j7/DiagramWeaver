@@ -7,10 +7,10 @@ import { resolvePresentationSlideDiagrams } from "@/lib/presentation-slide-chain
 import type { PaletteResource } from "@/components/editor/diagram-editor-types";
 
 /** Presentation strip: slow catch-up poll when debounce/interval missed (ms). */
-export const PRESENTATION_THUMB_INTERVAL_MS = 10000;
+export const PRESENTATION_THUMB_INTERVAL_MS = 20000;
 
 /** After tab canvas / presentation draft edits, wait this long with no further changes before thumbnail PNG (ms). */
-export const PRESENTATION_THUMB_DEBOUNCE_MS = 900;
+export const PRESENTATION_THUMB_DEBOUNCE_MS = 1800;
 
 /** `captureViewportPngDataUrl`: light → white PNG background; dark → `#0f172a` (matches Tailwind slate). */
 export function presentationThumbnailCaptureBackground(theme: 'light' | 'dark'): 'white' | 'dark' {

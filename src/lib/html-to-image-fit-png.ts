@@ -11,6 +11,7 @@ import {
 } from 'html-to-image/es/util.js';
 import type { Options } from 'html-to-image/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
+import { hideDotGridOverlayInExportClone } from '@/lib/dot-grid-viewport';
 
 /**
  * Same as html-to-image `toPng`, but after cloning, overrides the diagram layer transform.
@@ -254,6 +255,7 @@ export async function toPngWithDiagramExportFixes(
   if (!clonedNode) {
     throw new Error('html-to-image clone failed');
   }
+  hideDotGridOverlayInExportClone(clonedNode as HTMLElement);
   await embedWebFonts(clonedNode, options);
   await embedImages(clonedNode, options);
   applyStyle(clonedNode, options);

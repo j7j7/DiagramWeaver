@@ -20,6 +20,7 @@ import {
   resolveCanvasNodeStackZIndex,
 } from "@/lib/connection-order-utils";
 import { cn } from "@/lib/utils";
+import { CanvasDotGridOverlay } from "../editor/canvas-dot-grid-overlay";
 import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
 import { useViewportRenderCull } from "@/hooks/use-viewport-render-cull";
 import { intersectConnectionIndexSet } from "@/lib/viewport-culling";
@@ -499,6 +500,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
         />
       )}
 
+      <CanvasDotGridOverlay transform={transform} visible={showDotGrid} />
+
         {/* Canvas content */}
       <GlobalPropertiesProvider
         globalProperties={diagramData.globalProperties}
@@ -506,7 +509,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
       >
       <div
         data-diagram-layer
-        className={cn("absolute", showDotGrid && "dot-grid")}
+        className="absolute"
         data-viewer-background
         style={{
           width: `${width}px`,

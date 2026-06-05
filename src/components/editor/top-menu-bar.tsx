@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3 } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -225,6 +225,8 @@ interface TopMenuBarProps {
   onToggleIconBackground?: () => void;
   alignmentGuidesEnabled?: boolean;
   onToggleAlignmentGuides?: () => void;
+  dotGridEnabled?: boolean;
+  onToggleDotGrid?: () => void;
   simplifyFillsDuringCanvasDragEnabled?: boolean;
   onToggleSimplifyFillsDuringCanvasDrag?: () => void;
   connectionsBehindNodesEnabled?: boolean;
@@ -351,6 +353,8 @@ export function TopMenuBar({
   onToggleIconBackground,
   alignmentGuidesEnabled,
   onToggleAlignmentGuides,
+  dotGridEnabled = true,
+  onToggleDotGrid,
   simplifyFillsDuringCanvasDragEnabled = true,
   onToggleSimplifyFillsDuringCanvasDrag,
   connectionsBehindNodesEnabled,
@@ -850,12 +854,27 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onToggleDotGrid !== undefined && (
+              <>
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleDotGrid}>
+                  <Grid3x3 className="mr-2 h-4 w-4" />
+                  {dotGridEnabled ? 'Hide Dot Grid' : 'Show Dot Grid'}
+                </MenubarItem>
+              </>
+            )}
             {onToggleDefaultTextLabels !== undefined && (
               <>
                 {(onToggleMetadataPopups ||
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
                   onToggleJsonPanel ||
                   hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleDefaultTextLabels}>
@@ -870,6 +889,7 @@ export function TopMenuBar({
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
                   onToggleDefaultTextLabels !== undefined ||
                   onToggleJsonPanel ||
                   hasOptionsPanelMenuItems) && <MenubarSeparator />}
@@ -887,6 +907,7 @@ export function TopMenuBar({
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
                   onToggleDefaultTextLabels !== undefined ||
                   onToggleSimplifyFillsDuringCanvasDrag !== undefined ||
                   onToggleJsonPanel ||
@@ -912,6 +933,7 @@ export function TopMenuBar({
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
                   onToggleDefaultTextLabels !== undefined ||
                   onToggleIconBackground !== undefined ||
                   onToggleJsonPanel ||
@@ -937,6 +959,7 @@ export function TopMenuBar({
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
                   onToggleDefaultTextLabels !== undefined ||
                   onToggleIconBackground !== undefined ||
                   onToggleConnectionsBehindNodes !== undefined ||
@@ -965,6 +988,7 @@ export function TopMenuBar({
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
                   onToggleDefaultTextLabels !== undefined ||
                   onToggleIconBackground !== undefined ||
                   onToggleConnectionsBehindNodes !== undefined ||
@@ -995,6 +1019,7 @@ export function TopMenuBar({
                 onToggleLayerAnimations !== undefined ||
                 onToggleHover !== undefined ||
                 onToggleAlignmentGuides !== undefined ||
+                onToggleDotGrid !== undefined ||
                 onToggleDefaultTextLabels !== undefined ||
                 onToggleIconBackground !== undefined ||
                 onToggleConnectionsBehindNodes !== undefined ||

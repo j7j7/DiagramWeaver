@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { useDrag } from "react-dnd";
+import React from "react";
 import { Card, CardContent } from "../ui/card";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
-import { ItemTypes, emitMobilePaletteDropIfOverCanvas } from "./draggable-item";
 import type { IconResourceItem } from "@/lib/icon-resources";
+import { usePalettePointerDrag } from "@/hooks/use-palette-pointer-drag";
 
 export interface IconDragItem {
   type: string;
@@ -57,57 +56,9 @@ export function DraggableIconItemInner({
     };
   }, [iconItem]);
 
-  const [{ isDragging }, drag] = useDrag(
-    () => ({
-      type: ItemTypes.DIAGRAM_NODE,
-      item: dragItem,
-      collect: (monitor) => ({
-        isDragging: !!monitor.isDragging(),
-      }),
-    }),
-    [dragItem]
-  );
-
-  const [isTouchDragging, setIsTouchDragging] = useState(false);
-  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!e.touches?.[0]) return;
-    const t = e.touches[0];
-    touchStartPos.current = { x: t.clientX, y: t.clientY };
-    setIsTouchDragging(true);
-    (e.currentTarget as HTMLElement).style.opacity = "0.5";
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartPos.current || !e.touches?.[0]) return;
-    const t = e.touches[0];
-    if (Math.abs(t.clientX - touchStartPos.current.x) > 10 || Math.abs(t.clientY - touchStartPos.current.y) > 10) {
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartPos.current || !e.changedTouches?.[0]) {
-      setIsTouchDragging(false);
-      touchStartPos.current = null;
-      (e.currentTarget as HTMLElement).style.opacity = "1";
-      return;
-    }
-    const t = e.changedTouches[0];
-    const dx = Math.abs(t.clientX - touchStartPos.current.x);
-    const dy = Math.abs(t.clientY - touchStartPos.current.y);
-    if (dx > 10 || dy > 10) {
-      emitMobilePaletteDropIfOverCanvas({
-        touchClientX: t.clientX,
-        touchClientY: t.clientY,
-        item: dragItem,
-      });
-    }
-    (e.currentTarget as HTMLElement).style.opacity = "1";
-    setIsTouchDragging(false);
-    touchStartPos.current = null;
-  };
+  const { isDragging, pointerHandlers } = usePalettePointerDrag(dragItem, {
+    onTap: () => onClick?.(dragItem),
+  });
 
   const content =
     iconItem.iconType === "lucide" ? (
@@ -122,13 +73,9 @@ export function DraggableIconItemInner({
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          ref={(node) => { if (node) drag(node); }}
-          style={{ opacity: isDragging || isTouchDragging ? 0.5 : 1 }}
+          {...pointerHandlers}
+          style={{ opacity: isDragging ? 0.5 : 1, ...pointerHandlers.style }}
           className="cursor-move min-w-0"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onClick={() => onClick?.(dragItem)}
           onDoubleClick={() => onDoubleClick?.(dragItem)}
         >
           {isCompact ? (

@@ -235,14 +235,16 @@
   :root {
     --grid-size: 20px;
   }
-  .dot-grid {
-    /* Slightly higher contrast so dots are visible on light and dark backgrounds */
-    /* Position dots at top-left corner of each grid cell (0,0) instead of center */
-    background-image: radial-gradient(circle at 0 0, hsl(var(--foreground) / 0.12) 1px, transparent 1px);
-    background-size: var(--grid-size) var(--grid-size);
-    background-position: 0 0;
-    /* Do not use isolation:isolate here: Chromium fails to sample sibling layers for
-       backdrop-filter (frosted glass shows tint only). Stacking uses position+z-index on the layer. */
+
+  /* Off-screen palette sections skip layout/paint until scrolled near. */
+  .dw-resource-tree-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 120px;
+  }
+
+  /* Sidebar → canvas pointer drag ghost (clone of the palette tile). */
+  .dw-palette-drag-preview {
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.22));
   }
 
   /* Ensure proper layering for diagram elements */
