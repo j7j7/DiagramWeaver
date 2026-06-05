@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ColorPicker } from "@/components/ui/color-picker";
 import type { NodeSize } from "@/lib/types";
-import { VisualStyling, VISUAL_STYLES, getPredefinedVisualStyle, findClosestPredefinedStyle } from "@/lib/visual-styling";
+import {
+  VisualStyling,
+  VISUAL_STYLES,
+  deriveBackgroundGradientColors,
+  getPredefinedVisualStyle,
+  findClosestPredefinedStyle,
+} from "@/lib/visual-styling";
 import {
   createRandomMeshGradientPoints,
   MESH_GRADIENT_INITIAL_BASE_COLOR,
@@ -717,8 +723,20 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
       });
     } else if (value === "none") {
       applyStylingChange({ backgroundStyle: "none" as const });
+    } else if (value === "gradient") {
+      const prevStyle = styling.backgroundStyle ?? "solid";
+      const needsGradientRecalc = prevStyle === "solid" || prevStyle === "mesh_gradient";
+      applyStylingChange({
+        backgroundStyle: "gradient" as const,
+        ...(needsGradientRecalc
+          ? {
+              backgroundColors: deriveBackgroundGradientColors(styling),
+              gradientAngle: styling.gradientAngle ?? 135,
+            }
+          : {}),
+      });
     } else {
-      handlePropertyChange("backgroundStyle", value as "solid" | "gradient", true);
+      handlePropertyChange("backgroundStyle", value as "solid", true);
     }
   };
 

@@ -149,6 +149,8 @@ export function flattenDiagramOnImport(raw: RawDiagramData): DiagramData {
     layers: raw.layers as LayersConfig | undefined,
     recentColors: raw.recentColors as string[] | undefined,
     canvasBackgroundColor: raw.canvasBackgroundColor as string | undefined,
+    globalProperties: raw.globalProperties as Record<string, string> | undefined,
+    userDefinedObjects: raw.userDefinedObjects as DiagramData['userDefinedObjects'],
     subDiagrams: raw.subDiagrams as Record<string, DiagramData> | undefined,
     viewState: raw.viewState as DiagramData['viewState'],
   };
@@ -163,6 +165,8 @@ function normalizeDiagramData(raw: RawDiagramData): DiagramData {
     layers: raw.layers as LayersConfig | undefined,
     recentColors: raw.recentColors as string[] | undefined,
     canvasBackgroundColor: raw.canvasBackgroundColor as string | undefined,
+    globalProperties: raw.globalProperties as Record<string, string> | undefined,
+    userDefinedObjects: raw.userDefinedObjects as DiagramData['userDefinedObjects'],
     subDiagrams: raw.subDiagrams as Record<string, DiagramData> | undefined,
     viewState: raw.viewState as DiagramData['viewState'],
   };

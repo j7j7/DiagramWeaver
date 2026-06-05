@@ -13,6 +13,7 @@ import { parseDiagramJson } from '@/lib/diagram-json-import';
 import { findJsonRangeForDiagramSelection, type JsonFocusTarget } from '@/lib/json-editor-focus';
 import { applyJsonSearchMatch, collectJsonSearchMatches } from '@/lib/json-text-search';
 import type { DiagramData } from '@/lib/types';
+import { prepareDiagramDataForJsonExport } from '@/lib/user-defined-objects';
 
 type Props = {
   value: DiagramData;
@@ -39,10 +40,23 @@ export function JsonEditorPanel({
   isReadOnly = false,
   focusTarget = null,
 }: Props) {
-  const [text, setText] = React.useState(() => {
-    const d: DiagramData = { nodes: value.nodes || [], connections: value.connections || [], groupings: value.groupings, layers: value.layers };
-    return stableStringify(d);
-  });
+  const diagramJsonSnapshot = React.useCallback((data: DiagramData): DiagramData => {
+    const prepared = prepareDiagramDataForJsonExport(data);
+    return {
+      nodes: prepared.nodes || [],
+      connections: prepared.connections || [],
+      groupings: prepared.groupings,
+      layers: prepared.layers,
+      userDefinedObjects: prepared.userDefinedObjects,
+      canvasBackgroundColor: prepared.canvasBackgroundColor,
+      globalProperties: prepared.globalProperties,
+      viewState: prepared.viewState,
+      recentColors: prepared.recentColors,
+      subDiagrams: prepared.subDiagrams,
+    };
+  }, []);
+
+  const [text, setText] = React.useState(() => stableStringify(diagramJsonSnapshot(value)));
   const [error, setError] = React.useState<string | null>(null);
   const editorRef = React.useRef<any>(null);
   const editorContainerRef = React.useRef<HTMLDivElement>(null);
@@ -207,14 +221,7 @@ export function JsonEditorPanel({
     
     updateTimeoutRef.current = setTimeout(() => {
       const scrollPos = captureScrollPosition();
-      // Display flat format - nodes, connections, groupings only (no zones)
-      const displayData: DiagramData = {
-        nodes: value.nodes || [],
-        connections: value.connections || [],
-        groupings: value.groupings,
-        layers: value.layers,
-      };
-      setText(stableStringify(displayData));
+      setText(stableStringify(diagramJsonSnapshot(value)));
       setTimeout(() => restoreScrollPosition(scrollPos), 0);
       previousValueRef.current = value;
     }, 16);
@@ -225,7 +232,7 @@ export function JsonEditorPanel({
         clearTimeout(updateTimeoutRef.current);
       }
     };
-  }, [value, isUpdating]);
+  }, [value, isUpdating, diagramJsonSnapshot]);
 
   // Helper function to capture scroll position (doesn't update locked position)
   const captureScrollPosition = React.useCallback(() => {
@@ -375,7 +382,7 @@ export function JsonEditorPanel({
           setError(null);
           onValidJsonChange(finalData);
 
-          const displayText = stableStringify(finalData);
+          const displayText = stableStringify(diagramJsonSnapshot(finalData));
           if (displayText !== text) {
             const scrollPos = captureScrollPosition();
             setText(displayText);
@@ -396,7 +403,7 @@ export function JsonEditorPanel({
         setIsUpdating(false);
       }
     })();
-  }, [text, setIsUpdating, setError, onValidJsonChange, captureScrollPosition, restoreScrollPosition, setText]);
+  }, [text, setIsUpdating, setError, onValidJsonChange, captureScrollPosition, restoreScrollPosition, setText, diagramJsonSnapshot]);
 
   return (
     <div

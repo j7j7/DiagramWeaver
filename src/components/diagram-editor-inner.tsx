@@ -39,6 +39,11 @@ import { getTutorialSteps } from "./tutorial/tutorial-steps";
 import { DiagramBreadcrumb } from "./editor/diagram-breadcrumb";
 import type { DiagramEditorInnerProps } from "./editor/diagram-editor-inner-props";
 import { useTutorialCIntroConnectionEffect } from "@/hooks/use-tutorial-c-intro-connection-effect";
+import {
+  CreateUserDefinedObjectDialog,
+  UserDefinedObjectsManageDialog,
+} from "./editor/user-defined-objects-dialog";
+import { listUserDefinedObjectsForPalette } from "@/lib/user-defined-objects";
 
 const TopMenuBar = dynamic(() => import("./editor/top-menu-bar").then((mod) => ({ default: mod.TopMenuBar })), {
   ssr: false,
@@ -328,6 +333,20 @@ export function DiagramEditorInner({
   canvasRefreshKey,
   activeTab,
   toast,
+  userDefinedObjectsLibrary = {},
+  onUserDefinedObjectActivate,
+  canCreateUserDefinedObject = false,
+  onCreateUserDefinedObjectClick,
+  onManageUserDefinedObjectsClick,
+  onSaveUserDefinedObjectEdit,
+  createUserDefinedObjectDialogOpen = false,
+  setCreateUserDefinedObjectDialogOpen,
+  onConfirmCreateUserDefinedObject,
+  manageUserDefinedObjectsDialogOpen = false,
+  setManageUserDefinedObjectsDialogOpen,
+  onRenameUserDefinedObject,
+  onDeleteUserDefinedObject,
+  onEditUserDefinedObject,
 }: DiagramEditorInnerProps) {
   const presentationConnectionRenderRevision = React.useMemo(
     () => `${activePresentationDeckId ?? ''}-${activePresentationSlideId ?? ''}`,
@@ -497,6 +516,8 @@ export function DiagramEditorInner({
     onTransformChange={setCanvasTransform}
     collapsed={leftPanelCollapsed}
     onToggleCollapse={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+    userDefinedObjectsLibrary={userDefinedObjectsLibrary}
+    onUserDefinedObjectActivate={onUserDefinedObjectActivate}
   />
         </div>
         
@@ -621,6 +642,11 @@ export function DiagramEditorInner({
                     simulationModeEnabled={simulationModeEnabled}
                     onToggleSimulationMode={handleToggleSimulationMode}
                     onStartTutorial={handleStartTutorial}
+                    onCreateUserDefinedObject={onCreateUserDefinedObjectClick}
+                    canCreateUserDefinedObject={canCreateUserDefinedObject}
+                    onManageUserDefinedObjects={onManageUserDefinedObjectsClick}
+                    onSaveUserDefinedObjectEdit={onSaveUserDefinedObjectEdit}
+                    isUserDefinedObjectEditTab={Boolean(activeTab?.userDefinedObjectEdit)}
                     presentationToolbar={{
                       decks: presentationDecks,
                       activeDeckId: activePresentationDeckId,
@@ -1144,6 +1170,19 @@ export function DiagramEditorInner({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        <CreateUserDefinedObjectDialog
+          open={createUserDefinedObjectDialogOpen}
+          onOpenChange={setCreateUserDefinedObjectDialogOpen}
+          onConfirm={onConfirmCreateUserDefinedObject}
+        />
+        <UserDefinedObjectsManageDialog
+          open={manageUserDefinedObjectsDialogOpen}
+          onOpenChange={setManageUserDefinedObjectsDialogOpen}
+          objects={listUserDefinedObjectsForPalette(userDefinedObjectsLibrary)}
+          onRename={onRenameUserDefinedObject}
+          onDelete={onDeleteUserDefinedObject}
+          onEdit={onEditUserDefinedObject}
+        />
         <AlertDialog open={closeTabDialogOpen} onOpenChange={setCloseTabDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>

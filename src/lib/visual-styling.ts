@@ -10,6 +10,8 @@ import type {
 } from "./types";
 import type { CardIconPlacement, CardIconSizeMode } from "./card-types";
 import type { ThemeProperties } from './theme-types';
+import { multiplyLightnessOfColor } from "./color-shift";
+import { MESH_GRADIENT_INITIAL_BASE_COLOR } from "./mesh-gradient";
 
 // Visual styling interface for consistency
 export interface VisualStyling {
@@ -640,3 +642,96 @@ export const DEFAULT_VISUAL_STYLING: VisualStyling = {
   shadow: false,
   borderWidth: 2
 };
+
+const GRADIENT_DERIVE_FALLBACK = '#f3f4f6';
+
+function isValidCssColor(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/** sRGB relative luminance (~0–1); unknown inputs default mid. */
+function relativeLuminanceForGradientDerive(input: string): number {
+  const s = input.trim();
+  if (!s.startsWith('#')) return 0.55;
+  let h = s.slice(1);
+  if (h.length === 3) {
+    h = h
+      .split('')
+      .map((c) => c + c)
+      .join('');
+  }
+  if (h.length !== 6 && h.length !== 8) return 0.55;
+  const n = parseInt(h.length === 8 ? h.slice(0, 6) : h, 16);
+  if (Number.isNaN(n)) return 0.55;
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const lin = (x: number) => (x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4));
+  const R = lin(r);
+  const G = lin(g);
+  const B = lin(b);
+  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+}
+
+function deriveGradientPairFromSolid(solid: string): [string, string] {
+  const lum = relativeLuminanceForGradientDerive(solid);
+  if (lum > 0.5) {
+    return [multiplyLightnessOfColor(solid, 1.12), multiplyLightnessOfColor(solid, 0.82)];
+  }
+  return [multiplyLightnessOfColor(solid, 1.28), multiplyLightnessOfColor(solid, 0.72)];
+}
+
+/**
+ * When switching Background from solid or mesh to gradient, derive two gradient stops
+ * from the current fill so the canvas does not render a black/empty second stop.
+ */
+export function deriveBackgroundGradientColors(
+  styling: Pick<
+    VisualStyling,
+    'backgroundStyle' | 'backgroundColor' | 'backgroundColors' | 'meshGradientPoints'
+  >,
+): [string, string] {
+  const prevStyle = styling.backgroundStyle ?? 'solid';
+
+  if (prevStyle === 'mesh_gradient') {
+    const base = styling.backgroundColor?.trim() || MESH_GRADIENT_INITIAL_BASE_COLOR;
+    const hubs = (styling.meshGradientPoints ?? [])
+      .map((p) => p.color?.trim())
+      .filter(isValidCssColor);
+    const palette = [base, ...hubs];
+    if (palette.length >= 2) {
+      const sorted = [...palette].sort(
+        (a, b) => relativeLuminanceForGradientDerive(a) - relativeLuminanceForGradientDerive(b),
+      );
+      return [sorted[0], sorted[sorted.length - 1]];
+    }
+    return deriveGradientPairFromSolid(base);
+  }
+
+  const solid =
+    (isValidCssColor(styling.backgroundColor) ? styling.backgroundColor : null) ??
+    (isValidCssColor(styling.backgroundColors?.[0]) ? styling.backgroundColors![0] : null) ??
+    GRADIENT_DERIVE_FALLBACK;
+  return deriveGradientPairFromSolid(solid);
+}
+
+type GradientBackgroundSource = Pick<
+  VisualStyling,
+  'backgroundStyle' | 'backgroundColor' | 'backgroundColors' | 'meshGradientPoints' | 'gradientAngle'
+>;
+
+/** Fill `backgroundColors` when a patch switches solid/mesh → gradient without explicit stops. */
+export function augmentGradientBackgroundPatch<T extends GradientBackgroundSource>(
+  item: T,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  if (patch.backgroundStyle !== 'gradient') return patch;
+  if (patch.backgroundColors !== undefined) return patch;
+  const prevStyle = item.backgroundStyle ?? 'solid';
+  if (prevStyle !== 'solid' && prevStyle !== 'mesh_gradient') return patch;
+  return {
+    ...patch,
+    backgroundColors: deriveBackgroundGradientColors(item),
+    gradientAngle: (patch.gradientAngle as number | undefined) ?? item.gradientAngle ?? 135,
+  };
+}

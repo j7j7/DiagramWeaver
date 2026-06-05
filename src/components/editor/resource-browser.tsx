@@ -58,6 +58,9 @@ import { DraggableResourceItem } from './draggable-resource-item';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 import { VirtualizedResourceGrid } from './virtualized-resource-grid';
 import type { IconResourceItem } from '@/lib/icon-resources';
+import type { UserDefinedObject } from '@/lib/types';
+import { DraggableUserDefinedItem } from './draggable-user-defined-item';
+import { listUserDefinedObjectsForPalette } from '@/lib/user-defined-objects';
 
 // Resource index is fetched at runtime from public/resources
 // This avoids duplicate JSON sources and keeps a single source of truth.
@@ -80,6 +83,30 @@ interface ResourceCategory {
   name: string;
   path: string;
   resources: ResourceItem[];
+  _isIconCategory?: boolean;
+  _isUserDefinedCategory?: boolean;
+}
+
+/** Sort generic sidebar categories; user-defined sits above object. */
+const GENERIC_CATEGORY_ORDER: Record<string, number> = {
+  text: 0,
+  'user-defined': 10,
+  object: 20,
+  cards: 30,
+  borders: 40,
+  grouping: 50,
+  icons: 90,
+};
+
+function sortGenericCategoryEntries(
+  entries: [string, ResourceCategory][],
+): [string, ResourceCategory][] {
+  return [...entries].sort(([keyA], [keyB]) => {
+    const a = GENERIC_CATEGORY_ORDER[keyA] ?? 60;
+    const b = GENERIC_CATEGORY_ORDER[keyB] ?? 60;
+    if (a !== b) return a - b;
+    return keyA.localeCompare(keyB);
+  });
 }
 
 interface ResourceProvider {
@@ -107,6 +134,9 @@ interface ResourceIndex {
 interface ResourceBrowserProps {
   onResourceSelect: (resource: ResourceItem, provider: string, category: string) => void;
   onResourceActivate?: (resource: ResourceItem, provider: string, category: string, fullItem?: object) => void;
+  userDefinedObjectsLibrary?: Record<string, UserDefinedObject>;
+  diagramData?: import('@/lib/types').DiagramData | null;
+  onUserDefinedObjectActivate?: (object: UserDefinedObject) => void;
 }
 
 // Icon mapping for different resource types
@@ -166,6 +196,7 @@ function getCategoryTintClasses(categoryKey: string): string {
     mobile: 'bg-violet-500/5 border-violet-500/10',
     iot: 'bg-lime-500/5 border-lime-500/10',
     object: 'bg-slate-500/5 border-slate-500/10',
+    'user-defined': 'bg-violet-500/5 border-violet-500/15',
     cards: 'bg-sky-500/5 border-sky-500/10',
     borders: 'bg-teal-500/5 border-teal-500/10',
   };
@@ -216,6 +247,9 @@ function ProviderIcon({ provider }: { provider: string }) {
 function ResourceBrowserInner({
   onResourceSelect,
   onResourceActivate,
+  userDefinedObjectsLibrary = {},
+  diagramData = null,
+  onUserDefinedObjectActivate,
 }: ResourceBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [fullProviders, setFullProviders] = useState<Record<string, ResourceProvider>>({});
@@ -411,6 +445,11 @@ function ResourceBrowserInner({
     });
   };
 
+  const userDefinedPaletteObjects = useMemo(
+    () => listUserDefinedObjectsForPalette(userDefinedObjectsLibrary, searchTerm),
+    [userDefinedObjectsLibrary, searchTerm],
+  );
+
   const filteredIconItems = useMemo(() => {
     const term = searchTerm?.toLowerCase() || '';
     const filteredSections: Record<string, typeof SYMBOL_ICON_SECTIONS[string]> = {};
@@ -500,6 +539,25 @@ function ResourceBrowserInner({
         }
       });
 
+      if (providerKey === 'generic' && userDefinedPaletteObjects.length > 0) {
+        const term = searchTerm.toLowerCase();
+        const matchesUserDefined =
+          'user-defined'.includes(term) ||
+          userDefinedPaletteObjects.some(
+            (obj) =>
+              obj.name.toLowerCase().includes(term) ||
+              obj.id.toLowerCase().includes(term),
+          );
+        if (matchesUserDefined) {
+          matchingCategories['user-defined'] = {
+            name: 'User-Defined',
+            path: 'generic/user-defined',
+            resources: [],
+            _isUserDefinedCategory: true,
+          };
+        }
+      }
+
       if (Object.keys(matchingCategories).length > 0) {
         filtered[providerKey] = {
           ...provider,
@@ -509,7 +567,47 @@ function ResourceBrowserInner({
     });
 
     return orderProviders(filtered);
-  }, [searchTerm, fullProviders, isLoading, resourceIndex, orderProviders]);
+  }, [searchTerm, fullProviders, isLoading, resourceIndex, orderProviders, userDefinedPaletteObjects]);
+
+  const getProviderCategoryEntries = useCallback(
+    (providerKey: string, categories: Record<string, ResourceCategory>): [string, ResourceCategory][] => {
+      const entries: [string, ResourceCategory][] = Object.entries(categories);
+
+      if (providerKey !== 'generic') {
+        return entries;
+      }
+
+      if (userDefinedPaletteObjects.length > 0) {
+        entries.push([
+          'user-defined',
+          {
+            name: 'User-Defined',
+            path: 'generic/user-defined',
+            resources: [],
+            _isUserDefinedCategory: true,
+          },
+        ]);
+      }
+
+      if (
+        Object.keys(filteredIconItems.symbolSections).length > 0 ||
+        filteredIconItems.emoji.length > 0
+      ) {
+        entries.push([
+          'icons',
+          {
+            name: 'Icons',
+            path: '',
+            resources: [],
+            _isIconCategory: true,
+          },
+        ]);
+      }
+
+      return sortGenericCategoryEntries(entries);
+    },
+    [userDefinedPaletteObjects.length, filteredIconItems],
+  );
 
   const getResourceIcon = (resource: ResourceItem, provider: string, category: string) => {
     // For generic object shapes, use ResourceIcon with theme-aware grey (works in light and dark mode)
@@ -688,6 +786,32 @@ function ResourceBrowserInner({
     [viewMode, getResourceIcon, handleResourceClick, handleResourceActivate, scrollLayoutEpoch],
   );
 
+  const renderUserDefinedResourceGrid = useCallback(() => {
+    const renderTile = (object: UserDefinedObject, index: number) => (
+      <DraggableUserDefinedItem
+        key={`user-defined-${object.id}-${index}`}
+        object={object}
+        viewMode={viewMode}
+        onDoubleClick={() => onUserDefinedObjectActivate?.(object)}
+      />
+    );
+
+    return (
+      <VirtualizedResourceGrid
+        resources={userDefinedPaletteObjects}
+        viewMode={viewMode}
+        scrollRootRef={scrollRootRef}
+        layoutEpoch={scrollLayoutEpoch}
+        renderItem={(item, index) => renderTile(item as UserDefinedObject, index)}
+      />
+    );
+  }, [
+    userDefinedPaletteObjects,
+    viewMode,
+    scrollLayoutEpoch,
+    onUserDefinedObjectActivate,
+  ]);
+
   const renderIconResourceGrid = useCallback(
     (icons: IconResourceItem[], keyPrefix: string) => {
       const renderTile = (iconItem: unknown, index: number) => {
@@ -842,15 +966,11 @@ return (
                           {loadingProviderKeys.has(providerKey) && !fullProviders[providerKey] ? (
                             <div className="py-3 px-2 text-xs text-muted-foreground">Loading resources…</div>
                           ) : null}
-                          {[
-                            ...Object.entries(provider.categories),
-                            ...(providerKey === 'generic' && (Object.keys(filteredIconItems.symbolSections).length > 0 || filteredIconItems.emoji.length > 0)
-                              ? [['icons', { name: 'Icons', path: '', resources: [] as ResourceItem[], _isIconCategory: true }] as const]
-                              : []),
-                          ].map(([categoryKey, category]) => {
+                          {getProviderCategoryEntries(providerKey, provider.categories).map(([categoryKey, category]) => {
                             const categoryFullKey = `${providerKey}-${categoryKey}`;
                             const isExpanded = expandedCategories.has(categoryFullKey);
-                            const isIconCategory = (category as ResourceCategory & { _isIconCategory?: boolean })._isIconCategory;
+                            const isIconCategory = category._isIconCategory;
+                            const isUserDefinedCategory = category._isUserDefinedCategory;
 
                             return (
                               <div
@@ -871,13 +991,21 @@ return (
                                     )}
                                     <span className="text-sm">{category.name}</span>
                                     <Badge variant="outline" className="ml-auto text-xs">
-                                      {isIconCategory ? Object.values(filteredIconItems.symbolSections).flat().length + filteredIconItems.emoji.length : category.resources.length}
+                                      {isUserDefinedCategory
+                                        ? userDefinedPaletteObjects.length
+                                        : isIconCategory
+                                          ? Object.values(filteredIconItems.symbolSections).flat().length + filteredIconItems.emoji.length
+                                          : category.resources.length}
                                     </Badge>
                                   </div>
                                 </Button>
 
                                 {isExpanded ? (
-                                    isIconCategory ? (
+                                    isUserDefinedCategory ? (
+                                      <div className="ml-4 pl-2 border-l-2 border-muted">
+                                        {renderUserDefinedResourceGrid()}
+                                      </div>
+                                    ) : isIconCategory ? (
                                       <div className="ml-4 pl-2 border-l-2 border-muted space-y-1">
                                         <div className="rounded-md border bg-muted/5 border-border/50">
                                           <Button
@@ -984,7 +1112,9 @@ return (
                                         )}
                                       </div>
                                     ) : category.resources.length > 0 ? (
-                                      renderCategoryResourceGrid(category.resources, providerKey, categoryKey)
+                                      <div className="ml-4 pl-2 border-l-2 border-muted">
+                                        {renderCategoryResourceGrid(category.resources, providerKey, categoryKey)}
+                                      </div>
                                     ) : null
                                 ) : null}
                               </div>

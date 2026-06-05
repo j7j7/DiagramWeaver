@@ -18,6 +18,7 @@ import type {
 import { projectVisibleDiagram } from "@/lib/presentation-delta";
 import type { TabState } from "@/hooks/use-diagram-tabs";
 import type { DiagramEditorToastFn } from "@/components/editor/diagram-editor-inner-props";
+import { prepareDiagramDataForJsonExport } from "@/lib/user-defined-objects";
 
 function getFilenameStem(filename: string) {
   return filename.replace(/\.[^.]+$/, "") || filename;
@@ -165,7 +166,7 @@ export function createDiagramSaveHandler({
       : -1;
 
     const dataToSave: DiagramJsonWithPresentations = {
-      ...ensureDiagramLayersPersisted(targetTab.diagramData),
+      ...prepareDiagramDataForJsonExport(ensureDiagramLayersPersisted(targetTab.diagramData)),
       presentations: {
         v: 2,
         ai: activeDeckIndex >= 0 ? activeDeckIndex : undefined,

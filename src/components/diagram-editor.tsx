@@ -2,7 +2,7 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import type { EditorCanvasHandle } from './editor/editor-canvas';
-import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta, LayersConfig } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta, LayersConfig, UserDefinedObject } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { validateLayersConfig, ensureDiagramLayersPersisted } from '@/lib/layers-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -124,6 +124,22 @@ import { usePresentationSlideViewportSync } from '@/hooks/use-presentation-slide
 import { useDiagramEditorOptionPersistence } from '@/hooks/use-diagram-editor-option-persistence';
 import { usePresentationThumbnails } from '@/hooks/use-presentation-thumbnails';
 import { createDiagramSaveHandler } from '@/lib/diagram-editor/diagram-editor-save-handler';
+import {
+  buildEditDiagramFromUserDefinedObject,
+  createUserDefinedObjectFromGroup,
+  getUserDefinedObjectDragItem,
+  loadUserDefinedObjectsLibrary,
+  mergeDiagramObjectsIntoLibrary,
+  findNewUserDefinedObjectsForLibrary,
+  collectUserDefinedObjectsFromDiagramTree,
+  resolveGroupForUserDefinedCreation,
+  saveUserDefinedObjectsLibrary,
+  saveUserDefinedObjectsLibraryImmediate,
+  updateUserDefinedObjectFromEditDiagram,
+  propagateUserDefinedObjectToDiagram,
+  attachUserDefinedObjectToDiagram,
+  removeUserDefinedObjectFromDiagram,
+} from '@/lib/user-defined-objects';
 import { createDiagramExportHandlers } from '@/lib/diagram-editor/diagram-editor-export-handlers';
 import type { DiagramEditorToastFn } from '@/components/editor/diagram-editor-inner-props';
 
@@ -203,6 +219,13 @@ export default function DiagramEditor() {
   const [metadataPopupsEnabled, setMetadataPopupsEnabled] = React.useState<boolean>(true);
   const [propertiesPanelVisible, setPropertiesPanelVisible] = React.useState<boolean>(true);
   const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(false);
+  const [userDefinedObjectsLibrary, setUserDefinedObjectsLibrary] = React.useState<
+    Record<string, UserDefinedObject>
+  >(() => (typeof window !== 'undefined' ? loadUserDefinedObjectsLibrary() : {}));
+  const [createUserDefinedObjectDialogOpen, setCreateUserDefinedObjectDialogOpen] =
+    React.useState(false);
+  const [manageUserDefinedObjectsDialogOpen, setManageUserDefinedObjectsDialogOpen] =
+    React.useState(false);
   const [layerAnimationsEnabled, setLayerAnimationsEnabled] = React.useState<boolean>(true);
   const [rulesEditorOpen, setRulesEditorOpen] = React.useState<boolean>(false);
   const [rules, setRules] = React.useState<import('@/lib/rules-types').DiagramRule[]>([]);
@@ -1632,6 +1655,212 @@ export default function DiagramEditor() {
     }
   };
 
+  const persistUserDefinedObjectsLibrary = React.useCallback(
+    (next: Record<string, UserDefinedObject>) => {
+      setUserDefinedObjectsLibrary(next);
+      saveUserDefinedObjectsLibrary(next);
+    },
+    [],
+  );
+
+  const absorbDiagramUserDefinedObjects = React.useCallback(
+    (data: DiagramData, options?: { notify?: boolean; notifyEachCreated?: boolean }) => {
+      if (Object.keys(collectUserDefinedObjectsFromDiagramTree(data)).length === 0) return;
+
+      let added: UserDefinedObject[] = [];
+      setUserDefinedObjectsLibrary((prev) => {
+        added = findNewUserDefinedObjectsForLibrary(prev, data);
+        const merged = mergeDiagramObjectsIntoLibrary(prev, data);
+        if (options?.notifyEachCreated) {
+          saveUserDefinedObjectsLibraryImmediate(merged);
+        } else {
+          saveUserDefinedObjectsLibrary(merged);
+        }
+        return merged;
+      });
+
+      if (options?.notifyEachCreated) {
+        for (const obj of added) {
+          toast({
+            title: 'User-defined object created',
+            description: `User Defined Object ${obj.name} created`,
+          });
+        }
+      } else if (options?.notify && added.length > 0) {
+        const names = added.map((o) => o.name).join(', ');
+        toast({
+          title: 'User-defined objects imported',
+          description:
+            added.length === 1
+              ? `"${names}" added to your library.`
+              : `${added.length} objects added to your library: ${names}`,
+        });
+      }
+    },
+    [toast],
+  );
+
+  const tabsUserDefinedHydratedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isLoaded || tabsUserDefinedHydratedRef.current) return;
+    tabsUserDefinedHydratedRef.current = true;
+    for (const tabSummary of tabs) {
+      const tab = getTab(tabSummary.id);
+      if (tab?.diagramData) {
+        absorbDiagramUserDefinedObjects(tab.diagramData);
+      }
+    }
+  }, [isLoaded, tabs, getTab, absorbDiagramUserDefinedObjects]);
+
+  React.useEffect(() => {
+    absorbDiagramUserDefinedObjects(tabDiagramData);
+  }, [activeTabId, tabDiagramData.userDefinedObjects, absorbDiagramUserDefinedObjects]);
+
+  const canCreateUserDefinedObject = React.useMemo(
+    () => resolveGroupForUserDefinedCreation(selectedItemIds, currentDiagramData) !== null,
+    [selectedItemIds, currentDiagramData],
+  );
+
+  const handleCreateUserDefinedObjectClick = React.useCallback(() => {
+    const group = resolveGroupForUserDefinedCreation(selectedItemIds, currentDiagramData);
+    if (!group) {
+      toast({
+        variant: 'destructive',
+        title: 'Cannot create object',
+        description: 'Select items that belong to a group (at least 2 members).',
+      });
+      return;
+    }
+    setCreateUserDefinedObjectDialogOpen(true);
+  }, [selectedItemIds, currentDiagramData, toast]);
+
+  const handleConfirmCreateUserDefinedObject = React.useCallback(
+    (name: string) => {
+      const group = resolveGroupForUserDefinedCreation(selectedItemIds, currentDiagramData);
+      if (!group) return;
+      try {
+        const created = createUserDefinedObjectFromGroup(name, group, currentDiagramData);
+        persistUserDefinedObjectsLibrary({
+          ...userDefinedObjectsLibrary,
+          [created.id]: created,
+        });
+        setCurrentDiagramData((prev) =>
+          attachUserDefinedObjectToDiagram(prev, created, group.memberIds),
+        );
+        toast({
+          title: 'Object created',
+          description: `"${created.name}" is available in the resource sidebar.`,
+        });
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Create failed',
+          description: error instanceof Error ? error.message : 'Could not create object.',
+        });
+      }
+    },
+    [selectedItemIds, currentDiagramData, userDefinedObjectsLibrary, persistUserDefinedObjectsLibrary, setCurrentDiagramData, toast],
+  );
+
+  const handleRenameUserDefinedObject = React.useCallback(
+    (id: string, name: string) => {
+      const existing = userDefinedObjectsLibrary[id];
+      if (!existing) return;
+      persistUserDefinedObjectsLibrary({
+        ...userDefinedObjectsLibrary,
+        [id]: { ...existing, name, updatedAt: Date.now() },
+      });
+    },
+    [userDefinedObjectsLibrary, persistUserDefinedObjectsLibrary],
+  );
+
+  const handleDeleteUserDefinedObject = React.useCallback(
+    (id: string) => {
+      setUserDefinedObjectsLibrary((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        saveUserDefinedObjectsLibrary(next);
+        return next;
+      });
+      for (const tabSummary of tabs) {
+        const tab = getTab(tabSummary.id);
+        if (!tab) continue;
+        const patched = removeUserDefinedObjectFromDiagram(tab.diagramData, id);
+        if (patched !== tab.diagramData) {
+          updateTab(tab.id, { diagramData: patched });
+        }
+      }
+      toast({ title: 'Object removed', description: 'Removed from your library and resource list.' });
+    },
+    [tabs, getTab, updateTab, toast],
+  );
+
+  const handleEditUserDefinedObject = React.useCallback(
+    (object: UserDefinedObject) => {
+      if (!activeTabId) return;
+      setManageUserDefinedObjectsDialogOpen(false);
+      createTab({
+        name: `Edit: ${object.name}`,
+        diagramData: buildEditDiagramFromUserDefinedObject(object),
+        userDefinedObjectEdit: { objectId: object.id, returnTabId: activeTabId },
+      });
+    },
+    [activeTabId, createTab],
+  );
+
+  const handleSaveUserDefinedObjectEdit = React.useCallback(async () => {
+    const editMeta = activeTab?.userDefinedObjectEdit;
+    if (!editMeta || !activeTabId) return;
+    const existing = userDefinedObjectsLibrary[editMeta.objectId];
+    if (!existing) {
+      toast({
+        variant: 'destructive',
+        title: 'Save failed',
+        description: 'Original object no longer exists in the library.',
+      });
+      return;
+    }
+    const editDiagram = activeTab?.diagramData ?? tabDiagramData;
+    const updated = updateUserDefinedObjectFromEditDiagram(existing, editDiagram);
+    setUserDefinedObjectsLibrary((prev) => {
+      const next = { ...prev, [updated.id]: updated };
+      saveUserDefinedObjectsLibrary(next);
+      return next;
+    });
+    for (const tabSummary of tabs) {
+      const tab = getTab(tabSummary.id);
+      if (!tab) continue;
+      const patched = propagateUserDefinedObjectToDiagram(tab.diagramData, updated);
+      if (patched !== tab.diagramData) {
+        updateTab(tab.id, { diagramData: patched });
+      }
+    }
+    toast({ title: 'Object saved', description: `"${updated.name}" has been updated.` });
+    switchTab(editMeta.returnTabId);
+    await closeTab(activeTabId, true);
+  }, [
+    activeTab,
+    activeTabId,
+    tabDiagramData,
+    userDefinedObjectsLibrary,
+    tabs,
+    getTab,
+    updateTab,
+    toast,
+    switchTab,
+    closeTab,
+  ]);
+
+  const handleUserDefinedObjectActivate = React.useCallback(
+    (object: UserDefinedObject) => {
+      const item = getUserDefinedObjectDragItem(object);
+      if (editorRef.current) {
+        editorRef.current.pastePaletteItem(item);
+      }
+    },
+    [],
+  );
+
   const handleGroupItems = React.useCallback(() => {
     if (selectedItemIds.size < 2) {
       toast({
@@ -2487,6 +2716,7 @@ export default function DiagramEditor() {
           completeData.connections = ensureConnectionIds(completeData.connections || []);
 
           setDiagramData({ nodes: [], connections: [], groupings: [] });
+          absorbDiagramUserDefinedObjects(completeData, { notifyEachCreated: true });
           setTimeout(() => {
             setDiagramData(completeData);
             setSelectedItem(null);
@@ -2559,6 +2789,7 @@ export default function DiagramEditor() {
         completeData.connections = ensureConnectionIds(completeData.connections || []);
         const existingIds = collectAllIdsInDiagram(diagramData);
         const sanitized = sanitizeImportedDiagram(completeData, existingIds);
+        absorbDiagramUserDefinedObjects(sanitized, { notify: true });
         setCurrentDiagramData(sanitized);
         setSelectedItem(null);
         toast({ title: 'Sub-diagram imported', description: 'The diagram has been imported into this sub-diagram.' });
@@ -2574,7 +2805,7 @@ export default function DiagramEditor() {
     };
     reader.readAsText(file);
     if (event.target) event.target.value = '';
-  }, [activeDiagramStack.length, diagramData, parseUnknownJsonToDiagramData, setCurrentDiagramData, toast]);
+  }, [activeDiagramStack.length, diagramData, parseUnknownJsonToDiagramData, absorbDiagramUserDefinedObjects, setCurrentDiagramData, toast]);
 
   const hasConnectionAnimationSettings = React.useCallback((connection: DiagramConnectionData) => {
     const animation = connection.animation;
@@ -3157,6 +3388,7 @@ export default function DiagramEditor() {
         : exampleId === 'simple' ? 'Mermaid Simple' : exampleId === 'complex' ? 'Mermaid Complex'
         : exampleId === 'class-diagram' ? 'Mermaid Class Diagram'
         : exampleId === 'sequence-diagram' ? 'Mermaid Sequence Diagram' : `Example: ${exampleId}`;
+      absorbDiagramUserDefinedObjects(diagram, { notify: true });
       createTab({ name: exampleName, diagramData: diagram });
 
       toast({ title: 'Example Loaded', description: `${exampleName} has been loaded in a new tab.` });
@@ -3164,7 +3396,7 @@ export default function DiagramEditor() {
       const message = error instanceof Error ? error.message : "An unknown error occurred";
       toast({ variant: 'destructive', title: 'Error Loading Example', description: `Could not load example. ${message}` });
     }
-  }, [parseUnknownJsonToDiagramData, createTab, toast]);
+  }, [parseUnknownJsonToDiagramData, createTab, absorbDiagramUserDefinedObjects, toast]);
 
   const activeTabIdRef = React.useRef(activeTabId);
   activeTabIdRef.current = activeTabId;
@@ -3187,6 +3419,7 @@ export default function DiagramEditor() {
         const text = await res.text();
         const json = parseImportJsonText(text);
         const diagram = await parseUnknownJsonToDiagramData(json);
+        absorbDiagramUserDefinedObjects(diagram, { notify: true });
         const serialized = JSON.stringify(diagram);
         const tabId = tabsRef.current.find(
           (t) => t.isTutorialTab === true || t.name === TUTORIAL_TAB_NAME
@@ -3210,7 +3443,7 @@ export default function DiagramEditor() {
         toast({ variant: 'destructive', title: 'Tutorial example failed', description: message });
       }
     },
-    [isLoaded, parseUnknownJsonToDiagramData, setHistoryRef, updateTab, toast, ensureTutorialTab, switchTab]
+    [isLoaded, parseUnknownJsonToDiagramData, absorbDiagramUserDefinedObjects, setHistoryRef, updateTab, toast, ensureTutorialTab, switchTab]
   );
 
   /** Mutate the dedicated tutorial tab's diagram (not necessarily the active tab). */
@@ -3332,6 +3565,7 @@ export default function DiagramEditor() {
   };
 
   const handleJsonValidChange = (newDiagramData: DiagramData) => {
+    absorbDiagramUserDefinedObjects(newDiagramData, { notify: true });
     setDiagramData(newDiagramData);
   };
 
@@ -5121,6 +5355,20 @@ export default function DiagramEditor() {
         onImportIntoSubDiagram={activeDiagramStack.length > 0 ? handleImportIntoSubDiagramClick : undefined}
         onSubDiagramFileChange={handleSubDiagramFileChange}
         subDiagramImportInputRef={subDiagramImportInputRef}
+        userDefinedObjectsLibrary={userDefinedObjectsLibrary}
+        onUserDefinedObjectActivate={handleUserDefinedObjectActivate}
+        canCreateUserDefinedObject={canCreateUserDefinedObject}
+        onCreateUserDefinedObjectClick={handleCreateUserDefinedObjectClick}
+        onManageUserDefinedObjectsClick={() => setManageUserDefinedObjectsDialogOpen(true)}
+        onSaveUserDefinedObjectEdit={handleSaveUserDefinedObjectEdit}
+        createUserDefinedObjectDialogOpen={createUserDefinedObjectDialogOpen}
+        setCreateUserDefinedObjectDialogOpen={setCreateUserDefinedObjectDialogOpen}
+        onConfirmCreateUserDefinedObject={handleConfirmCreateUserDefinedObject}
+        manageUserDefinedObjectsDialogOpen={manageUserDefinedObjectsDialogOpen}
+        setManageUserDefinedObjectsDialogOpen={setManageUserDefinedObjectsDialogOpen}
+        onRenameUserDefinedObject={handleRenameUserDefinedObject}
+        onDeleteUserDefinedObject={handleDeleteUserDefinedObject}
+        onEditUserDefinedObject={handleEditUserDefinedObject}
       />
       <TutorialOverlay />
     </TutorialProvider>

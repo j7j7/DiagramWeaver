@@ -222,6 +222,8 @@ export function shouldStripSurfaceDomEvent(
 export interface SemanticRecordingSummaryLine {
   t: number;
   label: string;
+  /** Index in `recording.events` — stable unique key when labels repeat. */
+  eventIndex: number;
 }
 
 export function summarizeSemanticRecordingTimeline(
@@ -230,11 +232,12 @@ export function summarizeSemanticRecordingTimeline(
 ): SemanticRecordingSummaryLine[] {
   const lines: SemanticRecordingSummaryLine[] = [];
 
-  for (const event of recording.events) {
+  for (let eventIndex = 0; eventIndex < recording.events.length; eventIndex++) {
+    const event = recording.events[eventIndex];
     if (event.kind === "custom" && event.name === DW_OVERLAY_OPEN) {
       const detail = event.detail as { surface?: string } | null;
       if (detail?.surface) {
-        lines.push({ t: event.t, label: `Open ${detail.surface}` });
+        lines.push({ t: event.t, label: `Open ${detail.surface}`, eventIndex });
       }
     }
     if (event.kind === "custom" && event.name === DW_CONTEXT_MENU_OPEN) {
@@ -242,6 +245,7 @@ export function summarizeSemanticRecordingTimeline(
       lines.push({
         t: event.t,
         label: `Context menu${detail?.itemId ? ` (${detail.itemId.slice(0, 8)}…)` : ""}`,
+        eventIndex,
       });
     }
     if (event.kind === "custom" && event.name === DW_OVERLAY_ACTION) {
@@ -256,30 +260,32 @@ export function summarizeSemanticRecordingTimeline(
           lines.push({
             t: event.t,
             label: `${detail.surface} → ${detail.property} = ${valueLabel?.slice(0, 48)}`,
+            eventIndex,
           });
         } else if (kind === "patch" && detail.patch) {
           lines.push({
             t: event.t,
             label: `${detail.surface} → patch(${Object.keys(detail.patch).join(", ")})`,
+            eventIndex,
           });
         } else {
-          lines.push({ t: event.t, label: `${detail.surface} → ${detail.action}` });
+          lines.push({ t: event.t, label: `${detail.surface} → ${detail.action}`, eventIndex });
         }
       }
     }
     if (event.kind === "custom" && event.name === DW_CONTEXT_MENU_ACTION) {
       const detail = event.detail as DwContextMenuActionDetail | null;
       if (detail?.action) {
-        lines.push({ t: event.t, label: `menu → ${detail.action}` });
+        lines.push({ t: event.t, label: `menu → ${detail.action}`, eventIndex });
       }
     }
     if (event.kind === "custom" && event.name === DW_SEARCH_MODAL_OPEN) {
-      lines.push({ t: event.t, label: "Open search-resources-modal" });
+      lines.push({ t: event.t, label: "Open search-resources-modal", eventIndex });
     }
     if (event.kind === "custom" && event.name === DW_SEARCH_MODAL_QUERY) {
       const detail = event.detail as DwSearchModalQueryDetail | null;
       if (detail?.query) {
-        lines.push({ t: event.t, label: `search query → ${detail.query}` });
+        lines.push({ t: event.t, label: `search query → ${detail.query}`, eventIndex });
       }
     }
     if (event.kind === "custom" && event.name === DW_RESOURCE_ACTIVATE) {
@@ -287,6 +293,7 @@ export function summarizeSemanticRecordingTimeline(
       lines.push({
         t: event.t,
         label: `search pick → ${detail?.resourceLabel ?? "resource"}`,
+        eventIndex,
       });
     }
     if (event.kind === "custom" && event.name === DW_PALETTE_DROP) {
@@ -294,6 +301,7 @@ export function summarizeSemanticRecordingTimeline(
       lines.push({
         t: event.t,
         label: `search drop → ${detail?.item?.label ?? "resource"}`,
+        eventIndex,
       });
     }
   }

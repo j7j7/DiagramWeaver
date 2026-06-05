@@ -50,6 +50,11 @@ import {
 import { getCardTemplate, defaultCardPaletteNodeProps } from "@/lib/card-templates";
 import { MINDMAP_NODE_TYPE } from "@/lib/mindmap-layout";
 import {
+  instantiateUserDefinedObjectAt,
+  USER_DEFINED_PALETTE_ITEM_TYPE,
+} from "@/lib/user-defined-objects";
+import type { UserDefinedObject } from "@/lib/types";
+import {
   nextMindmapAutoNumericLabel,
   reorderMindmapSiblingsByAngle,
   recomputeMindmapMetadata,
@@ -89,6 +94,14 @@ export function useCanvasOperations({
 
   const addNode = useCallback((item: any, position: { x: number; y: number }, _targetGroupId: string | null) => {
     setDiagramData((prevData) => {
+      if (item?.type === USER_DEFINED_PALETTE_ITEM_TYPE && item.userDefinedObject) {
+        return instantiateUserDefinedObjectAt(
+          item.userDefinedObject as UserDefinedObject,
+          position,
+          prevData,
+        );
+      }
+
       const newNodes = prevData.nodes ? [...prevData.nodes] : [];
       let newItemId: string;
 

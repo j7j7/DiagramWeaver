@@ -75,7 +75,11 @@ import {
   isDiagramIconTileNodeType,
 } from '@/lib/utils';
 import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
-import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
+import {
+  augmentGradientBackgroundPatch,
+  extractVisualStylingFromNode,
+  extractVisualStylingFromGroup,
+} from '@/lib/visual-styling';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
 import { findCardElement, isCardNodeType, updateCardElementTree } from '@/lib/card-utils';
@@ -1708,7 +1712,8 @@ export function ContextToolbar({
       // Update nodes
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
         if (selectedItemIds.has(node.id)) {
-          let augmented = augmentSegmentedRectangleStylingPlacementPatch(node, stylingObj);
+          let augmented = augmentGradientBackgroundPatch(node, stylingObj);
+          augmented = augmentSegmentedRectangleStylingPlacementPatch(node, augmented);
           augmented = augmentTimelineBarOrientationPatch(node, augmented);
           const merged = { ...node } as Record<string, unknown>;
           for (const [k, v] of Object.entries(augmented)) {
@@ -1724,8 +1729,9 @@ export function ContextToolbar({
       if (updatedDiagramData.zones) {
         updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
           if (!selectedItemIds.has(zone.id)) return zone;
+          const augmented = augmentGradientBackgroundPatch(zone, stylingObj);
           const merged = { ...zone } as Record<string, unknown>;
-          for (const [k, v] of Object.entries(stylingObj)) {
+          for (const [k, v] of Object.entries(augmented)) {
             if (v === null) merged[k] = null;
             else if (v !== undefined) merged[k] = v;
           }
@@ -1786,8 +1792,10 @@ export function ContextToolbar({
       let cardElements = selectedNode.card?.elements;
 
       if (isCard && cardElements) {
+        const cardBg = cardBackgroundVisualFromElements(cardElements, cardTemplateId);
+        const stylingInput = augmentGradientBackgroundPatch(cardBg, stylingObj);
         const { cardBackground, nodePatch } = partitionCardVisualStylingPatch(
-          stylingObj,
+          stylingInput,
           cardTemplateId,
         );
         if (Object.keys(cardBackground).length > 0) {
@@ -1799,9 +1807,12 @@ export function ContextToolbar({
       const augmented = selectedItem
         ? augmentTimelineBarOrientationPatch(
             selectedNode,
-            augmentSegmentedRectangleStylingPlacementPatch(selectedNode, stylingForNode),
+            augmentSegmentedRectangleStylingPlacementPatch(
+              selectedNode,
+              augmentGradientBackgroundPatch(selectedNode, stylingForNode),
+            ),
           )
-        : stylingForNode;
+        : augmentGradientBackgroundPatch(selectedNode, stylingForNode);
       const merged = { ...selectedItem } as Record<string, unknown>;
       for (const [k, v] of Object.entries(augmented)) {
         if (v === null) merged[k] = null;

@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Copy, Check, ExternalLink } from 'lucide-react';
 import type { DiagramData } from '@/lib/types';
+import { prepareDiagramDataForJsonExport } from '@/lib/user-defined-objects';
 import { useToast } from '@/hooks/use-toast';
 
 interface ViewerUrlDialogProps {
@@ -29,8 +30,7 @@ export function ViewerUrlDialog({ open, onOpenChange, diagramData }: ViewerUrlDi
 
   useEffect(() => {
     if (open && diagramData) {
-      // Use flat format to preserve subDiagrams, subDiagramId, and all nested diagram data
-      const jsonString = JSON.stringify(diagramData);
+      const jsonString = JSON.stringify(prepareDiagramDataForJsonExport(diagramData));
       
       // Encode to base64
       const base64Json = btoa(jsonString);
@@ -66,7 +66,7 @@ export function ViewerUrlDialog({ open, onOpenChange, diagramData }: ViewerUrlDi
     window.open(viewerUrl, '_blank');
   };
 
-  const jsonSize = diagramData ? JSON.stringify(diagramData).length : 0;
+  const jsonSize = diagramData ? JSON.stringify(prepareDiagramDataForJsonExport(diagramData)).length : 0;
   const base64Size = viewerUrl.length;
   const isLarge = base64Size > 2000; // Warn if URL is getting long
   

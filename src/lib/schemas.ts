@@ -595,6 +595,7 @@ export const DiagramNodeDataSchema = z.object({
   textShadowColor: z.string().optional(),
   textDropShadowEnabled: z.boolean().optional(),
   groupId: z.string().optional(), // Reference to grouping this node belongs to
+  userDefinedObjectId: z.string().optional(),
 
   // Line shape specific properties (absolute canvas positions)
   startPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line start
@@ -889,6 +890,23 @@ const DiagramViewStateSchema = z.object({
   k: z.number(),
 }).optional();
 
+const UserDefinedObjectTemplateSchema = z.object({
+  nodes: z.array(DiagramNodeDataSchema),
+  connections: z.array(DiagramConnectionDataSchema).default([]),
+  groupings: z.array(DiagramGroupingDataSchema).optional(),
+  width: z.number(),
+  height: z.number(),
+});
+
+const UserDefinedObjectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  iconSvg: z.string(),
+  template: UserDefinedObjectTemplateSchema,
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+
 const DiagramDataSchemaInner = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
@@ -899,6 +917,7 @@ const DiagramDataSchemaInner = z.object({
   canvasBackgroundColor: z.string().optional(),
   /** Diagram-wide dynamic text variables: `%key%` in labels resolves to these values at display time */
   globalProperties: z.record(z.string(), z.string()).optional(),
+  userDefinedObjects: z.record(z.string(), UserDefinedObjectSchema).optional(),
   viewState: DiagramViewStateSchema,
 });
 
@@ -1059,6 +1078,7 @@ export const DiagramNodeItemSchema = z.object({
   textShadowColor: z.string().optional(),
   textDropShadowEnabled: z.boolean().optional(),
   groupId: z.string().optional(), // Reference to grouping this node belongs to
+  userDefinedObjectId: z.string().optional(),
 
   // Line shape specific properties (absolute canvas positions)
   startPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line start

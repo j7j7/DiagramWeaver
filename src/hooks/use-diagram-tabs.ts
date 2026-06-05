@@ -31,6 +31,11 @@ export interface TabState {
   hasUnsavedPresentations?: boolean;
   /** When true, this tab is the dedicated interactive tutorial canvas (name should be `TUTORIAL_TAB_NAME`). */
   isTutorialTab?: boolean;
+  /** When set, this tab edits a user-defined object; save updates the library and closes the tab. */
+  userDefinedObjectEdit?: {
+    objectId: string;
+    returnTabId: string;
+  };
 }
 
 interface UseDiagramTabsOptions {
@@ -311,12 +316,16 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
       name?: string;
       diagramData?: DiagramData;
       isTutorialTab?: boolean;
+      userDefinedObjectEdit?: TabState['userDefinedObjectEdit'];
       /** When true, do not show the "New Tab" toast (e.g. fallback tab after tutorial completes). */
       silent?: boolean;
     }) => {
       const tabNumber = tabs.length + 1;
       const tabName = options?.name || `Diagram ${tabNumber}`;
-      const newTab = createNewTab(tabName, options?.diagramData, { isTutorialTab: options?.isTutorialTab });
+      const newTab: TabState = {
+        ...createNewTab(tabName, options?.diagramData, { isTutorialTab: options?.isTutorialTab }),
+        userDefinedObjectEdit: options?.userDefinedObjectEdit,
+      };
       setTabs((prev) => [...prev, newTab]);
       setActiveTabId(newTab.id);
       if (!options?.silent) {

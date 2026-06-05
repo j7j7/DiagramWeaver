@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { CardElementData, CardElementStyle, CardLayoutBox } from "@/lib/card-types";
 import type { ThemeProperties } from "@/lib/theme-types";
-import type { VisualStyling } from "@/lib/visual-styling";
+import { deriveBackgroundGradientColors, type VisualStyling } from "@/lib/visual-styling";
 import { multiplyLightnessOfColor, shiftHueOfColor } from "@/lib/color-shift";
 import { MESH_GRADIENT_INITIAL_BASE_COLOR } from "@/lib/mesh-gradient";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
@@ -273,9 +273,20 @@ function buildFramedHeadingFillStyle(
     };
   }
   if (v === "gradient") {
-    const colors =
-      styling.backgroundColors ??
-      prev?.backgroundColors ?? (["#3b82f6", "#1d4ed8"] as [string, string]);
+    const explicit = styling.backgroundColors;
+    const prevStyle = prev?.backgroundStyle ?? "solid";
+    const needsGradientRecalc =
+      !explicit && (prevStyle === "solid" || prevStyle === "mesh_gradient");
+    const colors = explicit
+      ? ([explicit[0], explicit[1]] as [string, string])
+      : needsGradientRecalc
+        ? deriveBackgroundGradientColors({
+            backgroundStyle: prev?.backgroundStyle,
+            backgroundColor: prev?.backgroundColor,
+            backgroundColors: prev?.backgroundColors,
+            meshGradientPoints: prev?.meshGradientPoints,
+          })
+        : (prev?.backgroundColors ?? (["#3b82f6", "#1d4ed8"] as [string, string]));
     return {
       backgroundStyle: "gradient",
       backgroundColors: [colors[0], colors[1]],

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId } from "react";
+import React, { useEffect, useId, useState } from "react";
 import type { Transform } from "@/hooks/use-canvas-transform";
 import { useTheme } from "@/components/theme-provider";
 import { DIAGRAM_GRID_SIZE } from "@/lib/dot-grid-viewport";
@@ -14,8 +14,14 @@ interface CanvasDotGridOverlayProps {
 export function CanvasDotGridOverlay({ transform, visible = true }: CanvasDotGridOverlayProps) {
   const patternId = `dw-dot-grid-${useId().replace(/:/g, "")}`;
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  if (!visible) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Defer SVG until after mount — useId() / theme can differ between SSR and client hydration.
+  if (!visible || !mounted) return null;
 
   const step = Math.max(4, DIAGRAM_GRID_SIZE * transform.k);
   const isDark = resolvedTheme === "dark";

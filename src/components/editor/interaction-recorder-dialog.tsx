@@ -250,7 +250,7 @@ export function InteractionRecorderDialog() {
                           <p className="font-medium text-foreground">Semantic actions</p>
                           <ul className="mt-1 list-inside list-disc">
                             {semantic.map((line) => (
-                              <li key={`${line.t}-${line.label}`}>
+                              <li key={line.eventIndex}>
                                 {(line.t / 1000).toFixed(2)}s — {line.label}
                               </li>
                             ))}

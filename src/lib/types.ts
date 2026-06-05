@@ -534,6 +534,8 @@ export interface DiagramNodeData {
   /** When true, drop shadow is rendered. Omitted or false = off (default). */
   textDropShadowEnabled?: boolean;
   groupId?: string; // Reference to grouping this node belongs to
+  /** When placed from a user-defined palette object, references its library id. */
+  userDefinedObjectId?: string;
   importId?: string; // ID for tracking imported items from Scratch Pad
   
   // Line shape specific properties (absolute canvas positions)
@@ -1223,6 +1225,26 @@ export interface DiagramViewState {
   k: number;
 }
 
+/** Normalized fragment stored inside a user-defined palette object. */
+export interface UserDefinedObjectTemplate {
+  nodes: DiagramNodeData[];
+  connections: DiagramConnectionData[];
+  groupings?: DiagramGroupingData[];
+  width: number;
+  height: number;
+}
+
+/** Reusable composite object created from a grouped canvas selection. */
+export interface UserDefinedObject {
+  id: string;
+  name: string;
+  /** SVG string for the resource-browser thumbnail. */
+  iconSvg: string;
+  template: UserDefinedObjectTemplate;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface DiagramData {
   nodes: DiagramNodeData[];
   connections: DiagramConnectionData[];
@@ -1239,6 +1261,8 @@ export interface DiagramData {
   canvasBackgroundColor?: string;
   /** Diagram-wide `%varname%` placeholders resolved at display time (not in stored labels). */
   globalProperties?: Record<string, string>;
+  /** Definitions for user-defined objects used on this diagram (embedded on save). */
+  userDefinedObjects?: Record<string, UserDefinedObject>;
 }
 
 /** @deprecated Zones removed - kept only for flatten-on-import of legacy JSON */

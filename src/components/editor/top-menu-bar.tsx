@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3 } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -302,6 +302,11 @@ interface TopMenuBarProps {
   };
   /** Live canvas vs rendered counts (viewport culling debug). */
   viewportCullStats?: ViewportCullDebugStats | null;
+  onCreateUserDefinedObject?: () => void;
+  canCreateUserDefinedObject?: boolean;
+  onManageUserDefinedObjects?: () => void;
+  onSaveUserDefinedObjectEdit?: () => void;
+  isUserDefinedObjectEditTab?: boolean;
 }
 
 export function TopMenuBar({
@@ -405,6 +410,11 @@ export function TopMenuBar({
   onStartTutorial,
   presentationToolbar,
   viewportCullStats,
+  onCreateUserDefinedObject,
+  canCreateUserDefinedObject = false,
+  onManageUserDefinedObjects,
+  onSaveUserDefinedObjectEdit,
+  isUserDefinedObjectEditTab = false,
 }: TopMenuBarProps) {
   const animMenuPreferenceOn = animationConnectionsUserEnabled ?? animationConnectionsEnabled;
 
@@ -737,6 +747,35 @@ export function TopMenuBar({
                     </>
                   )}
                 </MenubarItem>
+              </>
+            )}
+            {isUserDefinedObjectEditTab && onSaveUserDefinedObjectEdit && (
+              <>
+                <MenubarSeparator />
+                <MenubarItem onClick={onSaveUserDefinedObjectEdit} disabled={isReadOnly}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save user-defined object
+                </MenubarItem>
+              </>
+            )}
+            {!isUserDefinedObjectEditTab && (onCreateUserDefinedObject || onManageUserDefinedObjects) && (
+              <>
+                <MenubarSeparator />
+                {onCreateUserDefinedObject && (
+                  <MenubarItem
+                    onClick={onCreateUserDefinedObject}
+                    disabled={isReadOnly || !canCreateUserDefinedObject}
+                  >
+                    <Shapes className="mr-2 h-4 w-4" />
+                    Create user-defined object…
+                  </MenubarItem>
+                )}
+                {onManageUserDefinedObjects && (
+                  <MenubarItem onClick={onManageUserDefinedObjects}>
+                    <List className="mr-2 h-4 w-4" />
+                    Manage user-defined objects…
+                  </MenubarItem>
+                )}
               </>
             )}
           </MenubarContent>

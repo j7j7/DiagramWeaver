@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DraggableItem } from './draggable-item';
-import type { DiagramNodeData, DiagramGroupData, DiagramData } from '@/lib/types';
+import type { DiagramNodeData, DiagramGroupData, DiagramData, UserDefinedObject } from '@/lib/types';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -36,12 +36,14 @@ interface ComponentSidebarProps {
   isReadOnly?: boolean;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  userDefinedObjectsLibrary?: Record<string, UserDefinedObject>;
+  onUserDefinedObjectActivate?: (object: UserDefinedObject) => void;
 }
 
 
 
 
-export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, isReadOnly = false, collapsed = false, onToggleCollapse }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, isReadOnly = false, collapsed = false, onToggleCollapse, userDefinedObjectsLibrary, onUserDefinedObjectActivate }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
 
   const selectedItemRef = useRef(selectedItem);
@@ -232,6 +234,9 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
         <ResourceBrowser
           onResourceSelect={onResourceSelect}
           onResourceActivate={onResourceActivate}
+          userDefinedObjectsLibrary={userDefinedObjectsLibrary}
+          diagramData={diagramData}
+          onUserDefinedObjectActivate={onUserDefinedObjectActivate}
         />
       </div>
     </aside>

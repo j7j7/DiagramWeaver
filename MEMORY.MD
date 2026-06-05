@@ -4,6 +4,36 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-05 – Interaction recorder: unique semantic summary keys
+Save-recording dialog listed semantic actions with `key={t-label}`; repeated actions at the same timestamp (e.g. multiple **Recent Colors** clicks in visual styling) duplicated keys. **`SemanticRecordingSummaryLine.eventIndex`** + **`key={line.eventIndex}`** in **`interaction-recorder-dialog.tsx`**. Patch bumped.
+
+### 2026-06-05 – Visual styling: solid/mesh → gradient recalculates stops
+Switching **Background → Gradient** from **solid** or **mesh** now derives **`backgroundColors`** from the current fill (**`deriveBackgroundGradientColors`** in **`visual-styling.ts`**) so shapes/cards/zones do not render a black second stop. Wired in **`VisualStylingPanel`**, **`CardFillStyleControls`**, **`applyCardBackgroundVisual`**, framed-heading fill, and **`augmentGradientBackgroundPatch`** on visual styling apply (incl. multi-select). Patch bumped.
+
+### 2026-06-05 – User-defined objects preserved on JSON import
+**`flatten-on-import`** (`normalizeDiagramData` and zone flatten) now passes through **`userDefinedObjects`** and **`globalProperties`** — they were dropped before Zod parse, so file load never populated the palette. **File → Load** shows a per-object toast **`User Defined Object <name> created`** (in addition to “Diagram loaded”) for each new library entry; import saves **`localStorage`** immediately via **`saveUserDefinedObjectsLibraryImmediate`**. Patch bumped.
+
+### 2026-06-05 – Import user-defined objects on diagram load
+Loading diagram JSON (**File → Load**, examples, sub-diagram import, JSON apply, restored tabs) merges embedded **`userDefinedObjects`** (incl. sub-diagrams) into the local library when missing; toast on explicit import. **`collectUserDefinedObjectsFromDiagramTree`**. Patch bumped.
+
+### 2026-06-05 – User-defined delete from library
+Deleting a user-defined object removes it from **localStorage**, all tabs’ embedded **`userDefinedObjects`**, and the resource sidebar (**`listUserDefinedObjectsForPalette`** — library only, not diagram merge). Canvas instances keep rendering; they are no longer in the palette. Patch bumped.
+
+### 2026-06-05 – User-defined objects in diagram JSON
+**`prepareDiagramDataForJsonExport`** embeds **`userDefinedObjects`** (and **`userDefinedObjectId`** on nodes) for file save, viewer URL, and JSON panel. Creating from a group stamps **`userDefinedObjectId`** on members + embeds the definition on the diagram. Patch bumped.
+
+### 2026-06-05 – Dot grid hydration fix
+**`CanvasDotGridOverlay`** renders only after client mount so **`useId()`** pattern ids (and theme) are not SSR-hydrated — fixes Next.js hydration mismatch on the editor canvas. Patch bumped.
+
+### 2026-06-05 – User-defined resource category
+User-defined palette tiles live under **Generic → User-Defined** (`generic.user-defined`), their own accordion **above Object** — not nested inside Object. Patch bumped.
+
+### 2026-06-05 – User-defined object edit save
+Saving an edited user-defined object no longer reverts when returning to a diagram tab: **`mergeDiagramObjectsIntoLibrary`** keeps the newer **`updatedAt`** (embedded copies no longer overwrite the library), save propagates the definition to all tabs via **`propagateUserDefinedObjectToDiagram`**, and extraction uses **all nodes** in the edit tab. Patch bumped.
+
+### 2026-06-05 – User-defined palette objects
+Group canvas items (**Edit → Create user-defined object…**), name them, and reuse from **Generic → Objects → User-defined** (above built-in shapes). Templates store nodes, internal connections, groupings, colours, and text; **`iconSvg`** thumbnail generated on save. Library in **`localStorage`** (`dw:userDefinedObjects`); definitions **embedded in diagram JSON** when used (`diagramData.userDefinedObjects`, nodes tagged with **`userDefinedObjectId`**). **Edit → Manage user-defined objects…** rename/delete; **Edit** opens a tab to revise and **Save user-defined object** closes it. Core: **`user-defined-objects.ts`**. Patch bumped.
+
 ### 2026-06-05 – Group selection outline
 Selecting a grouped item shows a **dashed primary-color rectangle** (no fill) around **all group members** on the canvas — **`computeGroupMemberBounds`** / **`resolveGroupSelectionForOutline`** in **`grouping-utils.ts`**, rendered in **`EditorCanvas`** above nodes (follows live drag positions via **`displayNodesById`**). Hidden when multi-select spans outside the group or in read-only. Patch bumped.
 

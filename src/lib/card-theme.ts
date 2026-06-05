@@ -1,6 +1,6 @@
 import type { CardElementData, CardElementStyle } from "@/lib/card-types";
 import type { ThemeProperties } from "@/lib/theme-types";
-import type { VisualStyling } from "@/lib/visual-styling";
+import { deriveBackgroundGradientColors, type VisualStyling } from "@/lib/visual-styling";
 import { multiplyLightnessOfColor, shiftHueOfColor } from "@/lib/color-shift";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 import { findCardElement, mapCardElementTree, updateCardElementTree } from "@/lib/card-utils";
@@ -169,7 +169,22 @@ export function applyCardBackgroundVisual(
     return applyFramedHeadingCardBackgroundVisual(elements, styling);
   }
   const bgId = getCardBackgroundElementId(templateId);
-  return updateCardElementStyleTree(elements, bgId, cardStyleFromVisualBackground(styling, templateId));
+  const prev = findCardElement(elements, bgId)?.style;
+  const patch = cardStyleFromVisualBackground(styling, templateId);
+  if (
+    patch.backgroundStyle === "gradient" &&
+    !patch.backgroundColors &&
+    prev &&
+    (prev.backgroundStyle === "solid" || prev.backgroundStyle === "mesh_gradient")
+  ) {
+    patch.backgroundColors = deriveBackgroundGradientColors({
+      backgroundStyle: prev.backgroundStyle,
+      backgroundColor: prev.backgroundColor,
+      backgroundColors: prev.backgroundColors,
+      meshGradientPoints: prev.meshGradientPoints,
+    });
+  }
+  return updateCardElementStyleTree(elements, bgId, patch);
 }
 
 function cardClearNodeBackgroundPatch(): Record<string, unknown> {

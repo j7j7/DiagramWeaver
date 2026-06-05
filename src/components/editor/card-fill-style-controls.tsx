@@ -14,6 +14,7 @@ import {
   MESH_GRADIENT_INITIAL_BASE_COLOR,
   normalizeMeshGradientPoints,
 } from "@/lib/mesh-gradient";
+import { deriveBackgroundGradientColors } from "@/lib/visual-styling";
 import { cn } from "@/lib/utils";
 
 export interface CardFillStyleControlsProps {
@@ -65,9 +66,13 @@ export function CardFillStyleControls({
       return;
     }
     if (value === "gradient") {
+      const prevStyle = s.backgroundStyle ?? "solid";
+      const needsGradientRecalc = prevStyle === "solid" || prevStyle === "mesh_gradient";
       patch({
         backgroundStyle: "gradient",
-        backgroundColors: s.backgroundColors ?? ["#3b82f6", "#1d4ed8"],
+        backgroundColors: needsGradientRecalc
+          ? deriveBackgroundGradientColors(s)
+          : (s.backgroundColors ?? ["#3b82f6", "#1d4ed8"]),
         gradientAngle: s.gradientAngle ?? 135,
       });
       return;
