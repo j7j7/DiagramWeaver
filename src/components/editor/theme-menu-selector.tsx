@@ -182,8 +182,35 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
     );
   };
 
-  const favoriteThemes = themes.filter(t => t.isFavorite);
-  const otherThemes = themes.filter(t => !t.isFavorite);
+  const sortedThemes = themes;
+  const customThemes = sortedThemes.filter((t) => !t.isBuiltIn);
+  const builtInThemes = sortedThemes.filter((t) => t.isBuiltIn);
+
+  const renderThemeSection = (
+    sectionThemes: DiagramTheme[],
+    sectionLabel: string,
+    showSeparatorBefore = false,
+  ) => {
+    if (sectionThemes.length === 0) return null;
+    return (
+      <>
+        {showSeparatorBefore && <DropdownMenuSeparator />}
+        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+          {sectionLabel}
+        </div>
+        {sectionThemes.map((theme) => (
+          <ThemeDropdownMenuRow
+            key={theme.id}
+            theme={theme}
+            isReadOnly={isReadOnly}
+            onThemeSelect={handleThemeSelect}
+            onToggleFavorite={handleToggleFavorite}
+            renderThemePreview={renderThemePreview}
+          />
+        ))}
+      </>
+    );
+  };
 
   return (
     <DropdownMenu>
@@ -199,6 +226,19 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
         align="start"
         sideOffset={8}
       >
+        <DropdownMenuItem
+          onClick={(e) => {
+            e?.stopPropagation();
+            onOpenEditor?.();
+          }}
+          className="p-2 cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <Palette className="h-4 w-4" />
+            <span>Theme Editor</span>
+          </div>
+        </DropdownMenuItem>
+
         <DropdownMenuCheckboxItem
           checked={multiHueByLayout}
           disabled={isReadOnly}
@@ -239,54 +279,11 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
             />
           </div>
         )}
-        <DropdownMenuSeparator />
-        {favoriteThemes.length > 0 && (
-          <>
-            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-1">
-              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-              Favorites
-            </div>
-            {favoriteThemes.map((theme) => (
-              <ThemeDropdownMenuRow
-                key={theme.id}
-                theme={theme}
-                isReadOnly={isReadOnly}
-                onThemeSelect={handleThemeSelect}
-                onToggleFavorite={handleToggleFavorite}
-                renderThemePreview={renderThemePreview}
-              />
-            ))}
-            <DropdownMenuSeparator />
-          </>
-        )}
-
-        {otherThemes.length > 0 && (
-          <>
-            {favoriteThemes.length > 0 && (
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                All Themes
-              </div>
-            )}
-            {otherThemes.map((theme) => (
-              <ThemeDropdownMenuRow
-                key={theme.id}
-                theme={theme}
-                isReadOnly={isReadOnly}
-                onThemeSelect={handleThemeSelect}
-                onToggleFavorite={handleToggleFavorite}
-                renderThemePreview={renderThemePreview}
-              />
-            ))}
-          </>
-        )}
 
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={(e) => { e?.stopPropagation(); onOpenEditor?.(); }} className="p-2 cursor-pointer">
-          <div className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            <span>Theme Editor</span>
-          </div>
-        </DropdownMenuItem>
+
+        {renderThemeSection(customThemes, 'My Themes')}
+        {renderThemeSection(builtInThemes, 'Built-in Themes', customThemes.length > 0)}
       </DropdownMenuContent>
     </DropdownMenu>
   );

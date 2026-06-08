@@ -1552,6 +1552,7 @@ export function TopMenuBar({
         open={themeEditorOpen}
         onOpenChange={setThemeEditorOpen}
         onThemeSelect={onThemeApplyToSelected}
+        selectedItem={selectedItem}
         isReadOnly={isReadOnly}
       />
       

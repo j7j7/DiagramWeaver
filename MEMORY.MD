@@ -4,6 +4,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 
 
 
+### 2026-06-08 – Themes menu + floating theme editor
+**Themes** dropdown: **Theme Editor** at top, then **Step hue for multi-selection** (+ hue step ° when on), separator, **My Themes** (user-defined, favorites first) above **Built-in Themes** (favorites first). **`getThemesSorted`** order: custom → built-in, then favorites → non-favorites; custom themes newest-first. **Theme Editor** is a draggable floating panel (like Visual Styling) via portal + **`react-draggable`**; position persisted in **`dw:theme-editor:position`**. **New** immediately adds a custom theme at the top of My themes; **From selection** captures the selected shape/connection styling into a new theme (**`theme-from-selection.ts`**). Built-in themes are read-only in the editor (duplicate to edit). Patch bumped.
+
 ### 2026-06-05 – Interaction recorder: drag trail 0,0 spike fix
 Move/resize playback trails used **`resolveReplayClientPoint`** (diagram-first), so react-dnd ghost **`clientX/Y ≈ 0`** and bad remaps drew a line to the screen corner. Trail building now uses **`resolveTrailClientPoint`** (client-first + event transform) and **`sanitizeDragTrail`** (drop origin ghosts and teleport outliers). Patch bumped.
 

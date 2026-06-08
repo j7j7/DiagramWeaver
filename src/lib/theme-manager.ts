@@ -1617,30 +1617,27 @@ class ThemeManager {
 
   public getThemesSorted(): DiagramTheme[] {
     return [...this.themes].sort((a, b) => {
-      // Favorites first
+      // User-defined themes before built-in themes
+      if (!a.isBuiltIn && b.isBuiltIn) return -1;
+      if (a.isBuiltIn && !b.isBuiltIn) return 1;
+
+      // Favorites before non-favorites (within custom or built-in group)
       if (a.isFavorite && !b.isFavorite) return -1;
       if (!a.isFavorite && b.isFavorite) return 1;
-      
-      // Built-in themes before custom themes
-      if (a.isBuiltIn && !b.isBuiltIn) return -1;
-      if (!a.isBuiltIn && b.isBuiltIn) return 1;
-      
-      // Within built-in themes, sort around the colour spectrum (neutrals last)
+
+      // Built-in: colour spectrum (neutrals last), then name
       if (a.isBuiltIn && b.isBuiltIn) {
         const ka = getThemeSpectrumSortKey(a);
         const kb = getThemeSpectrumSortKey(b);
         if (Math.abs(ka - kb) > 1e-6) return ka - kb;
         return a.name.localeCompare(b.name);
       }
-      
-      // Custom themes: spectrum order, then date, then name
-      const ka = getThemeSpectrumSortKey(a);
-      const kb = getThemeSpectrumSortKey(b);
-      if (Math.abs(ka - kb) > 1e-6) return ka - kb;
+
+      // Custom: newest first, then name
       const aDate = a.createdAt || a.updatedAt || '';
       const bDate = b.createdAt || b.updatedAt || '';
-      if (aDate && bDate) {
-        return aDate.localeCompare(bDate);
+      if (aDate && bDate && aDate !== bDate) {
+        return bDate.localeCompare(aDate);
       }
       return a.name.localeCompare(b.name);
     });

@@ -1,6 +1,8 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
-import type { SaveFilePickerOptions, OpenFilePickerOptions } from '@/types/file-system';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import type { OpenFilePickerOptions } from '@/types/file-system';
+import Draggable from 'react-draggable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { 
@@ -19,31 +20,49 @@ import {
   Plus, 
   Save, 
   Eye, 
-  Edit,
   Check,
   X,
   Star,
   Download,
-  Upload
+  Upload,
+  Sparkles,
 } from 'lucide-react';
 import { DiagramTheme, ThemeProperties } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { getVisualStylingCSS, themePropertiesToVisualStyling } from '@/lib/visual-styling';
+import {
+  canCreateThemeFromSelection,
+  defaultNewThemeProperties,
+  themePropertiesFromSelection,
+} from '@/lib/theme-from-selection';
+import type { SelectedItem } from '@/components/editor/diagram-editor-types';
+import { cn } from '@/lib/utils';
+
+const THEME_EDITOR_POSITION_KEY = 'dw:theme-editor:position';
 
 interface ThemeEditorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onThemeSelect?: (theme: DiagramTheme) => void;
+  selectedItem?: SelectedItem | null;
   isReadOnly?: boolean;
 }
 
-export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = false }: ThemeEditorProps) {
+export function ThemeEditor({ open, onOpenChange, onThemeSelect, selectedItem, isReadOnly = false }: ThemeEditorProps) {
   const [themes, setThemes] = useState<DiagramTheme[]>([]);
   const [selectedTheme, setSelectedTheme] = useState<DiagramTheme | null>(null);
   const [editingTheme, setEditingTheme] = useState<DiagramTheme | null>(null);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
-  const editorPanelRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 120, y: 72 });
+  const [isMounted, setIsMounted] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const themeListRef = useRef<HTMLDivElement>(null);
+
+  const scrollThemeListToTop = useCallback(() => {
+    requestAnimationFrame(() => {
+      themeListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }, []);
 
   useEffect(() => {
     setThemes(themeManager.getThemesSorted());
@@ -55,16 +74,39 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    setIsMounted(true);
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem(THEME_EDITOR_POSITION_KEY);
+      if (saved) {
+        setPosition(JSON.parse(saved));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(THEME_EDITOR_POSITION_KEY, JSON.stringify(position));
+    } catch {
+      /* ignore */
+    }
+  }, [position, isMounted]);
+
+  const cloneThemeProperties = (properties: ThemeProperties): ThemeProperties => ({
+    ...properties,
+    borderColors: properties.borderColors ? [...properties.borderColors] : undefined,
+    backgroundColors: properties.backgroundColors ? [...properties.backgroundColors] : undefined,
+    meshGradientPoints: properties.meshGradientPoints?.map((p) => ({ ...p })),
+  });
+
   const handleThemeSelect = (theme: DiagramTheme) => {
     setSelectedTheme(theme);
-    // Deep clone the theme and its properties to avoid shared references
-    const clonedProperties: ThemeProperties = {
-      ...theme.properties,
-      borderColors: theme.properties.borderColors ? [...theme.properties.borderColors] : undefined,
-      backgroundColors: theme.properties.backgroundColors ? [...theme.properties.backgroundColors] : undefined,
-    };
-    setEditingTheme({ ...theme, properties: clonedProperties });
-    setIsCreatingNew(false);
+    setEditingTheme({ ...theme, properties: cloneThemeProperties(theme.properties) });
+    setPreviewMode(false);
   };
 
   const handleCreateNew = () => {
@@ -73,58 +115,46 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
       name: 'New Theme',
       description: 'Custom theme',
       isBuiltIn: false,
-      properties: {
-        borderStyle: 'solid',
-        borderColor: '#3b82f6',
-        borderWidth: 2,
-        backgroundStyle: 'solid',
-        backgroundColor: '#eff6ff',
-        backgroundOpacity: 1,
-        lineStyle: 'solid',
-        lineColor: '#3b82f6',
-        lineWidth: 2.5,
-        lineOpacity: 1,
-        shadow: true,
-        shadowColor: '#000000',
-        shadowOpacity: 0.2,
-        shadowBlur: 4,
-        textColor: '#1e40af',
-        textOpacity: 1,
-        gradientAngle: 135
-      }
+      properties: defaultNewThemeProperties(),
     };
-    
-    setEditingTheme(newTheme);
-    setIsCreatingNew(true);
-    setSelectedTheme(null);
-    
-    // Scroll editor panel into view after state update
-    setTimeout(() => {
-      editorPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 100);
+
+    themeManager.addTheme(newTheme);
+    handleThemeSelect(newTheme);
+    scrollThemeListToTop();
+  };
+
+  const handleCreateFromSelection = () => {
+    if (!selectedItem || !canCreateThemeFromSelection(selectedItem)) return;
+
+    const properties = themePropertiesFromSelection(selectedItem);
+    const label =
+      selectedItem.itemType === 'node'
+        ? selectedItem.label?.trim() || selectedItem.id
+        : 'Connection';
+    const newTheme: DiagramTheme = {
+      id: `custom-${Date.now()}`,
+      name: `From ${label}`,
+      description: 'Created from canvas selection',
+      isBuiltIn: false,
+      properties,
+    };
+
+    themeManager.addTheme(newTheme);
+    handleThemeSelect(newTheme);
+    scrollThemeListToTop();
   };
 
   const handleSaveTheme = () => {
     if (!editingTheme) return;
-    
-    // Deep clone properties before saving to ensure we're saving a clean copy
-    const clonedProperties: ThemeProperties = {
-      ...editingTheme.properties,
-      borderColors: editingTheme.properties.borderColors ? [...editingTheme.properties.borderColors] : undefined,
-      backgroundColors: editingTheme.properties.backgroundColors ? [...editingTheme.properties.backgroundColors] : undefined,
+
+    const themeToSave = {
+      ...editingTheme,
+      properties: cloneThemeProperties(editingTheme.properties),
     };
-    const themeToSave = { ...editingTheme, properties: clonedProperties };
-    
-    if (isCreatingNew) {
-      themeManager.addTheme(themeToSave);
-      setIsCreatingNew(false);
-      // Update the editing theme to the saved version
-      setEditingTheme(themeToSave);
-    } else {
-      themeManager.updateTheme(editingTheme.id, themeToSave);
-    }
-    
+
+    themeManager.updateTheme(editingTheme.id, themeToSave);
     setSelectedTheme(themeToSave);
+    setEditingTheme(themeToSave);
   };
 
   const handleDuplicateTheme = (theme: DiagramTheme) => {
@@ -242,7 +272,7 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
   };
 
   const handlePropertyChange = (propertyPath: string, value: any) => {
-    if (!editingTheme) return;
+    if (!editingTheme || editingTheme.isBuiltIn) return;
     
     const updated = { ...editingTheme };
     const pathParts = propertyPath.split('.');
@@ -262,7 +292,6 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
   const handleApplyTheme = () => {
     if (selectedTheme && onThemeSelect) {
       onThemeSelect(selectedTheme);
-      onOpenChange(false);
     }
   };
 
@@ -303,113 +332,167 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Theme Editor
-          </DialogTitle>
-          <DialogDescription>
-            Create, edit, and manage color themes for your diagrams
-          </DialogDescription>
-        </DialogHeader>
+  const customThemes = themes.filter((t) => !t.isBuiltIn);
+  const builtInThemes = themes.filter((t) => t.isBuiltIn);
+  const canUseSelection = canCreateThemeFromSelection(selectedItem);
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Theme List */}
-          <div className="lg:col-span-1 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Themes</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={handleExportThemes}>
-                  <Download className="h-4 w-4 mr-1" />
-                  Export
+  const renderThemeListCard = (theme: DiagramTheme) => (
+    <Card
+      key={theme.id}
+      className={cn(
+        'cursor-pointer transition-all',
+        selectedTheme?.id === theme.id ? 'ring-2 ring-primary' : 'hover:shadow-md',
+      )}
+      onClick={() => handleThemeSelect(theme)}
+    >
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0 shrink-0"
+              onClick={(e) => handleToggleFavorite(theme.id, e)}
+            >
+              <Star
+                className={cn(
+                  'h-3 w-3',
+                  theme.isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400',
+                )}
+              />
+            </Button>
+            <span className="font-medium text-sm truncate">{theme.name}</span>
+            {theme.isBuiltIn && (
+              <Badge variant="secondary" className="text-xs shrink-0">
+                Built-in
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-1 shrink-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDuplicateTheme(theme);
+              }}
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+            {!theme.isBuiltIn && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteTheme(theme.id);
+                }}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </div>
+        {renderThemePreview(theme)}
+      </CardContent>
+    </Card>
+  );
+
+  const renderThemeListSection = (sectionThemes: DiagramTheme[], label: string) => {
+    if (sectionThemes.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <div className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </div>
+        {sectionThemes.map(renderThemeListCard)}
+      </div>
+    );
+  };
+
+  if (!open || typeof window === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
+    <Draggable
+      handle=".dw-theme-editor-drag-handle"
+      nodeRef={panelRef}
+      position={position}
+      onStop={(_e, data) => setPosition({ x: data.x, y: data.y })}
+    >
+      <div
+        ref={panelRef}
+        className={cn(
+          'fixed top-16 left-16 z-[60] flex max-h-[min(85vh,calc(100vh-3rem))] w-[min(960px,calc(100vw-2rem))] flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-lg',
+        )}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
+          <div className="dw-theme-editor-drag-handle flex min-w-0 flex-1 cursor-move items-center gap-2 select-none">
+            <Palette className="h-4 w-4 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-semibold text-foreground">Theme Editor</h3>
+              <p className="truncate text-xs text-muted-foreground">
+                Create, edit, and manage diagram colour themes
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="h-8 w-8 shrink-0 p-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(240px,320px)_1fr]">
+          {/* Theme list sidebar */}
+          <div className="flex min-h-0 flex-col border-b lg:border-b-0 lg:border-r">
+            <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+              <Button size="sm" variant="default" type="button" onClick={handleCreateNew}>
+                <Plus className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">New</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                type="button"
+                disabled={!canUseSelection || isReadOnly}
+                title={
+                  canUseSelection
+                    ? 'Save the selected shape styling as a new theme'
+                    : 'Select a shape or connection on the canvas first'
+                }
+                onClick={handleCreateFromSelection}
+              >
+                <Sparkles className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">From selection</span>
+              </Button>
+              <div className="ml-auto flex gap-1">
+                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={handleExportThemes} title="Export themes">
+                  <Download className="h-4 w-4" />
                 </Button>
-                <Button size="sm" variant="outline" onClick={handleImportThemes}>
-                  <Upload className="h-4 w-4 mr-1" />
-                  Import
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="default"
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleCreateNew();
-                  }}
-                >
-                  <Plus className="h-4 w-4 shrink-0" />
-                  <span className="whitespace-nowrap">New</span>
+                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={handleImportThemes} title="Import themes">
+                  <Upload className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-            
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {themeManager.getThemesSorted().map((theme) => (
-                <Card 
-                  key={theme.id} 
-                  className={`cursor-pointer transition-all ${
-                    selectedTheme?.id === theme.id ? 'ring-2 ring-primary' : 'hover:shadow-md'
-                  }`}
-                  onClick={() => handleThemeSelect(theme)}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0"
-                          onClick={(e) => handleToggleFavorite(theme.id, e)}
-                        >
-                          <Star 
-                            className={`h-3 w-3 ${theme.isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`} 
-                          />
-                        </Button>
-                        <span className="font-medium text-sm">{theme.name}</span>
-                        {theme.isBuiltIn && <Badge variant="secondary" className="text-xs">Built-in</Badge>}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDuplicateTheme(theme);
-                          }}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                        {!theme.isBuiltIn && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteTheme(theme.id);
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {renderThemePreview(theme)}
-                  </CardContent>
-                </Card>
-              ))}
+
+            <div ref={themeListRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+              {renderThemeListSection(customThemes, 'My themes')}
+              {renderThemeListSection(builtInThemes, 'Built-in themes')}
             </div>
           </div>
 
-          {/* Theme Editor */}
-          <div className="lg:col-span-2" ref={editorPanelRef}>
+          {/* Theme properties editor */}
+          <div className="min-h-0 overflow-y-auto p-4">
             {editingTheme ? (
               <div className="space-y-4">
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   <Button
                     size="sm"
                     variant="outline"
@@ -418,17 +501,23 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                     <Eye className="h-4 w-4 mr-1" />
                     {previewMode ? 'Edit' : 'Preview'}
                   </Button>
-                  <Button variant="default" size="sm" onClick={handleSaveTheme}>
+                  <Button variant="default" size="sm" onClick={handleSaveTheme} disabled={editingTheme.isBuiltIn}>
                     <Save className="h-4 w-4 mr-1" />
                     Save
                   </Button>
                   {selectedTheme && (
                     <Button variant="outline" size="sm" onClick={handleApplyTheme} disabled={isReadOnly}>
                       <Check className="h-4 w-4 mr-1" />
-                      Apply
+                      Apply to selection
                     </Button>
                   )}
                 </div>
+
+                {editingTheme.isBuiltIn && (
+                  <p className="text-xs text-muted-foreground rounded-md border border-dashed px-3 py-2">
+                    Built-in themes are read-only. Duplicate to create an editable copy under My themes.
+                  </p>
+                )}
 
                 {previewMode ? (
                   <Card>
@@ -477,7 +566,7 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[70]">
                               <SelectItem value="solid">Solid</SelectItem>
                               <SelectItem value="gradient">Gradient</SelectItem>
                               <SelectItem value="none">None</SelectItem>
@@ -493,7 +582,7 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[70]">
                               <SelectItem value="solid">Solid</SelectItem>
                               <SelectItem value="dotted">Dotted</SelectItem>
                               <SelectItem value="gradient">Gradient</SelectItem>
@@ -658,7 +747,7 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[70]">
                               <SelectItem value="0">0° (Right)</SelectItem>
                               <SelectItem value="45">45° (Diagonal ↗)</SelectItem>
                               <SelectItem value="90">90° (Up)</SelectItem>
@@ -765,16 +854,17 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-64 text-muted-foreground">
-                <div className="text-center">
+              <div className="flex h-full min-h-[16rem] items-center justify-center text-muted-foreground">
+                <div className="text-center px-6">
                   <Palette className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Select a theme to edit or create a new one</p>
+                  <p className="text-sm">Select a theme to edit, click New, or use From selection with a shape selected.</p>
                 </div>
               </div>
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </Draggable>,
+    document.body,
   );
 }
