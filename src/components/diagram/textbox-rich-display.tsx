@@ -133,7 +133,11 @@ export function TextboxRichDisplay({
     const lineStyle = line.lineFormat ? getLineStyle(line.lineFormat, node) : getTextStylingForNode(node);
     const spans = line.runs.map((run, i) => {
       const styles: React.CSSProperties = {};
-      if (run.bold) styles.fontWeight = "bold";
+      if (run.bold) {
+        styles.fontWeight = 700;
+        styles.fontFamily = "inherit";
+        styles.fontSynthesis = "none";
+      }
       if (run.italic) styles.fontStyle = "italic";
       if (run.underline) styles.textDecoration = "underline";
 

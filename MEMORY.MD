@@ -2,6 +2,21 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-06-10 – PNG/thumbnails: hide injected `@font-face` style block
+Embedded font CSS was prepended as a bare `<style>` on the export clone; SVG foreignObject rasterized its text into thumbnails/PNG backgrounds. **`injectExportFontEmbedCss`** wraps defs in a zero-size hidden `[data-export-font-defs]` container (replaces html-to-image **`embedWebFonts`** prepend). Patch bumped.
+
+### 2026-06-10 – PNG export: full computed layout sync for card text wrap
+Card text wrapped differently in PNG because html-to-image only kept **inline** `style.cssText` when React set partial styles — Tailwind **flex** / **`min-width: 0`** / **display** were dropped, shrinking text columns. Export now inlines the **full computed style** snapshot from the live canvas (exact font-size, no −0.1px hack), re-syncs after mount, and widens flex text columns when the clone shrinks — without changing export frame size or fit transform. Patch bumped.
+
+### 2026-06-10 – PNG export: self-hosted fonts + layout sync for text wrap
+Cross-origin Google Fonts could not be embedded reliably (SecurityError / fallback metrics), so **Inter** / **Nunito** now load via **`next/font`** (`src/lib/app-fonts.ts`) — same-origin `@font-face` rules inlined into export clones. **`buildExportFontEmbedCss`** reads embeddable same-origin faces (incl. variable Inter bold weights for rich text). **`applyExactExportStylesFromSource`** copies box model + wrap properties from live canvas; clone is mounted off-screen before **`nodeToDataURL`**. Patch bumped.
+
+### 2026-06-10 – PNG/GIF export: font embed without cssRules SecurityError
+**`buildExportFontEmbedCss`** no longer calls html-to-image **`getWebFontCSS`** (reading cross-origin Google Fonts **`cssRules`** threw **SecurityError** during presentation thumbnails). Fonts are fetched from known **`fonts.googleapis.com`** URLs (same as **`layout.tsx`**) and inlined via **`embedResources`**. Patch bumped.
+
+### 2026-06-10 – PNG/GIF export: match canvas fonts
+Export had **`skipFonts: true`**, so html-to-image did not embed `@font-face` rules and PNG/GIF text often fell back to system fonts. **`toPngWithDiagramExportFixes`** now waits on **`document.fonts`**, embeds web fonts (**`woff2`**), re-syncs live computed **font-family/size/weight** onto the clone (including SVG `<text>`), and probes all diagram font families (HTML + SVG) for embedding. Removed **`skipFonts`** from **`use-canvas-export`**. **`layout.tsx`**: Inter loads weights **100–900**. Patch bumped.
+
 
 
 ### 2026-06-08 – Themes menu + floating theme editor

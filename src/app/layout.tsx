@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { RecentColorsProvider } from "@/hooks/use-recent-colors";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CONTENT_SECURITY_POLICY } from "@/lib/content-security-policy";
+import { inter, nunito } from "@/lib/app-fonts";
 
 export const metadata: Metadata = {
   title: 'Diagram Weaver',
@@ -38,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${nunito.variable}`}>
       <head>
         <meta httpEquiv="Content-Security-Policy" content={CONTENT_SECURITY_POLICY} />
         {/* External file avoids next/script innerHTML + __next_s wrapper (server/client mismatch). */}
@@ -46,10 +47,6 @@ export default function RootLayout({
         <script src="/theme-init.js" suppressHydrationWarning />
         {/* eslint-disable-next-line @next/next/no-sync-scripts -- PWA registration; same pattern as theme-init */}
         <script src="/pwa-register.js" suppressHydrationWarning />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       {/*
         Avoid `overflow-hidden` on body: Chromium can treat it as a backdrop root and affect

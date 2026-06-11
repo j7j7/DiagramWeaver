@@ -1,17 +1,362 @@
 import { cloneNode } from 'html-to-image/es/clone-node.js';
 import { embedImages } from 'html-to-image/es/embed-images.js';
-import { embedWebFonts } from 'html-to-image/es/embed-webfonts.js';
+import { embedResources, shouldEmbed } from 'html-to-image/es/embed-resources.js';
 import { applyStyle } from 'html-to-image/es/apply-style.js';
 import {
   checkCanvasDimensions,
   createImage,
   getImageSize,
   getPixelRatio,
+  getStyleProperties,
   nodeToDataURL,
 } from 'html-to-image/es/util.js';
 import type { Options } from 'html-to-image/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
 import { hideDotGridOverlayInExportClone } from '@/lib/dot-grid-viewport';
+
+/** Wait for `@font-face` files used on `root` so export matches live canvas typography. */
+async function ensureExportFontsReady(root: HTMLElement): Promise<void> {
+  if (typeof document === 'undefined' || !document.fonts) {
+    return;
+  }
+  await document.fonts.ready;
+  const seen = new Set<string>();
+  const loads: Promise<unknown>[] = [];
+  const visit = (el: Element) => {
+    const cs = getComputedStyle(el);
+    const key = `${cs.fontWeight}|${cs.fontSize}|${cs.fontFamily}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      loads.push(document.fonts.load(`${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`).catch(() => undefined));
+    }
+    Array.from(el.children).forEach(visit);
+  };
+  visit(root);
+  await Promise.all(loads);
+}
+
+/** Skip animated/interaction props when inlining computed styles for export. */
+const SKIP_EXPORT_STYLE_PROPS = new Set([
+  'transition',
+  'transition-delay',
+  'transition-duration',
+  'transition-property',
+  'transition-timing-function',
+  'animation',
+  'animation-delay',
+  'animation-duration',
+  'animation-name',
+  'animation-iteration-count',
+  'animation-timing-function',
+  'animation-fill-mode',
+  'animation-play-state',
+  'caret-color',
+  'cursor',
+]);
+
+function isDiagramLayer(el: Element): boolean {
+  return el.hasAttribute('data-diagram-layer');
+}
+
+type ExportStyleSyncOptions = {
+  /** Keep export root width/height from `applyStyle`, not the live viewport. */
+  skipRootBox?: boolean;
+  /** Keep fit transform on `[data-diagram-layer]`, not live pan/zoom. */
+  preserveDiagramTransform?: boolean;
+};
+
+/**
+ * html-to-image only copies `element.style.cssText` when any inline style exists, so Tailwind
+ * layout (flex, min-width, display, …) is lost on card text regions. Inline the full computed
+ * style snapshot from the live canvas instead — with exact font-size (no −0.1px clone hack).
+ */
+function applyExactExportStylesFromSource(
+  sourceRoot: Element,
+  clonedRoot: Element,
+  options: Options = {},
+  syncOptions: ExportStyleSyncOptions = {},
+): void {
+  const styleProps = getStyleProperties(options);
+  const syncPair = (source: Element, clone: Element, isRoot: boolean) => {
+    if (clone.hasAttribute('data-export-font-defs')) {
+      return;
+    }
+    if ('style' in clone && clone.style instanceof CSSStyleDeclaration) {
+      const sourceStyle = getComputedStyle(source);
+      const targetStyle = clone.style;
+      for (const name of styleProps) {
+        if (SKIP_EXPORT_STYLE_PROPS.has(name)) continue;
+        if (syncOptions.skipRootBox && isRoot && (name === 'width' || name === 'height')) {
+          continue;
+        }
+        if (
+          syncOptions.preserveDiagramTransform &&
+          isDiagramLayer(clone) &&
+          (name === 'transform' || name === 'transform-origin')
+        ) {
+          continue;
+        }
+        targetStyle.setProperty(
+          name,
+          sourceStyle.getPropertyValue(name),
+          sourceStyle.getPropertyPriority(name),
+        );
+      }
+      if (clone instanceof SVGTextElement) {
+        clone.removeAttribute('font-size');
+        clone.removeAttribute('font-weight');
+        clone.removeAttribute('font-family');
+        clone.removeAttribute('font-style');
+      }
+    }
+    const sourceChildren = Array.from(source.children);
+    const cloneChildren = Array.from(clone.children);
+    const len = Math.min(sourceChildren.length, cloneChildren.length);
+    for (let i = 0; i < len; i++) {
+      syncPair(sourceChildren[i], cloneChildren[i], false);
+    }
+  };
+  syncPair(sourceRoot, clonedRoot, true);
+}
+
+/**
+ * After the clone is in a layout host, fix flex text columns whose used width drifted
+ * (foreignObject without stylesheets can shrink `min-width: 0` flex children).
+ */
+function syncExportTextWidthsFromSource(sourceRoot: Element, clonedRoot: Element): void {
+  const syncPair = (source: Element, clone: Element) => {
+    if (clone.hasAttribute('data-export-font-defs')) {
+      return;
+    }
+    if (source instanceof HTMLElement && clone instanceof HTMLElement) {
+      const sourceWidth = source.offsetWidth;
+      const cloneWidth = clone.offsetWidth;
+      if (sourceWidth > 0 && cloneWidth > 0 && cloneWidth + 1 < sourceWidth) {
+        clone.style.width = `${sourceWidth}px`;
+        clone.style.minWidth = `${sourceWidth}px`;
+      }
+    }
+    const sourceChildren = Array.from(source.children);
+    const cloneChildren = Array.from(clone.children);
+    const len = Math.min(sourceChildren.length, cloneChildren.length);
+    for (let i = 0; i < len; i++) {
+      syncPair(sourceChildren[i], cloneChildren[i]);
+    }
+  };
+  syncPair(sourceRoot, clonedRoot);
+}
+
+function normalizeFontFamilyName(font: string): string {
+  return font.trim().replace(/["']/g, '');
+}
+
+function collectExportFontFamilies(root: Element): Set<string> {
+  const fonts = new Set<string>();
+  const visit = (el: Element) => {
+    const cs = getComputedStyle(el);
+    cs.fontFamily.split(',').forEach((font) => {
+      const name = normalizeFontFamilyName(font);
+      if (name) fonts.add(name);
+    });
+    Array.from(el.children).forEach(visit);
+  };
+  visit(root);
+  return fonts;
+}
+
+function usesNonSystemFont(families: Set<string>): boolean {
+  const SYSTEM_FONT_FAMILIES = new Set([
+    'sans-serif',
+    'serif',
+    'monospace',
+    'system-ui',
+    'ui-sans-serif',
+    'ui-serif',
+    'ui-monospace',
+    'arial',
+    'helvetica',
+    'times new roman',
+    'georgia',
+    'courier new',
+    'verdana',
+    'tahoma',
+    'trebuchet ms',
+    'monaco',
+  ]);
+  return [...families].some((f) => !SYSTEM_FONT_FAMILIES.has(f.toLowerCase()));
+}
+
+function getSameOriginFontFaceRules(): CSSFontFaceRule[] {
+  const rules: CSSFontFaceRule[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      for (const rule of Array.from(sheet.cssRules)) {
+        if (rule instanceof CSSFontFaceRule) {
+          rules.push(rule);
+        }
+      }
+    } catch {
+      // Cross-origin stylesheets (legacy Google `<link>`) — skip.
+    }
+  }
+  return rules;
+}
+
+/** Fallback when only cross-origin `@font-face` exists (e.g. before `next/font` hydrates). */
+const EXPORT_WEB_FONT_STYLESHEET_URLS = [
+  'https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap',
+  'https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap',
+] as const;
+
+function extractFontFaceRules(cssText: string): string[] {
+  const rules: string[] = [];
+  const re = /@font-face\s*\{/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(cssText)) !== null) {
+    let depth = 1;
+    let i = match.index + match[0].length;
+    while (i < cssText.length && depth > 0) {
+      if (cssText[i] === '{') depth += 1;
+      else if (cssText[i] === '}') depth -= 1;
+      i += 1;
+    }
+    rules.push(cssText.slice(match.index, i));
+  }
+  return rules;
+}
+
+function fontFaceCssFamily(rule: string): string | null {
+  const m = rule.match(/font-family\s*:\s*(['"]?)([^;'"}]+)\1/i);
+  if (!m) return null;
+  return normalizeFontFamilyName(m[2]);
+}
+
+async function embedFontFaceRules(rules: string[], baseUrl: string, options: Options): Promise<string[]> {
+  const chunks: string[] = [];
+  for (const rule of rules) {
+    if (!shouldEmbed(rule)) continue;
+    try {
+      chunks.push(await embedResources(rule, baseUrl, options));
+    } catch {
+      // Keep export running if a single face fails.
+    }
+  }
+  return chunks;
+}
+
+/**
+ * Inline same-origin `@font-face` blobs (from `next/font`) so foreignObject export uses
+ * identical font metrics — including real bold weights for rich text.
+ */
+async function buildExportFontEmbedCss(liveRoot: Element, options: Options): Promise<string> {
+  const families = collectExportFontFamilies(liveRoot);
+  if (!usesNonSystemFont(families)) {
+    return '';
+  }
+
+  const sameOriginRules = getSameOriginFontFaceRules();
+  const chunks: string[] = [];
+  for (const rule of sameOriginRules) {
+    if (!shouldEmbed(rule.style.getPropertyValue('src'))) continue;
+    const baseUrl = rule.parentStyleSheet?.href ?? window.location.href;
+    try {
+      chunks.push(await embedResources(rule.cssText, baseUrl, options));
+    } catch {
+      // continue
+    }
+  }
+  if (chunks.length > 0) {
+    return chunks.join('\n');
+  }
+
+  // Fallback: fetch Google CSS text directly (no `cssRules` access).
+  for (const sheetUrl of EXPORT_WEB_FONT_STYLESHEET_URLS) {
+    try {
+      const res = await fetch(sheetUrl);
+      if (!res.ok) continue;
+      const cssText = await res.text();
+      const rules = extractFontFaceRules(cssText).filter((rule) => {
+        const name = fontFaceCssFamily(rule);
+        return name != null && families.has(name);
+      });
+      chunks.push(...(await embedFontFaceRules(rules, sheetUrl, options)));
+    } catch {
+      // continue
+    }
+  }
+  return chunks.join('\n');
+}
+
+/**
+ * Inject embedded `@font-face` rules without painting them in SVG foreignObject.
+ * html-to-image's `embedWebFonts` prepends a bare `<style>` which Chromium can rasterize as visible text.
+ */
+function injectExportFontEmbedCss(clonedRoot: HTMLElement, cssText: string): void {
+  const trimmed = cssText.trim();
+  if (!trimmed) return;
+  clonedRoot.querySelector('[data-export-font-defs]')?.remove();
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('data-export-font-defs', '');
+  wrapper.setAttribute('aria-hidden', 'true');
+  wrapper.style.cssText =
+    'position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;visibility:hidden;';
+  const styleNode = document.createElement('style');
+  styleNode.setAttribute('type', 'text/css');
+  styleNode.appendChild(document.createTextNode(trimmed));
+  wrapper.appendChild(styleNode);
+  clonedRoot.insertBefore(wrapper, clonedRoot.firstChild);
+}
+
+async function nodeToDataURLInLayoutHost(
+  node: HTMLElement,
+  width: number,
+  height: number,
+  liveSource?: HTMLElement,
+  exportOptions?: Options,
+  dotGridTransform?: Transform,
+): Promise<string> {
+  const host = document.createElement('div');
+  host.setAttribute('aria-hidden', 'true');
+  host.style.cssText = [
+    'position:fixed',
+    'left:-14000px',
+    'top:0',
+    `width:${width}px`,
+    `height:${height}px`,
+    'margin:0',
+    'padding:0',
+    'opacity:0',
+    'pointer-events:none',
+    'overflow:hidden',
+    'z-index:-1',
+  ].join(';');
+  document.body.appendChild(host);
+  host.appendChild(node);
+  void host.offsetHeight;
+  if (liveSource) {
+    applyExactExportStylesFromSource(liveSource, node, exportOptions ?? {}, {
+      skipRootBox: true,
+      preserveDiagramTransform: true,
+    });
+    void host.offsetHeight;
+    syncExportTextWidthsFromSource(liveSource, node);
+    void host.offsetHeight;
+    if (dotGridTransform) {
+      applyCloneDiagramTransform(node, dotGridTransform);
+    }
+  }
+  await document.fonts.ready;
+  try {
+    return await nodeToDataURL(node, width, height);
+  } finally {
+    if (node.parentNode === host) {
+      host.removeChild(node);
+    }
+    if (host.parentNode === document.body) {
+      document.body.removeChild(host);
+    }
+  }
+}
 
 /**
  * Same as html-to-image `toPng`, but after cloning, overrides the diagram layer transform.
@@ -76,7 +421,7 @@ async function rasterizeCloneToCanvas(
   const ratio = options.pixelRatio || getPixelRatio();
   const canvasWidth = options.canvasWidth || width;
   const canvasHeight = options.canvasHeight || height;
-  const datauri = await nodeToDataURL(clone, width, height);
+  const datauri = await nodeToDataURLInLayoutHost(clone, width, height, undefined, options);
   const img = await createImage(datauri);
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth * ratio;
@@ -250,39 +595,56 @@ export async function toPngWithDiagramExportFixes(
   options: Options,
   dotGridTransform?: Transform
 ): Promise<string> {
-  const { width, height } = getImageSize(node, options);
-  const clonedNode = await cloneNode(node, options, true);
+  await ensureExportFontsReady(node);
+  const exportOptions: Options = {
+    preferredFontFormat: 'woff2',
+    ...options,
+  };
+  const { width, height } = getImageSize(node, exportOptions);
+  const clonedNode = await cloneNode(node, exportOptions, true);
   if (!clonedNode) {
     throw new Error('html-to-image clone failed');
   }
   hideDotGridOverlayInExportClone(clonedNode as HTMLElement);
-  await embedWebFonts(clonedNode, options);
-  await embedImages(clonedNode, options);
-  applyStyle(clonedNode, options);
+  const fontEmbedCSS = await buildExportFontEmbedCss(node, exportOptions);
+  injectExportFontEmbedCss(clonedNode as HTMLElement, fontEmbedCSS);
+  await embedImages(clonedNode, exportOptions);
+  applyStyle(clonedNode, exportOptions);
   applyCloneDiagramTransform(clonedNode as HTMLElement, dotGridTransform);
+  applyExactExportStylesFromSource(node, clonedNode, exportOptions, {
+    skipRootBox: true,
+    preserveDiagramTransform: true,
+  });
   applyExportShapeFallbackColors(clonedNode as HTMLElement);
-  await injectFrostedBlurredUnderlays(clonedNode as HTMLElement, options, width, height);
+  await injectFrostedBlurredUnderlays(clonedNode as HTMLElement, exportOptions, width, height);
   applyFrostedExportSnapshotStyles(clonedNode as HTMLElement);
 
-  const datauri = await nodeToDataURL(clonedNode, width, height);
+  const datauri = await nodeToDataURLInLayoutHost(
+    clonedNode as HTMLElement,
+    width,
+    height,
+    node,
+    exportOptions,
+    dotGridTransform,
+  );
   const img = await createImage(datauri);
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   if (!context) {
     throw new Error('Could not get canvas context');
   }
-  const ratio = options.pixelRatio || getPixelRatio();
-  const canvasWidth = options.canvasWidth || width;
-  const canvasHeight = options.canvasHeight || height;
+  const ratio = exportOptions.pixelRatio || getPixelRatio();
+  const canvasWidth = exportOptions.canvasWidth || width;
+  const canvasHeight = exportOptions.canvasHeight || height;
   canvas.width = canvasWidth * ratio;
   canvas.height = canvasHeight * ratio;
-  if (!options.skipAutoScale) {
+  if (!exportOptions.skipAutoScale) {
     checkCanvasDimensions(canvas);
   }
   canvas.style.width = `${canvasWidth}`;
   canvas.style.height = `${canvasHeight}`;
-  if (options.backgroundColor) {
-    context.fillStyle = options.backgroundColor;
+  if (exportOptions.backgroundColor) {
+    context.fillStyle = exportOptions.backgroundColor;
     context.fillRect(0, 0, canvas.width, canvas.height);
   }
   context.drawImage(img, 0, 0, canvas.width, canvas.height);

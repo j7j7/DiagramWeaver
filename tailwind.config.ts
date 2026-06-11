@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Nunito', 'sans-serif'],
+        body: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+        headline: ['var(--font-nunito)', 'Nunito', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {

@@ -228,7 +228,6 @@ export function useCanvasExport({
       pixelRatio,
       cacheBust: true,
       backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
-      skipFonts: true,
     };
 
     if (options?.fitContent) {
@@ -428,7 +427,6 @@ export function useCanvasExport({
         pixelRatio,
         cacheBust: true,
         backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
-        skipFonts: true,
       };
 
       // Use a single global palette for all frames to avoid color shift (shadows/textbox colours
