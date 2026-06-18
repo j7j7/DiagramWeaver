@@ -691,9 +691,23 @@ export function getBulletListTextStylingForModal(root: CardElementData): Partial
   return {
     textJustify: titleStyling.textJustify ?? getBulletListTitleAlign(root),
     fontFamily: titleStyling.fontFamily ?? itemStyling.fontFamily,
+    fontWeight: itemStyling.fontWeight,
+    fontStyle: itemStyling.fontStyle,
+    textDecoration: itemStyling.textDecoration,
     textTransform: itemStyling.textTransform,
     letterSpacing: itemStyling.letterSpacing,
     lineHeight: itemStyling.lineHeight,
+    textOpacity: itemStyling.textOpacity,
+    textColor: itemStyling.textColor,
+    textOutlineWidth: itemStyling.textOutlineWidth,
+    textOutlineColor: itemStyling.textOutlineColor,
+    textGlowBlur: itemStyling.textGlowBlur,
+    textGlowColor: itemStyling.textGlowColor,
+    textShadowOffsetX: itemStyling.textShadowOffsetX,
+    textShadowOffsetY: itemStyling.textShadowOffsetY,
+    textShadowBlur: itemStyling.textShadowBlur,
+    textShadowColor: itemStyling.textShadowColor,
+    textDropShadowEnabled: itemStyling.textDropShadowEnabled,
   };
 }
 
