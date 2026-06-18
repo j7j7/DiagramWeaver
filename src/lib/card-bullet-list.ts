@@ -25,7 +25,7 @@ export const BULLET_LIST_TEXT_SUFFIX = "-text";
 export const BULLET_LIST_MIN_ROWS = 1;
 export const BULLET_LIST_CUBE_SIZE_PX = 8;
 export const BULLET_SIZE_MIN = 4;
-export const BULLET_SIZE_MAX = 24;
+export const BULLET_SIZE_MAX = 50;
 /** Minimum square marker when item icons are enabled (easier drop target, fits line height). */
 export const BULLET_LIST_ICON_MARKER_MIN = 14;
 
