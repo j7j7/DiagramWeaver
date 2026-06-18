@@ -145,7 +145,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
         className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[640px] max-w-[calc(100vw-2rem)]"
       >
         <div className="flex items-center justify-between border-b px-4 py-2.5">
-          <div className="dw-text-styling-drag-handle flex min-w-0 cursor-move items-center gap-2 select-none">
+          <div className="dw-text-styling-drag-handle flex min-w-0 flex-1 cursor-move items-center gap-2 select-none">
             <Type className="h-4 w-4 shrink-0 text-primary" />
             <h3 className="truncate text-sm font-semibold text-foreground">Text Styling</h3>
           </div>
