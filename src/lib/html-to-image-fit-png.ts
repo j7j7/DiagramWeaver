@@ -16,25 +16,35 @@ import { hideDotGridOverlayInExportClone } from '@/lib/dot-grid-viewport';
 
 const DW_SELECTION_ITEM_IDS_KEY = '_dwSelectionItemIds' as const;
 
-/** Strip non-selected nodes, selection handles, and selection borders from a clone for selection-only PNG exports. */
+/**
+ * Strip non-selected nodes, selection handles, and selection borders from a clone for selection-only PNG exports.
+ *
+ * IMPORTANT: never remove() elements from the clone — `nodeToDataURLInLayoutHost` re-syncs styles from the source
+ * by walking source and clone in parallel by child index. Removing elements desynchronises indices so a card
+ * section could receive a resize-handle's computed styles, collapsing the layout. Use visibility:hidden instead.
+ */
 function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<string>): void {
-  // Remove non-selected nodes entirely.
+  // Hide non-selected nodes (visibility preserves tree structure for child-index sync).
   clonedRoot.querySelectorAll<HTMLElement>('[data-node-id]').forEach(el => {
     const id = el.getAttribute('data-node-id');
     if (id && !selectedIds.has(id)) {
-      el.remove();
+      el.style.setProperty('visibility', 'hidden', 'important');
     }
   });
 
-  // Remove selection handles, connection handles, rotation handles, corner-radius handles.
+  // Hide selection handles, connection handles, rotation handles, corner-radius handles.
   clonedRoot.querySelectorAll<HTMLElement>('.dw-resize-handle, .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle]')
-    .forEach(el => el.remove());
+    .forEach(el => el.style.setProperty('visibility', 'hidden', 'important'));
 
-  // Remove connection toolbar.
-  clonedRoot.querySelectorAll<HTMLElement>('[data-dw-connection-toolbar]').forEach(el => el.remove());
+  // Hide connection toolbar.
+  clonedRoot.querySelectorAll<HTMLElement>('[data-dw-connection-toolbar]').forEach(el => {
+    el.style.setProperty('visibility', 'hidden', 'important');
+  });
 
-  // Remove card edit-mode UI: delete X, reorder grip, +Add item row.
-  clonedRoot.querySelectorAll<HTMLElement>('[data-dw-card-action]').forEach(el => el.remove());
+  // Hide card edit-mode UI: delete X, reorder grip, +Add item row.
+  clonedRoot.querySelectorAll<HTMLElement>('[data-dw-card-action]').forEach(el => {
+    el.style.setProperty('visibility', 'hidden', 'important');
+  });
 
   // Strip selection border from remaining selected nodes.
   clonedRoot.querySelectorAll<HTMLElement>('[data-node-id].border-primary').forEach(el => {
