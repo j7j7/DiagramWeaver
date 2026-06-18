@@ -44,7 +44,7 @@ export interface CardElementStyle {
   meshGradientPoints?: MeshGradientPoint[];
   borderColor?: string;
   borderWidth?: number;
-  borderStyle?: "solid" | "dashed" | "dotted";
+  borderStyle?: "solid" | "dashed" | "dotted" | "none";
   opacity?: number;
   borderRadius?: number;
 }

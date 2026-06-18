@@ -521,6 +521,22 @@ function ViewerPageContent() {
     currentDiagramData,
     diagramData,
   ]);
+  const slideCanvasActive = presentationEligible && !presentationPlayerOpen;
+
+  const globalVariableContext = useMemo(() => {
+    if (slideCanvasActive) {
+      return buildPresentationGlobalVariableContext(
+        slidePresentationView.safeIndex,
+        slidePresentationView.totalSlides,
+      );
+    }
+    return buildPresentationGlobalVariableContext(0, 1);
+  }, [
+    slideCanvasActive,
+    slidePresentationView.safeIndex,
+    slidePresentationView.totalSlides,
+  ]);
+
 
   if (isLoading) {
     return (
@@ -565,7 +581,6 @@ function ViewerPageContent() {
   /** `displayData` hook runs before `diagramData` guard; here `diagramData` is set. */
   const canvasDiagramData: DiagramData = displayData ?? diagramData;
 
-  const slideCanvasActive = presentationEligible && !presentationPlayerOpen;
 
   const canvasTransform = slideCanvasActive ? presentationTransform : transform;
   const slidePlaybackAnimEnabled = slideCanvasActive
@@ -581,19 +596,6 @@ function ViewerPageContent() {
         : new Set<string>())  // Empty set = no animations when nothing selected
     : undefined;
 
-  const globalVariableContext = useMemo(() => {
-    if (slideCanvasActive) {
-      return buildPresentationGlobalVariableContext(
-        slidePresentationView.safeIndex,
-        slidePresentationView.totalSlides,
-      );
-    }
-    return buildPresentationGlobalVariableContext(0, 1);
-  }, [
-    slideCanvasActive,
-    slidePresentationView.safeIndex,
-    slidePresentationView.totalSlides,
-  ]);
 
   return (
     <DndProvider backend={HTML5Backend}>

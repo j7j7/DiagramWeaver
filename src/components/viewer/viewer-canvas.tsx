@@ -70,7 +70,7 @@ interface ViewerCanvasProps {
     transformOrigin?: string;
     visualColorMerge?: Record<string, unknown>;
     visualColorMergeTransition?: string;
-    visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown> };
+    visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown>; fadeOut?: boolean };
     visualColorCrossfadeTopOpacity?: number;
     visualColorCrossfadeTopTransition?: string;
     chartSlideStagger?: import("@/lib/chart-presentation-stagger").ChartSlideStagger;

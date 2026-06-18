@@ -723,7 +723,7 @@ function resolveCellFill(
   prevSolid: string,
   themeBase: string,
   hueStep: number,
-  chart: Pick<NodeChartSpecGrid, "canvasPaintFill" | "paintFromPrevious" | "hueStepDirection" | "cols">,
+  chart: Pick<NodeChartSpecGrid, "canvasPaintFill" | "paintFromPrevious" | "hueStepDirection">,
   cols: number,
   _rows: number,
   direction: GridHueStepDirection,

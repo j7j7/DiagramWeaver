@@ -360,7 +360,7 @@ interface DiagramNodeProps {
     visualColorMerge?: Record<string, unknown>;
     visualColorMergeTransition?: string;
     transitionDelayMs?: number;
-    visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown> };
+    visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown>; fadeOut?: boolean };
     visualColorCrossfadeTopOpacity?: number;
     visualColorCrossfadeTopTransition?: string;
     chartSlideStagger?: ChartSlideStagger;
