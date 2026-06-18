@@ -362,6 +362,8 @@ async function nodeToDataURLInLayoutHost(
   liveSource?: HTMLElement,
   exportOptions?: Options,
   dotGridTransform?: Transform,
+  /** Selection-only export: hide non-selected nodes and edit indicators. */
+  selectedIds?: Set<string>,
 ): Promise<string> {
   const host = document.createElement('div');
   host.setAttribute('aria-hidden', 'true');
@@ -392,6 +394,10 @@ async function nodeToDataURLInLayoutHost(
     if (dotGridTransform) {
       applyCloneDiagramTransform(node, dotGridTransform);
     }
+  }
+  // Apply selection-export cleanup AFTER all style-sync is done (last setProperty wins on style object).
+  if (selectedIds && selectedIds.size > 0) {
+    cleanCloneForSelectionExport(node, selectedIds);
   }
   await document.fonts.ready;
   try {
@@ -667,11 +673,7 @@ export async function toPngWithDiagramExportFixes(
   await injectFrostedBlurredUnderlays(clonedNode as HTMLElement, exportOptions, width, height);
   applyFrostedExportSnapshotStyles(clonedNode as HTMLElement);
 
-  // Selection-only export: strip non-selected nodes and selection indicators from the clone.
   const selectedIds = (exportOptions as any)[DW_SELECTION_ITEM_IDS_KEY] as Set<string> | undefined;
-  if (selectedIds && selectedIds.size > 0) {
-    cleanCloneForSelectionExport(clonedNode as HTMLElement, selectedIds);
-  }
 
   const datauri = await nodeToDataURLInLayoutHost(
     clonedNode as HTMLElement,
@@ -680,6 +682,7 @@ export async function toPngWithDiagramExportFixes(
     node,
     exportOptions,
     dotGridTransform,
+    selectedIds, // selection export cleanup runs INSIDE after all style-sync
   );
   const img = await createImage(datauri);
   const canvas = document.createElement('canvas');
