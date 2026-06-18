@@ -616,7 +616,10 @@ export function ContextToolbar({
     if (isNode) {
       const node = currentItem as DiagramNodeData;
       if (isBulletListCard(node.card?.templateId) && node.card?.elements) {
-        return getBulletListTextStylingForModal(node.card.elements);
+        return {
+          ...extractTextStylingFromNode(node),
+          ...getBulletListTextStylingForModal(node.card.elements),
+        };
       }
       if (isCardNodeType(node.type) && node.card?.elements && !selectedCardElement) {
         return {
