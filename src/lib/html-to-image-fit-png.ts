@@ -21,29 +21,30 @@ const DW_SELECTION_ITEM_IDS_KEY = '_dwSelectionItemIds' as const;
  *
  * IMPORTANT: never remove() elements from the clone — `nodeToDataURLInLayoutHost` re-syncs styles from the source
  * by walking source and clone in parallel by child index. Removing elements desynchronises indices so a card
- * section could receive a resize-handle's computed styles, collapsing the layout. Use visibility:hidden instead.
+ * section could receive a resize-handle's computed styles, collapsing the layout.
+ * Use display:none (keeps elements in the DOM tree, preserving child indices) instead of remove().
  */
 function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<string>): void {
-  // Hide non-selected nodes (visibility preserves tree structure for child-index sync).
+  // Hide non-selected nodes (display:none preserves tree structure for child-index sync).
   clonedRoot.querySelectorAll<HTMLElement>('[data-node-id]').forEach(el => {
     const id = el.getAttribute('data-node-id');
     if (id && !selectedIds.has(id)) {
-      el.style.setProperty('visibility', 'hidden', 'important');
+      el.style.setProperty('display', 'none', 'important');
     }
   });
 
   // Hide selection handles, connection handles, rotation handles, corner-radius handles.
   clonedRoot.querySelectorAll<HTMLElement>('.dw-resize-handle, .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle]')
-    .forEach(el => el.style.setProperty('visibility', 'hidden', 'important'));
+    .forEach(el => el.style.setProperty('display', 'none', 'important'));
 
   // Hide connection toolbar.
   clonedRoot.querySelectorAll<HTMLElement>('[data-dw-connection-toolbar]').forEach(el => {
-    el.style.setProperty('visibility', 'hidden', 'important');
+    el.style.setProperty('display', 'none', 'important');
   });
 
   // Hide card edit-mode UI: delete X, reorder grip, +Add item row.
   clonedRoot.querySelectorAll<HTMLElement>('[data-dw-card-action]').forEach(el => {
-    el.style.setProperty('visibility', 'hidden', 'important');
+    el.style.setProperty('display', 'none', 'important');
   });
 
   // Strip selection border from remaining selected nodes.
