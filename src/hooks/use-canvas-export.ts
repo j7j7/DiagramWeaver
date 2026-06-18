@@ -190,6 +190,8 @@ export function useCanvasExport({
     tightContentFrame?: boolean;
     /** Margin in output pixels on each side when `tightContentFrame` is true (default 20). */
     frameBorderPx?: number;
+    /** When set, only include these item IDs in the content bounds calculation. */
+    itemIds?: Set<string>;
   }) => {
     if (!canvasRef.current) {
       throw new Error('Canvas is not ready');
@@ -228,6 +230,7 @@ export function useCanvasExport({
       pixelRatio,
       cacheBust: true,
       backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
+      _dwSelectionItemIds: options?.itemIds,
     };
 
     if (options?.fitContent) {
@@ -239,7 +242,17 @@ export function useCanvasExport({
 
         if (options.tightContentFrame) {
           let boundsForTight: ContentBounds | null = null;
-          if (union && union.length > 0) {
+          if (options.itemIds && options.itemIds.size > 0) {
+            const itemBounds = calculateItemBounds(options.itemIds);
+            if (itemBounds) {
+              boundsForTight = {
+                minX: itemBounds.x,
+                minY: itemBounds.y,
+                maxX: itemBounds.x + itemBounds.width,
+                maxY: itemBounds.y + itemBounds.height,
+              };
+            }
+          } else if (union && union.length > 0) {
             const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
             boundsForTight = computeUnionExportContentBounds(pruned);
           } else {
@@ -264,6 +277,12 @@ export function useCanvasExport({
         if (union && union.length > 0) {
           const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
           fitTransform = computeUnionFitTransformForDiagrams(pruned, vw, vh, fitPadding);
+        } else if (options.itemIds && options.itemIds.size > 0) {
+          const itemBounds = calculateItemBounds(options.itemIds);
+          if (itemBounds) {
+            const bounds = { minX: itemBounds.x, minY: itemBounds.y, maxX: itemBounds.x + itemBounds.width, maxY: itemBounds.y + itemBounds.height };
+            fitTransform = transformToFitBounds(bounds, vw, vh, fitPadding);
+          }
         } else {
           const bounds = computeContentBounds(processedNodes, processedZones);
           if (bounds) {
@@ -281,10 +300,12 @@ export function useCanvasExport({
     }
 
     return await toPngWithDiagramExportFixes(canvasRef.current, toPngOptions);
-  }, [canvasRef, diagramData, processedNodes, processedZones]);
+  }, [canvasRef, diagramData, processedNodes, processedZones, calculateItemBounds]);
 
-  const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => {
+  const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; selectionOnly?: boolean }) => {
     if (!canvasRef.current) return;
+
+    const isSelectionExport = options?.selectionOnly && selectedItemIds.size > 0;
 
     try {
       const dataUrl = await captureViewportPngDataUrl({
@@ -292,6 +313,7 @@ export function useCanvasExport({
         fitContent: true,
         fitPadding: 50,
         tightContentFrame: true,
+        itemIds: isSelectionExport ? selectedItemIds : undefined,
       });
 
       if ('showSaveFilePicker' in window) {
@@ -327,7 +349,7 @@ export function useCanvasExport({
       console.error('Export failed:', err);
       toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
     }
-  }, [toast, captureViewportPngDataUrl]);
+  }, [toast, captureViewportPngDataUrl, selectedItemIds]);
 
   const exportGif = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => {
     if (!canvasRef.current) return;

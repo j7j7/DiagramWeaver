@@ -1042,7 +1042,7 @@ export default function DiagramEditor() {
   const diagramDataForExportLayersRef = React.useRef<DiagramData>(currentDiagramData);
   diagramDataForExportLayersRef.current = layers.filteredDiagramData ?? currentDiagramData;
 
-  const { handleExportPng, handleExportGif, handleExport } = createDiagramExportHandlers({
+  const { handleExportPng, handleExportPngSelection, handleExportGif, handleExport } = createDiagramExportHandlers({
     editorRef,
     toast: toast as DiagramEditorToastFn,
     setExportDialogOpen,
@@ -5295,6 +5295,7 @@ export default function DiagramEditor() {
         handleLoadExample={handleLoadExample}
         createTab={createTab}
         handleExportSvg={handleExportPng}
+        handleExportPngSelection={handleExportPngSelection}
         handleExportGif={handleExportGif}
         handleMenuCopy={handleMenuCopy}
         handleMenuPaste={handleMenuPaste}

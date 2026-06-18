@@ -14,6 +14,31 @@ import type { Options } from 'html-to-image/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
 import { hideDotGridOverlayInExportClone } from '@/lib/dot-grid-viewport';
 
+const DW_SELECTION_ITEM_IDS_KEY = '_dwSelectionItemIds' as const;
+
+/** Strip non-selected nodes, selection handles, and selection borders from a clone for selection-only PNG exports. */
+function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<string>): void {
+  // Remove non-selected nodes entirely.
+  clonedRoot.querySelectorAll<HTMLElement>('[data-node-id]').forEach(el => {
+    const id = el.getAttribute('data-node-id');
+    if (id && !selectedIds.has(id)) {
+      el.remove();
+    }
+  });
+
+  // Remove selection handles, connection handles, rotation handles, corner-radius handles.
+  clonedRoot.querySelectorAll<HTMLElement>('.dw-resize-handle, .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle]')
+    .forEach(el => el.remove());
+
+  // Remove connection toolbar.
+  clonedRoot.querySelectorAll<HTMLElement>('[data-dw-connection-toolbar]').forEach(el => el.remove());
+
+  // Strip selection border from remaining selected nodes.
+  clonedRoot.querySelectorAll<HTMLElement>('[data-node-id].border-primary').forEach(el => {
+    el.classList.remove('border-primary');
+  });
+}
+
 /** Wait for `@font-face` files used on `root` so export matches live canvas typography. */
 async function ensureExportFontsReady(root: HTMLElement): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) {
@@ -618,6 +643,12 @@ export async function toPngWithDiagramExportFixes(
   applyExportShapeFallbackColors(clonedNode as HTMLElement);
   await injectFrostedBlurredUnderlays(clonedNode as HTMLElement, exportOptions, width, height);
   applyFrostedExportSnapshotStyles(clonedNode as HTMLElement);
+
+  // Selection-only export: strip non-selected nodes and selection indicators from the clone.
+  const selectedIds = (exportOptions as any)[DW_SELECTION_ITEM_IDS_KEY] as Set<string> | undefined;
+  if (selectedIds && selectedIds.size > 0) {
+    cleanCloneForSelectionExport(clonedNode as HTMLElement, selectedIds);
+  }
 
   const datauri = await nodeToDataURLInLayoutHost(
     clonedNode as HTMLElement,

@@ -1557,7 +1557,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       const BUTTON_Z_INDEX = CONNECTION_HELPER_Z_INDEX;
 
       return (
-        <React.Fragment key={`actions-${edge.from}-${edge.to}-${index}`}>
+        <div key={`actions-${edge.from}-${edge.to}-${index}`} data-dw-connection-toolbar>
           {/* Arrow toggle button - positioned at 90% (destination) along the curve */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1729,7 +1729,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               onEdgeAttachmentChange={onConnectionUpdate}
             />
           )}
-        </React.Fragment>
+        </div>
       );
     })}
     </TooltipProvider>

@@ -30,6 +30,8 @@ export interface DiagramEditorExportOptions {
   /** 1-based slide indices matching deck order (slide 1 = main diagram). */
   pngSlideNumbers?: number[];
   exportBasename?: string;
+  /** When true, only export selected items instead of the full canvas. */
+  selectionOnly?: boolean;
 }
 
 /**

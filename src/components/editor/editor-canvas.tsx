@@ -513,7 +513,7 @@ export type EditorCanvasHandle = {
   /** Width/height of the canvas host for fit math (matches pointer / transform coordinates). */
   getCanvasHostViewportForFit: () => { width: number; height: number } | null;
   fitToView: () => void;
-  exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => Promise<void>;
+  exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; selectionOnly?: boolean }) => Promise<void>;
   exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => Promise<void>;
   captureSnapshotPng: (options?: {
     backgroundColor?: 'transparent' | 'white' | 'dark';
@@ -3259,7 +3259,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       return getCanvasElementSizeForImageCapture(el);
     },
     fitToView: handleFitToView, // Auto-fits diagram to viewport
-    exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => exportPng(options), // Exports current viewport to PNG
+    exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; selectionOnly?: boolean }) => exportPng(options), // Exports current viewport to PNG
     exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => exportGif(options), // Exports current viewport to GIF
     captureSnapshotPng: (options?: {
       backgroundColor?: 'transparent' | 'white' | 'dark';

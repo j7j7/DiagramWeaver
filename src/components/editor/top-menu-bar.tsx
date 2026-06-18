@@ -178,6 +178,7 @@ interface TopMenuBarProps {
   onNewTab?: () => void;
   onExportSvg?: () => void;
   onExportPng?: () => void;
+  onExportPngSelection?: () => void;
   onExportGif?: () => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
@@ -321,6 +322,7 @@ export function TopMenuBar({
   onNewTab,
   onExportSvg,
   onExportPng,
+  onExportPngSelection,
   onExportGif,
   onToggleJsonPanel,
   jsonPanelOpen,
@@ -646,6 +648,12 @@ export function TopMenuBar({
                   <MenubarItem onClick={onExportPng}>
                     <ImageDown className="mr-2 h-4 w-4" />
                     Export PNG
+                  </MenubarItem>
+                )}
+                {onExportPngSelection && selectedItemIds.size > 0 && (
+                  <MenubarItem onClick={onExportPngSelection}>
+                    <ImageDown className="mr-2 h-4 w-4" />
+                    Export Selected as PNG
                   </MenubarItem>
                 )}
                 {onExportGif && (

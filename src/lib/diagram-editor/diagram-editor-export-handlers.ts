@@ -35,6 +35,7 @@ export interface CreateDiagramExportHandlersParams {
 
 export interface DiagramExportHandlers {
   handleExportPng: () => Promise<void>;
+  handleExportPngSelection: () => Promise<void>;
   handleExportGif: () => Promise<void>;
   handleExport: (options: DiagramEditorExportOptions) => Promise<void>;
 }
@@ -62,6 +63,11 @@ export function createDiagramExportHandlers({
   diagramDataForExportLayersRef,
 }: CreateDiagramExportHandlersParams): DiagramExportHandlers {
   const handleExportPng = async () => {
+    setExportDialogFormat("png");
+    setExportDialogOpen(true);
+  };
+
+  const handleExportPngSelection = async () => {
     setExportDialogFormat("png");
     setExportDialogOpen(true);
   };
@@ -289,11 +295,13 @@ export function createDiagramExportHandlers({
     await editorRef.current.exportPng({
       backgroundColor: options.backgroundColor,
       quality: options.quality || "medium",
+      selectionOnly: options.selectionOnly,
     });
   };
 
   return {
     handleExportPng,
+    handleExportPngSelection,
     handleExportGif,
     handleExport,
   };

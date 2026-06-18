@@ -188,6 +188,7 @@ export function DiagramEditorInner({
   handleLoadExample,
   createTab,
   handleExportSvg,
+  handleExportPngSelection,
   handleExportGif,
   handleMenuCopy,
   handleMenuPaste,
@@ -551,6 +552,7 @@ export function DiagramEditorInner({
                     onLoadExample={handleLoadExample}
                     onNewTab={createTab}
                     onExportSvg={handleExportSvg}
+                    onExportPngSelection={handleExportPngSelection}
                     onExportGif={handleExportGif}
                     onToggleJsonPanel={toggleJsonPanel}
                     jsonPanelOpen={jsonPanelOpen}
@@ -936,6 +938,7 @@ export function DiagramEditorInner({
           onOpenChange={setExportDialogOpen}
           initialFormat={exportDialogFormat}
           presentationSlides={exportPresentationSlidesInfo}
+          hasSelection={selectedItemIds.size > 0}
           onExport={handleExport}
         />
         {umlClassEditorModal.visible && umlClassEditorModal.itemId && typeof window !== 'undefined' && createPortal(

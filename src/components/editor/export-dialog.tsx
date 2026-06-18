@@ -36,6 +36,8 @@ interface ExportDialogProps {
   initialFormat?: 'png' | 'gif';
   /** When set and totalSlides ≥ 2, PNG export can target multiple numbered files (`{basename}-{n}.png`). */
   presentationSlides?: PresentationSlidesExportInfo | null;
+  /** When true, items are selected on the canvas; show a "selection only" option. */
+  hasSelection?: boolean;
   onExport: (options: {
     format: 'png' | 'gif';
     backgroundColor: 'transparent' | 'white' | 'dark';
@@ -44,6 +46,7 @@ interface ExportDialogProps {
     durationSeconds?: number;
     pngSlideNumbers?: number[];
     exportBasename?: string;
+    selectionOnly?: boolean;
   }) => Promise<void>;
 }
 
@@ -62,6 +65,7 @@ export function ExportDialog({
   onOpenChange,
   initialFormat = 'png',
   presentationSlides = null,
+  hasSelection = false,
   onExport,
 }: ExportDialogProps) {
   const [format, setFormat] = useState<'png' | 'gif'>(initialFormat);
@@ -70,6 +74,7 @@ export function ExportDialog({
   const [gifDurationSeconds, setGifDurationSeconds] = useState<number>(DEFAULT_GIF_DURATION_SECONDS);
   const [gifFps, setGifFps] = useState<number>(DEFAULT_GIF_FPS);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectionOnly, setSelectionOnly] = useState(false);
   const [pngSlideScope, setPngSlideScope] = useState<PngSlideScope>('all');
   const [pngRangeFrom, setPngRangeFrom] = useState(1);
   const [pngRangeTo, setPngRangeTo] = useState(1);
@@ -78,15 +83,17 @@ export function ExportDialog({
   const multiPng =
     format === 'png' &&
     presentationSlides !== null &&
-    presentationSlides.totalSlides >= 2;
+    presentationSlides.totalSlides >= 2 &&
+    !selectionOnly;
 
   React.useEffect(() => {
     if (open) {
       setFormat(initialFormat);
       const dark = document.documentElement.classList.contains('dark');
       setBackgroundColor(initialFormat === 'gif' && dark ? 'dark' : 'white');
+      setSelectionOnly(hasSelection);
     }
-  }, [open, initialFormat]);
+  }, [open, initialFormat, hasSelection]);
 
   React.useEffect(() => {
     if (!open || !presentationSlides) return;
@@ -167,6 +174,7 @@ export function ExportDialog({
         durationSeconds: format === 'gif' ? gifDurationSeconds : undefined,
         pngSlideNumbers,
         exportBasename: basename,
+        selectionOnly: hasSelection && selectionOnly ? true : undefined,
       });
       onOpenChange(false);
     } catch (error) {
@@ -289,6 +297,20 @@ export function ExportDialog({
               {pngSlideError && (
                 <p className="text-sm text-destructive">{pngSlideError}</p>
               )}
+            </div>
+          )}
+          {hasSelection && format === 'png' && !multiPng && (
+            <div className="flex items-center space-x-2 rounded-md border p-3">
+              <input
+                type="checkbox"
+                id="selection-only"
+                checked={selectionOnly}
+                onChange={(e) => setSelectionOnly(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="selection-only" className="font-normal cursor-pointer">
+                Selected items only
+              </Label>
             </div>
           )}
           <div className="space-y-3">
