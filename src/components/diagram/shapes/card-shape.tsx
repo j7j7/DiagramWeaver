@@ -2032,7 +2032,7 @@ export function CardShape(props: CardShapeProps) {
     isFramedHeading && isFramedHeadingFillVisible(framedFillStyle);
 
   const shellBg =
-    isFramedHeading || nodeAny.backgroundStyle === "none" || shellFrosted
+    isFramedHeading || nodeAny.backgroundStyle === "none" || shellFrosted || !!nodeAny.card?.elements
       ? "transparent"
       : styles.background ?? styles.backgroundColor ?? "#ffffff";
 
