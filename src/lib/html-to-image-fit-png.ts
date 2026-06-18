@@ -33,8 +33,8 @@ function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<
     }
   });
 
-  // Hide selection handles, connection handles, rotation handles, corner-radius handles.
-  clonedRoot.querySelectorAll<HTMLElement>('.dw-resize-handle, .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle]')
+  // Hide selection handles, connection handles, rotation handles, corner-radius handles, URL handles.
+  clonedRoot.querySelectorAll<HTMLElement>('.dw-resize-handle, .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, .dw-url-handle, [data-handle]')
     .forEach(el => el.style.setProperty('display', 'none', 'important'));
 
   // Hide connection toolbar.
@@ -46,6 +46,10 @@ function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<
   clonedRoot.querySelectorAll<HTMLElement>('[data-dw-card-action]').forEach(el => {
     el.style.setProperty('display', 'none', 'important');
   });
+
+  // Hide grid structure chrome (add/delete row/column), line vertex handles, and other edit-only data-dw handles.
+  clonedRoot.querySelectorAll<HTMLElement>('[data-dw-grid-structure-action], [data-dw-line-vertex-handle]')
+    .forEach(el => el.style.setProperty('display', 'none', 'important'));
 
   // Strip selection border from remaining selected nodes.
   clonedRoot.querySelectorAll<HTMLElement>('[data-node-id].border-primary').forEach(el => {
