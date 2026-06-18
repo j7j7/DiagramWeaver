@@ -33,9 +33,17 @@ function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<
   // Remove connection toolbar.
   clonedRoot.querySelectorAll<HTMLElement>('[data-dw-connection-toolbar]').forEach(el => el.remove());
 
+  // Remove card edit-mode UI: delete X, reorder grip, +Add item row.
+  clonedRoot.querySelectorAll<HTMLElement>('[data-dw-card-action]').forEach(el => el.remove());
+
   // Strip selection border from remaining selected nodes.
   clonedRoot.querySelectorAll<HTMLElement>('[data-node-id].border-primary').forEach(el => {
     el.classList.remove('border-primary');
+  });
+
+  // Strip selection rings from card sub-elements and other editor-only ring indicators.
+  clonedRoot.querySelectorAll<HTMLElement>('.ring-2.ring-primary.ring-inset').forEach(el => {
+    el.classList.remove('ring-2', 'ring-primary', 'ring-inset');
   });
 }
 
