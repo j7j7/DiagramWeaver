@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, type Dispatch, type SetStateAction } from "react";
+import {
+  LEFT_SIDEBAR_MODE_STORAGE_KEY,
+  readLeftSidebarModeFromStorage,
+  type LeftSidebarMode,
+} from "@/lib/left-sidebar-mode";
 import { getItemSafe, setBooleanDebounced, setItemDebounced } from "@/lib/local-storage-debounce";
 
 export interface UseDiagramEditorOptionPersistenceParams {
@@ -15,7 +20,9 @@ export interface UseDiagramEditorOptionPersistenceParams {
   animationToggleOnClickEnabled: boolean;
   simplifyFillsDuringCanvasDragEnabled: boolean;
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled: boolean;
+  leftSidebarMode: LeftSidebarMode;
   setRightPanelCollapsed: Dispatch<SetStateAction<boolean>>;
+  setLeftSidebarMode: Dispatch<SetStateAction<LeftSidebarMode>>;
   setPropertiesPanelVisible: Dispatch<SetStateAction<boolean>>;
   setMetadataPopupsEnabled: Dispatch<SetStateAction<boolean>>;
   setAlignmentGuidesEnabled: Dispatch<SetStateAction<boolean>>;
@@ -43,7 +50,9 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     animationToggleOnClickEnabled,
     simplifyFillsDuringCanvasDragEnabled,
     suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    leftSidebarMode,
     setRightPanelCollapsed,
+    setLeftSidebarMode,
     setPropertiesPanelVisible,
     setMetadataPopupsEnabled,
     setAlignmentGuidesEnabled,
@@ -113,8 +122,13 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     if (savedSuppressAllShadowsDrag !== null) {
       setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled(savedSuppressAllShadowsDrag !== "false");
     }
+    const savedLeftSidebarMode = readLeftSidebarModeFromStorage(getItemSafe);
+    if (savedLeftSidebarMode !== null) {
+      setLeftSidebarMode(savedLeftSidebarMode);
+    }
   }, [
     setRightPanelCollapsed,
+    setLeftSidebarMode,
     setPropertiesPanelVisible,
     setMetadataPopupsEnabled,
     setAlignmentGuidesEnabled,
@@ -161,4 +175,10 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
       );
     }
   }, [suppressShadowsOnAllObjectsDuringCanvasDragEnabled, isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      setItemDebounced(LEFT_SIDEBAR_MODE_STORAGE_KEY, leftSidebarMode);
+    }
+  }, [leftSidebarMode, isClient]);
 }

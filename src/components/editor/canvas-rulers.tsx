@@ -7,6 +7,8 @@ interface CanvasRulersProps {
   canvasWidth: number;
   canvasHeight: number;
   rulerSize?: number;
+  /** Horizontal inset so rulers sit to the right of the component sidebar overlay. */
+  leftOffset?: number;
 }
 
 const RULER_SIZE = 24; // Height of horizontal ruler, width of vertical ruler
@@ -15,7 +17,8 @@ export function CanvasRulers({
   transform, 
   canvasWidth, 
   canvasHeight,
-  rulerSize = RULER_SIZE 
+  rulerSize = RULER_SIZE,
+  leftOffset = 0,
 }: CanvasRulersProps) {
   // Calculate the visible range in canvas coordinates
   // The canvas content starts at screen (0,0) and has transform applied
@@ -121,19 +124,29 @@ export function CanvasRulers({
 
   return (
     <>
+      {leftOffset > 0 && (
+        <div
+          className="absolute top-0 left-0 bg-muted/50 border-b border-border z-50 pointer-events-none"
+          style={{
+            height: `${rulerSize}px`,
+            width: `${leftOffset}px`,
+          }}
+        />
+      )}
       {/* Horizontal ruler (top) */}
       <div
-        className="absolute top-0 left-0 bg-muted/50 border-b border-r border-border z-50 pointer-events-none"
+        className="absolute top-0 bg-muted/50 border-b border-r border-border z-50 pointer-events-none"
         style={{ 
           height: `${rulerSize}px`,
-          width: `${rulerSize}px`
+          width: `${rulerSize}px`,
+          left: `${leftOffset}px`,
         }}
       />
       <div
-        className="absolute top-0 left-0 bg-muted/50 border-b border-border z-50 pointer-events-none"
+        className="absolute top-0 bg-muted/50 border-b border-border z-50 pointer-events-none"
         style={{ 
           height: `${rulerSize}px`,
-          left: `${rulerSize}px`,
+          left: `${leftOffset + rulerSize}px`,
           right: 0
         }}
       >
@@ -175,9 +188,10 @@ export function CanvasRulers({
 
       {/* Vertical ruler (left) */}
       <div
-        className="absolute top-0 left-0 bg-muted/50 border-r border-border z-50 pointer-events-none"
+        className="absolute top-0 bg-muted/50 border-r border-border z-50 pointer-events-none"
         style={{ 
           width: `${rulerSize}px`,
+          left: `${leftOffset}px`,
           top: `${rulerSize}px`,
           bottom: 0
         }}

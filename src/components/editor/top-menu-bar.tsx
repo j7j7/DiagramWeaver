@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { cn } from '@/lib/utils';
 import type { ViewportCullDebugStats } from '@/lib/viewport-culling';
+import type { LeftSidebarMode } from '@/lib/left-sidebar-mode';
 import { ViewportCullDebugBadge } from './viewport-cull-debug-badge';
 
 const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
@@ -275,6 +276,8 @@ interface TopMenuBarProps {
   onOpenZOrderList?: () => void;
   onToggleScratchPad?: () => void;
   scratchPadOpen?: boolean;
+  leftSidebarMode?: LeftSidebarMode;
+  onLeftSidebarModeChange?: (mode: LeftSidebarMode) => void;
   onToggleRulesEditor?: () => void;
   onRulesEditorOpenChange?: (open: boolean) => void;
   rulesEditorOpen?: boolean;
@@ -401,6 +404,8 @@ export function TopMenuBar({
   onOpenZOrderList,
   onToggleScratchPad,
   scratchPadOpen,
+  leftSidebarMode = "enabled",
+  onLeftSidebarModeChange,
   onToggleRulesEditor,
   onRulesEditorOpenChange,
   rulesEditorOpen,
@@ -830,9 +835,36 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onLeftSidebarModeChange && (
+              <>
+                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad) && (
+                  <MenubarSeparator />
+                )}
+                <MenubarSub>
+                  <MenubarSubTrigger>
+                    <PanelLeft className="mr-2 h-4 w-4" />
+                    Component Sidebar
+                  </MenubarSubTrigger>
+                  <MenubarSubContent>
+                    <MenubarItem onClick={() => onLeftSidebarModeChange("disabled")}>
+                      Disabled
+                      {leftSidebarMode === "disabled" && <span className="ml-auto">✓</span>}
+                    </MenubarItem>
+                    <MenubarItem onClick={() => onLeftSidebarModeChange("enabled")}>
+                      Enabled
+                      {leftSidebarMode === "enabled" && <span className="ml-auto">✓</span>}
+                    </MenubarItem>
+                    <MenubarItem onClick={() => onLeftSidebarModeChange("auto")}>
+                      Auto
+                      {leftSidebarMode === "auto" && <span className="ml-auto">✓</span>}
+                    </MenubarItem>
+                  </MenubarSubContent>
+                </MenubarSub>
+              </>
+            )}
             {onToggleRulesEditor && (
               <>
-                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad) && <MenubarSeparator />}
+                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad || onLeftSidebarModeChange) && <MenubarSeparator />}
                 <MenubarItem onClick={() => onToggleRulesEditor?.()}>
                   <ListChecks className="mr-2 h-4 w-4" />
                   Rules

@@ -4,6 +4,7 @@ import { flushSync } from 'react-dom';
 import type { EditorCanvasHandle } from './editor/editor-canvas';
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta, LayersConfig, UserDefinedObject } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
+import type { LeftSidebarMode } from '@/lib/left-sidebar-mode';
 import { validateLayersConfig, ensureDiagramLayersPersisted } from '@/lib/layers-utils';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -222,6 +223,7 @@ export default function DiagramEditor() {
   const [pendingCloseTabId, setPendingCloseTabId] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = React.useState<boolean>(false);
+  const [leftSidebarMode, setLeftSidebarMode] = React.useState<LeftSidebarMode>("enabled");
   // Use fixed defaults for SSR/hydration; restore from localStorage in useEffect
   const [rightPanelCollapsed, setRightPanelCollapsed] = React.useState<boolean>(true);
   const [metadataPopupsEnabled, setMetadataPopupsEnabled] = React.useState<boolean>(true);
@@ -5150,7 +5152,9 @@ export default function DiagramEditor() {
     animationToggleOnClickEnabled,
     simplifyFillsDuringCanvasDragEnabled,
     suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    leftSidebarMode,
     setRightPanelCollapsed,
+    setLeftSidebarMode,
     setPropertiesPanelVisible,
     setMetadataPopupsEnabled,
     setAlignmentGuidesEnabled,
@@ -5213,6 +5217,13 @@ export default function DiagramEditor() {
     setMetadataPopupsEnabled(prev => !prev);
   }, []);
 
+  const handleLeftSidebarModeChange = React.useCallback((mode: LeftSidebarMode) => {
+    setLeftSidebarMode(mode);
+    if (mode === "enabled") {
+      setLeftPanelCollapsed(false);
+    }
+  }, []);
+
   const canPasteFromMenu = paletteClipboardItem != null || canPaste;
 
   return (
@@ -5229,6 +5240,8 @@ export default function DiagramEditor() {
         setSidebarOpen={setSidebarOpen}
         leftPanelCollapsed={leftPanelCollapsed}
         setLeftPanelCollapsed={setLeftPanelCollapsed}
+        leftSidebarMode={leftSidebarMode}
+        onLeftSidebarModeChange={handleLeftSidebarModeChange}
         rightPanelCollapsed={rightPanelCollapsed}
         setRightPanelCollapsed={setRightPanelCollapsed}
         propertiesPanelVisible={propertiesPanelVisible}

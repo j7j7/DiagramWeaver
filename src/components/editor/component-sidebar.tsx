@@ -14,6 +14,10 @@ import { ResourceBrowser } from './resource-browser';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import type { CustomImageOptions } from '@/lib/types';
 
+/** Matches Tailwind `w-12` / `w-80` on the sidebar aside. */
+export const COMPONENT_SIDEBAR_WIDTH_COLLAPSED_PX = 48;
+export const COMPONENT_SIDEBAR_WIDTH_EXPANDED_PX = 320;
+
 interface ComponentSidebarProps {
   selectedItem: SelectedItem | null;
   selectedItemIds?: Set<string>;

@@ -2,6 +2,21 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-06-25 – Options: Component Sidebar mode (disabled / enabled / auto)
+**Options → Component Sidebar** submenu with **Disabled** (hidden, rulers at left edge), **Enabled** (manual expand/collapse), **Auto** (collapsed + left-edge peek on desktop). Persisted as **`dw:leftSidebar:mode`**; legacy **`dw:leftSidebar:autoCollapse:enabled`** maps to **auto** / **enabled**. **`left-sidebar-mode.ts`**. Patch bumped.
+
+### 2026-06-25 – Canvas rulers offset for left sidebar width
+**Rulers**: **`CanvasRulers`** accepts **`leftOffset`** (from **`leftSidebarInsetPx`** on **`EditorCanvas`**) so the vertical ruler and horizontal ruler corner sit to the right of the component sidebar (48px collapsed / 320px expanded). **`COMPONENT_SIDEBAR_WIDTH_*_PX`** in **`component-sidebar.tsx`**. Patch bumped.
+
+### 2026-06-25 – Left sidebar below header + canvas rulers
+**Layout**: Component sidebar moved into the canvas workspace (below **`header`** + tab bar) with **`top: RULER_SIZE` (24px)** on desktop so it clears the horizontal ruler strip; still an overlay (no canvas reflow). Edge hover zone uses the same bounds. **`diagram-editor-inner.tsx`**. Patch bumped.
+
+### 2026-06-25 – Left sidebar overlay (stable canvas viewport)
+**Layout**: Desktop component sidebar is **`fixed`** over the canvas (full-width **`main`**) instead of a flex sibling, so expand/collapse and auto-collapse peek no longer reflow the canvas — diagram objects stay at the same screen position (same idea as the right JSON panel not shifting the viewpoint). **`diagram-editor-inner.tsx`**. Patch bumped.
+
+### 2026-06-25 – Options: auto-collapse left component sidebar
+**Toggle**: **Options → Component Sidebar → Auto** (desktop only; see newer entry for full **Disabled / Enabled / Auto** submenu). When **Auto** is on, the resource sidebar stays collapsed (same narrow strip as manual collapse — **`ResourceBrowser`** unmounted) and **peeks open** when the pointer enters a **12px** left-edge zone or the sidebar; closes **250ms** after the pointer leaves. **`use-left-sidebar-auto-collapse.ts`**. Patch bumped.
+
 ### 2026-06-10 – PNG/thumbnails: hide injected `@font-face` style block
 Embedded font CSS was prepended as a bare `<style>` on the export clone; SVG foreignObject rasterized its text into thumbnails/PNG backgrounds. **`injectExportFontEmbedCss`** wraps defs in a zero-size hidden `[data-export-font-defs]` container (replaces html-to-image **`embedWebFonts`** prepend). Patch bumped.
 

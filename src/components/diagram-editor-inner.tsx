@@ -6,7 +6,8 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import dynamic from "next/dynamic";
 
-import { ComponentSidebar } from "./editor/component-sidebar";
+import { ComponentSidebar, COMPONENT_SIDEBAR_WIDTH_COLLAPSED_PX, COMPONENT_SIDEBAR_WIDTH_EXPANDED_PX } from "./editor/component-sidebar";
+import { RULER_SIZE } from "./editor/canvas-constants";
 import { EditorCanvas } from "./editor/editor-canvas";
 import { ConnectionContextModal } from "./editor/connection-context-modal";
 import { UmlClassEditorModal } from "./editor/uml-class-editor-modal";
@@ -39,6 +40,10 @@ import { getTutorialSteps } from "./tutorial/tutorial-steps";
 import { DiagramBreadcrumb } from "./editor/diagram-breadcrumb";
 import type { DiagramEditorInnerProps } from "./editor/diagram-editor-inner-props";
 import { useTutorialCIntroConnectionEffect } from "@/hooks/use-tutorial-c-intro-connection-effect";
+import {
+  EDGE_ZONE_WIDTH_PX,
+  useLeftSidebarAutoCollapse,
+} from "@/hooks/use-left-sidebar-auto-collapse";
 import {
   CreateUserDefinedObjectDialog,
   UserDefinedObjectsManageDialog,
@@ -110,6 +115,8 @@ export function DiagramEditorInner({
   setSidebarOpen,
   leftPanelCollapsed,
   setLeftPanelCollapsed,
+  leftSidebarMode,
+  onLeftSidebarModeChange,
   rightPanelCollapsed,
   setRightPanelCollapsed,
   propertiesPanelVisible,
@@ -485,63 +492,37 @@ export function DiagramEditorInner({
     [layers.layersConfig.layers]
   );
 
+  const leftSidebarVisible = leftSidebarMode !== "disabled";
+  const leftSidebarAutoCollapseActive = leftSidebarMode === "auto" && !isMobile;
+
+  React.useEffect(() => {
+    if (!leftSidebarVisible) {
+      setSidebarOpen(false);
+    }
+  }, [leftSidebarVisible, setSidebarOpen]);
+  const {
+    effectiveLeftPanelCollapsed,
+    handleToggleLeftPanelCollapse,
+    leftSidebarEdgeZoneProps,
+    leftSidebarContainerProps,
+  } = useLeftSidebarAutoCollapse({
+    enabled: leftSidebarAutoCollapseActive,
+    leftPanelCollapsed,
+    setLeftPanelCollapsed,
+  });
+
+  const leftSidebarInsetPx =
+    !leftSidebarVisible || isMobile
+      ? 0
+      : effectiveLeftPanelCollapsed
+        ? COMPONENT_SIDEBAR_WIDTH_COLLAPSED_PX
+        : COMPONENT_SIDEBAR_WIDTH_EXPANDED_PX;
+
   return (
     <DndProvider backend={HTML5Backend}>
       <InteractionRecorderProvider>
-      <div className="flex h-screen w-screen bg-background text-foreground font-body relative overflow-hidden">
-        {/* Mobile sidebar overlay */}
-        {isMobile && sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-        
-        {/* Sidebar - fixed on mobile, normal on desktop */}
-        <div className={`${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : ''} ${isMobile ? (leftPanelCollapsed ? 'w-12' : 'w-80') : ''}`}>
- <ComponentSidebar
-    selectedItem={selectedItem}
-    selectedItemIds={selectedItemIds}
-    onItemUpdate={handleItemUpdate}
-    onConnect={startConnecting}
-    onDisconnect={disconnectSelected}
-    onItemDelete={handleItemDelete}
-    diagramData={diagramData}
-    onResourceSelect={handleResourceSelect}
-    onResourceActivate={handleResourceActivate}
-    onToggleJsonPanel={toggleJsonPanel}
-    jsonPanelOpen={jsonPanelOpen}
-    onFitToView={handleTopBarFitToView}
-    onConnectionUpdate={handleConnectionUpdate}
-    onConnectionDisconnect={disconnectConnection}
-    onCloseSidebar={() => setSidebarOpen(false)}
-    isMobile={isMobile}
-    transform={canvasTransform}
-    onTransformChange={setCanvasTransform}
-    collapsed={leftPanelCollapsed}
-    onToggleCollapse={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-    userDefinedObjectsLibrary={userDefinedObjectsLibrary}
-    onUserDefinedObjectActivate={onUserDefinedObjectActivate}
-  />
-        </div>
-        
-        {/* Mobile menu toggle button */}
-        {isMobile && (
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="fixed left-4 top-4 z-30 p-3 bg-card border border-border rounded-md shadow-lg touch-target"
-            style={{ touchAction: 'manipulation' }}
-            aria-label="Toggle sidebar"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
-        )}
-        
-        <main className={`flex-1 flex flex-col min-h-0 ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''} ${(jsonPanelOpen || propertiesPanelVisible) ? 'min-w-0' : ''}`}>
+      <div className="flex h-screen w-screen flex-col bg-background text-foreground font-body relative overflow-hidden">
+        <main className={`flex min-h-0 w-full flex-1 flex-col ${isMobile && sidebarOpen ? 'pointer-events-none' : ''} ${(jsonPanelOpen || propertiesPanelVisible) ? 'min-w-0' : ''}`}>
             <header className="flex shrink-0 flex-col border-b bg-card">
                 <TopMenuBar
                     onNew={handleNew}
@@ -643,6 +624,8 @@ export function DiagramEditorInner({
                     }}
                     onToggleScratchPad={() => setScratchPadOpen(!scratchPadOpen)}
                     scratchPadOpen={scratchPadOpen}
+                    leftSidebarMode={leftSidebarMode}
+                    onLeftSidebarModeChange={onLeftSidebarModeChange}
                     onVisualStylingPanelOpenChange={setVisualStylingPanelOpen}
                     onToggleRulesEditor={() => setRulesEditorOpen(true)}
                     onRulesEditorOpenChange={setRulesEditorOpen}
@@ -725,7 +708,7 @@ export function DiagramEditorInner({
                   onSelectBaseSlide={handleSelectPresentationBaseSlide}
                 />
             </header>
-            <div className="flex min-h-0 flex-1 flex-col">
+                <div className="relative flex min-h-0 flex-1 flex-col">
                 {activeDiagramStack.length > 0 && (
                   <DiagramBreadcrumb
                     segments={[{ diagramId: null }, ...activeDiagramStack]}
@@ -735,7 +718,79 @@ export function DiagramEditorInner({
                     isReadOnly={isReadOnly}
                   />
                 )}
-                <div className={`flex min-h-0 flex-1 ${(jsonPanelOpen || propertiesPanelVisible) ? 'overflow-x-auto' : ''}`}>
+                <div className="relative min-h-0 flex-1">
+                  {isMobile && sidebarOpen && (
+                    <div
+                      className="absolute inset-0 z-40 bg-black/50 md:hidden"
+                      onClick={() => setSidebarOpen(false)}
+                    />
+                  )}
+
+                  {leftSidebarVisible && leftSidebarEdgeZoneProps && (
+                    <div
+                      className="absolute bottom-0 left-0 z-[60] hidden md:block"
+                      style={{ top: RULER_SIZE, width: EDGE_ZONE_WIDTH_PX }}
+                      aria-hidden
+                      {...leftSidebarEdgeZoneProps}
+                    />
+                  )}
+
+                  {leftSidebarVisible && (
+                  <div
+                    className={`absolute bottom-0 left-0 z-50 transition-[width,transform] duration-200 ease-linear ${
+                      effectiveLeftPanelCollapsed ? 'w-12' : 'w-80'
+                    } ${isMobile ? 'transform duration-300 ease-in-out' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : ''}`}
+                    style={{
+                      top: isMobile ? 0 : RULER_SIZE,
+                      width: effectiveLeftPanelCollapsed
+                        ? COMPONENT_SIDEBAR_WIDTH_COLLAPSED_PX
+                        : COMPONENT_SIDEBAR_WIDTH_EXPANDED_PX,
+                    }}
+                    {...(leftSidebarContainerProps ?? {})}
+                  >
+                    <ComponentSidebar
+                      selectedItem={selectedItem}
+                      selectedItemIds={selectedItemIds}
+                      onItemUpdate={handleItemUpdate}
+                      onConnect={startConnecting}
+                      onDisconnect={disconnectSelected}
+                      onItemDelete={handleItemDelete}
+                      diagramData={diagramData}
+                      onResourceSelect={handleResourceSelect}
+                      onResourceActivate={handleResourceActivate}
+                      onToggleJsonPanel={toggleJsonPanel}
+                      jsonPanelOpen={jsonPanelOpen}
+                      onFitToView={handleTopBarFitToView}
+                      onConnectionUpdate={handleConnectionUpdate}
+                      onConnectionDisconnect={disconnectConnection}
+                      onCloseSidebar={() => setSidebarOpen(false)}
+                      isMobile={isMobile}
+                      transform={canvasTransform}
+                      onTransformChange={setCanvasTransform}
+                      collapsed={effectiveLeftPanelCollapsed}
+                      onToggleCollapse={handleToggleLeftPanelCollapse}
+                      userDefinedObjectsLibrary={userDefinedObjectsLibrary}
+                      onUserDefinedObjectActivate={onUserDefinedObjectActivate}
+                    />
+                  </div>
+                  )}
+
+                  {isMobile && leftSidebarVisible && (
+                    <button
+                      onClick={() => setSidebarOpen(!sidebarOpen)}
+                      className="absolute left-4 top-4 z-30 rounded-md border border-border bg-card p-3 shadow-lg touch-target"
+                      style={{ touchAction: 'manipulation' }}
+                      aria-label="Toggle sidebar"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                      </svg>
+                    </button>
+                  )}
+
+                <div className={`flex h-full min-h-0 flex-1 ${(jsonPanelOpen || propertiesPanelVisible) ? 'overflow-x-auto' : ''}`}>
                   <div className={`flex-1 h-full min-h-0 min-w-0 ${(jsonPanelOpen || propertiesPanelVisible) ? 'mr-2' : ''}`}>
                 <EditorCanvas
                     key={canvasRefreshKey}
@@ -846,6 +901,7 @@ export function DiagramEditorInner({
                     wheelZoomSuppressed={zOrderListModal.open}
                     showDotGrid={dotGridEnabled && !presentationPlayerOpen}
                     visualStylingPanelOpen={visualStylingPanelOpen}
+                    leftSidebarInsetPx={leftSidebarInsetPx}
                     />
                   </div>
 
@@ -931,7 +987,8 @@ export function DiagramEditorInner({
                     </div>
                   )}
                 </div>
-            </div>
+                </div>
+                </div>
         </main>
         <ExportDialog
           open={exportDialogOpen}
