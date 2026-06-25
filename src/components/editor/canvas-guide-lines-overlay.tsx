@@ -166,6 +166,7 @@ export function CanvasGuideLinesOverlay({
               stroke={CANVAS_GUIDE_LINE_COLOR}
               strokeWidth={1.5}
               strokeOpacity={opacity}
+              strokeDasharray={CANVAS_GUIDE_LINE_DASH}
             />
           );
         })}

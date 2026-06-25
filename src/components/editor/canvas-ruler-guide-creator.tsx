@@ -145,6 +145,7 @@ export function CanvasRulerGuideCreator({
         stroke={CANVAS_GUIDE_LINE_COLOR}
         strokeWidth={1.5}
         strokeOpacity={CANVAS_GUIDE_LINE_OPACITY}
+        strokeDasharray={CANVAS_GUIDE_LINE_DASH}
       />
     );
   })();
