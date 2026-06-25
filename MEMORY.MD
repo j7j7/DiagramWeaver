@@ -2,6 +2,15 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-06-25 – Presentation thumbnails: low capture quality
+Strip / snapshot **`captureSnapshotPng`** uses **`PRESENTATION_THUMB_CAPTURE_QUALITY`** **`'low'`** (`pixelRatio` **1**, was **`medium`** / **2**) in **`editor-support.ts`**, **`use-presentation-thumbnails`**, **`capturePresentationSlidePayload`**. Patch bumped.
+
+### 2026-06-25 – Presentation thumbnails: idle debounce 2.5s
+**`PRESENTATION_THUMB_DEBOUNCE_MS`** **2500** (was **1800**) in **`editor-support.ts`**. Patch bumped.
+
+### 2026-06-25 – Presentation thumbnails: defer during canvas geometry interaction
+**`usePresentationThumbnails`** skips debounced / interval **`captureSnapshotPng`** while **`canvasGeometryInteractionActive`** (canvas drag/move, chart value drag, resize / rotation via **`onCanvasGeometrySessionChange`**). **No immediate flush when interaction ends** — only **`PRESENTATION_THUMB_DEBOUNCE_MS`** idle after the last edit; navigation flush runs only when deck/slide/tab/theme actually changes while idle. New interaction cancels pending idle timer and bumps a capture generation so stale in-flight PNG work is discarded. Patch bumped.
+
 ### 2026-06-25 – Ruler guide lines (horizontal / vertical)
 Persistent semi-transparent green guide lines stored on **`DiagramData.canvasGuideLines`**. Drag from the top ruler (vertical) or left ruler (horizontal) to place; hover to move, **Delete** to remove. **Options → Show/Hide Guide Lines** toggles visibility (persisted **`dw:rulerGuides:enabled`**). Hidden in presentation play mode and stripped from PNG/GIF export clones via **`hideCanvasGuideLinesInExportClone`** (`data-canvas-guide-lines`). Components: **`canvas-ruler-guide-creator.tsx`**, **`canvas-guide-lines-overlay.tsx`**, **`lib/canvas-guide-lines.ts`**.
 

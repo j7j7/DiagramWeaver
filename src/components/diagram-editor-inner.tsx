@@ -333,6 +333,7 @@ export function DiagramEditorInner({
   handleTagUpdate,
   setIsDragging,
   setChartValueDragActive,
+  setCanvasGeometrySessionActive,
   setCanPaste,
   setMousePosition,
   handleGroupItems,
@@ -850,6 +851,7 @@ export function DiagramEditorInner({
                      onLabelUpdate={handleLabelUpdate}
                      onTagUpdate={handleTagUpdate}
                      onDraggingChange={setIsDragging}
+                     onCanvasGeometrySessionChange={setCanvasGeometrySessionActive}
                      onViewportCullStatsChange={setViewportCullStats}
                      onChartValueDragSessionChange={setChartValueDragActive}
                     onClipboardChange={setCanPaste}

@@ -10,7 +10,10 @@ import type { PaletteResource } from "@/components/editor/diagram-editor-types";
 export const PRESENTATION_THUMB_INTERVAL_MS = 20000;
 
 /** After tab canvas / presentation draft edits, wait this long with no further changes before thumbnail PNG (ms). */
-export const PRESENTATION_THUMB_DEBOUNCE_MS = 1800;
+export const PRESENTATION_THUMB_DEBOUNCE_MS = 2500;
+
+/** `captureSnapshotPng` quality for presentation strip thumbnails (`pixelRatio` 1 vs 2 for medium). */
+export const PRESENTATION_THUMB_CAPTURE_QUALITY = 'low' as const;
 
 /** `captureViewportPngDataUrl`: light → white PNG background; dark → `#0f172a` (matches Tailwind slate). */
 export function presentationThumbnailCaptureBackground(theme: 'light' | 'dark'): 'white' | 'dark' {

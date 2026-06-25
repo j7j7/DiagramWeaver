@@ -22,6 +22,7 @@ import type { EditorCanvasHandle } from "@/components/editor/editor-canvas";
 import {
   PRESENTATION_THUMB_INTERVAL_MS,
   PRESENTATION_THUMB_DEBOUNCE_MS,
+  PRESENTATION_THUMB_CAPTURE_QUALITY,
   presentationThumbnailCaptureBackground,
   withPresentationThumbnailThemeFingerprintTag,
 } from "@/lib/diagram-editor/editor-support";
@@ -64,6 +65,9 @@ export interface UsePresentationThumbnailsParams {
   setPresentationDraftDiagram: React.Dispatch<
     React.SetStateAction<DiagramData | null>
   >;
+
+  /** True while canvas drag/move/resize (or chart value drag) is in progress — defer thumbnail PNG until idle. */
+  canvasGeometryInteractionActive?: boolean;
 }
 
 export interface UsePresentationThumbnailsResult {
@@ -71,8 +75,9 @@ export interface UsePresentationThumbnailsResult {
 }
 
 /**
- * Presentation strip PNG thumbnails: debounced after canvas/draft edits (see PRESENTATION_THUMB_DEBOUNCE_MS),
- * flush on deck/slide/tab/theme change, slow interval catch-up, placeholder backfill after load.
+ * Presentation strip PNG thumbnails: idle-debounced after canvas/draft edits (PRESENTATION_THUMB_DEBOUNCE_MS),
+ * immediate flush only on deck/slide/tab/theme navigation while idle, slow interval catch-up, placeholder backfill.
+ * Paused while canvasGeometryInteractionActive; interaction restart cancels pending idle work and invalidates in-flight captures.
  */
 export function usePresentationThumbnails({
   editorRef,
@@ -94,9 +99,17 @@ export function usePresentationThumbnails({
   setActivePresentationDeckId,
   setActivePresentationSlideId,
   setPresentationDraftDiagram,
+  canvasGeometryInteractionActive = false,
 }: UsePresentationThumbnailsParams): UsePresentationThumbnailsResult {
   const { resolvedTheme } = useTheme();
   const presentationThumbCaptureInFlightRef = React.useRef(false);
+  const canvasGeometryInteractionActiveRef = React.useRef(canvasGeometryInteractionActive);
+  canvasGeometryInteractionActiveRef.current = canvasGeometryInteractionActive;
+  /** Bumped when canvas interaction starts — stale in-flight captures must not apply or chain. */
+  const presentationThumbCaptureGenerationRef = React.useRef(0);
+  const prevCanvasGeometryInteractionActiveRef = React.useRef(false);
+  /** Last deck/slide/tab/theme key we flushed for (skip flush when only interaction ends). */
+  const presentationThumbNavKeyRef = React.useRef("");
   /** True while sequentially capturing PNG thumbnails for every slide (e.g. compact file load). */
   const presentationThumbBackfillRunningRef = React.useRef(false);
   const presentationThumbCtxRef = React.useRef<{
@@ -166,15 +179,24 @@ export function usePresentationThumbnails({
     }
   }, [activePresentationDeckId, activePresentationSlideId, resolvedTheme]);
 
+  const shouldApplyPresentationThumbnailCapture = React.useCallback(
+    (captureGeneration: number) =>
+      !canvasGeometryInteractionActiveRef.current &&
+      captureGeneration === presentationThumbCaptureGenerationRef.current,
+    [],
+  );
+
   const runPresentationThumbnailCaptureIfNeeded =
     React.useCallback(async () => {
       if (presentationThumbBackfillRunningRef.current) return;
       if (presentationThumbCaptureInFlightRef.current) return;
+      if (canvasGeometryInteractionActiveRef.current) return;
       if (!editorRef.current?.captureSnapshotPng) return;
 
       const ctx = presentationThumbCtxRef.current;
       if (!ctx.deckId) return;
 
+      const captureGeneration = presentationThumbCaptureGenerationRef.current;
       presentationThumbCaptureInFlightRef.current = true;
       try {
         const thumbBg = presentationThumbnailCaptureBackground(resolvedTheme);
@@ -210,12 +232,17 @@ export function usePresentationThumbnails({
                 const primaryPng =
                   await editorRef.current.captureSnapshotPng({
                     backgroundColor: thumbBg,
-                    quality: "medium",
+                    quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
                     fitContent: true,
                     unionDiagrams: [visibleMain],
                     tightContentFrame: true,
                     fitPadding: 40,
                   });
+                if (
+                  !shouldApplyPresentationThumbnailCapture(captureGeneration)
+                ) {
+                  return;
+                }
                 if (
                   presentationThumbCtxRef.current.deckId === captureDeckId
                 ) {
@@ -243,6 +270,10 @@ export function usePresentationThumbnails({
               }
             }
           }
+        }
+
+        if (!shouldApplyPresentationThumbnailCapture(captureGeneration)) {
+          return;
         }
 
         const ctxSlide = presentationThumbCtxRef.current;
@@ -309,13 +340,17 @@ export function usePresentationThumbnails({
 
         const snapshotImage = await editorRef.current.captureSnapshotPng({
           backgroundColor: thumbBg,
-          quality: "medium",
+          quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
           fitContent: true,
           unionDiagrams:
             presentationThumbnailFitUnionDiagrams,
           tightContentFrame: true,
           fitPadding: 40,
         });
+
+        if (!shouldApplyPresentationThumbnailCapture(captureGeneration)) {
+          return;
+        }
 
         if (
           presentationThumbCtxRef.current.slideId !== captureSlideId ||
@@ -349,6 +384,7 @@ export function usePresentationThumbnails({
       presentationThumbnailFitUnionDiagrams,
       resolvedTheme,
       setPresentationDecks,
+      shouldApplyPresentationThumbnailCapture,
     ]);
 
   const runPresentationThumbnailCaptureRef = React.useRef(
@@ -366,33 +402,80 @@ export function usePresentationThumbnails({
     }
   }, []);
 
-  /** Deck / slide / tab / UI theme — capture now; cancel staggered diagram debounce first. */
+  const scheduleIdlePresentationThumbnailCapture = React.useCallback(
+    (immediate: boolean) => {
+      cancelPendingDebouncedThumbnailCapture();
+      if (canvasGeometryInteractionActiveRef.current) return;
+
+      if (immediate) {
+        void runPresentationThumbnailCaptureRef.current();
+        return;
+      }
+
+      presentationThumbDebounceTimerRef.current = window.setTimeout(() => {
+        presentationThumbDebounceTimerRef.current = null;
+        if (canvasGeometryInteractionActiveRef.current) return;
+        void runPresentationThumbnailCaptureRef.current();
+      }, PRESENTATION_THUMB_DEBOUNCE_MS);
+    },
+    [cancelPendingDebouncedThumbnailCapture],
+  );
+
+  const scheduleIdlePresentationThumbnailCaptureRef = React.useRef(
+    scheduleIdlePresentationThumbnailCapture,
+  );
+  scheduleIdlePresentationThumbnailCaptureRef.current =
+    scheduleIdlePresentationThumbnailCapture;
+
+  /** Interaction started — cancel pending idle capture and invalidate any in-flight work. */
+  React.useEffect(() => {
+    const wasActive = prevCanvasGeometryInteractionActiveRef.current;
+    prevCanvasGeometryInteractionActiveRef.current =
+      canvasGeometryInteractionActive;
+
+    if (canvasGeometryInteractionActive && !wasActive) {
+      cancelPendingDebouncedThumbnailCapture();
+      presentationThumbCaptureGenerationRef.current += 1;
+    }
+  }, [canvasGeometryInteractionActive, cancelPendingDebouncedThumbnailCapture]);
+
+  const presentationThumbNavKey = `${activePresentationDeckId ?? ""}|${activePresentationSlideId ?? ""}|${activeTabId ?? ""}|${resolvedTheme}`;
+
+  /** Deck / slide / tab / UI theme — flush immediately only when navigation changes while idle. */
   React.useEffect(() => {
     if (!activePresentationDeckId) {
       cancelPendingDebouncedThumbnailCapture();
+      presentationThumbNavKeyRef.current = "";
       return;
     }
-    cancelPendingDebouncedThumbnailCapture();
-    void runPresentationThumbnailCaptureRef.current();
+    if (canvasGeometryInteractionActive) {
+      cancelPendingDebouncedThumbnailCapture();
+      return;
+    }
+    const navChanged =
+      presentationThumbNavKeyRef.current !== presentationThumbNavKey;
+    presentationThumbNavKeyRef.current = presentationThumbNavKey;
+    if (navChanged) {
+      scheduleIdlePresentationThumbnailCaptureRef.current(true);
+    }
   }, [
     activePresentationDeckId,
-    activePresentationSlideId,
-    activeTabId,
-    resolvedTheme,
+    presentationThumbNavKey,
+    canvasGeometryInteractionActive,
     cancelPendingDebouncedThumbnailCapture,
   ]);
 
-  /** Tab main diagram + presentation draft edits — stagger capture for performance (flush on navigation above). */
+  /** Tab main diagram + presentation draft edits — idle debounce only (includes after interaction ends). */
   React.useEffect(() => {
     if (!activePresentationDeckId) {
       cancelPendingDebouncedThumbnailCapture();
       return;
     }
-    cancelPendingDebouncedThumbnailCapture();
-    presentationThumbDebounceTimerRef.current = window.setTimeout(() => {
-      presentationThumbDebounceTimerRef.current = null;
-      void runPresentationThumbnailCaptureRef.current();
-    }, PRESENTATION_THUMB_DEBOUNCE_MS);
+    if (canvasGeometryInteractionActive) {
+      cancelPendingDebouncedThumbnailCapture();
+      return;
+    }
+    scheduleIdlePresentationThumbnailCaptureRef.current(false);
     return () => {
       cancelPendingDebouncedThumbnailCapture();
     };
@@ -400,6 +483,7 @@ export function usePresentationThumbnails({
     activePresentationDeckId,
     tabDiagramData,
     presentationDraftDiagram,
+    canvasGeometryInteractionActive,
     cancelPendingDebouncedThumbnailCapture,
   ]);
 
@@ -408,6 +492,7 @@ export function usePresentationThumbnails({
     if (!activePresentationDeckId) return;
 
     const id = window.setInterval(() => {
+      if (canvasGeometryInteractionActiveRef.current) return;
       void runPresentationThumbnailCaptureRef.current();
     }, PRESENTATION_THUMB_INTERVAL_MS);
     return () => window.clearInterval(id);
@@ -474,7 +559,7 @@ export function usePresentationThumbnails({
                 const primaryPng =
                   await editorRef.current!.captureSnapshotPng!({
                     backgroundColor: thumbBg,
-                    quality: "medium",
+                    quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
                     fitContent: true,
                     unionDiagrams: [visibleMain],
                     tightContentFrame: true,
@@ -549,7 +634,7 @@ export function usePresentationThumbnails({
               const snapshotImage =
                 await editorRef.current!.captureSnapshotPng!({
                   backgroundColor: thumbBg,
-                  quality: "medium",
+                  quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
                   fitContent: true,
                   unionDiagrams: [draftDiagram],
                   tightContentFrame: true,

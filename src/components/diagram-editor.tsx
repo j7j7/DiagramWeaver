@@ -118,6 +118,7 @@ import {
   blankSlideVisibleFromMaster,
   createPaletteItem,
   presentationThumbnailCaptureBackground,
+  PRESENTATION_THUMB_CAPTURE_QUALITY,
   withPresentationThumbnailThemeFingerprintTag,
 } from '@/lib/diagram-editor/editor-support';
 import { useTheme } from '@/components/theme-provider';
@@ -303,6 +304,10 @@ export default function DiagramEditor() {
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   /** Bar/line/pie value drag updates diagramData continuously; defer undo/redo snapshots until pointer-up. */
   const [chartValueDragActive, setChartValueDragActive] = React.useState(false);
+  /** Resize / rotation on canvas (EditorCanvas session counter); combined with drag for thumbnail deferral. */
+  const [canvasGeometrySessionActive, setCanvasGeometrySessionActive] = React.useState(false);
+  const canvasGeometryInteractionActive =
+    isDragging || chartValueDragActive || canvasGeometrySessionActive;
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const mermaidInputRef = React.useRef<HTMLInputElement>(null);
@@ -2387,6 +2392,7 @@ export default function DiagramEditor() {
     setActivePresentationDeckId,
     setActivePresentationSlideId,
     setPresentationDraftDiagram,
+    canvasGeometryInteractionActive,
   });
 
   const activeStripSlideIndex =
@@ -4594,7 +4600,7 @@ export default function DiagramEditor() {
 
     const snapshotImage = await editorRef.current.captureSnapshotPng({
       backgroundColor: presentationThumbnailCaptureBackground(resolvedTheme),
-      quality: 'medium',
+      quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
       fitContent: true,
       unionDiagrams: [
         projectVisibleDiagram(presentationDraftDiagram ?? (layers.filteredDiagramData ?? diagramData)),
@@ -5453,6 +5459,7 @@ export default function DiagramEditor() {
         handleTagUpdate={handleTagUpdate}
         setIsDragging={setIsDragging}
         setChartValueDragActive={setChartValueDragActive}
+        setCanvasGeometrySessionActive={setCanvasGeometrySessionActive}
         setCanPaste={setCanPaste}
         setMousePosition={setMousePositionForIdle}
         handleGroupItems={handleGroupItems}

@@ -407,6 +407,8 @@ interface EditorCanvasProps {
    onTagUpdate?: (nodeId: string, newTag: string) => void;
    onZoneTagUpdate?: (zoneId: string, newTag: string) => void;
    onDraggingChange?: (isDragging: boolean) => void;
+  /** Resize / rotation sessions (nested-safe) — parent defers thumbnail capture until all sessions end. */
+  onCanvasGeometrySessionChange?: (active: boolean) => void;
   /** Live viewport cull counts for the menubar debug readout. */
   onViewportCullStatsChange?: (stats: ViewportCullDebugStats) => void;
   /** While true, chart in-canvas value drag is active — defer undo/redo snapshots until drag ends. */
@@ -544,7 +546,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onViewportCullStatsChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, simplifyFillsDuringCanvasDragEnabled = true, suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, showRulerGuides = true, globalVariableContext, leftSidebarInsetPx = 0 }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onCanvasGeometrySessionChange, onViewportCullStatsChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, simplifyFillsDuringCanvasDragEnabled = true, suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, showRulerGuides = true, globalVariableContext, leftSidebarInsetPx = 0 }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -761,6 +763,28 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const originalDimensionsRef = useRef<Map<string, { width: number; height: number }>>(new Map());
   const [isCanvasItemResizing, setIsCanvasItemResizing] = useState(false);
   const [resizingItemIdsKey, setResizingItemIdsKey] = useState("");
+  const canvasGeometrySessionDepthRef = useRef(0);
+
+  const notifyCanvasGeometrySessionChange = useCallback(
+    (active: boolean) => {
+      if (!onCanvasGeometrySessionChange) return;
+      if (active) {
+        canvasGeometrySessionDepthRef.current += 1;
+        if (canvasGeometrySessionDepthRef.current === 1) {
+          onCanvasGeometrySessionChange(true);
+        }
+      } else {
+        canvasGeometrySessionDepthRef.current = Math.max(
+          0,
+          canvasGeometrySessionDepthRef.current - 1,
+        );
+        if (canvasGeometrySessionDepthRef.current === 0) {
+          onCanvasGeometrySessionChange(false);
+        }
+      }
+    },
+    [onCanvasGeometrySessionChange],
+  );
 
   // Store original dimensions for all selected items when resize starts
   const handleResizeStart = useCallback((itemId: string, width: number, height: number) => {
@@ -772,6 +796,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         : itemId,
     );
     setIsCanvasItemResizing(true);
+    notifyCanvasGeometrySessionChange(true);
     
     // If multi-select, store original dimensions for all selected items
     if (selectedItemIds.size > 1) {
@@ -789,14 +814,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         }
       });
     }
-  }, [selectedItemIds, nodesById, zonesById]);
+  }, [selectedItemIds, nodesById, zonesById, notifyCanvasGeometrySessionChange]);
 
   // Clear original dimensions when resize ends
   const handleResizeEnd = useCallback(() => {
     originalDimensionsRef.current.clear();
     setResizingItemIdsKey("");
     setIsCanvasItemResizing(false);
-  }, []);
+    notifyCanvasGeometrySessionChange(false);
+  }, [notifyCanvasGeometrySessionChange]);
 
   // Determine which item should show rotation handles
   // Handles appear when items are selected and persist until deselected
@@ -969,10 +995,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       activePointerId: e.pointerId,
       capturedElement,
     });
+    notifyCanvasGeometrySessionChange(true);
 
     // Set pointer capture for smooth dragging
     capturedElement.setPointerCapture(e.pointerId);
-  }, [rotationTarget, nodesById, zonesById]);
+  }, [rotationTarget, nodesById, zonesById, notifyCanvasGeometrySessionChange]);
 
   const onRotationHandlePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -1038,6 +1065,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       }
 
       setRotationForItem(drag.targetId, drag.targetType, finalRotation, true, snapStep);
+      notifyCanvasGeometrySessionChange(false);
       setRotationDragState(null);
     };
 
@@ -1065,7 +1093,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       window.removeEventListener("keydown", handleShiftKeyToggle);
       window.removeEventListener("keyup", handleShiftKeyToggle);
     };
-  }, [isRotationDragging, setRotationForItem]);
+  }, [isRotationDragging, setRotationForItem, notifyCanvasGeometrySessionChange]);
   
   
   // ============================================================================
