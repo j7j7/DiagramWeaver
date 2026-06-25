@@ -110,6 +110,9 @@ export function usePresentationThumbnails({
   /** Bumped when canvas interaction starts — stale in-flight captures must not apply or chain. */
   const presentationThumbCaptureGenerationRef = React.useRef(0);
   const prevCanvasGeometryInteractionActiveRef = React.useRef(false);
+  /** Set when diagram content key changes; cleared when a debounced capture is scheduled. */
+  const presentationThumbPendingContentCaptureRef = React.useRef(false);
+  const prevPresentationThumbDiagramContentKeyRef = React.useRef("");
   /** Last deck/slide/tab/theme key we flushed for (skip flush when only interaction ends). */
   const presentationThumbNavKeyRef = React.useRef("");
   /** True while sequentially capturing PNG thumbnails for every slide (e.g. compact file load). */
@@ -437,6 +440,20 @@ export function usePresentationThumbnails({
   scheduleIdlePresentationThumbnailCaptureRef.current =
     scheduleIdlePresentationThumbnailCapture;
 
+  const trySchedulePendingContentThumbnailCapture = React.useCallback(() => {
+    if (!activePresentationDeckId) return;
+    if (canvasGeometryInteractionActiveRef.current) return;
+    if (!presentationThumbPendingContentCaptureRef.current) return;
+    presentationThumbPendingContentCaptureRef.current = false;
+    scheduleIdlePresentationThumbnailCaptureRef.current(false);
+  }, [activePresentationDeckId]);
+
+  const trySchedulePendingContentThumbnailCaptureRef = React.useRef(
+    trySchedulePendingContentThumbnailCapture,
+  );
+  trySchedulePendingContentThumbnailCaptureRef.current =
+    trySchedulePendingContentThumbnailCapture;
+
   /** Interaction started — cancel pending idle capture and invalidate any in-flight work. */
   React.useEffect(() => {
     const wasActive = prevCanvasGeometryInteractionActiveRef.current;
@@ -446,6 +463,11 @@ export function usePresentationThumbnails({
     if (canvasGeometryInteractionActive && !wasActive) {
       cancelPendingDebouncedThumbnailCapture();
       presentationThumbCaptureGenerationRef.current += 1;
+      return;
+    }
+
+    if (!canvasGeometryInteractionActive && wasActive) {
+      trySchedulePendingContentThumbnailCaptureRef.current();
     }
   }, [canvasGeometryInteractionActive, cancelPendingDebouncedThumbnailCapture]);
 
@@ -484,17 +506,32 @@ export function usePresentationThumbnails({
     [tabDiagramData, presentationDraftDiagram],
   );
 
-  /** Tab main diagram + presentation draft edits — idle debounce only (includes after interaction ends). */
+  /** Schedule capture only when slide diagram content changes — not on pan/viewport interaction end. */
   React.useEffect(() => {
     if (!activePresentationDeckId) {
       cancelPendingDebouncedThumbnailCapture();
+      presentationThumbPendingContentCaptureRef.current = false;
+      prevPresentationThumbDiagramContentKeyRef.current = "";
       return;
     }
+
+    if (
+      prevPresentationThumbDiagramContentKeyRef.current ===
+      presentationThumbDiagramContentKey
+    ) {
+      return;
+    }
+    prevPresentationThumbDiagramContentKeyRef.current =
+      presentationThumbDiagramContentKey;
+    presentationThumbPendingContentCaptureRef.current = true;
+
     if (canvasGeometryInteractionActive) {
       cancelPendingDebouncedThumbnailCapture();
       return;
     }
-    scheduleIdlePresentationThumbnailCaptureRef.current(false);
+
+    trySchedulePendingContentThumbnailCaptureRef.current();
+
     return () => {
       cancelPendingDebouncedThumbnailCapture();
     };

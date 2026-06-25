@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-06-25 – Presentation thumbnails: no regen on canvas pan / perf shadows
+Pan/zoom no longer schedules strip PNG refresh: debounce runs only when **`buildPresentationThumbnailDiagramContentKey`** changes (not when **`canvasGeometryInteractionActive`** ends). Pan notifies parent synchronously via **`onPanSessionChange`** → **`onCanvasGeometrySessionChange`**. **`captureSnapshotPng`** waits for **`data-perf-interacting`** idle before PNG so shadow-suppressed drag frames are never captured. Master slide rebase ignores **`viewState`-only edits. Patch bumped.
+
 ### 2026-06-25 – Presentation thumbnails: no regen on pan / viewport cull
 Pan/zoom no longer schedules strip PNG refresh: thumbnail debounce/fingerprints use **`diagramForPresentationThumbnailFingerprint`** / **`buildPresentationThumbnailDiagramContentKey`** (strips **`viewState`**, visible layers only). **`captureSnapshotPng`** disables viewport culling via **`snapshotCaptureActive`** + **`waitTwoAnimationFrames`** so off-screen items mount before capture. Canvas pan defers capture via **`onCanvasGeometrySessionChange`**. Patch bumped.
 

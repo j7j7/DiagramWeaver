@@ -9,6 +9,8 @@ interface UseCanvasInteractionsOptions {
   setTransform: (transform: Transform) => void;
   isConnectMode: boolean;
   onMousePositionChange?: (position: { x: number; y: number } | null) => void;
+  /** Sync pan session start/end (parent defers thumbnail capture until idle). */
+  onPanSessionChange?: (active: boolean) => void;
 }
 
 export function useCanvasInteractions({
@@ -17,6 +19,7 @@ export function useCanvasInteractions({
   setTransform,
   isConnectMode,
   onMousePositionChange,
+  onPanSessionChange,
 }: UseCanvasInteractionsOptions) {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -32,6 +35,7 @@ export function useCanvasInteractions({
   const rightClickPanningRef = useRef(false);
   const rightClickDidPanRef = useRef(false);
   const lastRightClickWasPanRef = useRef(false);
+  const isPanningRef = useRef(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isConnectMode) return;
@@ -43,12 +47,21 @@ export function useCanvasInteractions({
     // Context menus open on contextmenu only when the pointer did not move (see wasLastRightClickAPan).
     if (e.button === 2) {
       e.preventDefault();
+      isPanningRef.current = true;
       setIsPanning(true);
+      onPanSessionChange?.(true);
       setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
       rightClickPanningRef.current = true;
       rightClickDidPanRef.current = false;
     }
-  }, [isConnectMode, transform]);
+  }, [isConnectMode, transform, onPanSessionChange]);
+
+  const endPanSession = useCallback(() => {
+    if (!isPanningRef.current) return;
+    isPanningRef.current = false;
+    setIsPanning(false);
+    onPanSessionChange?.(false);
+  }, [onPanSessionChange]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     // Track mouse position for display (throttled to avoid performance warnings)
@@ -90,7 +103,7 @@ export function useCanvasInteractions({
       rightClickPanningRef.current = false;
       rightClickDidPanRef.current = false;
     }
-    setIsPanning(false);
+    endPanSession();
     // Clean up any pending mouse position update
     if (mousePositionThrottleRef.current !== null) {
       cancelAnimationFrame(mousePositionThrottleRef.current);
@@ -101,7 +114,7 @@ export function useCanvasInteractions({
       onMousePositionChange(null);
       lastMousePositionRef.current = null;
     }
-  }, [onMousePositionChange]);
+  }, [onMousePositionChange, endPanSession]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isConnectMode) return;
@@ -121,7 +134,9 @@ export function useCanvasInteractions({
     if (e.touches.length === 1) {
       // Single touch - start panning
       const touch = e.touches[0];
+      isPanningRef.current = true;
       setIsPanning(true);
+      onPanSessionChange?.(true);
       setPanStart({ x: touch.clientX - transform.x, y: touch.clientY - transform.y });
     } else if (e.touches.length === 2) {
       // Two touches - prepare for zoom
@@ -132,7 +147,7 @@ export function useCanvasInteractions({
       setLastTouchDistance(distance);
       setIsPanning(false);
     }
-  }, [isConnectMode, transform]);
+  }, [isConnectMode, transform, onPanSessionChange]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const target = e.target as HTMLElement;
@@ -196,7 +211,7 @@ export function useCanvasInteractions({
   }, [canvasRef, transform, isPanning, panStart, touchStart, lastTouchDistance, setTransform, onMousePositionChange]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    setIsPanning(false);
+    endPanSession();
     setTouchStart(null);
     setLastTouchDistance(null);
     if (e.touches.length === 0) {
@@ -207,7 +222,7 @@ export function useCanvasInteractions({
       lastTouchDiagramPositionRef.current = null;
       onMousePositionChange?.(null);
     }
-  }, [onMousePositionChange]);
+  }, [onMousePositionChange, endPanSession]);
 
   return {
     isPanning,

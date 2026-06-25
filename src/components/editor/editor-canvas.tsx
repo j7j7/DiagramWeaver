@@ -45,6 +45,18 @@ import { useCanvasClipboard } from "@/hooks/use-canvas-clipboard";
 import { pasteSpecialFamiliesCompatible } from "@/lib/paste-special-properties";
 import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { waitTwoAnimationFrames } from "@/lib/diagram-editor/editor-support";
+
+const SNAPSHOT_CAPTURE_PERF_IDLE_MAX_FRAMES = 45;
+
+async function waitForCanvasPerfInteractionIdle(
+  canvasEl: HTMLElement | null,
+  maxFrames = SNAPSHOT_CAPTURE_PERF_IDLE_MAX_FRAMES,
+): Promise<void> {
+  for (let i = 0; i < maxFrames; i++) {
+    if (canvasEl?.getAttribute("data-perf-interacting") !== "true") return;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+}
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
 import { useInteractionRecordingMenuReplay } from "@/hooks/use-interaction-recording-menu-replay";
 import { useInteractionRecordingCanvasReplay } from "@/hooks/use-interaction-recording-canvas-replay";
@@ -1947,6 +1959,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         setSnapshotCaptureActive(true);
       });
       try {
+        await waitForCanvasPerfInteractionIdle(canvasRef.current);
         await waitTwoAnimationFrames();
         return await captureViewportPngDataUrl(options);
       } finally {
@@ -2170,17 +2183,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     setTransform,
     isConnectMode,
     onMousePositionChange,
+    onPanSessionChange: notifyCanvasGeometrySessionChange,
   });
-
-  const prevIsPanningRef = useRef(false);
-  useEffect(() => {
-    if (isPanning && !prevIsPanningRef.current) {
-      notifyCanvasGeometrySessionChange(true);
-    } else if (!isPanning && prevIsPanningRef.current) {
-      notifyCanvasGeometrySessionChange(false);
-    }
-    prevIsPanningRef.current = isPanning;
-  }, [isPanning, notifyCanvasGeometrySessionChange]);
 
   const suppressContextMenuIfRightClickPanned = useCallback((e: React.MouseEvent) => {
     if (wasLastRightClickAPan()) {

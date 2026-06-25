@@ -691,15 +691,19 @@ export default function DiagramEditor() {
   React.useEffect(() => {
     if (!isPrimaryPresentationSlideActive) return;
     if (!activePresentationDeckId || activePresentationSlides.length === 0) {
-      presentationPrevBaseJsonRef.current = JSON.stringify(tabDiagramData);
+      presentationPrevBaseJsonRef.current = JSON.stringify(
+        diagramForPresentationThumbnailFingerprint(tabDiagramData),
+      );
       return;
     }
-    const nextJson = JSON.stringify(tabDiagramData);
+    const nextJson = JSON.stringify(
+      diagramForPresentationThumbnailFingerprint(tabDiagramData),
+    );
     const prevJson = presentationPrevBaseJsonRef.current;
     if (prevJson !== null && prevJson !== nextJson) {
       try {
         const oldMaster = JSON.parse(prevJson) as DiagramData;
-        const newMaster = tabDiagramData;
+        const newMaster = diagramForPresentationThumbnailFingerprint(tabDiagramData);
         setPresentationDecks((prev) =>
           prev.map((deck) => {
             if (deck.id !== activePresentationDeckId) return deck;
