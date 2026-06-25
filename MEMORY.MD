@@ -11,6 +11,9 @@ Reverse-dated changelog: **newer entries are closer to the top**. For **current 
 ### 2026-06-25 – Left sidebar below header + canvas rulers
 **Layout**: Component sidebar moved into the canvas workspace (below **`header`** + tab bar) with **`top: RULER_SIZE` (24px)** on desktop so it clears the horizontal ruler strip; still an overlay (no canvas reflow). Edge hover zone uses the same bounds. **`diagram-editor-inner.tsx`**. Patch bumped.
 
+### 2026-06-25 – Viewport culling: active on first presentation slide
+**`shouldActivateViewportRenderCull`** in **`viewport-culling.ts`**: culling no longer requires **≥4** canvas items — it runs for any non-empty diagram (items and/or connections). Fixes primary slide showing **`cull off`** while later slides culled (layer-filtered slides often mount fewer than four nodes). Patch bumped.
+
 ### 2026-06-25 – Left sidebar overlay (stable canvas viewport)
 **Layout**: Desktop component sidebar is **`fixed`** over the canvas (full-width **`main`**) instead of a flex sibling, so expand/collapse and auto-collapse peek no longer reflow the canvas — diagram objects stay at the same screen position (same idea as the right JSON panel not shifting the viewpoint). **`diagram-editor-inner.tsx`**. Patch bumped.
 

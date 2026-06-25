@@ -14,8 +14,16 @@ export const VIEWPORT_CULL_MAX_DIAGRAM_MARGIN = 48;
 /** Tighter margin for connection endpoint tests (lines use endpoints only, not segment bbox). */
 export const VIEWPORT_CULL_CONNECTION_SCREEN_MARGIN_PX = 16;
 
-/** Skip culling when the diagram has fewer items (everything is usually on screen). */
+/** Legacy threshold — kept for docs/tests; activation uses {@link shouldActivateViewportRenderCull}. */
 export const VIEWPORT_CULL_MIN_ITEMS = 4;
+
+/** Enable viewport culling whenever there is canvas content to filter (items and/or connections). */
+export function shouldActivateViewportRenderCull(
+  totalItems: number,
+  totalConnections: number,
+): boolean {
+  return totalItems > 0 || totalConnections > 0;
+}
 
 export function diagramMarginFromScreenPx(
   screenPx: number,
@@ -348,7 +356,7 @@ export function computeViewportRenderCull({
     !enabled ||
     viewportWidth <= 0 ||
     viewportHeight <= 0 ||
-    totalItems < VIEWPORT_CULL_MIN_ITEMS
+    !shouldActivateViewportRenderCull(totalItems, connections.length)
   ) {
     return {
       enabled: false,

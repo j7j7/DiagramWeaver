@@ -18,7 +18,7 @@ export function ViewportCullDebugBadge({ stats, className }: ViewportCullDebugBa
 
   const title = stats.cullingActive
     ? "Viewport culling active — rendered counts are what is mounted on the canvas (includes selected/dragged off-screen items)."
-    : "Viewport culling off (fewer than 4 items, export, or host not measured) — all items and connections render.";
+    : "Viewport culling off (empty canvas, GIF export, or host not measured) — all items and connections render.";
 
   return (
     <div
