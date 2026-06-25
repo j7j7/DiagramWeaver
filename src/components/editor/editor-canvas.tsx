@@ -538,6 +538,8 @@ interface EditorCanvasProps {
 export type EditorCanvasHandle = {
   /** Width/height of the canvas host for fit math (matches pointer / transform coordinates). */
   getCanvasHostViewportForFit: () => { width: number; height: number } | null;
+  /** True while pan/drag/resize perf mode suppresses shadows (`data-perf-interacting`). */
+  isCanvasPerfInteractionActive: () => boolean;
   fitToView: () => void;
   exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; selectionOnly?: boolean }) => Promise<void>;
   exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => Promise<void>;
@@ -3402,6 +3404,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       if (!el) return null;
       return getCanvasElementSizeForImageCapture(el);
     },
+    isCanvasPerfInteractionActive: () =>
+      canvasRef.current?.getAttribute("data-perf-interacting") === "true",
     fitToView: handleFitToView, // Auto-fits diagram to viewport
     exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; selectionOnly?: boolean }) => exportPng(options), // Exports current viewport to PNG
     exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => exportGif(options), // Exports current viewport to GIF

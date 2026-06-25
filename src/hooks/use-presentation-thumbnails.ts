@@ -70,6 +70,14 @@ export interface UsePresentationThumbnailsParams {
 
   /** True while canvas drag/move/resize (or chart value drag) is in progress — defer thumbnail PNG until idle. */
   canvasGeometryInteractionActive?: boolean;
+  /** Parent receives synchronous pause API (before React state commits on pan mousedown). */
+  presentationThumbnailInteractionRef?: MutableRefObject<
+    PresentationThumbnailInteractionRef | null
+  >;
+}
+
+export interface PresentationThumbnailInteractionRef {
+  pauseForCanvasInteraction: () => void;
 }
 
 export interface UsePresentationThumbnailsResult {
@@ -102,11 +110,13 @@ export function usePresentationThumbnails({
   setActivePresentationSlideId,
   setPresentationDraftDiagram,
   canvasGeometryInteractionActive = false,
+  presentationThumbnailInteractionRef,
 }: UsePresentationThumbnailsParams): UsePresentationThumbnailsResult {
   const { resolvedTheme } = useTheme();
   const presentationThumbCaptureInFlightRef = React.useRef(false);
-  const canvasGeometryInteractionActiveRef = React.useRef(canvasGeometryInteractionActive);
-  canvasGeometryInteractionActiveRef.current = canvasGeometryInteractionActive;
+  const canvasGeometryInteractionActiveRef = React.useRef(false);
+  /** True after sync pause until React props confirm interaction ended. */
+  const canvasGeometryInteractionSyncPausedRef = React.useRef(false);
   /** Bumped when canvas interaction starts — stale in-flight captures must not apply or chain. */
   const presentationThumbCaptureGenerationRef = React.useRef(0);
   const prevCanvasGeometryInteractionActiveRef = React.useRef(false);
@@ -192,15 +202,22 @@ export function usePresentationThumbnails({
   const shouldApplyPresentationThumbnailCapture = React.useCallback(
     (captureGeneration: number) =>
       !canvasGeometryInteractionActiveRef.current &&
+      !editorRef.current?.isCanvasPerfInteractionActive?.() &&
       captureGeneration === presentationThumbCaptureGenerationRef.current,
-    [],
+    [editorRef],
   );
+
+  const isThumbnailCaptureBlockedByCanvasInteraction = React.useCallback(() => {
+    if (canvasGeometryInteractionActiveRef.current) return true;
+    if (editorRef.current?.isCanvasPerfInteractionActive?.()) return true;
+    return false;
+  }, [editorRef]);
 
   const runPresentationThumbnailCaptureIfNeeded =
     React.useCallback(async () => {
       if (presentationThumbBackfillRunningRef.current) return;
       if (presentationThumbCaptureInFlightRef.current) return;
-      if (canvasGeometryInteractionActiveRef.current) return;
+      if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
       if (!editorRef.current?.captureSnapshotPng) return;
 
       const ctx = presentationThumbCtxRef.current;
@@ -398,6 +415,7 @@ export function usePresentationThumbnails({
       resolvedTheme,
       setPresentationDecks,
       shouldApplyPresentationThumbnailCapture,
+      isThumbnailCaptureBlockedByCanvasInteraction,
     ]);
 
   const runPresentationThumbnailCaptureRef = React.useRef(
@@ -415,10 +433,35 @@ export function usePresentationThumbnails({
     }
   }, []);
 
+  const pauseForCanvasInteraction = React.useCallback(() => {
+    canvasGeometryInteractionSyncPausedRef.current = true;
+    canvasGeometryInteractionActiveRef.current = true;
+    cancelPendingDebouncedThumbnailCapture();
+    presentationThumbCaptureGenerationRef.current += 1;
+  }, [cancelPendingDebouncedThumbnailCapture]);
+
+  React.useLayoutEffect(() => {
+    if (!presentationThumbnailInteractionRef) return;
+    presentationThumbnailInteractionRef.current = { pauseForCanvasInteraction };
+  }, [presentationThumbnailInteractionRef, pauseForCanvasInteraction]);
+
+  React.useLayoutEffect(() => {
+    if (canvasGeometryInteractionActive) {
+      canvasGeometryInteractionSyncPausedRef.current = false;
+      canvasGeometryInteractionActiveRef.current = true;
+      return;
+    }
+    if (canvasGeometryInteractionSyncPausedRef.current) {
+      canvasGeometryInteractionActiveRef.current = true;
+      return;
+    }
+    canvasGeometryInteractionActiveRef.current = false;
+  }, [canvasGeometryInteractionActive]);
+
   const scheduleIdlePresentationThumbnailCapture = React.useCallback(
     (immediate: boolean) => {
       cancelPendingDebouncedThumbnailCapture();
-      if (canvasGeometryInteractionActiveRef.current) return;
+      if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
 
       if (immediate) {
         void runPresentationThumbnailCaptureRef.current();
@@ -427,11 +470,11 @@ export function usePresentationThumbnails({
 
       presentationThumbDebounceTimerRef.current = window.setTimeout(() => {
         presentationThumbDebounceTimerRef.current = null;
-        if (canvasGeometryInteractionActiveRef.current) return;
+        if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
         void runPresentationThumbnailCaptureRef.current();
       }, PRESENTATION_THUMB_DEBOUNCE_MS);
     },
-    [cancelPendingDebouncedThumbnailCapture],
+    [cancelPendingDebouncedThumbnailCapture, isThumbnailCaptureBlockedByCanvasInteraction],
   );
 
   const scheduleIdlePresentationThumbnailCaptureRef = React.useRef(
@@ -442,11 +485,11 @@ export function usePresentationThumbnails({
 
   const trySchedulePendingContentThumbnailCapture = React.useCallback(() => {
     if (!activePresentationDeckId) return;
-    if (canvasGeometryInteractionActiveRef.current) return;
+    if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
     if (!presentationThumbPendingContentCaptureRef.current) return;
     presentationThumbPendingContentCaptureRef.current = false;
     scheduleIdlePresentationThumbnailCaptureRef.current(false);
-  }, [activePresentationDeckId]);
+  }, [activePresentationDeckId, isThumbnailCaptureBlockedByCanvasInteraction]);
 
   const trySchedulePendingContentThumbnailCaptureRef = React.useRef(
     trySchedulePendingContentThumbnailCapture,
@@ -547,11 +590,11 @@ export function usePresentationThumbnails({
     if (!activePresentationDeckId) return;
 
     const id = window.setInterval(() => {
-      if (canvasGeometryInteractionActiveRef.current) return;
+      if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
       void runPresentationThumbnailCaptureRef.current();
     }, PRESENTATION_THUMB_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [activePresentationDeckId]);
+  }, [activePresentationDeckId, isThumbnailCaptureBlockedByCanvasInteraction]);
 
   const captureOutgoingSlideThumbnailIfNeeded = React.useCallback(async () => {
     if (presentationThumbBackfillRunningRef.current) return;

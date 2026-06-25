@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-06-25 – Presentation thumbnails: sync pause on right-click pan hold
+Right-click pan mousedown calls **`pauseForCanvasInteraction`** synchronously (via **`presentationThumbnailInteractionRef`**) before React state updates — debounce/interval timers cannot fire while **`data-perf-interacting`** shadow suppression is active. Capture also checks **`isCanvasPerfInteractionActive()`** on the canvas handle. Patch bumped.
+
 ### 2026-06-25 – Presentation thumbnails: no regen on canvas pan / perf shadows
 Pan/zoom no longer schedules strip PNG refresh: debounce runs only when **`buildPresentationThumbnailDiagramContentKey`** changes (not when **`canvasGeometryInteractionActive`** ends). Pan notifies parent synchronously via **`onPanSessionChange`** → **`onCanvasGeometrySessionChange`**. **`captureSnapshotPng`** waits for **`data-perf-interacting`** idle before PNG so shadow-suppressed drag frames are never captured. Master slide rebase ignores **`viewState`-only edits. Patch bumped.
 

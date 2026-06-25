@@ -134,6 +134,7 @@ import { useDiagramEditorClientBootstrap } from '@/hooks/use-diagram-editor-clie
 import { usePresentationSlideViewportSync } from '@/hooks/use-presentation-slide-viewport-sync';
 import { useDiagramEditorOptionPersistence } from '@/hooks/use-diagram-editor-option-persistence';
 import { usePresentationThumbnails } from '@/hooks/use-presentation-thumbnails';
+import type { PresentationThumbnailInteractionRef } from '@/hooks/use-presentation-thumbnails';
 import { createDiagramSaveHandler } from '@/lib/diagram-editor/diagram-editor-save-handler';
 import {
   buildEditDiagramFromUserDefinedObject,
@@ -307,8 +308,38 @@ export default function DiagramEditor() {
   const [chartValueDragActive, setChartValueDragActive] = React.useState(false);
   /** Resize / rotation on canvas (EditorCanvas session counter); combined with drag for thumbnail deferral. */
   const [canvasGeometrySessionActive, setCanvasGeometrySessionActive] = React.useState(false);
+  const presentationThumbnailInteractionRef =
+    React.useRef<PresentationThumbnailInteractionRef | null>(null);
   const canvasGeometryInteractionActive =
     isDragging || chartValueDragActive || canvasGeometrySessionActive;
+
+  const pausePresentationThumbnailsForCanvasInteraction = React.useCallback(() => {
+    presentationThumbnailInteractionRef.current?.pauseForCanvasInteraction();
+  }, []);
+
+  const handleCanvasGeometrySessionChange = React.useCallback(
+    (active: boolean) => {
+      if (active) pausePresentationThumbnailsForCanvasInteraction();
+      setCanvasGeometrySessionActive(active);
+    },
+    [pausePresentationThumbnailsForCanvasInteraction],
+  );
+
+  const handleCanvasDraggingChange = React.useCallback(
+    (dragging: boolean) => {
+      if (dragging) pausePresentationThumbnailsForCanvasInteraction();
+      setIsDragging(dragging);
+    },
+    [pausePresentationThumbnailsForCanvasInteraction],
+  );
+
+  const handleChartValueDragSessionChange = React.useCallback(
+    (active: boolean) => {
+      if (active) pausePresentationThumbnailsForCanvasInteraction();
+      setChartValueDragActive(active);
+    },
+    [pausePresentationThumbnailsForCanvasInteraction],
+  );
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const mermaidInputRef = React.useRef<HTMLInputElement>(null);
@@ -2403,6 +2434,7 @@ export default function DiagramEditor() {
     setActivePresentationSlideId,
     setPresentationDraftDiagram,
     canvasGeometryInteractionActive,
+    presentationThumbnailInteractionRef,
   });
 
   const activeStripSlideIndex =
@@ -5467,9 +5499,9 @@ export default function DiagramEditor() {
         disconnectSelected={disconnectSelected}
         handleLabelUpdate={handleLabelUpdate}
         handleTagUpdate={handleTagUpdate}
-        setIsDragging={setIsDragging}
-        setChartValueDragActive={setChartValueDragActive}
-        setCanvasGeometrySessionActive={setCanvasGeometrySessionActive}
+        setIsDragging={handleCanvasDraggingChange}
+        setChartValueDragActive={handleChartValueDragSessionChange}
+        setCanvasGeometrySessionActive={handleCanvasGeometrySessionChange}
         setCanPaste={setCanPaste}
         setMousePosition={setMousePositionForIdle}
         handleGroupItems={handleGroupItems}
