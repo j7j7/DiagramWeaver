@@ -37,6 +37,7 @@ Canonical narrative: **README → Development → Project Structure**. Update th
 │   │   └── theme-toggle.tsx
 │   ├── hooks/
 │   ├── lib/
+│   │   ├── canvas-guide-lines.ts   # ruler guide coords + export strip helper
 │   │   └── diagram-editor/  # extracted editor helpers
 │   └── types/               # ambient .d.ts only; domain types in lib/types.ts
 ├── AGENTS.md

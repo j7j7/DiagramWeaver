@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-06-25 – Ruler guide lines (horizontal / vertical)
+Persistent semi-transparent green guide lines stored on **`DiagramData.canvasGuideLines`**. Drag from the top ruler (vertical) or left ruler (horizontal) to place; hover to move, **Delete** to remove. **Options → Show/Hide Guide Lines** toggles visibility (persisted **`dw:rulerGuides:enabled`**). Hidden in presentation play mode and stripped from PNG/GIF export clones via **`hideCanvasGuideLinesInExportClone`** (`data-canvas-guide-lines`). Components: **`canvas-ruler-guide-creator.tsx`**, **`canvas-guide-lines-overlay.tsx`**, **`lib/canvas-guide-lines.ts`**.
+
 ### 2026-06-25 – Options: Component Sidebar mode (disabled / enabled / auto)
 **Options → Component Sidebar** submenu with **Disabled** (hidden, rulers at left edge), **Enabled** (manual expand/collapse), **Auto** (collapsed + left-edge peek on desktop). Persisted as **`dw:leftSidebar:mode`**; legacy **`dw:leftSidebar:autoCollapse:enabled`** maps to **auto** / **enabled**. **`left-sidebar-mode.ts`**. Patch bumped.
 

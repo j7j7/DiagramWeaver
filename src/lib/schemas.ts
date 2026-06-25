@@ -907,12 +907,19 @@ const UserDefinedObjectSchema = z.object({
   updatedAt: z.number(),
 });
 
+const CanvasGuideLineSchema = z.object({
+  id: z.string(),
+  orientation: z.enum(["horizontal", "vertical"]),
+  position: z.number(),
+});
+
 const DiagramDataSchemaInner = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
   groupings: z.array(DiagramGroupingDataSchema).optional(),
   layers: LayersConfigSchema.optional(),
   recentColors: z.array(z.string()).optional(),
+  canvasGuideLines: z.array(CanvasGuideLineSchema).optional(),
   /** Optional canvas viewport background (CSS colour string) */
   canvasBackgroundColor: z.string().optional(),
   /** Diagram-wide dynamic text variables: `%key%` in labels resolves to these values at display time */

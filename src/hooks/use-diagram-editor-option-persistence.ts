@@ -15,6 +15,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   defaultTextLabelsEnabled: boolean;
   alignmentGuidesEnabled: boolean;
   dotGridEnabled: boolean;
+  rulerGuidesEnabled: boolean;
   connectionsBehindNodesEnabled: boolean;
   animationConnectionsUserEnabled: boolean;
   animationToggleOnClickEnabled: boolean;
@@ -27,6 +28,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   setMetadataPopupsEnabled: Dispatch<SetStateAction<boolean>>;
   setAlignmentGuidesEnabled: Dispatch<SetStateAction<boolean>>;
   setDotGridEnabled: Dispatch<SetStateAction<boolean>>;
+  setRulerGuidesEnabled: Dispatch<SetStateAction<boolean>>;
   setConnectionsBehindNodesEnabled: Dispatch<SetStateAction<boolean>>;
   setAnimationConnectionsUserEnabled: Dispatch<SetStateAction<boolean>>;
   setAnimationToggleOnClickEnabled: Dispatch<SetStateAction<boolean>>;
@@ -45,6 +47,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     defaultTextLabelsEnabled,
     alignmentGuidesEnabled,
     dotGridEnabled,
+    rulerGuidesEnabled,
     connectionsBehindNodesEnabled,
     animationConnectionsUserEnabled,
     animationToggleOnClickEnabled,
@@ -57,6 +60,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setMetadataPopupsEnabled,
     setAlignmentGuidesEnabled,
     setDotGridEnabled,
+    setRulerGuidesEnabled,
     setConnectionsBehindNodesEnabled,
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
@@ -95,6 +99,12 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
   }, [dotGridEnabled, isClient]);
 
   useEffect(() => {
+    if (isClient) {
+      setBooleanDebounced("dw:rulerGuides:enabled", rulerGuidesEnabled);
+    }
+  }, [rulerGuidesEnabled, isClient]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const savedCollapsed = getItemSafe("dw:propertiesPanel:collapsed");
     if (savedCollapsed !== null) setRightPanelCollapsed(savedCollapsed === "true");
@@ -106,6 +116,8 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     if (savedGuides !== null) setAlignmentGuidesEnabled(savedGuides !== "false");
     const savedDotGrid = getItemSafe("dw:dotGrid:enabled");
     if (savedDotGrid !== null) setDotGridEnabled(savedDotGrid !== "false");
+    const savedRulerGuides = getItemSafe("dw:rulerGuides:enabled");
+    if (savedRulerGuides !== null) setRulerGuidesEnabled(savedRulerGuides !== "false");
     const savedConnectionsBehind = getItemSafe("dw:connectionsBehindNodes:enabled");
     if (savedConnectionsBehind !== null) setConnectionsBehindNodesEnabled(savedConnectionsBehind !== "false");
     const savedAnimationConnections = getItemSafe("dw:animationConnections:enabled");
@@ -133,6 +145,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setMetadataPopupsEnabled,
     setAlignmentGuidesEnabled,
     setDotGridEnabled,
+    setRulerGuidesEnabled,
     setConnectionsBehindNodesEnabled,
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,

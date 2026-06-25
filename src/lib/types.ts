@@ -1263,6 +1263,16 @@ export interface DiagramData {
   globalProperties?: Record<string, string>;
   /** Definitions for user-defined objects used on this diagram (embedded on save). */
   userDefinedObjects?: Record<string, UserDefinedObject>;
+  /** Persistent ruler guide lines (horizontal or vertical) in diagram coordinates. */
+  canvasGuideLines?: CanvasGuideLine[];
+}
+
+/** User-placed horizontal or vertical guide line from canvas rulers. */
+export interface CanvasGuideLine {
+  id: string;
+  orientation: "horizontal" | "vertical";
+  /** Diagram-space x (vertical) or y (horizontal). */
+  position: number;
 }
 
 /** @deprecated Zones removed - kept only for flatten-on-import of legacy JSON */

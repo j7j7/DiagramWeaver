@@ -312,6 +312,7 @@ export default function DiagramEditor() {
   const [defaultTextLabelsEnabled, setDefaultTextLabelsEnabled] = React.useState<boolean>(true);
   const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(true);
   const [dotGridEnabled, setDotGridEnabled] = React.useState<boolean>(true);
+  const [rulerGuidesEnabled, setRulerGuidesEnabled] = React.useState<boolean>(true);
   const [simplifyFillsDuringCanvasDragEnabled, setSimplifyFillsDuringCanvasDragEnabled] =
     React.useState<boolean>(true);
   const [
@@ -5147,6 +5148,7 @@ export default function DiagramEditor() {
     defaultTextLabelsEnabled,
     alignmentGuidesEnabled,
     dotGridEnabled,
+    rulerGuidesEnabled,
     connectionsBehindNodesEnabled,
     animationConnectionsUserEnabled,
     animationToggleOnClickEnabled,
@@ -5159,6 +5161,7 @@ export default function DiagramEditor() {
     setMetadataPopupsEnabled,
     setAlignmentGuidesEnabled,
     setDotGridEnabled,
+    setRulerGuidesEnabled,
     setConnectionsBehindNodesEnabled,
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
@@ -5328,6 +5331,8 @@ export default function DiagramEditor() {
         setAlignmentGuidesEnabled={setAlignmentGuidesEnabled}
         dotGridEnabled={dotGridEnabled}
         setDotGridEnabled={setDotGridEnabled}
+        rulerGuidesEnabled={rulerGuidesEnabled}
+        setRulerGuidesEnabled={setRulerGuidesEnabled}
         simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
         setSimplifyFillsDuringCanvasDragEnabled={setSimplifyFillsDuringCanvasDragEnabled}
         suppressShadowsOnAllObjectsDuringCanvasDragEnabled={

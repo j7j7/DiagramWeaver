@@ -100,15 +100,22 @@ import {
   sortObjectIdsByDistanceFromAnchor,
 } from "@/lib/auto-number-labels";
 import { CanvasRotationOverlay } from "./canvas-rotation-overlay";
-import { measureNodeDims } from "./canvas-constants";
+import { measureNodeDims, snapToGrid } from "./canvas-constants";
 import { getNodeClickThroughBounds, isDiagramPointOnNode } from "@/lib/shape-to-polygon";
 import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
 import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
 import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
 import { SearchResourcesModal } from "./search-resources-modal";
 import { MetadataPopup } from "./metadata-popup";
-import { snapToGrid } from "./canvas-constants";
+import { isEventFromEditableElement } from "@/lib/keyboard-utils";
+import {
+  addCanvasGuideLine,
+  removeCanvasGuideLine,
+} from "@/lib/canvas-guide-lines";
+import type { CanvasGuideLine } from "@/lib/types";
 import { CanvasDotGridOverlay } from "./canvas-dot-grid-overlay";
+import { CanvasGuideLinesOverlay } from "./canvas-guide-lines-overlay";
+import { CanvasRulerGuideCreator } from "./canvas-ruler-guide-creator";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { cn, isConnectorLikeSpineNodeType, isConnectorLineNodeType, isMindmapNodeType, isTimelineNodeType } from "@/lib/utils";
 import { shapeSwapMenuOptions, swapDiagramNodeObjectKind, type SwappableObjectKind } from "@/lib/shape-type-swap";
@@ -133,7 +140,6 @@ import {
   insertConnectorLinePointAfterVertexIndex,
 } from "@/lib/line-curve-path";
 import { syncClosedConnectorLineBorderWidth } from "@/lib/line-styling";
-import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { canUniformSpacingAlign } from "@/lib/uniform-spacing-align";
 import {
@@ -504,6 +510,8 @@ interface EditorCanvasProps {
   wheelZoomSuppressed?: boolean;
   /** When false, canvas background has no dot grid (e.g. presentation play mode overlay). Default true. */
   showDotGrid?: boolean;
+  /** When false, ruler guide lines are hidden (e.g. presentation play mode). Default true. */
+  showRulerGuides?: boolean;
   /** Built-in `%day%`, `%slide%`, etc. and expression evaluation context. */
   globalVariableContext?: GlobalVariableContext;
   /** Width of the left component sidebar overlay — offsets canvas rulers to its right edge. */
@@ -536,7 +544,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onViewportCullStatsChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, simplifyFillsDuringCanvasDragEnabled = true, suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, globalVariableContext, leftSidebarInsetPx = 0 }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onViewportCullStatsChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, simplifyFillsDuringCanvasDragEnabled = true, suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, showRulerGuides = true, globalVariableContext, leftSidebarInsetPx = 0 }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -2027,6 +2035,71 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onCloseConnectionSettingsPanel: onResetConnectionSettingsTrigger,
   });
 
+  const [selectedCanvasGuideId, setSelectedCanvasGuideId] = useState<string | null>(null);
+
+  const handleCanvasGuidesChange = useCallback(
+    (guides: CanvasGuideLine[]) => {
+      setDiagramData((prev) => ({ ...prev, canvasGuideLines: guides }));
+    },
+    [setDiagramData],
+  );
+
+  const handleSelectCanvasGuide = useCallback(
+    (guideId: string | null) => {
+      setSelectedCanvasGuideId(guideId);
+      if (guideId) {
+        setSelectedItemIds(new Set());
+        setSelectedItem(null);
+        onItemSelect?.(null);
+      }
+    },
+    [onItemSelect, setSelectedItem, setSelectedItemIds],
+  );
+
+  const handleCreateCanvasGuide = useCallback(
+    (guide: CanvasGuideLine) => {
+      setDiagramData((prev) => ({
+        ...prev,
+        canvasGuideLines: addCanvasGuideLine(prev.canvasGuideLines, guide),
+      }));
+      setSelectedCanvasGuideId(guide.id);
+      setSelectedItemIds(new Set());
+      setSelectedItem(null);
+      onItemSelect?.(null);
+    },
+    [onItemSelect, setDiagramData, setSelectedItem, setSelectedItemIds],
+  );
+
+  const handleCanvasClickWithGuideClear = useCallback(
+    (e: React.MouseEvent) => {
+      setSelectedCanvasGuideId(null);
+      handleCanvasClick(e);
+    },
+    [handleCanvasClick],
+  );
+
+  useEffect(() => {
+    if (selectedItemId || selectedItemIds.size > 0) {
+      setSelectedCanvasGuideId(null);
+    }
+  }, [selectedItemId, selectedItemIds]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!selectedCanvasGuideId || isReadOnly) return;
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      if (isEventFromEditableElement(e)) return;
+      e.preventDefault();
+      setDiagramData((prev) => ({
+        ...prev,
+        canvasGuideLines: removeCanvasGuideLine(prev.canvasGuideLines, selectedCanvasGuideId),
+      }));
+      setSelectedCanvasGuideId(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isReadOnly, selectedCanvasGuideId, setDiagramData]);
+
   // ============================================================================
   // HOOK: useCanvasInteractions
   // ============================================================================
@@ -3299,6 +3372,18 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             leftOffset={leftSidebarInsetPx}
           />
         )}
+        {showRulerGuides &&
+          !isReadOnly &&
+          canvasDimensions.width > 0 &&
+          canvasDimensions.height > 0 && (
+            <CanvasRulerGuideCreator
+              transform={transform}
+              rulerSize={RULER_SIZE}
+              leftOffset={leftSidebarInsetPx}
+              canvasRef={canvasRef}
+              onCreateGuide={handleCreateCanvasGuide}
+            />
+          )}
         
         {/* ========================================================================
             MAIN CANVAS CONTAINER
@@ -3318,7 +3403,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           }
           className={cn("relative w-full h-full overflow-hidden", !useCustomCanvasBg && "bg-background")}
           style={useCustomCanvasBg ? { backgroundColor: customCanvasBg } : undefined}
-          onClick={handleCanvasClick}
+          onClick={handleCanvasClickWithGuideClear}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUpOrLeave}
@@ -3379,7 +3464,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           >
           <div
             data-diagram-layer
-            className="relative"
+            className="relative overflow-visible"
             style={{
               width: `${width}px`,
               height: `${height}px`,
@@ -4130,6 +4215,22 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               height={height}
               transform={transform}
             />
+
+            {showRulerGuides && (diagramData.canvasGuideLines?.length ?? 0) > 0 && (
+              <CanvasGuideLinesOverlay
+                guides={diagramData.canvasGuideLines ?? []}
+                contentWidth={width}
+                contentHeight={height}
+                viewportWidth={canvasDimensions.width}
+                viewportHeight={canvasDimensions.height}
+                transform={transform}
+                canvasRef={canvasRef}
+                selectedGuideId={selectedCanvasGuideId}
+                onSelectGuide={handleSelectCanvasGuide}
+                onGuidesChange={handleCanvasGuidesChange}
+                isReadOnly={isReadOnly}
+              />
+            )}
           </div>
           </GlobalPropertiesProvider>
 

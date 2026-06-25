@@ -215,6 +215,8 @@ export function DiagramEditorInner({
   setAlignmentGuidesEnabled,
   dotGridEnabled,
   setDotGridEnabled,
+  rulerGuidesEnabled,
+  setRulerGuidesEnabled,
   simplifyFillsDuringCanvasDragEnabled,
   setSimplifyFillsDuringCanvasDragEnabled,
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
@@ -585,6 +587,8 @@ export function DiagramEditorInner({
                     onToggleAlignmentGuides={() => setAlignmentGuidesEnabled(!alignmentGuidesEnabled)}
                     dotGridEnabled={dotGridEnabled}
                     onToggleDotGrid={() => setDotGridEnabled(!dotGridEnabled)}
+                    rulerGuidesEnabled={rulerGuidesEnabled}
+                    onToggleRulerGuides={() => setRulerGuidesEnabled(!rulerGuidesEnabled)}
                     simplifyFillsDuringCanvasDragEnabled={simplifyFillsDuringCanvasDragEnabled}
                     onToggleSimplifyFillsDuringCanvasDrag={() =>
                       setSimplifyFillsDuringCanvasDragEnabled(!simplifyFillsDuringCanvasDragEnabled)
@@ -900,6 +904,7 @@ export function DiagramEditorInner({
                     onOpenZOrderList={openZOrderList}
                     wheelZoomSuppressed={zOrderListModal.open}
                     showDotGrid={dotGridEnabled && !presentationPlayerOpen}
+                    showRulerGuides={rulerGuidesEnabled && !presentationPlayerOpen}
                     visualStylingPanelOpen={visualStylingPanelOpen}
                     leftSidebarInsetPx={leftSidebarInsetPx}
                     />

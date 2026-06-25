@@ -12,6 +12,7 @@ import {
 } from 'html-to-image/es/util.js';
 import type { Options } from 'html-to-image/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
+import { hideCanvasGuideLinesInExportClone } from '@/lib/canvas-guide-lines';
 import { hideDotGridOverlayInExportClone } from '@/lib/dot-grid-viewport';
 
 const DW_SELECTION_ITEM_IDS_KEY = '_dwSelectionItemIds' as const;
@@ -660,6 +661,7 @@ export async function toPngWithDiagramExportFixes(
     throw new Error('html-to-image clone failed');
   }
   hideDotGridOverlayInExportClone(clonedNode as HTMLElement);
+  hideCanvasGuideLinesInExportClone(clonedNode as HTMLElement);
   const fontEmbedCSS = await buildExportFontEmbedCss(node, exportOptions);
   injectExportFontEmbedCss(clonedNode as HTMLElement, fontEmbedCSS);
   await embedImages(clonedNode, exportOptions);

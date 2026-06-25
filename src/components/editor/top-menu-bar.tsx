@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save, Ruler } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -229,6 +229,8 @@ interface TopMenuBarProps {
   onToggleAlignmentGuides?: () => void;
   dotGridEnabled?: boolean;
   onToggleDotGrid?: () => void;
+  rulerGuidesEnabled?: boolean;
+  onToggleRulerGuides?: () => void;
   simplifyFillsDuringCanvasDragEnabled?: boolean;
   onToggleSimplifyFillsDuringCanvasDrag?: () => void;
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled?: boolean;
@@ -367,6 +369,8 @@ export function TopMenuBar({
   onToggleAlignmentGuides,
   dotGridEnabled = true,
   onToggleDotGrid,
+  rulerGuidesEnabled = true,
+  onToggleRulerGuides,
   simplifyFillsDuringCanvasDragEnabled = true,
   onToggleSimplifyFillsDuringCanvasDrag,
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true,
@@ -948,6 +952,21 @@ export function TopMenuBar({
                 <MenubarItem onClick={onToggleDotGrid}>
                   <Grid3x3 className="mr-2 h-4 w-4" />
                   {dotGridEnabled ? 'Hide Dot Grid' : 'Show Dot Grid'}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleRulerGuides !== undefined && (
+              <>
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleRulerGuides}>
+                  <Ruler className="mr-2 h-4 w-4" />
+                  {rulerGuidesEnabled ? 'Hide Guide Lines' : 'Show Guide Lines'}
                 </MenubarItem>
               </>
             )}
