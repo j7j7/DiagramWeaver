@@ -17,6 +17,7 @@
  */
 
 import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { flushSync } from "react-dom";
 import { createPortal } from "react-dom";
 import { Check, Minus, X } from "lucide-react";
 import { DiagramNode } from "../diagram/diagram-node";
@@ -43,6 +44,7 @@ import { useCanvasDragDrop } from "@/hooks/use-canvas-drag-drop";
 import { useCanvasClipboard } from "@/hooks/use-canvas-clipboard";
 import { pasteSpecialFamiliesCompatible } from "@/lib/paste-special-properties";
 import { useCanvasExport } from "@/hooks/use-canvas-export";
+import { waitTwoAnimationFrames } from "@/lib/diagram-editor/editor-support";
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
 import { useInteractionRecordingMenuReplay } from "@/hooks/use-interaction-recording-menu-replay";
 import { useInteractionRecordingCanvasReplay } from "@/hooks/use-interaction-recording-canvas-replay";
@@ -550,6 +552,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
+  /** Disable viewport culling while snapshot PNG runs so off-screen items mount for capture. */
+  const [snapshotCaptureActive, setSnapshotCaptureActive] = React.useState(false);
 
   // ============================================================================
   // LAYOUT CALCULATION
@@ -1771,7 +1775,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     transform,
     viewportWidth: canvasDimensions.width,
     viewportHeight: canvasDimensions.height,
-    enabled: gifExportAnimationTimeSeconds === null,
+    enabled: gifExportAnimationTimeSeconds === null && !snapshotCaptureActive,
     forceIncludeItemIds: forceViewportIncludeItemIds,
     forceIncludeConnectionIndices: forceViewportIncludeConnectionIndices,
   });
@@ -1928,6 +1932,29 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     selectedItemIds,
     onGifAnimationTimeUpdate: setGifExportAnimationTimeSeconds,
   });
+
+  const captureSnapshotPngWithFullDiagram = useCallback(
+    async (options?: {
+      backgroundColor?: 'transparent' | 'white' | 'dark';
+      quality?: 'low' | 'medium' | 'high';
+      fitContent?: boolean;
+      unionDiagrams?: DiagramData[];
+      fitPadding?: number;
+      tightContentFrame?: boolean;
+      frameBorderPx?: number;
+    }) => {
+      flushSync(() => {
+        setSnapshotCaptureActive(true);
+      });
+      try {
+        await waitTwoAnimationFrames();
+        return await captureViewportPngDataUrl(options);
+      } finally {
+        setSnapshotCaptureActive(false);
+      }
+    },
+    [captureViewportPngDataUrl],
+  );
 
   const canAutoNumberLabels = useMemo(
     () => collectObjectIdsInSelectionOrder(selectedItemIds, diagramData).length >= 2,
@@ -2144,6 +2171,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     isConnectMode,
     onMousePositionChange,
   });
+
+  const prevIsPanningRef = useRef(false);
+  useEffect(() => {
+    if (isPanning && !prevIsPanningRef.current) {
+      notifyCanvasGeometrySessionChange(true);
+    } else if (!isPanning && prevIsPanningRef.current) {
+      notifyCanvasGeometrySessionChange(false);
+    }
+    prevIsPanningRef.current = isPanning;
+  }, [isPanning, notifyCanvasGeometrySessionChange]);
 
   const suppressContextMenuIfRightClickPanned = useCallback((e: React.MouseEvent) => {
     if (wasLastRightClickAPan()) {
@@ -3372,12 +3409,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       fitPadding?: number;
       tightContentFrame?: boolean;
       frameBorderPx?: number;
-    }) => captureViewportPngDataUrl(options),
+    }) => captureSnapshotPngWithFullDiagram(options),
     copy: copyHandler, // Copies selected item(s)
     paste: pasteHandler, // Pastes from clipboard
     canPaste: canPasteHandler, // Checks if paste is available
     pastePaletteItem: pastePaletteItemHandler, // Pastes a new item from the sidebar palette
-  }), [handleFitToView, exportPng, exportGif, captureViewportPngDataUrl, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
+  }), [handleFitToView, exportPng, exportGif, captureSnapshotPngWithFullDiagram, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
 
   const customCanvasBg = diagramData.canvasBackgroundColor?.trim();
   const useCustomCanvasBg = Boolean(customCanvasBg);

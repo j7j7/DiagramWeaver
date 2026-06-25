@@ -119,6 +119,7 @@ import {
   createPaletteItem,
   presentationThumbnailCaptureBackground,
   PRESENTATION_THUMB_CAPTURE_QUALITY,
+  diagramForPresentationThumbnailFingerprint,
   withPresentationThumbnailThemeFingerprintTag,
 } from '@/lib/diagram-editor/editor-support';
 import { useTheme } from '@/components/theme-provider';
@@ -582,7 +583,12 @@ export default function DiagramEditor() {
         mode === 'master' || slideIdx <= 0
           ? masterRaw
           : cumulativeDiagramThroughSlideIndex(masterRaw, deck.slides, slideIdx - 1);
-      const fpCore = JSON.stringify(computeDiagramDelta(baseForFp, nextDraft));
+      const fpCore = JSON.stringify(
+        computeDiagramDelta(
+          diagramForPresentationThumbnailFingerprint(baseForFp),
+          diagramForPresentationThumbnailFingerprint(nextDraft),
+        ),
+      );
       presentationThumbDeltaFingerprintBySlideRef.current[`${activePresentationDeckId}:${activePresentationSlideId}`] =
         withPresentationThumbnailThemeFingerprintTag(fpCore, resolvedTheme);
       presentationThumbFingerprintSlideKeyRef.current =

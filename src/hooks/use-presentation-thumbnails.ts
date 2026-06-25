@@ -23,6 +23,8 @@ import {
   PRESENTATION_THUMB_INTERVAL_MS,
   PRESENTATION_THUMB_DEBOUNCE_MS,
   PRESENTATION_THUMB_CAPTURE_QUALITY,
+  buildPresentationThumbnailDiagramContentKey,
+  diagramForPresentationThumbnailFingerprint,
   presentationThumbnailCaptureBackground,
   withPresentationThumbnailThemeFingerprintTag,
 } from "@/lib/diagram-editor/editor-support";
@@ -160,16 +162,21 @@ export function usePresentationThumbnails({
       const fpCore =
         mode === 'master' || slideIdxFp <= 0
           ? JSON.stringify(
-              computeDiagramDelta(masterRaw, draft),
+              computeDiagramDelta(
+                diagramForPresentationThumbnailFingerprint(masterRaw),
+                diagramForPresentationThumbnailFingerprint(draft),
+              ),
             )
           : JSON.stringify(
               computeDiagramDelta(
+                diagramForPresentationThumbnailFingerprint(
                   cumulativeDiagramThroughSlideIndex(
                     masterRaw,
                     slidesFp,
                     slideIdxFp - 1,
                   ),
-                draft,
+                ),
+                diagramForPresentationThumbnailFingerprint(draft),
               ),
             );
       presentationThumbDeltaFingerprintBySlideRef.current[slideKey] =
@@ -200,7 +207,7 @@ export function usePresentationThumbnails({
       presentationThumbCaptureInFlightRef.current = true;
       try {
         const thumbBg = presentationThumbnailCaptureBackground(resolvedTheme);
-        const visibleMain = projectVisibleDiagram(ctx.tab);
+        const visibleMain = diagramForPresentationThumbnailFingerprint(ctx.tab);
         let baseFingerprint: string | null = null;
         try {
           baseFingerprint = withPresentationThumbnailThemeFingerprintTag(
@@ -293,7 +300,10 @@ export function usePresentationThumbnails({
           const slideIdx = slidesForFp.findIndex((s) => s.id === ctxSlide.slideId);
           if (mode === "master" || slideIdx <= 0) {
             deltaFpCore = JSON.stringify(
-              computeDiagramDelta(masterRaw, draftRaw),
+              computeDiagramDelta(
+                diagramForPresentationThumbnailFingerprint(masterRaw),
+                diagramForPresentationThumbnailFingerprint(draftRaw),
+              ),
             );
           } else {
             const prevBase = cumulativeDiagramThroughSlideIndex(
@@ -303,8 +313,8 @@ export function usePresentationThumbnails({
             );
             deltaFpCore = JSON.stringify(
               computeDiagramDelta(
-                prevBase,
-                draftRaw,
+                diagramForPresentationThumbnailFingerprint(prevBase),
+                diagramForPresentationThumbnailFingerprint(draftRaw),
               ),
             );
           }
@@ -465,6 +475,15 @@ export function usePresentationThumbnails({
     cancelPendingDebouncedThumbnailCapture,
   ]);
 
+  const presentationThumbDiagramContentKey = React.useMemo(
+    () =>
+      buildPresentationThumbnailDiagramContentKey(
+        tabDiagramData,
+        presentationDraftDiagram,
+      ),
+    [tabDiagramData, presentationDraftDiagram],
+  );
+
   /** Tab main diagram + presentation draft edits — idle debounce only (includes after interaction ends). */
   React.useEffect(() => {
     if (!activePresentationDeckId) {
@@ -481,8 +500,7 @@ export function usePresentationThumbnails({
     };
   }, [
     activePresentationDeckId,
-    tabDiagramData,
-    presentationDraftDiagram,
+    presentationThumbDiagramContentKey,
     canvasGeometryInteractionActive,
     cancelPendingDebouncedThumbnailCapture,
   ]);
@@ -554,7 +572,8 @@ export function usePresentationThumbnails({
             if (cancelled) return;
 
             if (deck.slides[0]?.id === slide.id) {
-              const visibleMain = primaryThumbDiagram;
+              const visibleMain =
+                diagramForPresentationThumbnailFingerprint(primaryThumbDiagram);
               try {
                 const primaryPng =
                   await editorRef.current!.captureSnapshotPng!({
@@ -665,18 +684,20 @@ export function usePresentationThumbnails({
                   mode === "master" || slideIdxFp <= 0
                     ? JSON.stringify(
                         computeDiagramDelta(
-                          masterRaw,
-                          resolvedFullSlide,
+                          diagramForPresentationThumbnailFingerprint(masterRaw),
+                          diagramForPresentationThumbnailFingerprint(resolvedFullSlide),
                         ),
                       )
                     : JSON.stringify(
                         computeDiagramDelta(
-                          cumulativeDiagramThroughSlideIndex(
-                            masterRaw,
-                            deck.slides,
-                            slideIdxFp - 1,
+                          diagramForPresentationThumbnailFingerprint(
+                            cumulativeDiagramThroughSlideIndex(
+                              masterRaw,
+                              deck.slides,
+                              slideIdxFp - 1,
+                            ),
                           ),
-                          resolvedFullSlide,
+                          diagramForPresentationThumbnailFingerprint(resolvedFullSlide),
                         ),
                       );
                 presentationThumbDeltaFingerprintBySlideRef.current[

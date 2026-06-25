@@ -28,6 +28,35 @@ export function withPresentationThumbnailThemeFingerprintTag(
   return `${diagramFingerprint}\u007FthumbBg:${theme}`;
 }
 
+/**
+ * Diagram slice for thumbnail fingerprint / debounce keys — visible layers only, no pan/zoom
+ * (`viewState`). Panning persists viewState and toggles viewport culling without changing slide content.
+ */
+export function diagramForPresentationThumbnailFingerprint(
+  diagramData: DiagramData,
+): DiagramData {
+  const visible = projectVisibleDiagram(diagramData);
+  const { viewState: _viewState, ...content } = visible;
+  return content as DiagramData;
+}
+
+/** Stable key for scheduling thumbnail capture after diagram edits (ignores viewState). */
+export function buildPresentationThumbnailDiagramContentKey(
+  tabDiagram: DiagramData,
+  presentationDraft: DiagramData | null,
+): string {
+  try {
+    return JSON.stringify({
+      tab: diagramForPresentationThumbnailFingerprint(tabDiagram),
+      draft: presentationDraft
+        ? diagramForPresentationThumbnailFingerprint(presentationDraft)
+        : null,
+    });
+  } catch {
+    return '';
+  }
+}
+
 /** Stable when `activeTab.diagramData` is missing (legacy / corrupt rows). A fresh `{}` each render caused presentation master `useEffect` to loop. */
 export const EMPTY_TAB_DIAGRAM_FALLBACK: DiagramData = { nodes: [], connections: [], groupings: [] };
 

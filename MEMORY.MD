@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-06-25 – Presentation thumbnails: no regen on pan / viewport cull
+Pan/zoom no longer schedules strip PNG refresh: thumbnail debounce/fingerprints use **`diagramForPresentationThumbnailFingerprint`** / **`buildPresentationThumbnailDiagramContentKey`** (strips **`viewState`**, visible layers only). **`captureSnapshotPng`** disables viewport culling via **`snapshotCaptureActive`** + **`waitTwoAnimationFrames`** so off-screen items mount before capture. Canvas pan defers capture via **`onCanvasGeometrySessionChange`**. Patch bumped.
+
 ### 2026-06-25 – Presentation thumbnails: low capture quality
 Strip / snapshot **`captureSnapshotPng`** uses **`PRESENTATION_THUMB_CAPTURE_QUALITY`** **`'low'`** (`pixelRatio` **1**, was **`medium`** / **2**) in **`editor-support.ts`**, **`use-presentation-thumbnails`**, **`capturePresentationSlidePayload`**. Patch bumped.
 
