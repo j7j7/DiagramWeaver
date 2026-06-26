@@ -15,6 +15,22 @@ export const PRESENTATION_THUMB_DEBOUNCE_MS = 2500;
 /** `captureSnapshotPng` quality for presentation strip thumbnails (`pixelRatio` 1 vs 2 for medium). */
 export const PRESENTATION_THUMB_CAPTURE_QUALITY = 'low' as const;
 
+/** Options → enable presentation strip PNG refresh (default on). */
+export const PRESENTATION_THUMBNAIL_UPDATES_ENABLED_STORAGE_KEY =
+  'dw:presentationThumbnailUpdates:enabled';
+
+/** Read persisted Options preference (default **on** when unset). */
+export function readPresentationThumbnailUpdatesEnabledFromStorage(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const raw = window.localStorage.getItem(PRESENTATION_THUMBNAIL_UPDATES_ENABLED_STORAGE_KEY);
+    if (raw === null) return true;
+    return raw !== 'false';
+  } catch {
+    return true;
+  }
+}
+
 /** `captureViewportPngDataUrl`: light → white PNG background; dark → `#0f172a` (matches Tailwind slate). */
 export function presentationThumbnailCaptureBackground(theme: 'light' | 'dark'): 'white' | 'dark' {
   return theme === 'dark' ? 'dark' : 'white';

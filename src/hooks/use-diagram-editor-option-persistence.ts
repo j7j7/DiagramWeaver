@@ -21,6 +21,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   animationToggleOnClickEnabled: boolean;
   simplifyFillsDuringCanvasDragEnabled: boolean;
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled: boolean;
+  presentationThumbnailUpdatesEnabled: boolean;
   leftSidebarMode: LeftSidebarMode;
   setRightPanelCollapsed: Dispatch<SetStateAction<boolean>>;
   setLeftSidebarMode: Dispatch<SetStateAction<LeftSidebarMode>>;
@@ -34,6 +35,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   setAnimationToggleOnClickEnabled: Dispatch<SetStateAction<boolean>>;
   setSimplifyFillsDuringCanvasDragEnabled: Dispatch<SetStateAction<boolean>>;
   setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled: Dispatch<SetStateAction<boolean>>;
+  setPresentationThumbnailUpdatesEnabled: Dispatch<SetStateAction<boolean>>;
 }
 
 /**
@@ -53,6 +55,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     animationToggleOnClickEnabled,
     simplifyFillsDuringCanvasDragEnabled,
     suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    presentationThumbnailUpdatesEnabled,
     leftSidebarMode,
     setRightPanelCollapsed,
     setLeftSidebarMode,
@@ -66,6 +69,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setAnimationToggleOnClickEnabled,
     setSimplifyFillsDuringCanvasDragEnabled,
     setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    setPresentationThumbnailUpdatesEnabled,
   } = p;
 
   useEffect(() => {
@@ -134,6 +138,12 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     if (savedSuppressAllShadowsDrag !== null) {
       setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled(savedSuppressAllShadowsDrag !== "false");
     }
+    const savedPresentationThumbnailUpdates = getItemSafe(
+      "dw:presentationThumbnailUpdates:enabled",
+    );
+    if (savedPresentationThumbnailUpdates !== null) {
+      setPresentationThumbnailUpdatesEnabled(savedPresentationThumbnailUpdates !== "false");
+    }
     const savedLeftSidebarMode = readLeftSidebarModeFromStorage(getItemSafe);
     if (savedLeftSidebarMode !== null) {
       setLeftSidebarMode(savedLeftSidebarMode);
@@ -151,6 +161,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setAnimationToggleOnClickEnabled,
     setSimplifyFillsDuringCanvasDragEnabled,
     setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    setPresentationThumbnailUpdatesEnabled,
   ]);
 
   useEffect(() => {
@@ -188,6 +199,15 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
       );
     }
   }, [suppressShadowsOnAllObjectsDuringCanvasDragEnabled, isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      setBooleanDebounced(
+        "dw:presentationThumbnailUpdates:enabled",
+        presentationThumbnailUpdatesEnabled,
+      );
+    }
+  }, [presentationThumbnailUpdatesEnabled, isClient]);
 
   useEffect(() => {
     if (isClient) {

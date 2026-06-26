@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save, Ruler } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save, Ruler, Images } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import type { ViewportCullDebugStats } from '@/lib/viewport-culling';
 import type { LeftSidebarMode } from '@/lib/left-sidebar-mode';
 import { ViewportCullDebugBadge } from './viewport-cull-debug-badge';
+import { PresentationThumbnailGeneratingIndicator } from './presentation-thumbnail-generating-indicator';
 
 const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
 
@@ -235,6 +236,9 @@ interface TopMenuBarProps {
   onToggleSimplifyFillsDuringCanvasDrag?: () => void;
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled?: boolean;
   onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag?: () => void;
+  presentationThumbnailUpdatesEnabled?: boolean;
+  onTogglePresentationThumbnailUpdates?: () => void;
+  presentationThumbnailGenerating?: boolean;
   connectionsBehindNodesEnabled?: boolean;
   onToggleConnectionsBehindNodes?: () => void;
   animationConnectionsEnabled?: boolean;
@@ -375,6 +379,9 @@ export function TopMenuBar({
   onToggleSimplifyFillsDuringCanvasDrag,
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true,
   onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag,
+  presentationThumbnailUpdatesEnabled = true,
+  onTogglePresentationThumbnailUpdates,
+  presentationThumbnailGenerating = false,
   connectionsBehindNodesEnabled,
   onToggleConnectionsBehindNodes,
   animationConnectionsEnabled,
@@ -1022,6 +1029,26 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onTogglePresentationThumbnailUpdates !== undefined && (
+              <>
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
+                  onToggleDefaultTextLabels !== undefined ||
+                  onToggleSimplifyFillsDuringCanvasDrag !== undefined ||
+                  onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
+                <MenubarItem onClick={onTogglePresentationThumbnailUpdates}>
+                  <Images className="mr-2 h-4 w-4" />
+                  {presentationThumbnailUpdatesEnabled
+                    ? "Disable Presentation Thumbnail Updates"
+                    : "Enable Presentation Thumbnail Updates"}
+                </MenubarItem>
+              </>
+            )}
             {onToggleIconBackground !== undefined && (
               <>
                 {(onToggleMetadataPopups ||
@@ -1032,6 +1059,7 @@ export function TopMenuBar({
                   onToggleDefaultTextLabels !== undefined ||
                   onToggleSimplifyFillsDuringCanvasDrag !== undefined ||
                   onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag !== undefined ||
+                  onTogglePresentationThumbnailUpdates !== undefined ||
                   onToggleJsonPanel ||
                   hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleIconBackground}>
@@ -1541,6 +1569,10 @@ export function TopMenuBar({
       )}
 
       <ViewportCullDebugBadge stats={viewportCullStats} className="mx-1" />
+      <PresentationThumbnailGeneratingIndicator
+        active={presentationThumbnailGenerating}
+        className="mx-1"
+      />
 
       <Menubar className="ml-auto shrink-0 rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto">
         <MenubarMenu>

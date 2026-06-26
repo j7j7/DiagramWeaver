@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-06-26 – Options: toggle presentation thumbnail updates + generating indicator
+**Options → Disable/Enable Presentation Thumbnail Updates** (`dw:presentationThumbnailUpdates:enabled`, default on) skips all strip PNG capture in **`usePresentationThumbnails`** (debounce, interval, backfill, slide change). Pulsing **`Images`** badge on the top bar while capture is in flight. Patch bumped.
+
 ### 2026-06-25 – Presentation thumbnails: sync pause on right-click pan hold
 Right-click pan mousedown calls **`pauseForCanvasInteraction`** synchronously (via **`presentationThumbnailInteractionRef`**) before React state updates — debounce/interval timers cannot fire while **`data-perf-interacting`** shadow suppression is active. Capture also checks **`isCanvasPerfInteractionActive()`** on the canvas handle. Patch bumped.
 

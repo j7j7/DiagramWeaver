@@ -74,6 +74,10 @@ export interface UsePresentationThumbnailsParams {
   presentationThumbnailInteractionRef?: MutableRefObject<
     PresentationThumbnailInteractionRef | null
   >;
+  /** When false, skip all strip PNG capture (debounce, interval, backfill, slide change). */
+  presentationThumbnailUpdatesEnabled?: boolean;
+  /** Fired when any thumbnail PNG capture starts or finishes (in-flight count crosses zero). */
+  onPresentationThumbnailGeneratingChange?: (generating: boolean) => void;
 }
 
 export interface PresentationThumbnailInteractionRef {
@@ -111,8 +115,27 @@ export function usePresentationThumbnails({
   setPresentationDraftDiagram,
   canvasGeometryInteractionActive = false,
   presentationThumbnailInteractionRef,
+  presentationThumbnailUpdatesEnabled = true,
+  onPresentationThumbnailGeneratingChange,
 }: UsePresentationThumbnailsParams): UsePresentationThumbnailsResult {
   const { resolvedTheme } = useTheme();
+  const presentationThumbnailUpdatesEnabledRef = React.useRef(
+    presentationThumbnailUpdatesEnabled,
+  );
+  presentationThumbnailUpdatesEnabledRef.current = presentationThumbnailUpdatesEnabled;
+  const thumbnailGeneratingCountRef = React.useRef(0);
+  const notifyThumbnailGenerating = React.useCallback(
+    (delta: 1 | -1) => {
+      thumbnailGeneratingCountRef.current = Math.max(
+        0,
+        thumbnailGeneratingCountRef.current + delta,
+      );
+      onPresentationThumbnailGeneratingChange?.(
+        thumbnailGeneratingCountRef.current > 0,
+      );
+    },
+    [onPresentationThumbnailGeneratingChange],
+  );
   const presentationThumbCaptureInFlightRef = React.useRef(false);
   const canvasGeometryInteractionActiveRef = React.useRef(false);
   /** True after sync pause until React props confirm interaction ended. */
@@ -208,6 +231,7 @@ export function usePresentationThumbnails({
   );
 
   const isThumbnailCaptureBlockedByCanvasInteraction = React.useCallback(() => {
+    if (!presentationThumbnailUpdatesEnabledRef.current) return true;
     if (canvasGeometryInteractionActiveRef.current) return true;
     if (editorRef.current?.isCanvasPerfInteractionActive?.()) return true;
     return false;
@@ -225,6 +249,7 @@ export function usePresentationThumbnails({
 
       const captureGeneration = presentationThumbCaptureGenerationRef.current;
       presentationThumbCaptureInFlightRef.current = true;
+      notifyThumbnailGenerating(1);
       try {
         const thumbBg = presentationThumbnailCaptureBackground(resolvedTheme);
         const visibleMain = diagramForPresentationThumbnailFingerprint(ctx.tab);
@@ -407,6 +432,7 @@ export function usePresentationThumbnails({
         // Retry on a later interval or slide change
       } finally {
         presentationThumbCaptureInFlightRef.current = false;
+        notifyThumbnailGenerating(-1);
       }
     }, [
       editorRef,
@@ -416,6 +442,7 @@ export function usePresentationThumbnails({
       setPresentationDecks,
       shouldApplyPresentationThumbnailCapture,
       isThumbnailCaptureBlockedByCanvasInteraction,
+      notifyThumbnailGenerating,
     ]);
 
   const runPresentationThumbnailCaptureRef = React.useRef(
@@ -444,6 +471,15 @@ export function usePresentationThumbnails({
     if (!presentationThumbnailInteractionRef) return;
     presentationThumbnailInteractionRef.current = { pauseForCanvasInteraction };
   }, [presentationThumbnailInteractionRef, pauseForCanvasInteraction]);
+
+  React.useEffect(() => {
+    if (presentationThumbnailUpdatesEnabled) return;
+    cancelPendingDebouncedThumbnailCapture();
+    presentationThumbCaptureGenerationRef.current += 1;
+  }, [
+    presentationThumbnailUpdatesEnabled,
+    cancelPendingDebouncedThumbnailCapture,
+  ]);
 
   React.useLayoutEffect(() => {
     if (canvasGeometryInteractionActive) {
@@ -588,13 +624,18 @@ export function usePresentationThumbnails({
   /** Slow safety net when fingerprint/capture skipped. */
   React.useEffect(() => {
     if (!activePresentationDeckId) return;
+    if (!presentationThumbnailUpdatesEnabled) return;
 
     const id = window.setInterval(() => {
       if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
       void runPresentationThumbnailCaptureRef.current();
     }, PRESENTATION_THUMB_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [activePresentationDeckId, isThumbnailCaptureBlockedByCanvasInteraction]);
+  }, [
+    activePresentationDeckId,
+    presentationThumbnailUpdatesEnabled,
+    isThumbnailCaptureBlockedByCanvasInteraction,
+  ]);
 
   const captureOutgoingSlideThumbnailIfNeeded = React.useCallback(async () => {
     if (presentationThumbBackfillRunningRef.current) return;
@@ -603,6 +644,7 @@ export function usePresentationThumbnails({
 
   React.useEffect(() => {
     if (!presentationMasterDiagram) return;
+    if (!presentationThumbnailUpdatesEnabled) return;
 
     const decksSnapshot = presentationDecksRef.current;
     if (decksSnapshot.length === 0) return;
@@ -632,11 +674,13 @@ export function usePresentationThumbnails({
     };
 
     presentationThumbBackfillRunningRef.current = true;
+    notifyThumbnailGenerating(1);
 
     void (async () => {
       const ready = await waitForEditor();
       if (!ready || cancelled) {
         presentationThumbBackfillRunningRef.current = false;
+        notifyThumbnailGenerating(-1);
         return;
       }
 
@@ -830,6 +874,7 @@ export function usePresentationThumbnails({
           }
         }
         presentationThumbBackfillRunningRef.current = false;
+        notifyThumbnailGenerating(-1);
       }
     })();
 
@@ -837,7 +882,13 @@ export function usePresentationThumbnails({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- active deck/slide are restore targets for this run only; omitting avoids re-entry on every slide change.
-  }, [presentationMasterDiagram, presentationDeckIdentityKey, resolvedTheme]);
+  }, [
+    presentationMasterDiagram,
+    presentationDeckIdentityKey,
+    resolvedTheme,
+    presentationThumbnailUpdatesEnabled,
+    notifyThumbnailGenerating,
+  ]);
 
   return { captureOutgoingSlideThumbnailIfNeeded };
 }

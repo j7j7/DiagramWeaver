@@ -356,6 +356,10 @@ export default function DiagramEditor() {
     suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
     setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
   ] = React.useState<boolean>(true);
+  const [presentationThumbnailUpdatesEnabled, setPresentationThumbnailUpdatesEnabled] =
+    React.useState<boolean>(true);
+  const [presentationThumbnailGenerating, setPresentationThumbnailGenerating] =
+    React.useState<boolean>(false);
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(false);
   const [animationConnectionsUserEnabled, setAnimationConnectionsUserEnabled] = React.useState<boolean>(true);
   const [animationConnectionsMenuPaused, setAnimationConnectionsMenuPaused] = React.useState(false);
@@ -2435,6 +2439,8 @@ export default function DiagramEditor() {
     setPresentationDraftDiagram,
     canvasGeometryInteractionActive,
     presentationThumbnailInteractionRef,
+    presentationThumbnailUpdatesEnabled,
+    onPresentationThumbnailGeneratingChange: setPresentationThumbnailGenerating,
   });
 
   const activeStripSlideIndex =
@@ -5202,6 +5208,7 @@ export default function DiagramEditor() {
     animationToggleOnClickEnabled,
     simplifyFillsDuringCanvasDragEnabled,
     suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    presentationThumbnailUpdatesEnabled,
     leftSidebarMode,
     setRightPanelCollapsed,
     setLeftSidebarMode,
@@ -5215,6 +5222,7 @@ export default function DiagramEditor() {
     setAnimationToggleOnClickEnabled,
     setSimplifyFillsDuringCanvasDragEnabled,
     setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    setPresentationThumbnailUpdatesEnabled,
   });
 
   // Reset click-to-toggle disabled sources when it's enabled
@@ -5389,6 +5397,9 @@ export default function DiagramEditor() {
         setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled={
           setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled
         }
+        presentationThumbnailUpdatesEnabled={presentationThumbnailUpdatesEnabled}
+        setPresentationThumbnailUpdatesEnabled={setPresentationThumbnailUpdatesEnabled}
+        presentationThumbnailGenerating={presentationThumbnailGenerating}
         connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
         setConnectionsBehindNodesEnabled={setConnectionsBehindNodesEnabled}
         animationConnectionsEnabled={animationConnectionsEnabled}

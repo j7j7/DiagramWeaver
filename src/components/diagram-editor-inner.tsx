@@ -221,6 +221,9 @@ export function DiagramEditorInner({
   setSimplifyFillsDuringCanvasDragEnabled,
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
   setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+  presentationThumbnailUpdatesEnabled,
+  setPresentationThumbnailUpdatesEnabled,
+  presentationThumbnailGenerating,
   connectionsBehindNodesEnabled,
   setConnectionsBehindNodesEnabled,
   animationConnectionsEnabled,
@@ -602,6 +605,11 @@ export function DiagramEditorInner({
                         !suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
                       )
                     }
+                    presentationThumbnailUpdatesEnabled={presentationThumbnailUpdatesEnabled}
+                    onTogglePresentationThumbnailUpdates={() =>
+                      setPresentationThumbnailUpdatesEnabled(!presentationThumbnailUpdatesEnabled)
+                    }
+                    presentationThumbnailGenerating={presentationThumbnailGenerating}
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     onToggleConnectionsBehindNodes={() => setConnectionsBehindNodesEnabled(!connectionsBehindNodesEnabled)}
                     animationConnectionsEnabled={animationConnectionsEnabled}
