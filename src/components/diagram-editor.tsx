@@ -118,7 +118,7 @@ import {
   blankSlideVisibleFromMaster,
   createPaletteItem,
   presentationThumbnailCaptureBackground,
-  PRESENTATION_THUMB_CAPTURE_QUALITY,
+  buildPresentationThumbnailCaptureOptions,
   diagramForPresentationThumbnailFingerprint,
   withPresentationThumbnailThemeFingerprintTag,
 } from '@/lib/diagram-editor/editor-support';
@@ -4646,16 +4646,12 @@ export default function DiagramEditor() {
       throw new Error('Canvas snapshot API is unavailable.');
     }
 
-    const snapshotImage = await editorRef.current.captureSnapshotPng({
-      backgroundColor: presentationThumbnailCaptureBackground(resolvedTheme),
-      quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
-      fitContent: true,
-      unionDiagrams: [
+    const thumbBg = presentationThumbnailCaptureBackground(resolvedTheme);
+    const snapshotImage = await editorRef.current.captureSnapshotPng(
+      buildPresentationThumbnailCaptureOptions(thumbBg, [
         projectVisibleDiagram(presentationDraftDiagram ?? (layers.filteredDiagramData ?? diagramData)),
-      ],
-      tightContentFrame: true,
-      fitPadding: 40,
-    });
+      ]),
+    );
 
     const topologyCurrent = presentationDraftDiagram ?? diagramData;
     const topologyMaster = presentationMasterDiagram ?? tabDiagramData;

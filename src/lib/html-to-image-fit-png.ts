@@ -14,8 +14,11 @@ import type { Options } from 'html-to-image/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
 import { hideCanvasGuideLinesInExportClone } from '@/lib/canvas-guide-lines';
 import { hideDotGridOverlayInExportClone } from '@/lib/dot-grid-viewport';
+import { yieldToMainThread } from '@/lib/yield-to-main-thread';
 
 const DW_SELECTION_ITEM_IDS_KEY = '_dwSelectionItemIds' as const;
+const DW_FAST_THUMBNAIL_KEY = '_dwFastThumbnail' as const;
+const DW_ABORT_SIGNAL_KEY = '_dwAbortSignal' as const;
 
 /**
  * Strip non-selected nodes, selection handles, and selection borders from a clone for selection-only PNG exports.
@@ -365,6 +368,7 @@ async function nodeToDataURLInLayoutHost(
   dotGridTransform?: Transform,
   /** Selection-only export: hide non-selected nodes and edit indicators. */
   selectedIds?: Set<string>,
+  skipStyleSync?: boolean,
 ): Promise<string> {
   const host = document.createElement('div');
   host.setAttribute('aria-hidden', 'true');
@@ -384,7 +388,7 @@ async function nodeToDataURLInLayoutHost(
   document.body.appendChild(host);
   host.appendChild(node);
   void host.offsetHeight;
-  if (liveSource) {
+  if (liveSource && !skipStyleSync) {
     applyExactExportStylesFromSource(liveSource, node, exportOptions ?? {}, {
       skipRootBox: true,
       preserveDiagramTransform: true,
@@ -395,12 +399,16 @@ async function nodeToDataURLInLayoutHost(
     if (dotGridTransform) {
       applyCloneDiagramTransform(node, dotGridTransform);
     }
+  } else if (dotGridTransform) {
+    applyCloneDiagramTransform(node, dotGridTransform);
   }
   // Apply selection-export cleanup AFTER all style-sync is done (last setProperty wins on style object).
   if (selectedIds && selectedIds.size > 0) {
     cleanCloneForSelectionExport(node, selectedIds);
   }
-  await document.fonts.ready;
+  if (!skipStyleSync) {
+    await document.fonts.ready;
+  }
   try {
     return await nodeToDataURL(node, width, height);
   } finally {
@@ -650,41 +658,62 @@ export async function toPngWithDiagramExportFixes(
   options: Options,
   dotGridTransform?: Transform
 ): Promise<string> {
-  await ensureExportFontsReady(node);
+  const fastThumbnail = Boolean((options as Record<string, unknown>)[DW_FAST_THUMBNAIL_KEY]);
+  const abortSignal = (options as Record<string, unknown>)[DW_ABORT_SIGNAL_KEY] as
+    | AbortSignal
+    | undefined;
+  if (!fastThumbnail) {
+    await ensureExportFontsReady(node);
+  }
   const exportOptions: Options = {
     preferredFontFormat: 'woff2',
     ...options,
   };
   const { width, height } = getImageSize(node, exportOptions);
+  await yieldToMainThread(abortSignal);
   const clonedNode = await cloneNode(node, exportOptions, true);
   if (!clonedNode) {
     throw new Error('html-to-image clone failed');
   }
+  await yieldToMainThread(abortSignal);
   hideDotGridOverlayInExportClone(clonedNode as HTMLElement);
   hideCanvasGuideLinesInExportClone(clonedNode as HTMLElement);
-  const fontEmbedCSS = await buildExportFontEmbedCss(node, exportOptions);
-  injectExportFontEmbedCss(clonedNode as HTMLElement, fontEmbedCSS);
+  const fontEmbedCSS = fastThumbnail
+    ? ''
+    : await buildExportFontEmbedCss(node, exportOptions);
+  if (fontEmbedCSS) {
+    injectExportFontEmbedCss(clonedNode as HTMLElement, fontEmbedCSS);
+  }
   await embedImages(clonedNode, exportOptions);
+  await yieldToMainThread(abortSignal);
   applyStyle(clonedNode, exportOptions);
   applyCloneDiagramTransform(clonedNode as HTMLElement, dotGridTransform);
-  applyExactExportStylesFromSource(node, clonedNode, exportOptions, {
-    skipRootBox: true,
-    preserveDiagramTransform: true,
-  });
+  if (!fastThumbnail) {
+    applyExactExportStylesFromSource(node, clonedNode, exportOptions, {
+      skipRootBox: true,
+      preserveDiagramTransform: true,
+    });
+  }
   applyExportShapeFallbackColors(clonedNode as HTMLElement);
-  await injectFrostedBlurredUnderlays(clonedNode as HTMLElement, exportOptions, width, height);
-  applyFrostedExportSnapshotStyles(clonedNode as HTMLElement);
+  if (fastThumbnail) {
+    applyFrostedExportSnapshotStyles(clonedNode as HTMLElement);
+  } else {
+    await injectFrostedBlurredUnderlays(clonedNode as HTMLElement, exportOptions, width, height);
+    applyFrostedExportSnapshotStyles(clonedNode as HTMLElement);
+  }
 
   const selectedIds = (exportOptions as any)[DW_SELECTION_ITEM_IDS_KEY] as Set<string> | undefined;
 
+  await yieldToMainThread(abortSignal);
   const datauri = await nodeToDataURLInLayoutHost(
     clonedNode as HTMLElement,
     width,
     height,
-    node,
+    fastThumbnail ? undefined : node,
     exportOptions,
     dotGridTransform,
-    selectedIds, // selection export cleanup runs INSIDE after all style-sync
+    selectedIds,
+    fastThumbnail,
   );
   const img = await createImage(datauri);
   const canvas = document.createElement('canvas');

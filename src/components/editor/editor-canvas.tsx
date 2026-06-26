@@ -17,7 +17,6 @@
  */
 
 import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
-import { flushSync } from "react-dom";
 import { createPortal } from "react-dom";
 import { Check, Minus, X } from "lucide-react";
 import { DiagramNode } from "../diagram/diagram-node";
@@ -45,6 +44,11 @@ import { useCanvasClipboard } from "@/hooks/use-canvas-clipboard";
 import { pasteSpecialFamiliesCompatible } from "@/lib/paste-special-properties";
 import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { waitTwoAnimationFrames } from "@/lib/diagram-editor/editor-support";
+import {
+  mountPresentationThumbnailCaptureHost,
+  unmountPresentationThumbnailCaptureHost,
+} from "@/lib/presentation-thumbnail-capture-runtime";
+import { yieldToMainThread } from "@/lib/yield-to-main-thread";
 
 const SNAPSHOT_CAPTURE_PERF_IDLE_MAX_FRAMES = 45;
 
@@ -540,6 +544,8 @@ export type EditorCanvasHandle = {
   getCanvasHostViewportForFit: () => { width: number; height: number } | null;
   /** True while pan/drag/resize perf mode suppresses shadows (`data-perf-interacting`). */
   isCanvasPerfInteractionActive: () => boolean;
+  /** Abort an in-flight presentation strip thumbnail capture (e.g. when the user pans). */
+  abortPresentationThumbnailCapture: () => void;
   fitToView: () => void;
   exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; selectionOnly?: boolean }) => Promise<void>;
   exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => Promise<void>;
@@ -554,6 +560,11 @@ export type EditorCanvasHandle = {
     /** With fitContent: output canvas sized to content (+ margin) instead of full viewport dimensions. */
     tightContentFrame?: boolean;
     frameBorderPx?: number;
+    fitViewportPx?: { width: number; height: number };
+    maxOutputPx?: number;
+    fastThumbnail?: boolean;
+    backgroundCapture?: boolean;
+    cacheBust?: boolean;
   }) => Promise<string>;
   copy: () => void;
   paste: () => void;
@@ -568,6 +579,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
   /** Disable viewport culling while snapshot PNG runs so off-screen items mount for capture. */
   const [snapshotCaptureActive, setSnapshotCaptureActive] = React.useState(false);
+  const thumbCaptureAbortRef = React.useRef<AbortController | null>(null);
+
+  const abortPresentationThumbnailCapture = React.useCallback(() => {
+    thumbCaptureAbortRef.current?.abort();
+    thumbCaptureAbortRef.current = null;
+    unmountPresentationThumbnailCaptureHost();
+  }, []);
 
   // ============================================================================
   // LAYOUT CALCULATION
@@ -1956,19 +1974,56 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       fitPadding?: number;
       tightContentFrame?: boolean;
       frameBorderPx?: number;
+      fitViewportPx?: { width: number; height: number };
+      maxOutputPx?: number;
+      fastThumbnail?: boolean;
+      backgroundCapture?: boolean;
+      cacheBust?: boolean;
     }) => {
-      flushSync(() => {
-        setSnapshotCaptureActive(true);
-      });
+      const useBackgroundCapture =
+        options?.backgroundCapture === true || options?.fastThumbnail === true;
+      const thumbDiagram = options?.unionDiagrams?.[0];
+
+      if (useBackgroundCapture && thumbDiagram) {
+        abortPresentationThumbnailCapture();
+        const ac = new AbortController();
+        thumbCaptureAbortRef.current = ac;
+        const theme =
+          typeof document !== "undefined" &&
+          document.documentElement.classList.contains("dark")
+            ? "dark"
+            : "light";
+        try {
+          const captureRoot = await mountPresentationThumbnailCaptureHost(
+            thumbDiagram,
+            theme,
+            ac.signal,
+          );
+          await yieldToMainThread(ac.signal);
+          return await captureViewportPngDataUrl({
+            ...options,
+            captureRoot,
+            abortSignal: ac.signal,
+          });
+        } finally {
+          unmountPresentationThumbnailCaptureHost();
+          if (thumbCaptureAbortRef.current === ac) {
+            thumbCaptureAbortRef.current = null;
+          }
+        }
+      }
+
+      setSnapshotCaptureActive(true);
       try {
         await waitForCanvasPerfInteractionIdle(canvasRef.current);
+        await waitTwoAnimationFrames();
         await waitTwoAnimationFrames();
         return await captureViewportPngDataUrl(options);
       } finally {
         setSnapshotCaptureActive(false);
       }
     },
-    [captureViewportPngDataUrl],
+    [captureViewportPngDataUrl, abortPresentationThumbnailCapture],
   );
 
   const canAutoNumberLabels = useMemo(
@@ -3406,6 +3461,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     },
     isCanvasPerfInteractionActive: () =>
       canvasRef.current?.getAttribute("data-perf-interacting") === "true",
+    abortPresentationThumbnailCapture,
     fitToView: handleFitToView, // Auto-fits diagram to viewport
     exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; selectionOnly?: boolean }) => exportPng(options), // Exports current viewport to PNG
     exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => exportGif(options), // Exports current viewport to GIF
@@ -3422,7 +3478,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     paste: pasteHandler, // Pastes from clipboard
     canPaste: canPasteHandler, // Checks if paste is available
     pastePaletteItem: pastePaletteItemHandler, // Pastes a new item from the sidebar palette
-  }), [handleFitToView, exportPng, exportGif, captureSnapshotPngWithFullDiagram, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
+  }), [handleFitToView, exportPng, exportGif, captureSnapshotPngWithFullDiagram, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler, abortPresentationThumbnailCapture]);
 
   const customCanvasBg = diagramData.canvasBackgroundColor?.trim();
   const useCustomCanvasBg = Boolean(customCanvasBg);

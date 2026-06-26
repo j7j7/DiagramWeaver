@@ -9,6 +9,7 @@ import {
   computeTightPngFrameForBounds,
   computeUnionExportContentBounds,
   computeUnionFitTransformForDiagrams,
+  capTightPngFrameDimensions,
   getCanvasElementSizeForImageCapture,
   pruneConnectionsToVisibleNodes,
   transformToFitBounds,
@@ -190,14 +191,29 @@ export function useCanvasExport({
     tightContentFrame?: boolean;
     /** Margin in output pixels on each side when `tightContentFrame` is true (default 20). */
     frameBorderPx?: number;
+    /**
+     * When set with `fitContent`, use this viewport size for fit math instead of the live canvas host
+     * (strip thumbnails rasterize at ~140px tile size, not full editor dimensions).
+     */
+    fitViewportPx?: { width: number; height: number };
+    /** Cap longest output edge after tight frame math (strip thumbnails). */
+    maxOutputPx?: number;
+    /** Skip font polling and frosted-glass underlay re-rasterization (strip thumbnails). */
+    fastThumbnail?: boolean;
+    /** Rasterize from this element instead of the live editor canvas (strip thumbnails). */
+    captureRoot?: HTMLElement;
+    backgroundCapture?: boolean;
+    cacheBust?: boolean;
+    abortSignal?: AbortSignal;
     /** When set, only include these item IDs in the content bounds calculation. */
     itemIds?: Set<string>;
   }) => {
-    if (!canvasRef.current) {
+    const captureHost = options?.captureRoot ?? canvasRef.current;
+    if (!captureHost) {
       throw new Error('Canvas is not ready');
     }
 
-    const contentDiv = canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement | null;
+    const contentDiv = captureHost.querySelector('[data-diagram-layer]') as HTMLElement | null;
     if (!contentDiv) {
       throw new Error('Could not find diagram content');
     }
@@ -228,13 +244,19 @@ export function useCanvasExport({
 
     const toPngOptions = {
       pixelRatio,
-      cacheBust: true,
+      cacheBust: options?.cacheBust ?? true,
       backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
       _dwSelectionItemIds: options?.itemIds,
+      ...(options?.fastThumbnail ? { _dwFastThumbnail: true } : {}),
+      ...(options?.abortSignal ? { _dwAbortSignal: options.abortSignal } : {}),
     };
 
     if (options?.fitContent) {
-      const { width: vw, height: vh } = getCanvasElementSizeForImageCapture(canvasRef.current);
+      const { width: vw, height: vh } =
+        options.fitViewportPx ??
+        getCanvasElementSizeForImageCapture(
+          options.captureRoot ?? canvasRef.current!,
+        );
       if (vw > 0 && vh > 0) {
         const fitPadding = options.fitPadding ?? 40;
         const union = options.unionDiagrams;
@@ -261,12 +283,16 @@ export function useCanvasExport({
           if (boundsForTight) {
             fitTransform = transformToFitBounds(boundsForTight, vw, vh, fitPadding);
             const borderPx = options.frameBorderPx ?? 20;
-            const { width: tw, height: th, transform: tightTransform } = computeTightPngFrameForBounds(
+            let tightFrame = computeTightPngFrameForBounds(
               boundsForTight,
               fitTransform,
               borderPx
             );
-            return await toPngWithDotGridTransform(canvasRef.current, {
+            if (options.maxOutputPx && options.maxOutputPx > 0) {
+              tightFrame = capTightPngFrameDimensions(tightFrame, options.maxOutputPx);
+            }
+            const { width: tw, height: th, transform: tightTransform } = tightFrame;
+            return await toPngWithDotGridTransform(captureHost, {
               ...toPngOptions,
               width: tw,
               height: th,
@@ -290,7 +316,7 @@ export function useCanvasExport({
           }
         }
         if (fitTransform) {
-          return await toPngWithDotGridTransform(canvasRef.current, {
+          return await toPngWithDotGridTransform(captureHost, {
             ...toPngOptions,
             width: vw,
             height: vh,
@@ -299,7 +325,7 @@ export function useCanvasExport({
       }
     }
 
-    return await toPngWithDiagramExportFixes(canvasRef.current, toPngOptions);
+    return await toPngWithDiagramExportFixes(captureHost, toPngOptions);
   }, [canvasRef, diagramData, processedNodes, processedZones, calculateItemBounds]);
 
   const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; selectionOnly?: boolean }) => {

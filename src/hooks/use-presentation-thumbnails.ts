@@ -22,13 +22,27 @@ import type { EditorCanvasHandle } from "@/components/editor/editor-canvas";
 import {
   PRESENTATION_THUMB_INTERVAL_MS,
   PRESENTATION_THUMB_DEBOUNCE_MS,
-  PRESENTATION_THUMB_CAPTURE_QUALITY,
+  buildPresentationThumbnailCaptureOptions,
   buildPresentationThumbnailDiagramContentKey,
   diagramForPresentationThumbnailFingerprint,
   presentationThumbnailCaptureBackground,
   withPresentationThumbnailThemeFingerprintTag,
 } from "@/lib/diagram-editor/editor-support";
 import { useTheme } from "@/components/theme-provider";
+
+/** Low-priority strip PNG work — defer until the browser is idle (or after timeout). */
+function runPresentationThumbnailCaptureWhenIdle(run: () => void): void {
+  if (typeof window === "undefined") return;
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(run, { timeout: 10_000 });
+  } else {
+    window.setTimeout(run, 0);
+  }
+}
+
+function isThumbnailCaptureAbortError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "AbortError";
+}
 
 export interface UsePresentationThumbnailsParams {
   editorRef: React.RefObject<EditorCanvasHandle | null>;
@@ -282,14 +296,9 @@ export function usePresentationThumbnails({
               const capturePrimaryId = primarySlide.id;
               try {
                 const primaryPng =
-                  await editorRef.current.captureSnapshotPng({
-                    backgroundColor: thumbBg,
-                    quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
-                    fitContent: true,
-                    unionDiagrams: [visibleMain],
-                    tightContentFrame: true,
-                    fitPadding: 40,
-                  });
+                  await editorRef.current.captureSnapshotPng(
+                    buildPresentationThumbnailCaptureOptions(thumbBg, [visibleMain]),
+                  );
                 if (
                   !shouldApplyPresentationThumbnailCapture(captureGeneration)
                 ) {
@@ -317,7 +326,8 @@ export function usePresentationThumbnails({
                     primaryKey
                   ] = baseFingerprint;
                 }
-              } catch {
+              } catch (err) {
+                if (isThumbnailCaptureAbortError(err)) return;
                 // Retry later
               }
             }
@@ -393,15 +403,14 @@ export function usePresentationThumbnails({
         const captureDeckId = ctxSlide.deckId;
         const captureSlideId = ctxSlide.slideId;
 
-        const snapshotImage = await editorRef.current.captureSnapshotPng({
-          backgroundColor: thumbBg,
-          quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
-          fitContent: true,
-          unionDiagrams:
+        if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
+
+        const snapshotImage = await editorRef.current.captureSnapshotPng(
+          buildPresentationThumbnailCaptureOptions(
+            thumbBg,
             presentationThumbnailFitUnionDiagrams,
-          tightContentFrame: true,
-          fitPadding: 40,
-        });
+          ),
+        );
 
         if (!shouldApplyPresentationThumbnailCapture(captureGeneration)) {
           return;
@@ -428,7 +437,8 @@ export function usePresentationThumbnails({
         );
         presentationThumbDeltaFingerprintBySlideRef.current[thumbKey] =
           deltaFingerprint;
-      } catch {
+      } catch (err) {
+        if (isThumbnailCaptureAbortError(err)) return;
         // Retry on a later interval or slide change
       } finally {
         presentationThumbCaptureInFlightRef.current = false;
@@ -461,11 +471,12 @@ export function usePresentationThumbnails({
   }, []);
 
   const pauseForCanvasInteraction = React.useCallback(() => {
+    editorRef.current?.abortPresentationThumbnailCapture?.();
     canvasGeometryInteractionSyncPausedRef.current = true;
     canvasGeometryInteractionActiveRef.current = true;
     cancelPendingDebouncedThumbnailCapture();
     presentationThumbCaptureGenerationRef.current += 1;
-  }, [cancelPendingDebouncedThumbnailCapture]);
+  }, [editorRef, cancelPendingDebouncedThumbnailCapture]);
 
   React.useLayoutEffect(() => {
     if (!presentationThumbnailInteractionRef) return;
@@ -499,15 +510,22 @@ export function usePresentationThumbnails({
       cancelPendingDebouncedThumbnailCapture();
       if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
 
+      const queueCapture = () => {
+        if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
+        runPresentationThumbnailCaptureWhenIdle(() => {
+          if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
+          void runPresentationThumbnailCaptureRef.current();
+        });
+      };
+
       if (immediate) {
-        void runPresentationThumbnailCaptureRef.current();
+        queueCapture();
         return;
       }
 
       presentationThumbDebounceTimerRef.current = window.setTimeout(() => {
         presentationThumbDebounceTimerRef.current = null;
-        if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
-        void runPresentationThumbnailCaptureRef.current();
+        queueCapture();
       }, PRESENTATION_THUMB_DEBOUNCE_MS);
     },
     [cancelPendingDebouncedThumbnailCapture, isThumbnailCaptureBlockedByCanvasInteraction],
@@ -567,7 +585,9 @@ export function usePresentationThumbnails({
       presentationThumbNavKeyRef.current !== presentationThumbNavKey;
     presentationThumbNavKeyRef.current = presentationThumbNavKey;
     if (navChanged) {
-      scheduleIdlePresentationThumbnailCaptureRef.current(true);
+      queueMicrotask(() => {
+        scheduleIdlePresentationThumbnailCaptureRef.current(true);
+      });
     }
   }, [
     activePresentationDeckId,
@@ -628,7 +648,10 @@ export function usePresentationThumbnails({
 
     const id = window.setInterval(() => {
       if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
-      void runPresentationThumbnailCaptureRef.current();
+      runPresentationThumbnailCaptureWhenIdle(() => {
+        if (isThumbnailCaptureBlockedByCanvasInteraction()) return;
+        void runPresentationThumbnailCaptureRef.current();
+      });
     }, PRESENTATION_THUMB_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [
@@ -700,14 +723,9 @@ export function usePresentationThumbnails({
                 diagramForPresentationThumbnailFingerprint(primaryThumbDiagram);
               try {
                 const primaryPng =
-                  await editorRef.current!.captureSnapshotPng!({
-                    backgroundColor: thumbBg,
-                    quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
-                    fitContent: true,
-                    unionDiagrams: [visibleMain],
-                    tightContentFrame: true,
-                    fitPadding: 40,
-                  });
+                  await editorRef.current!.captureSnapshotPng!(
+                    buildPresentationThumbnailCaptureOptions(thumbBg, [visibleMain]),
+                  );
                 if (cancelled) return;
                 flushSync(() => {
                   setPresentationDecks((prev) =>
@@ -775,14 +793,9 @@ export function usePresentationThumbnails({
 
             try {
               const snapshotImage =
-                await editorRef.current!.captureSnapshotPng!({
-                  backgroundColor: thumbBg,
-                  quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
-                  fitContent: true,
-                  unionDiagrams: [draftDiagram],
-                  tightContentFrame: true,
-                  fitPadding: 40,
-                });
+                await editorRef.current!.captureSnapshotPng!(
+                  buildPresentationThumbnailCaptureOptions(thumbBg, [draftDiagram]),
+                );
 
               if (cancelled) return;
 

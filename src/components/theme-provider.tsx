@@ -93,6 +93,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
+/** Isolated React roots (e.g. off-screen thumbnail capture) — no document class / storage side effects. */
+export function StaticResolvedThemeProvider({
+  resolvedTheme,
+  children,
+}: {
+  resolvedTheme: "light" | "dark";
+  children: React.ReactNode;
+}) {
+  const value = React.useMemo<ThemeContextValue>(
+    () => ({
+      theme: resolvedTheme,
+      resolvedTheme,
+      setTheme: () => {},
+      toggleResolved: () => {},
+    }),
+    [resolvedTheme],
+  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) {

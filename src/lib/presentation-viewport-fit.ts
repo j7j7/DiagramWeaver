@@ -223,6 +223,25 @@ export function computeTightPngFrameForBounds(
   return { width, height, transform };
 }
 
+/** Scale a tight PNG frame down so the longest edge is at most `maxPx` (strip thumbnails). */
+export function capTightPngFrameDimensions(
+  frame: { width: number; height: number; transform: Transform },
+  maxPx: number,
+): { width: number; height: number; transform: Transform } {
+  const longest = Math.max(frame.width, frame.height);
+  if (longest <= maxPx) return frame;
+  const scale = maxPx / longest;
+  return {
+    width: Math.max(1, Math.round(frame.width * scale)),
+    height: Math.max(1, Math.round(frame.height * scale)),
+    transform: {
+      x: frame.transform.x * scale,
+      y: frame.transform.y * scale,
+      k: frame.transform.k * scale,
+    },
+  };
+}
+
 /** Center content at a fixed zoom (same x/y math as fit, but k is chosen by the slide). */
 export function transformToFitBoundsWithFixedZoom(
   bounds: ContentBounds,

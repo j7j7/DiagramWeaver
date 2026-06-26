@@ -107,11 +107,13 @@ interface ViewerCanvasProps {
   connectionRenderRevision?: string | number;
   /** When false, canvas background has no dot grid (e.g. presentation play mode). Default true. */
   showDotGrid?: boolean;
+  /** When false, all items and connections render (export, tiny diagrams, etc.). */
+  viewportCullingEnabled?: boolean;
   /** Built-in `%day%`, `%slide%`, etc. and expression evaluation context. */
   globalVariableContext?: GlobalVariableContext;
 }
 
-export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision, showDotGrid = true, globalVariableContext }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision, showDotGrid = true, viewportCullingEnabled = true, globalVariableContext }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(false);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -207,6 +209,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
     transform,
     viewportWidth: canvasDimensions.width,
     viewportHeight: canvasDimensions.height,
+    enabled: viewportCullingEnabled,
     forceIncludeItemIds: forceViewportIncludeItemIds,
   });
 

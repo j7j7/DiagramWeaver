@@ -2,6 +2,15 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-06-26 – Presentation thumbnails: non-blocking isolated capture
+Strip PNGs mount on a **separate React root** (editor tree unchanged). **`abortPresentationThumbnailCapture`** on pan/drag; **`yieldToMainThread`** between export steps; **`fastThumbnail`** skips per-element computed-style sync. Patch bumped.
+
+### 2026-06-26 – Presentation thumbnails: off-screen background capture
+Strip PNGs rasterize from a hidden **`PresentationThumbnailCaptureHost`** (`ViewerCanvas` portal) — the live editor canvas is no longer unculled or shadow-suppressed during capture. Capture runs via **`requestIdleCallback`**. Removed **`data-snapshot-capture`** live CSS. Patch bumped.
+
+### 2026-06-26 – Presentation thumbnails: 8s debounce + fast small capture
+Idle debounce **2.5s → 8s**. Strip PNGs fit a **280×158** virtual viewport (≈2× the **140px** tile), cap at **320px**, **`fastThumbnail`** export (skip font polling + frosted underlay re-raster), **`data-snapshot-capture`** perf CSS during capture. **`buildPresentationThumbnailCaptureOptions`** centralizes options. Patch bumped.
+
 ### 2026-06-26 – Options: toggle presentation thumbnail updates + generating indicator
 **Options → Disable/Enable Presentation Thumbnail Updates** (`dw:presentationThumbnailUpdates:enabled`, default on) skips all strip PNG capture in **`usePresentationThumbnails`** (debounce, interval, backfill, slide change). Pulsing **`Images`** badge on the top bar while capture is in flight. Patch bumped.
 

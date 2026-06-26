@@ -10,10 +10,55 @@ import type { PaletteResource } from "@/components/editor/diagram-editor-types";
 export const PRESENTATION_THUMB_INTERVAL_MS = 20000;
 
 /** After tab canvas / presentation draft edits, wait this long with no further changes before thumbnail PNG (ms). */
-export const PRESENTATION_THUMB_DEBOUNCE_MS = 2500;
+export const PRESENTATION_THUMB_DEBOUNCE_MS = 4000;
+
+/** Strip tiles are ~140×79 CSS px; fit/rasterize at ~2× retina, capped by {@link PRESENTATION_THUMB_MAX_OUTPUT_PX}. */
+export const PRESENTATION_THUMB_FIT_VIEWPORT = { width: 280, height: 158 } as const;
+
+/** Longest edge of the PNG data URL stored on slides (safety cap after fit viewport math). */
+export const PRESENTATION_THUMB_MAX_OUTPUT_PX = 320;
+
+/** Margin in output pixels when `tightContentFrame` is used for strip thumbnails. */
+export const PRESENTATION_THUMB_CAPTURE_FRAME_BORDER_PX = 8;
 
 /** `captureSnapshotPng` quality for presentation strip thumbnails (`pixelRatio` 1 vs 2 for medium). */
 export const PRESENTATION_THUMB_CAPTURE_QUALITY = 'low' as const;
+
+export type PresentationThumbnailCaptureOptions = {
+  backgroundColor: 'white' | 'dark';
+  quality: typeof PRESENTATION_THUMB_CAPTURE_QUALITY;
+  fitContent: true;
+  unionDiagrams: DiagramData[];
+  tightContentFrame: true;
+  fitPadding: number;
+  frameBorderPx: number;
+  fitViewportPx: { width: number; height: number };
+  maxOutputPx: number;
+  fastThumbnail: true;
+  backgroundCapture: true;
+  cacheBust: false;
+};
+
+/** Shared capture options for presentation strip PNGs (small viewport fit + fast export path). */
+export function buildPresentationThumbnailCaptureOptions(
+  thumbBg: 'white' | 'dark',
+  unionDiagrams: DiagramData[],
+): PresentationThumbnailCaptureOptions {
+  return {
+    backgroundColor: thumbBg,
+    quality: PRESENTATION_THUMB_CAPTURE_QUALITY,
+    fitContent: true,
+    unionDiagrams,
+    tightContentFrame: true,
+    fitPadding: 16,
+    frameBorderPx: PRESENTATION_THUMB_CAPTURE_FRAME_BORDER_PX,
+    fitViewportPx: { ...PRESENTATION_THUMB_FIT_VIEWPORT },
+    maxOutputPx: PRESENTATION_THUMB_MAX_OUTPUT_PX,
+    fastThumbnail: true,
+    backgroundCapture: true,
+    cacheBust: false,
+  };
+}
 
 /** Options → enable presentation strip PNG refresh (default on). */
 export const PRESENTATION_THUMBNAIL_UPDATES_ENABLED_STORAGE_KEY =
