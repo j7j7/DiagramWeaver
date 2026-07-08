@@ -12,6 +12,7 @@ import {
   canvasRingsToLocalRings,
   pointInClipRing,
   vectorPathFromRings,
+  vectorPathStrokePadding,
 } from "@/lib/vector-path-utils";
 
 function foldMultiPolygons(
@@ -56,11 +57,14 @@ interface VectorPathNodeGeometry {
   height: number;
 }
 
-function clipPolygonToNodeGeometry(poly: ClipPolygon): VectorPathNodeGeometry | null {
+function clipPolygonToNodeGeometry(
+  poly: ClipPolygon,
+  strokePad: number,
+): VectorPathNodeGeometry | null {
   const bbox = bboxOfClipPolygon(poly);
   if (!bbox) return null;
 
-  const pad = 4;
+  const pad = strokePad;
   const originX = snapToGrid(bbox.minX - pad);
   const originY = snapToGrid(bbox.minY - pad);
   const width = snapDimensionToGrid(Math.max(20, bbox.maxX - bbox.minX + pad * 2), 20);
@@ -78,8 +82,13 @@ function clipPolygonToNodeGeometry(poly: ClipPolygon): VectorPathNodeGeometry | 
   };
 }
 
-function multiPolygonToSeparateGeometries(mp: ClipMultiPolygon): VectorPathNodeGeometry[] {
-  return mp.map(clipPolygonToNodeGeometry).filter((piece): piece is VectorPathNodeGeometry => !!piece);
+function multiPolygonToSeparateGeometries(
+  mp: ClipMultiPolygon,
+  strokePad: number,
+): VectorPathNodeGeometry[] {
+  return mp
+    .map((poly) => clipPolygonToNodeGeometry(poly, strokePad))
+    .filter((piece): piece is VectorPathNodeGeometry => !!piece);
 }
 
 function nodeCenterCanvas(node: DiagramNodeData): ClipPair {
@@ -151,10 +160,11 @@ export function combineShapeNodes(
     resultMp = foldMultiPolygons([primaryMp, ...otherMps], operation);
   }
 
-  const pieces = multiPolygonToSeparateGeometries(resultMp);
-  if (pieces.length === 0) return null;
-
   const stylingSource = primary;
+  const strokePad = vectorPathStrokePadding(stylingSource);
+
+  const pieces = multiPolygonToSeparateGeometries(resultMp, strokePad);
+  if (pieces.length === 0) return null;
   const styling = extractVisualStylingFromNode(stylingSource);
   const primaryPieceIndex = pickPrimaryResultIndex(nodeCenterCanvas(primary), pieces);
 

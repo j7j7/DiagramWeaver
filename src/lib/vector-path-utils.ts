@@ -304,7 +304,10 @@ export function updateVectorPathPoint(
   });
 }
 
-function vectorPathStrokePadding(node: Pick<DiagramNodeData, "borderWidth" | "borderStyle">): number {
+/** Half stroke + margin so the node box fits painted borders after boolean ops / refit. */
+export function vectorPathStrokePadding(
+  node: Pick<DiagramNodeData, "borderWidth" | "borderStyle">,
+): number {
   return (node.borderStyle === "none" ? 0 : (node.borderWidth ?? 2) / 2) + 4;
 }
 

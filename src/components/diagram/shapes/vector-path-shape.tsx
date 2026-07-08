@@ -59,8 +59,20 @@ export function VectorPathShape(props: VectorPathShapeProps) {
   const strokeWidth = borderStyle === "none" ? "0" : nodeAny.borderWidth || 2;
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
   const strokeWidthNum = borderStyle === "none" ? 0 : parseInt(String(strokeWidth), 10) || 2;
+  const half = strokeWidthNum / 2;
+  const vbW = w + strokeWidthNum;
+  const vbH = h + strokeWidthNum;
 
-  const viewBox = `0 0 ${w} ${h}`;
+  const viewBox = `0 0 ${vbW} ${vbH}`;
+  const pathTransform = half > 0 ? `translate(${half}, ${half})` : undefined;
+  const strokeProps =
+    strokeWidthNum > 0
+      ? ({
+          vectorEffect: "non-scaling-stroke" as const,
+          strokeLinejoin: "round" as const,
+          strokeMiterlimit: 1,
+        } as const)
+      : {};
   const clipUid = useId().replace(/:/g, "");
   const clipId = `dw-vpath-${clipUid}`;
 
@@ -88,23 +100,33 @@ export function VectorPathShape(props: VectorPathShapeProps) {
               {backgroundStyle === "frosted" && (
                 <defs>
                   <clipPath id={clipId}>
-                    <path d={pathD} />
+                    <path d={pathD} transform={pathTransform} />
                   </clipPath>
                 </defs>
               )}
-              <path
-                d={pathD}
-                fill={fillColor}
-                fillRule="evenodd"
-                stroke={strokeColor}
-                strokeWidth={strokeWidth}
-                strokeDasharray={strokeDasharray}
-                vectorEffect="non-scaling-stroke"
-                clipPath={backgroundStyle === "frosted" ? `url(#${clipId})` : undefined}
-              />
+              <g transform={pathTransform}>
+                <path
+                  d={pathD}
+                  fill={fillColor}
+                  fillRule="evenodd"
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={strokeDasharray}
+                  {...strokeProps}
+                  clipPath={backgroundStyle === "frosted" ? `url(#${clipId})` : undefined}
+                />
+              </g>
             </>
           ) : (
-            <rect x={strokeWidthNum / 2} y={strokeWidthNum / 2} width={Math.max(0, w - strokeWidthNum)} height={Math.max(0, h - strokeWidthNum)} fill="none" stroke="#94a3b8" strokeDasharray="4,4" />
+            <rect
+              x={half}
+              y={half}
+              width={Math.max(0, w)}
+              height={Math.max(0, h)}
+              fill="none"
+              stroke="#94a3b8"
+              strokeDasharray="4,4"
+            />
           )}
         </>
       }

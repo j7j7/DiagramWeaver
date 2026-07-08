@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-07-08 – Vector path borders after boolean cut
+**`VectorPathShape`** now matches **`RoundedRectangleShape`** stroke layout: expanded viewBox, path inset by half border width, **`strokeLinejoin="round"`** on cut corners. Boolean cut pieces use **`vectorPathStrokePadding`** (exported from **`vector-path-utils.ts`**) for bbox padding so thick borders are not clipped. Patch bumped.
+
 ### 2026-06-26 – Presentation thumbnails: non-blocking isolated capture
 Strip PNGs mount on a **separate React root** (editor tree unchanged). **`abortPresentationThumbnailCapture`** on pan/drag; **`yieldToMainThread`** between export steps; **`fastThumbnail`** skips per-element computed-style sync. Patch bumped.
 
