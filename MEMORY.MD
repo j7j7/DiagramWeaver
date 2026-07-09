@@ -2,6 +2,24 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-07-09 – Icon styling: custom colour enable toggle
+**Icon Color** in Icon Styling is now gated by a switch: off restores the icon’s **original** colours; on reveals the colour picker and applies tint (raster) or Lucide SVG colour. Stored **`iconColor`** is kept when disabled via **`iconColorEnabled`**. Helpers **`isIconColorActive`** / **`resolveActiveIconColor`** in **`icon-glyph-filter.ts`**. Patch bumped.
+
+### 2026-07-09 – Icon styling: greyscale + raster colour tint
+**Icon Styling** for provider/custom raster icons (AWS, Azure, etc. and **`generic.icon.custom`**) adds **Greyscale** toggle and **Icon Color** tint. Colour applies **`grayscale(100%)`** then sepia/hue via CSS **`filter`** (**`icon-glyph-filter.ts`**); Lucide icons still use SVG **`iconColor`**. **`iconGreyscale`** on **`DiagramNodeData`** / **`CardIconRef`**; wired through visual-styling, card icon slots, paste colour aspect, and slide memo signature. Patch bumped.
+
+### 2026-07-09 – Generic status icons (question / alert)
+**Status** category adds **`circle-question.svg`** (blue circle + white `?`) and **`circle-alert.svg`** (yellow circle + white `!`). Types: **`generic.status.circle-question`**, **`generic.status.circle-alert`**.
+
+### 2026-07-09 – Label type-to-edit: fix selection without mouse coords
+Keyboard type-to-edit no longer calls **`onClick`** with a synthetic event (which broke **`elementsFromPoint`**). Unselected nodes use **`onSelectForEdit`** instead. **`getCanvasObjectIdsAtPoint`** guards non-finite coordinates.
+
+### 2026-07-09 – Label text: single-click and type-to-edit
+Shape/icon label text enters edit mode on **single click** (not only double-click). While label text is **hover-highlighted**, typing a printable character also enters edit mode and seeds the draft with that character. **`TextboxRichDisplay`** stops pointer-down propagation so react-dnd does not start a node drag from the text hit target; Shift/Ctrl/Meta clicks still route to normal multi-select. Helpers in **`src/lib/label-text-interaction.ts`**.
+
+### 2026-07-09 – Generic status icons (tick yes / cross no)
+New **Status** category under **Generic** with **`circle-tick-yes.svg`** (green circle + white check) and **`circle-cross-no.svg`** (red circle + white cross). Types: **`generic.status.circle-tick-yes`**, **`generic.status.circle-cross-no`**. Assets in **`public/resources/generic/status/`**; catalog in **`resource-generic.json`**.
+
 ### 2026-07-08 – Vector path borders after boolean cut
 **`VectorPathShape`** now matches **`RoundedRectangleShape`** stroke layout: expanded viewBox, path inset by half border width, **`strokeLinejoin="round"`** on cut corners. Boolean cut pieces use **`vectorPathStrokePadding`** (exported from **`vector-path-utils.ts`**) for bbox padding so thick borders are not clipped. Patch bumped.
 

@@ -316,6 +316,8 @@ function applyColourAspect(source: DiagramNodeData, target: DiagramNodeData): Di
     "headingTextColor",
     "headingBackgroundColor",
     "iconColor",
+    "iconColorEnabled",
+    "iconGreyscale",
     "iconOpacity",
     "iconBevel",
     "iconBevelRotation",

@@ -11,6 +11,7 @@ import { ChevronDown } from "lucide-react";
 import type { CardElementData, CardFlexJustify, CardIconSizeMode } from "@/lib/card-types";
 import type { NodeSize } from "@/lib/types";
 import { CARD_ICON_SIZE_MODES } from "@/lib/card-icon-layout";
+import { isDiagramRasterIconTile, isDiagramLucideIconTile, DEFAULT_ICON_COLOR, isIconColorActive } from "@/lib/icon-glyph-filter";
 import {
   isAgendaRowId,
   isAgendaSessionCellId,
@@ -53,9 +54,8 @@ export function CardElementStylingPanel({
 
   const textColor = element.textColor ?? "#0f172a";
   const borderColor = element.style?.borderColor ?? "#0f172a";
-  const isLucide =
-    !!iconRef &&
-    (iconRef.type.startsWith("generic.icon.") || iconRef.iconType === "lucide");
+  const isLucide = !!iconRef && isDiagramLucideIconTile(iconRef.type, iconRef.iconType);
+  const isRasterIcon = !!iconRef && isDiagramRasterIconTile(iconRef.type, iconRef.iconType);
   const rawIconOpacity = iconRef?.iconOpacity;
   const iconOpacity =
     typeof rawIconOpacity === "number" && Number.isFinite(rawIconOpacity)
@@ -87,14 +87,55 @@ export function CardElementStylingPanel({
 
         {hasIcon && iconRef && (
           <>
-            {isLucide && (
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Icon color</Label>
-                <ColorPicker
-                  value={iconRef.iconColor ?? "#374151"}
-                  onChange={(value) =>
-                    onElementChange({ iconRef: { ...iconRef, iconColor: value } })
+            {(isLucide || isRasterIcon) && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-sm text-muted-foreground">Icon color</Label>
+                  <Switch
+                    checked={isIconColorActive(iconRef)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        onElementChange({
+                          iconRef: {
+                            ...iconRef,
+                            iconColorEnabled: true,
+                            ...(iconRef.iconColor ? {} : { iconColor: DEFAULT_ICON_COLOR }),
+                          },
+                        });
+                      } else {
+                        onElementChange({
+                          iconRef: { ...iconRef, iconColorEnabled: false },
+                        });
+                      }
+                    }}
+                  />
+                </div>
+                {isIconColorActive(iconRef) && (
+                  <>
+                    <ColorPicker
+                      value={iconRef.iconColor ?? DEFAULT_ICON_COLOR}
+                      onChange={(value) =>
+                        onElementChange({ iconRef: { ...iconRef, iconColor: value } })
+                      }
+                    />
+                    {isRasterIcon && (
+                      <p className="text-xs text-muted-foreground">
+                        Tints via greyscale, then applies this hue.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            {isRasterIcon && (
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm text-muted-foreground">Greyscale</Label>
+                <Switch
+                  checked={!!iconRef.iconGreyscale}
+                  onCheckedChange={(checked) =>
+                    onElementChange({ iconRef: { ...iconRef, iconGreyscale: checked } })
                   }
+                  disabled={isIconColorActive(iconRef)}
                 />
               </div>
             )}

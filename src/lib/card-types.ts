@@ -74,6 +74,8 @@ export interface CardIconRef {
   iconName?: string;
   emoji?: string;
   iconColor?: string;
+  iconColorEnabled?: boolean;
+  iconGreyscale?: boolean;
   iconOpacity?: number;
   nodeSize?: NodeSize;
   /** Scaled (default): size follows slot; fixed: constant px from nodeSize preset. */

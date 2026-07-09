@@ -84,6 +84,8 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
     x.cornerRadius,
     x.nodeSize,
     x.noIconBackground,
+    x.iconGreyscale,
+    x.iconColorEnabled,
     x.highlightAnimGlowIntensity,
     x.compositeBodyShape,
     progressSig,

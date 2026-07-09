@@ -570,7 +570,11 @@ export interface DiagramNodeData {
   iconType?: 'lucide' | 'emoji'; // Render as Lucide icon or emoji
   iconName?: string; // Lucide icon name (e.g. 'Home', 'Shield')
   emoji?: string; // Emoji character for emoji icons
-  iconColor?: string; // Color for Lucide icons (hex, e.g. '#3b82f6')
+  iconColor?: string; // Lucide SVG colour, or raster tint when iconColorEnabled
+  /** When true, apply iconColor; when false, render the icon's original colours. */
+  iconColorEnabled?: boolean;
+  /** When true, raster icons render greyscale; iconColor tints via greyscale + hue filter. */
+  iconGreyscale?: boolean;
   /** Opacity for the icon glyph only (0–1); omit for fully opaque. */
   iconOpacity?: number;
   /** Lucide/generic icon nodes: extruded 3D square behind the glyph. */

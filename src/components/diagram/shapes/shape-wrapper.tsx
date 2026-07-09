@@ -53,6 +53,7 @@ interface ShapeWrapperProps {
   onVerticalAlignChange?: (position: "top" | "middle" | "bottom") => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
+  onLabelTextHoverChange?: (hovered: boolean) => void;
   /** Presentation slide transition: lerp fill/stroke between slides */
   slideColorTransition?: string;
   /** Card / shape: single opacity exit keyed with last stagger (includes outer box-shadow/filter). */
@@ -108,6 +109,7 @@ export function ShapeWrapper({
   onVerticalAlignChange,
   onLabelKeyDown,
   onLabelDoubleClick,
+  onLabelTextHoverChange,
   slideColorTransition,
   slideShellExitStyle,
   omitShapeText = false,
@@ -359,6 +361,7 @@ export function ShapeWrapper({
                 onVerticalAlignChange={onVerticalAlignChange}
                 onLabelKeyDown={onLabelKeyDown}
                 onLabelDoubleClick={onLabelDoubleClick}
+                onLabelTextHoverChange={onLabelTextHoverChange}
               />
             ) : null}
           </span>
@@ -387,6 +390,7 @@ export function ShapeWrapper({
                 onVerticalAlignChange={onVerticalAlignChange}
                 onLabelKeyDown={onLabelKeyDown}
                 onLabelDoubleClick={onLabelDoubleClick}
+                onLabelTextHoverChange={onLabelTextHoverChange}
               />
             ) : null}
           </>

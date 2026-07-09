@@ -4,6 +4,10 @@ import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 import { getTextStylingForNode, getTextJustifyClass } from "@/components/diagram/shapes/shape-utils";
+import {
+  isAdditiveLabelSelectionClick,
+  stopNodeDragFromLabelTextPointerDown,
+} from "@/lib/label-text-interaction";
 
 const DEFAULT_JUSTIFY = DEFAULT_TEXT_STYLING.textJustify ?? "center";
 
@@ -17,6 +21,8 @@ interface TextboxRichDisplayProps {
   pointerEventsNone?: boolean;
   /** Keep all content on one line (agenda Time column). */
   singleLine?: boolean;
+  /** Fired when the pointer enters/leaves the interactive text shell (type-to-edit while hovered). */
+  onHoverChange?: (hovered: boolean) => void;
 }
 
 function getLineStyle(run: RichTextRun, node: DiagramNodeData): React.CSSProperties {
@@ -41,6 +47,7 @@ export function TextboxRichDisplay({
   suppressHoverBackground = false,
   pointerEventsNone = false,
   singleLine = false,
+  onHoverChange,
 }: TextboxRichDisplayProps) {
   const lineWrapClass = singleLine
     ? "whitespace-nowrap leading-normal"
@@ -53,12 +60,25 @@ export function TextboxRichDisplay({
     ? "pointer-events-none cursor-default select-none"
     : `cursor-text${suppressHoverBackground ? "" : " hover:bg-background/50"}`;
 
+  const labelInteractionHandlers = pointerEventsNone
+    ? {}
+    : {
+        onPointerDown: (e: React.PointerEvent) => stopNodeDragFromLabelTextPointerDown(e),
+        onClick: (e: React.MouseEvent) => {
+          if (isAdditiveLabelSelectionClick(e)) return;
+          onDoubleClick(e);
+        },
+        onDoubleClick,
+        onMouseEnter: () => onHoverChange?.(true),
+        onMouseLeave: () => onHoverChange?.(false),
+      };
+
   if (runs.length === 0) {
     return (
       <p
         className={`${getTextJustifyClass((nodeAny.textJustify as string) || DEFAULT_JUSTIFY)} break-words leading-normal ${interactionClass} rounded whitespace-pre-wrap w-full text-muted-foreground`}
         style={{ ...getTextStylingForNode(node), display: "block" }}
-        onDoubleClick={onDoubleClick}
+        {...labelInteractionHandlers}
       >
         Enter text...
       </p>
@@ -176,7 +196,7 @@ export function TextboxRichDisplay({
     <div
       className={`${containerWrapClass} rounded ${interactionClass}`}
       style={containerStyle}
-      onDoubleClick={onDoubleClick}
+      {...labelInteractionHandlers}
     >
       {content}
     </div>

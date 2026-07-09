@@ -56,6 +56,7 @@ import {
   recordOverlayPatch,
 } from "@/lib/interaction-recording-panel-value";
 import { cn } from "@/lib/utils";
+import { DEFAULT_ICON_COLOR, isIconColorActive } from "@/lib/icon-glyph-filter";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
 import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
@@ -381,6 +382,8 @@ interface VisualStylingPanelProps {
   onTagPositionChange?: (position: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right') => void;
   /** When true, shows Icon Color control (Lucide icons only) */
   isLucideIcon?: boolean;
+  /** Provider/custom raster icons — greyscale + tint via CSS filter. */
+  showRasterIconFilterStyling?: boolean;
   /** Icon/resource/emoji tile — opacity, size, remove background (see `isDiagramIconTileNodeType`). */
   showIconTileStyling?: boolean;
   /** Card icon-slot with a dropped icon — show position control in Icon Styling. */
@@ -557,7 +560,7 @@ function IconBevelMatchColorPreview({
   );
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange: onStylingChangeProp, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, bulletListUseItemIcons, onBulletListUseItemIconsChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange: onStylingChangeProp, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRasterIconFilterStyling = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, bulletListUseItemIcons, onBulletListUseItemIconsChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -818,20 +821,61 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           <div className="space-y-4">
           {(showIconTileStyling || showRemoveBackground) && (
             <>
-            <div className={`grid gap-4 ${isLucideIcon && showRemoveBackground ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              {isLucideIcon && (
+            <div className={`grid gap-4 ${(isLucideIcon || showRasterIconFilterStyling) && showRemoveBackground ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {(isLucideIcon || showRasterIconFilterStyling) && (
                 <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
-                    <Label className="text-sm font-semibold text-foreground">Icon Color</Label>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                      <Label className="text-sm font-semibold text-foreground">Icon Color</Label>
+                    </div>
+                    <Switch
+                      checked={isIconColorActive(styling)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          applyStylingChange({
+                            iconColorEnabled: true,
+                            ...(styling.iconColor ? {} : { iconColor: DEFAULT_ICON_COLOR }),
+                          });
+                        } else {
+                          applyStylingChange({ iconColorEnabled: false });
+                        }
+                      }}
+                    />
                   </div>
-                  <ColorPicker
-                    value={styling.iconColor || '#374151'}
-                    onChange={(value) => handlePropertyChange('iconColor', value)}
-                    placeholder="#374151"
-                    showAlpha={false}
-                    allowTransparent={false}
-                  />
+                  {isIconColorActive(styling) && (
+                    <>
+                      <ColorPicker
+                        value={styling.iconColor || DEFAULT_ICON_COLOR}
+                        onChange={(value) => handlePropertyChange('iconColor', value)}
+                        placeholder={DEFAULT_ICON_COLOR}
+                        showAlpha={false}
+                        allowTransparent={false}
+                      />
+                      {showRasterIconFilterStyling && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Tints the icon via greyscale, then applies this hue.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+              {showRasterIconFilterStyling && (
+                <div className="bg-muted/50 dark:bg-background rounded-md p-3 border border-border min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm font-semibold text-foreground">Greyscale</Label>
+                    <Switch
+                      checked={Boolean(styling.iconGreyscale)}
+                      onCheckedChange={(checked) => applyStylingChange({ iconGreyscale: checked })}
+                      disabled={isIconColorActive(styling)}
+                    />
+                  </div>
+                  {isIconColorActive(styling) ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Colour tint includes greyscale automatically.
+                    </p>
+                  ) : null}
                 </div>
               )}
               {showRemoveBackground && (

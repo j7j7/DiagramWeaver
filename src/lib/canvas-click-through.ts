@@ -77,7 +77,12 @@ export function mergeOverlapStacks(
 
 /** Node/zone ids under the cursor, topmost first (DOM hit order). */
 export function getCanvasObjectIdsAtPoint(clientX: number, clientY: number): string[] {
-  if (typeof document === "undefined" || typeof document.elementsFromPoint !== "function") {
+  if (
+    typeof document === "undefined" ||
+    typeof document.elementsFromPoint !== "function" ||
+    !Number.isFinite(clientX) ||
+    !Number.isFinite(clientY)
+  ) {
     return [];
   }
   const seen = new Set<string>();

@@ -23,6 +23,7 @@ interface ShapeTextProps {
   onVerticalAlignChange?: (position: "top" | "middle" | "bottom") => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
+  onLabelTextHoverChange?: (hovered: boolean) => void;
   /** SVG foreignObject overlays (timeline cards): ignore pointer events so hits reach the silhouette below. */
   passThroughPointerEvents?: boolean;
 }
@@ -36,6 +37,7 @@ export function ShapeText({
   onVerticalAlignChange,
   onLabelKeyDown,
   onLabelDoubleClick,
+  onLabelTextHoverChange,
   passThroughPointerEvents = false,
 }: ShapeTextProps) {
   const globalProperties = useGlobalProperties();
@@ -94,6 +96,11 @@ export function ShapeText({
   const isHexagon = node.type === "generic.object.hexagon" || node.type?.endsWith(".hexagon");
   const narrowShapeClass = isKite || isHexagon ? " max-w-[70%] mx-auto min-w-0" : "";
   const ptShell = passThroughPointerEvents && !isEditingLabel ? " pointer-events-none" : "";
+  const labelDisplayProps = {
+    onDoubleClick: onLabelDoubleClick,
+    onHoverChange: onLabelTextHoverChange,
+    pointerEventsNone: passThroughPointerEvents,
+  };
 
   // Render text inside the shape (middle position)
   if (isInside) {
@@ -127,8 +134,7 @@ export function ShapeText({
                 <TextboxRichDisplay
                   node={node}
                   runs={displayRuns}
-                  onDoubleClick={onLabelDoubleClick}
-                  pointerEventsNone={passThroughPointerEvents}
+                  {...labelDisplayProps}
                 />
               </div>
               <span className="tabular-nums pointer-events-none" style={pctStyle}>
@@ -160,8 +166,7 @@ export function ShapeText({
             <TextboxRichDisplay
               node={node}
               runs={displayRuns}
-              onDoubleClick={onLabelDoubleClick}
-              pointerEventsNone={passThroughPointerEvents}
+              {...labelDisplayProps}
             />
           </div>
         )}
@@ -205,8 +210,7 @@ export function ShapeText({
         <TextboxRichDisplay
           node={node}
           runs={displayRuns}
-          onDoubleClick={onLabelDoubleClick}
-          pointerEventsNone={passThroughPointerEvents}
+          {...labelDisplayProps}
         />
       )}
     </div>

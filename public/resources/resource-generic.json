@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 58,
+  "totalResources": 62,
   "categories": {
     "text": {
       "name": "Text",
@@ -314,6 +314,32 @@
           "name": "Swoop Blue Layers",
           "file": "swoop-blue-layers.svg",
           "type": "shape"
+        }
+      ]
+    },
+    "status": {
+      "name": "Status",
+      "path": "generic/status",
+      "resources": [
+        {
+          "name": "Circle Tick Yes",
+          "file": "circle-tick-yes.svg",
+          "type": "status"
+        },
+        {
+          "name": "Circle Cross No",
+          "file": "circle-cross-no.svg",
+          "type": "status"
+        },
+        {
+          "name": "Circle Question",
+          "file": "circle-question.svg",
+          "type": "status"
+        },
+        {
+          "name": "Circle Alert",
+          "file": "circle-alert.svg",
+          "type": "status"
         }
       ]
     },

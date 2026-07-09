@@ -21,6 +21,7 @@ import {
   isIconOrEmojiType,
   isDiagramIconTileNodeType,
 } from '@/lib/utils';
+import { isDiagramRasterIconTile, isDiagramLucideIconTile } from '@/lib/icon-glyph-filter';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
 import { supportsDiagramMeshGradient } from '@/lib/diagram-mesh-gradient-support';
@@ -873,7 +874,12 @@ const renderIcon = (item: ScratchPadItem) => {
                                 isLucideIcon={(() => {
                                   const t = editingItem.type || '';
                                   const iconType = (editingItem.data as DiagramNodeData)?.iconType;
-                                  return t.startsWith('generic.icon.') || iconType === 'lucide';
+                                  return isDiagramLucideIconTile(t, iconType);
+                                })()}
+                                showRasterIconFilterStyling={(() => {
+                                  const t = editingItem.type || '';
+                                  const iconType = (editingItem.data as DiagramNodeData)?.iconType;
+                                  return isDiagramRasterIconTile(t, iconType);
                                 })()}
                                 showIconTileStyling={isDiagramIconTileNodeType(
                                   editingItem.type,

@@ -75,6 +75,7 @@ import {
   isTimelineNodeType,
   isDiagramIconTileNodeType,
 } from '@/lib/utils';
+import { isDiagramRasterIconTile, isDiagramLucideIconTile } from '@/lib/icon-glyph-filter';
 import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import {
   augmentGradientBackgroundPatch,
@@ -1859,6 +1860,8 @@ export function ContextToolbar({
       shadow: undefined,
       borderWidth: undefined,
       iconColor: undefined,
+      iconColorEnabled: undefined,
+      iconGreyscale: undefined,
       iconOpacity: undefined,
       iconBevel: undefined,
       iconBevelRotation: undefined,
@@ -2866,10 +2869,18 @@ export function ContextToolbar({
                   isLucideIcon={(() => {
                     if (selectedCardIconElement?.iconRef) {
                       const ir = selectedCardIconElement.iconRef;
-                      return ir.type.startsWith('generic.icon.') || ir.iconType === 'lucide';
+                      return isDiagramLucideIconTile(ir.type, ir.iconType);
                     }
                     const t = (selectedItem as any)?.type || '';
-                    return t.startsWith('generic.icon.') || (selectedItem as any)?.iconType === 'lucide';
+                    return isDiagramLucideIconTile(t, (selectedItem as any)?.iconType);
+                  })()}
+                  showRasterIconFilterStyling={(() => {
+                    if (selectedCardIconElement?.iconRef) {
+                      const ir = selectedCardIconElement.iconRef;
+                      return isDiagramRasterIconTile(ir.type, ir.iconType);
+                    }
+                    const t = (selectedItem as any)?.type || '';
+                    return isDiagramRasterIconTile(t, (selectedItem as any)?.iconType);
                   })()}
                   showIconTileStyling={(() => {
                     if (selectedCardIconElement?.iconRef) {

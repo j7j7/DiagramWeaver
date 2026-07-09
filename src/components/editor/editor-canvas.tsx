@@ -2713,6 +2713,19 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     [],
   );
 
+  const onSelectNodeForEditStable = useCallback((node: DiagramNodeData) => {
+    closeContextMenu();
+    setSimulationMenuState(null);
+    onResetConnectionSettingsTrigger?.();
+    onCardElementSelect?.(node.id, null);
+    onItemSelect({ ...node, itemType: "node" }, false);
+  }, [
+    closeContextMenu,
+    onResetConnectionSettingsTrigger,
+    onCardElementSelect,
+    onItemSelect,
+  ]);
+
   const onDiagramNodeContextMenuStable = useCallback(
     (e: React.MouseEvent, nodeHint?: DiagramNodeData) => {
       let id: string | null = null;
@@ -3917,6 +3930,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     getItemGroup(selectedItemId, diagramData)?.id === getItemGroup(node.id, diagramData)?.id
                   }
                   onClick={onDiagramNodeClickStable}
+                  onSelectForEdit={onSelectNodeForEditStable}
                   onContextMenu={onDiagramNodeContextMenuStable}
                   onResize={handleNodeResize}
                   onResizeStart={handleResizeStart}
@@ -4049,6 +4063,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       getItemGroup(selectedItemId, diagramData)?.id === getItemGroup(node.id, diagramData)?.id
                     }
                     onClick={onDiagramNodeClickStable}
+                    onSelectForEdit={onSelectNodeForEditStable}
                     onContextMenu={onDiagramNodeContextMenuStable}
                     onResize={handleNodeResize}
                     onResizeStart={handleResizeStart}

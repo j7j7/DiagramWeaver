@@ -18,6 +18,12 @@ import {
 } from "@/lib/icon-bevel";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-text";
+import {
+  isAdditiveLabelSelectionClick,
+  isPrintableLabelEditKey,
+  stopNodeDragFromLabelTextPointerDown,
+} from "@/lib/label-text-interaction";
+import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { resolveGlobalVariables, resolveGlobalVariablesInRuns } from "@/lib/global-properties";
 import { useGlobalProperties, useGlobalVariableContext } from "./global-properties-context";
 import { TextboxRichEditor } from "./textbox-rich-editor";
@@ -44,11 +50,11 @@ import {
 import { normalizeDashboardDecorIconRef } from "@/lib/card-dashboard-stat";
 import type { CardIconRef } from "@/lib/card-types";
 import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
-import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { snapToGrid, snapDimensionToGrid, snapIconLabelWidthToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
+import { isDiagramRasterIconTile, resolveIconGlyphCssFilter, resolveActiveIconColor } from "@/lib/icon-glyph-filter";
 import { diagramNodeVisualStylingSignature } from "@/lib/slide-visual-color";
 import { simplifyVisualNodeForCanvasDrag } from "@/lib/canvas-drag-fill-simplify";
 import { transitionShorthandWithDelay } from "@/lib/css-transition-with-delay";
@@ -323,6 +329,8 @@ interface DiagramNodeProps {
   isMultiSelected?: boolean;
   isGroupMember?: boolean;
   onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
+  /** Select this node for label edit without click-through overlap logic (keyboard type-to-edit). */
+  onSelectForEdit?: (node: DiagramNodeData) => void;
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onLabelUpdate?: (nodeId: string, newLabel: string, richLabel?: RichTextRun[]) => void;
   onTagUpdate?: (nodeId: string, newTag: string) => void;
@@ -545,6 +553,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.transform?.y === next.transform?.y &&
     prev.transform?.k === next.transform?.k &&
     prev.onClick === next.onClick &&
+    prev.onSelectForEdit === next.onSelectForEdit &&
     prev.onContextMenu === next.onContextMenu &&
     prev.onLabelUpdate === next.onLabelUpdate &&
     prev.onTagUpdate === next.onTagUpdate &&
@@ -596,6 +605,7 @@ function DiagramNodeInner({
   isMultiSelected,
   isGroupMember,
   onClick,
+  onSelectForEdit,
   onContextMenu,
   onLabelUpdate,
   onTagUpdate,
@@ -796,6 +806,11 @@ function DiagramNodeInner({
   /** Plain (icon) label input: avoids multi-select blur syncing when the draft was not edited. */
   const plainLabelEditDirtyRef = useRef(false);
   const tagEditDirtyRef = useRef(false);
+  const labelTextHoveredRef = useRef(false);
+
+  const handleLabelTextHoverChange = useCallback((hovered: boolean) => {
+    labelTextHoveredRef.current = hovered;
+  }, []);
 
   // Corner radius drag state (rounded-rectangle only)
   const [isDraggingCornerRadius, setIsDraggingCornerRadius] = useState(false);
@@ -803,22 +818,69 @@ function DiagramNodeInner({
   const cornerRadiusDragRef = useRef<{ startX: number; startValue: number } | null>(null);
   const latestCornerRadiusRef = useRef<number>(0);
 
-  const handleLabelDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Label double-click always enters edit mode; sub-diagram navigation only on icon/glow double-click
+  const beginLabelEdit = useCallback((e?: React.MouseEvent, options?: { replaceWith?: string }) => {
+    if (isReadOnly || node.locked || isConnectMode) return;
+    if (e && isAdditiveLabelSelectionClick(e)) return;
+
+    if (!isSelected && !isMultiSelected) {
+      if (e && onClick) {
+        onClick(e, node);
+      } else if (onSelectForEdit) {
+        onSelectForEdit(node);
+      }
+    }
+
+    e?.stopPropagation();
     setIsEditingLabel(true);
-    setIsOpen(false); // Close popup when editing starts
-    plainLabelEditDirtyRef.current = false;
-    setEditText(node.label || '');
-    setEditRuns(node.richLabel ?? labelToRuns(node.label));
+    setIsOpen(false);
+    plainLabelEditDirtyRef.current = options?.replaceWith != null;
+    const seedText = options?.replaceWith ?? (node.label || "");
+    setEditText(seedText);
+    setEditRuns(
+      options?.replaceWith != null
+        ? labelToRuns(options.replaceWith)
+        : (node.richLabel ?? labelToRuns(node.label)),
+    );
     setTimeout(() => {
-      const ref = (isTextboxNode || isTextNode) ? null : inputRef.current;
+      const usesRichEditor =
+        node.type === "generic.text.text" || node.type === "generic.text.textbox";
+      const ref = usesRichEditor ? null : inputRef.current;
       if (ref) {
         ref.focus();
-        ref.select();
+        if (options?.replaceWith != null) {
+          ref.setSelectionRange(options.replaceWith.length, options.replaceWith.length);
+        } else {
+          ref.select();
+        }
       }
     }, 0);
-  };
+  }, [
+    isReadOnly,
+    node,
+    isSelected,
+    isMultiSelected,
+    onClick,
+    onSelectForEdit,
+    isConnectMode,
+  ]);
+
+  const handleLabelDoubleClick = beginLabelEdit;
+
+  useEffect(() => {
+    if (isReadOnly || isEditingLabel || isConnectMode) return;
+
+    const handleTypeToEdit = (e: KeyboardEvent) => {
+      if (!labelTextHoveredRef.current) return;
+      if (isEventFromEditableElement(e)) return;
+      if (!isPrintableLabelEditKey(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      beginLabelEdit(undefined, { replaceWith: e.key });
+    };
+
+    window.addEventListener("keydown", handleTypeToEdit, true);
+    return () => window.removeEventListener("keydown", handleTypeToEdit, true);
+  }, [isReadOnly, isEditingLabel, isConnectMode, beginLabelEdit]);
 
   const handleLabelSubmit = () => {
     if (!onLabelUpdate) {
@@ -1033,6 +1095,7 @@ function DiagramNodeInner({
         : undefined,
       onLabelKeyDown: (e: React.KeyboardEvent) => handleLabelKeyDown(e, true),
       onLabelDoubleClick: handleLabelDoubleClick,
+      onLabelTextHoverChange: handleLabelTextHoverChange,
       showMeshGradientHubIndicators,
     };
 
@@ -1881,6 +1944,7 @@ function DiagramNodeInner({
               node={visualNode}
               runs={displayRichLabelRuns}
               onDoubleClick={handleLabelDoubleClick}
+              onHoverChange={handleLabelTextHoverChange}
             />
           </div>
         )}
@@ -1950,6 +2014,19 @@ function DiagramNodeInner({
       !animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
         ? { transition: animationStyle.visualColorMergeTransition }
         : {};
+    const useRasterIconTint = isDiagramRasterIconTile(node.type, node.iconType);
+    const iconGlyphFilter = resolveIconGlyphCssFilter({
+      iconColor: nodeAny.iconColor,
+      iconColorEnabled: nodeAny.iconColorEnabled,
+      iconGreyscale: nodeAny.iconGreyscale,
+      useRasterTint: useRasterIconTint,
+    });
+    const activeLucideIconColor = useRasterIconTint
+      ? undefined
+      : resolveActiveIconColor({
+          iconColor: nodeAny.iconColor,
+          iconColorEnabled: nodeAny.iconColorEnabled,
+        });
 
     const resourceIcon = (
       <ResourceIcon
@@ -1960,7 +2037,7 @@ function DiagramNodeInner({
         iconType={node.iconType}
         iconName={node.iconName}
         emoji={node.emoji}
-        iconColor={nodeAny.iconColor}
+        iconColor={activeLucideIconColor}
         imageUrl={nodeAny.imageUrl}
         imageOptions={nodeAny.imageOptions}
         width={icon}
@@ -1976,6 +2053,7 @@ function DiagramNodeInner({
               }
             : {}),
           ...(iconGlyphOpacity !== undefined ? { opacity: iconGlyphOpacity } : {}),
+          ...(iconGlyphFilter ? { filter: iconGlyphFilter } : {}),
           ...colorTransition,
         }}
       />
@@ -2109,7 +2187,14 @@ function DiagramNodeInner({
               display: 'block',
               ...(iconBevelEnabled && !isMiddle ? { position: 'relative' as const, zIndex: 10 } : {}),
             }}
+            onPointerDown={(e) => stopNodeDragFromLabelTextPointerDown(e)}
+            onClick={(e) => {
+              if (isAdditiveLabelSelectionClick(e)) return;
+              beginLabelEdit(e);
+            }}
             onDoubleClick={handleLabelDoubleClick}
+            onMouseEnter={() => handleLabelTextHoverChange(true)}
+            onMouseLeave={() => handleLabelTextHoverChange(false)}
           >
             {displayLabel}
           </p>
@@ -3994,6 +4079,7 @@ function DiagramNodeInner({
         if (!isEditingLabel && !isEditingTag && !isEditingTimelineEntryLabel) { 
           setIsOpen(false); 
           setIsHovered(false);
+          labelTextHoveredRef.current = false;
           onHoverChange?.(node.id, 'node', false);
         } 
       }}

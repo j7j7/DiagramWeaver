@@ -67,6 +67,8 @@ const CardIconRefSchema = z.object({
   iconName: z.string().optional(),
   emoji: z.string().optional(),
   iconColor: z.string().optional(),
+  iconColorEnabled: z.boolean().optional(),
+  iconGreyscale: z.boolean().optional(),
   iconOpacity: z.number().min(0).max(1).optional(),
   nodeSize: z.enum(['normal', 'half', 'quarter', 'double']).optional(),
   iconSizeMode: z.enum(['fixed', 'scaled']).optional(),
@@ -625,6 +627,8 @@ export const DiagramNodeDataSchema = z.object({
   iconName: z.string().optional(),
   emoji: z.string().optional(),
   iconColor: z.string().optional(), // Color for Lucide icons (hex)
+  iconColorEnabled: z.boolean().optional(),
+  iconGreyscale: z.boolean().optional(),
   iconOpacity: z.number().min(0).max(1).optional(),
   iconBevel: z.boolean().optional(),
   iconBevelRotation: z.number().min(0).max(360).optional(),

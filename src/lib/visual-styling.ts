@@ -83,7 +83,10 @@ export interface VisualStyling {
   headingBackgroundColor?: string;
   /** Text box with heading: `gradient` = fade to transparent; `solid` = flat fill */
   headingBackgroundStyle?: 'gradient' | 'solid';
-  iconColor?: string; // Color for Lucide icons (context-aware, icons only)
+  iconColor?: string; // Lucide SVG colour, or raster tint when iconColorEnabled
+  iconColorEnabled?: boolean;
+  /** Raster icons: greyscale; iconColor applies greyscale + hue tint when enabled. */
+  iconGreyscale?: boolean;
   /** Icon glyph opacity 0–1 (icons / resource tiles only). */
   iconOpacity?: number;
   /** Lucide icon nodes: 3D bevelled square tile. */
@@ -340,6 +343,8 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     frostedTransparency: (node as any).frostedTransparency,
     frostedPerlinNoise: (node as any).frostedPerlinNoise,
     iconColor: (node as DiagramNodeData).iconColor,
+    iconColorEnabled: (node as DiagramNodeData).iconColorEnabled,
+    iconGreyscale: (node as DiagramNodeData).iconGreyscale,
     iconOpacity: (node as DiagramNodeData).iconOpacity,
     iconBevel: (node as DiagramNodeData).iconBevel,
     iconBevelRotation: (node as DiagramNodeData).iconBevelRotation,
@@ -519,6 +524,14 @@ export function applyVisualStylingToNode(
     frostedTransparency: styling.frostedTransparency !== undefined ? styling.frostedTransparency : (node as any).frostedTransparency,
     frostedPerlinNoise: styling.frostedPerlinNoise !== undefined ? styling.frostedPerlinNoise : (node as any).frostedPerlinNoise,
     iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor,
+    iconColorEnabled:
+      styling.iconColorEnabled !== undefined
+        ? styling.iconColorEnabled
+        : (node as DiagramNodeData).iconColorEnabled,
+    iconGreyscale:
+      styling.iconGreyscale !== undefined
+        ? styling.iconGreyscale
+        : (node as DiagramNodeData).iconGreyscale,
     iconOpacity: styling.iconOpacity !== undefined ? styling.iconOpacity : (node as DiagramNodeData).iconOpacity,
     iconBevel: styling.iconBevel !== undefined ? styling.iconBevel : (node as DiagramNodeData).iconBevel,
     iconBevelRotation:

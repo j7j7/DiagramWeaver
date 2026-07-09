@@ -15,6 +15,7 @@ import {
   cardIconPlacementToAbsoluteStyle,
   cardIconSlotContainerStyle,
 } from "@/lib/card-icon-layout";
+import { cardIconGlyphImageStyle, cardIconResolvedLucideColor } from "@/lib/card-icon-styling";
 import { iconDragItemToCardIconRef, isIconPaletteDragItem } from "@/lib/card-utils";
 import {
   cardShellExitStaggerSegmentIndex,
@@ -778,17 +779,13 @@ function CardIconSlot({
               iconType={iconRef.iconType}
               iconName={iconRef.iconName}
               emoji={iconRef.emoji}
-              iconColor={iconRef.iconColor}
+              iconColor={cardIconResolvedLucideColor(iconRef)}
               imageUrl={iconRef.imageUrl}
               imageOptions={iconRef.imageOptions}
               width="100%"
               height="100%"
               className={cn("h-full w-full", useFillSlotGlyphLayout ? "object-cover" : "object-contain")}
-              style={
-                typeof rawIconOpacity === "number" && Number.isFinite(rawIconOpacity)
-                  ? { opacity: iconGlyphOpacity }
-                  : undefined
-              }
+              style={cardIconGlyphImageStyle(iconRef)}
             />
           </div>
         )
