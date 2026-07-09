@@ -112,7 +112,7 @@ const CardElementDataSchema: z.ZodType<import('./card-types').CardElementData> =
       })).optional(),
       borderColor: z.string().optional(),
       borderWidth: z.number().optional(),
-      borderStyle: z.enum(['solid', 'dashed', 'dotted']).optional(),
+      borderStyle: z.enum(['solid', 'dashed', 'dotted', 'none']).optional(),
       opacity: z.number().optional(),
       borderRadius: z.number().optional(),
     }).optional(),
