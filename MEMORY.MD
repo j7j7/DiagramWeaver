@@ -2,6 +2,12 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-06 – Icon label edit: auto-height textarea
+Multiline icon label inline edit **textarea** grows to **`scrollHeight`** on open and while typing (removed **`overflow-hidden`** / fixed **`rows`**), so all lines stay visible while editing. Patch bumped.
+
+### 2026-08-06 – Icon label: Enter inserts line breaks
+Canvas icon/resource **label** inline edit uses a **textarea** instead of a single-line input: **Enter** adds a line break; **blur** (click away) saves. Display uses **`whitespace-pre-wrap`**; **`measureNodeDims`** / **`calculateNodeHeight`** count explicit `\n` lines. Patch bumped.
+
 ### 2026-07-09 – Icon styling: custom colour enable toggle
 **Icon Color** in Icon Styling is now gated by a switch: off restores the icon’s **original** colours; on reveals the colour picker and applies tint (raster) or Lucide SVG colour. Stored **`iconColor`** is kept when disabled via **`iconColorEnabled`**. Helpers **`isIconColorActive`** / **`resolveActiveIconColor`** in **`icon-glyph-filter.ts`**. Patch bumped.
 

@@ -222,7 +222,14 @@ export const measureNodeDims = (n: PositionedNode) => {
     const nodeWidth = effectiveLabelWidth ?? iconWidth;
     const hasLabel = label.trim().length > 0;
     const maxCharsPerLine = effectiveLabelWidth ? Math.floor(effectiveLabelWidth / 8) : 12;
-    const labelLines = hasLabel ? Math.max(1, Math.ceil(label.length / maxCharsPerLine)) : 1;
+    let labelLines = 1;
+    if (hasLabel) {
+      labelLines = 0;
+      for (const line of label.split("\n")) {
+        labelLines += Math.max(1, Math.ceil(line.length / maxCharsPerLine));
+      }
+      labelLines = Math.max(1, labelLines);
+    }
     const nodeHeight = iconStackHeight + (labelLines - 1) * EXTRA_LINE_HEIGHT;
     return { width: nodeWidth, height: snapDimensionToGrid(nodeHeight, 40) };
   }

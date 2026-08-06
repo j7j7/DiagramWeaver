@@ -227,6 +227,11 @@ const TEXT_NODE_HEIGHT = 40; // Height for text-only nodes
 const EXTRA_LINE_HEIGHT = 20; // Additional height per extra line of text
 const TIMELINE_CARD_DRAG_THRESHOLD_PX = 5;
 
+function syncPlainLabelTextareaHeight(el: HTMLTextAreaElement, minHeight = 0) {
+  el.style.height = "0px";
+  el.style.height = `${Math.max(el.scrollHeight, minHeight)}px`;
+}
+
 // Helper function to get gradient CSS with angle
 const getGradientWithAngle = (colors: string[], angle: number = 135) => {
   // Convert angle to CSS gradient direction
@@ -715,7 +720,6 @@ function DiagramNodeInner({
     startWidth: number;
     startHeight: number;
   } | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   // Local dimensions during resize for instant visual feedback (no parent update until end)
   const [resizeDimensions, setResizeDimensions] = useState<{ width: number; height: number } | null>(null);
   const [resizePosition, setResizePosition] = useState<{ x: number; y: number } | null>(null);
@@ -844,7 +848,7 @@ function DiagramNodeInner({
     setTimeout(() => {
       const usesRichEditor =
         node.type === "generic.text.text" || node.type === "generic.text.textbox";
-      const ref = usesRichEditor ? null : inputRef.current;
+      const ref = usesRichEditor ? null : textareaRef.current;
       if (ref) {
         ref.focus();
         if (options?.replaceWith != null) {
@@ -852,6 +856,10 @@ function DiagramNodeInner({
         } else {
           ref.select();
         }
+        syncPlainLabelTextareaHeight(
+          ref,
+          Number.parseFloat(ref.style.minHeight) || 0,
+        );
       }
     }, 0);
   }, [
@@ -881,6 +889,18 @@ function DiagramNodeInner({
     window.addEventListener("keydown", handleTypeToEdit, true);
     return () => window.removeEventListener("keydown", handleTypeToEdit, true);
   }, [isReadOnly, isEditingLabel, isConnectMode, beginLabelEdit]);
+
+  useEffect(() => {
+    if (!isEditingLabel) return;
+    if (node.type === "generic.text.text" || node.type === "generic.text.textbox") return;
+    const el = textareaRef.current;
+    if (el) {
+      syncPlainLabelTextareaHeight(
+        el,
+        Number.parseFloat(el.style.minHeight) || 0,
+      );
+    }
+  }, [isEditingLabel, editText, node.type]);
 
   const handleLabelSubmit = () => {
     if (!onLabelUpdate) {
@@ -2137,22 +2157,22 @@ function DiagramNodeInner({
           )}
         </div>
         {isEditingLabel ? (
-          <input
-            ref={inputRef}
+          <textarea
+            ref={textareaRef}
             id={`node-input-${node.id}`}
-            type="text"
             spellCheck
             value={editText}
             onChange={(e) => {
               plainLabelEditDirtyRef.current = true;
               setEditText(e.target.value);
+              syncPlainLabelTextareaHeight(e.target, isMiddle ? container : 0);
             }}
             onBlur={handleLabelSubmit}
-            onKeyDown={(e) => handleLabelKeyDown(e, false)}
+            onKeyDown={(e) => handleLabelKeyDown(e, true)}
             className={cn(
-              "text-sm text-center bg-transparent border border-primary rounded outline-none",
+              "text-sm text-center leading-tight bg-transparent border border-primary rounded outline-none resize-none",
               node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-1 py-0.5',
-              isMiddle ? "absolute flex items-center justify-center pointer-events-auto left-0 top-0" : "w-full",
+              isMiddle ? "absolute pointer-events-auto left-0 top-0" : "w-full flex-shrink-0",
               isTop && "order-1",
               isBottom && "order-2"
             )}
@@ -2161,14 +2181,17 @@ function DiagramNodeInner({
               backgroundColor: 'transparent',
               zIndex: 10,
               width: container,
-              height: container
-            } : getTextStylingForNode(node)}
+              minHeight: container,
+            } : {
+              ...getTextStylingForNode(node),
+              width: '100%',
+            }}
             onClick={(e) => e.stopPropagation()}
           />
         ) : displayLabel ? (
           <p
             className={cn(
-              "text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5",
+              "text-center break-words whitespace-pre-wrap leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5",
               isMiddle ? "absolute flex items-center justify-center pointer-events-auto left-0 top-0 -mx-0 -my-0" : "-mx-1 -my-0.5 w-full",
               isTop && "order-1",
               isBottom && "order-2"
@@ -2217,7 +2240,12 @@ function DiagramNodeInner({
       return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
     } else {
       const maxCharsPerLine = 12; // Approximate characters that fit in node width
-      const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+      const explicitLines = label.split("\n");
+      let lines = 0;
+      for (const line of explicitLines) {
+        lines += Math.max(1, Math.ceil(line.length / maxCharsPerLine));
+      }
+      lines = Math.max(1, lines);
       return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
     }
   };
