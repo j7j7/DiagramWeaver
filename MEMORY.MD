@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-06 – Text styling modal: shape vertical default
+**Text Styling** vertical position for shapes (e.g. rectangle labels) now defaults to **middle** in the panel when `textVerticalPosition` is unset — matching on-canvas rendering (`shape-text.tsx`). Icon/resource nodes still default to **bottom**. Legacy `textPosition` above/under on shapes is reflected in the panel. Patch bumped.
+
 ### 2026-08-06 – Icon label edit: auto-height textarea
 Multiline icon label inline edit **textarea** grows to **`scrollHeight`** on open and while typing (removed **`overflow-hidden`** / fixed **`rows`**), so all lines stay visible while editing. Patch bumped.
 

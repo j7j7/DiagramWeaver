@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Switch } from "@/components/ui/switch";
 import { TextStyling, COMMON_FONT_FAMILIES, DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
+import { isShapeNodeType } from "@/lib/utils";
 import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw, Move3D, Box, X } from "lucide-react";
 import Draggable from 'react-draggable';
 import { RECORDING_SURFACE_TEXT_STYLING } from "@/lib/interaction-recording-surfaces";
@@ -76,16 +77,19 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
       if (styling.textVerticalPosition) {
         return styling.textVerticalPosition as 'top' | 'middle' | 'bottom';
       }
-      // Default based on item type:
-      // - Regular nodes (icon nodes): default to 'bottom' for backward compatibility
-      // - Textboxes and zones: default to 'middle'
+      // Default based on item type (match canvas rendering defaults):
       if (selectedItem && selectedItem.itemType === 'node') {
         const nodeType = selectedItem.type;
-        // Textboxes should default to 'middle', regular nodes to 'bottom'
         if (nodeType === 'generic.text.textbox' || nodeType === 'generic.text.text') {
           return 'middle';
         }
-        // Regular icon nodes default to 'bottom'
+        if (isShapeNodeType(nodeType)) {
+          const textPosition = (selectedItem as { textPosition?: string }).textPosition;
+          if (textPosition === 'above') return 'top';
+          if (textPosition === 'under') return 'bottom';
+          return 'middle';
+        }
+        // Icon / resource nodes: label below the glyph by default
         return 'bottom';
       }
       // Default to 'middle' for zones and other types
