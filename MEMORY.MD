@@ -2,6 +2,15 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-10 – Orthogonal waypoints: no through-point loop
+Waypoint chaining used travel direction as **entry** angle into through-points, so a rightward trunk stubbed past the waypoint (as if entering a right edge) and looped back. Through-waypoint legs now approach with the **opposite** angle; final node entry still uses `toAngle`. Patch bumped.
+
+### 2026-08-10 – Orthogonal trunk drag: perpendicular absolute Y
+**`orthogonalTrunkOffsetYIsAbsolute`**: absolute trunk Y for opposite left/right **and** perpendicular pairs (e.g. bottom→left) so the horizontal bus `ns-resize` drag actually moves the path. Stub X waypoints; drag seeds/reconciles from the visible trunk. Same-side top/bottom + opposite top↔bottom stay relative. Patch bumped.
+
+### 2026-08-10 – Orthogonal trunk drag: same-side U-routes
+Same-side orthogonal pairs (top→top / bottom→bottom / left→left / right→right) honor **`orthogonalTrunkOffsetY/X`** via an **exterior** trunk baseline (`orthogonalExteriorTrunkBaseY/X`), so the horizontal/vertical bus can be dragged away from overlapping links. Drag seeding uses the visible trunk vs that baseline to avoid a jump. Opposite-edge stub-corridor offsets unchanged. Patch bumped.
+
 ### 2026-08-10 – Orthogonal routing: approach from outside + trunk stubs
 **`ensureApproachSegment`** requires the point next to each endpoint to lie **outside** along the edge normal (fixes arrows/lines ending inside the target). Trunk offsets use exit/entry **stubs** as the clamp corridor (not raw endpoints), skip same-side pairs and out-of-range offsets, and still ignore perpendicular edge pairs. Preferred-edge obstacles remain full node bounds. Patch bumped.
 

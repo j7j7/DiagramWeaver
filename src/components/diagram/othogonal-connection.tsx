@@ -12,6 +12,9 @@ import {
   mergeOrthogonalTrunkWaypoints,
   findOrthogonalTrunkVerticalSegment,
   findOrthogonalTrunkHorizontalSegment,
+  orthogonalExteriorTrunkBaseX,
+  orthogonalExteriorTrunkBaseY,
+  orthogonalTrunkOffsetYIsAbsolute,
   type OrthogonalRoute,
   type Rect,
 } from "@/lib/orthogonal-routing";
@@ -333,7 +336,10 @@ function OrthogonalConnectionInner({
       e.stopPropagation();
       e.preventDefault();
       const startDiagramX = p.x;
-      const startOffset = connectionData?.orthogonalTrunkOffsetX ?? 0;
+      const exteriorBase = orthogonalExteriorTrunkBaseX(fromX, toX, fromAngle, toAngle);
+      const startOffset =
+        connectionData?.orthogonalTrunkOffsetX
+        ?? (exteriorBase != null && trunkVertical ? trunkVertical.x - exteriorBase : 0);
       const onMove = (ev: PointerEvent) => {
         const p2 = clientToDiagram(ev.clientX, ev.clientY, diagramCanvasRef, diagramTransform);
         if (!p2) return;
@@ -350,7 +356,17 @@ function OrthogonalConnectionInner({
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [connectionData?.orthogonalTrunkOffsetX, diagramCanvasRef, diagramTransform, onOrthogonalTrunkOffsetChange],
+    [
+      connectionData?.orthogonalTrunkOffsetX,
+      diagramCanvasRef,
+      diagramTransform,
+      fromAngle,
+      fromX,
+      onOrthogonalTrunkOffsetChange,
+      toAngle,
+      toX,
+      trunkVertical,
+    ],
   );
 
   const trunkHorizontal = useMemo(
@@ -376,12 +392,31 @@ function OrthogonalConnectionInner({
       e.stopPropagation();
       e.preventDefault();
       const startDiagramY = p.y;
-      const startOffset = connectionData?.orthogonalTrunkOffsetY ?? 0;
+      const exteriorBase = orthogonalExteriorTrunkBaseY(fromY, toY, fromAngle, toAngle);
+      const useAbsoluteY = orthogonalTrunkOffsetYIsAbsolute(fromAngle, toAngle);
+      // Absolute bus Y (left/right or perpendicular): seed from the visible trunk so stale
+      // relative leftovers do not jump the line. Same-side top/bottom stays relative to exterior base.
+      const startOffset = useAbsoluteY && trunkHorizontal
+        ? trunkHorizontal.y
+        : (
+          connectionData?.orthogonalTrunkOffsetY
+          ?? (exteriorBase != null && trunkHorizontal ? trunkHorizontal.y - exteriorBase : 0)
+        );
+      // Reconcile stored absolute Y with the visible trunk before dragging (failed drags may
+      // have accumulated a value that never affected the path).
+      if (
+        useAbsoluteY
+        && trunkHorizontal
+        && connectionData?.orthogonalTrunkOffsetY != null
+        && Math.abs(connectionData.orthogonalTrunkOffsetY - startOffset) > 10
+      ) {
+        onOrthogonalTrunkOffsetYChange(startOffset);
+      }
       const onMove = (ev: PointerEvent) => {
         const p2 = clientToDiagram(ev.clientX, ev.clientY, diagramCanvasRef, diagramTransform);
         if (!p2) return;
         const next = startOffset + (p2.y - startDiagramY);
-        if (Math.abs(next) < 0.5) onOrthogonalTrunkOffsetYChange(undefined);
+        if (!useAbsoluteY && Math.abs(next) < 0.5) onOrthogonalTrunkOffsetYChange(undefined);
         else onOrthogonalTrunkOffsetYChange(next);
       };
       const onUp = () => {
@@ -393,7 +428,17 @@ function OrthogonalConnectionInner({
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [connectionData?.orthogonalTrunkOffsetY, diagramCanvasRef, diagramTransform, onOrthogonalTrunkOffsetYChange],
+    [
+      connectionData?.orthogonalTrunkOffsetY,
+      diagramCanvasRef,
+      diagramTransform,
+      fromAngle,
+      fromY,
+      onOrthogonalTrunkOffsetYChange,
+      toAngle,
+      toY,
+      trunkHorizontal,
+    ],
   );
 
   const rw = resolveConnectionWidths(connectionData);

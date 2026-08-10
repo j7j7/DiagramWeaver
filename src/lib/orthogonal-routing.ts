@@ -186,8 +186,164 @@ function isVerticalOrthogonalAngle(angleDeg: number): boolean {
   return angleDeg === 0 || angleDeg === 180;
 }
 
+/** Opposite cardinal (0↔180, 90↔270). Used for through-waypoint approach angles. */
+function oppositeOrthogonalAngle(angleDeg: number): number {
+  return (angleDeg + 180) % 360;
+}
+
 /** Stub length used when clamping trunk offsets outside node edges (matches computeOrthogonalSegment). */
 const TRUNK_STUB_LEN = CELL * 3;
+
+/**
+ * Baseline Y for a same-side vertical U-route trunk (top→top above both edges, bottom→bottom below).
+ * Offset is added to this baseline. Returns null when angles are not a same-side vertical pair.
+ */
+export function orthogonalExteriorTrunkBaseY(
+  fromY: number,
+  toY: number,
+  fromAngleDeg: number,
+  toAngleDeg: number,
+): number | null {
+  if (fromAngleDeg !== toAngleDeg) return null;
+  if (fromAngleDeg === 0) return snap(Math.min(fromY, toY) - TRUNK_STUB_LEN);
+  if (fromAngleDeg === 180) return snap(Math.max(fromY, toY) + TRUNK_STUB_LEN);
+  return null;
+}
+
+/**
+ * Baseline X for a same-side horizontal U-route trunk (left→left / right→right).
+ */
+export function orthogonalExteriorTrunkBaseX(
+  fromX: number,
+  toX: number,
+  fromAngleDeg: number,
+  toAngleDeg: number,
+): number | null {
+  if (fromAngleDeg !== toAngleDeg) return null;
+  if (fromAngleDeg === 270) return snap(Math.min(fromX, toX) - TRUNK_STUB_LEN);
+  if (fromAngleDeg === 90) return snap(Math.max(fromX, toX) + TRUNK_STUB_LEN);
+  return null;
+}
+
+/**
+ * Same-side top→top / bottom→bottom: place a horizontal trunk outside both edges.
+ * `trunkOffsetY` is relative to {@link orthogonalExteriorTrunkBaseY} (negative moves up for top→top).
+ */
+function mergeExteriorTrunkOffsetY(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngleDeg: number,
+  trunkOffsetY: number | undefined,
+  userWaypoints?: Array<{ x: number; y: number }>,
+): Array<{ x: number; y: number }> | undefined {
+  if (userWaypoints?.length) return userWaypoints;
+  if (trunkOffsetY == null || !Number.isFinite(trunkOffsetY) || trunkOffsetY === 0) return undefined;
+  const base = orthogonalExteriorTrunkBaseY(fromY, toY, fromAngleDeg, fromAngleDeg);
+  if (base == null) return undefined;
+  let trunkY = snap(base + trunkOffsetY);
+  if (fromAngleDeg === 0) {
+    const maxY = snap(Math.min(fromY, toY) - CELL);
+    if (trunkY > maxY) trunkY = maxY;
+  } else if (fromAngleDeg === 180) {
+    const minY = snap(Math.max(fromY, toY) + CELL);
+    if (trunkY < minY) trunkY = minY;
+  }
+  return [
+    { x: snap(fromX), y: trunkY },
+    { x: snap(toX), y: trunkY },
+  ];
+}
+
+/**
+ * True when {@link DiagramConnectionData.orthogonalTrunkOffsetY} is an **absolute** trunk Y
+ * (not a delta): opposite left/right, or perpendicular pairs (e.g. bottom→left) whose
+ * horizontal bus is dragged with `ns-resize`. Same-side top/bottom and opposite top↔bottom
+ * keep relative offsets.
+ */
+export function orthogonalTrunkOffsetYIsAbsolute(
+  fromAngleDeg: number,
+  toAngleDeg: number,
+): boolean {
+  const fromH = isHorizontalOrthogonalAngle(fromAngleDeg);
+  const toH = isHorizontalOrthogonalAngle(toAngleDeg);
+  if (fromH && toH && fromAngleDeg !== toAngleDeg) return true;
+  if (fromH !== toH) return true;
+  return false;
+}
+
+/**
+ * Opposite left/right pair: place a horizontal detour trunk at absolute Y (`trunkOffsetY`).
+ * Bus X uses exit/entry stubs so the path stays outside the nodes (not along the End edge).
+ */
+function mergeHorizontalPairDetourTrunkY(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngleDeg: number,
+  toAngleDeg: number,
+  trunkOffsetY: number | undefined,
+  userWaypoints?: Array<{ x: number; y: number }>,
+): Array<{ x: number; y: number }> | undefined {
+  if (userWaypoints?.length) return userWaypoints;
+  if (trunkOffsetY == null || !Number.isFinite(trunkOffsetY)) return undefined;
+  // Absolute trunk Y is a canvas coordinate. Reject ≤0 (also drops stale negative
+  // relative leftovers that were written while merge ignored horizontal-pair Y).
+  if (trunkOffsetY <= 0) return undefined;
+
+  const lo = Math.min(fromY, toY);
+  const hi = Math.max(fromY, toY);
+  const maxAbove = snap(lo - CELL);
+  const minBelow = snap(hi + CELL);
+  // Values inside the endpoint Y band are almost always stale relative deltas from
+  // failed trunk drags (handle wrote Y offset while merge ignored it). Ignore them
+  // so the route stays on its natural detour until the user drags again.
+  if (trunkOffsetY > maxAbove && trunkOffsetY < minBelow) {
+    return undefined;
+  }
+  let trunkY = snap(trunkOffsetY);
+  if (trunkY > maxAbove && trunkY < minBelow) {
+    trunkY = trunkY < (lo + hi) / 2 ? maxAbove : minBelow;
+  }
+  const fromStub = exitStub(fromX, fromY, fromAngleDeg, TRUNK_STUB_LEN);
+  const toStub = exitStub(toX, toY, toAngleDeg, TRUNK_STUB_LEN);
+  return [
+    { x: fromStub.x, y: trunkY },
+    { x: toStub.x, y: trunkY },
+  ];
+}
+
+/**
+ * Same-side left→left / right→right: place a vertical trunk outside both edges.
+ */
+function mergeExteriorTrunkOffsetX(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngleDeg: number,
+  trunkOffsetX: number | undefined,
+  userWaypoints?: Array<{ x: number; y: number }>,
+): Array<{ x: number; y: number }> | undefined {
+  if (userWaypoints?.length) return userWaypoints;
+  if (trunkOffsetX == null || !Number.isFinite(trunkOffsetX) || trunkOffsetX === 0) return undefined;
+  const base = orthogonalExteriorTrunkBaseX(fromX, toX, fromAngleDeg, fromAngleDeg);
+  if (base == null) return undefined;
+  let trunkX = snap(base + trunkOffsetX);
+  if (fromAngleDeg === 270) {
+    const maxX = snap(Math.min(fromX, toX) - CELL);
+    if (trunkX > maxX) trunkX = maxX;
+  } else if (fromAngleDeg === 90) {
+    const minX = snap(Math.max(fromX, toX) + CELL);
+    if (trunkX < minX) trunkX = minX;
+  }
+  return [
+    { x: trunkX, y: snap(fromY) },
+    { x: trunkX, y: snap(toY) },
+  ];
+}
 
 /**
  * When there are no manual {@link DiagramConnectionData.waypoints}, optional **orthogonalTrunkOffsetX**
@@ -318,13 +474,51 @@ export function mergeOrthogonalTrunkWaypoints(
     ? isVerticalOrthogonalAngle(fromAngleDeg)
     : isVerticalOrthogonalAngle(toAngleDeg);
 
-  // Same-side pairs (top→top, left→left, …) use a U-route; an interior Z trunk
-  // does not apply and often collapses onto/through the node edge.
+  // Same-side pairs use an exterior U-route trunk (above top→top, etc.), not an interior Z.
   if (toAngleDeg !== undefined && fromAngleDeg === toAngleDeg) {
+    if (isVerticalOrthogonalAngle(fromAngleDeg)) {
+      return mergeExteriorTrunkOffsetY(
+        fromX,
+        fromY,
+        toX,
+        toY,
+        fromAngleDeg,
+        trunkOffsetY,
+        undefined,
+      );
+    }
+    if (isHorizontalOrthogonalAngle(fromAngleDeg)) {
+      return mergeExteriorTrunkOffsetX(
+        fromX,
+        fromY,
+        toX,
+        toY,
+        fromAngleDeg,
+        trunkOffsetX,
+        undefined,
+      );
+    }
     return undefined;
   }
 
   if (fromHorizontal && toHorizontal) {
+    // Opposite left/right: horizontal detour bus uses absolute orthogonalTrunkOffsetY.
+    if (
+      toAngleDeg !== undefined
+      && orthogonalTrunkOffsetYIsAbsolute(fromAngleDeg, toAngleDeg)
+    ) {
+      const yDetour = mergeHorizontalPairDetourTrunkY(
+        fromX,
+        fromY,
+        toX,
+        toY,
+        fromAngleDeg,
+        toAngleDeg,
+        trunkOffsetY,
+        undefined,
+      );
+      if (yDetour) return yDetour;
+    }
     return mergeOrthogonalWaypointsWithTrunkOffset(
       fromX,
       fromY,
@@ -346,6 +540,22 @@ export function mergeOrthogonalTrunkWaypoints(
       trunkOffsetY,
       undefined,
       toAngleDeg,
+    );
+  }
+  // Perpendicular (e.g. bottom→left): horizontal bus uses absolute Y + stub X.
+  if (
+    toAngleDeg !== undefined
+    && orthogonalTrunkOffsetYIsAbsolute(fromAngleDeg, toAngleDeg)
+  ) {
+    return mergeHorizontalPairDetourTrunkY(
+      fromX,
+      fromY,
+      toX,
+      toY,
+      fromAngleDeg,
+      toAngleDeg,
+      trunkOffsetY,
+      undefined,
     );
   }
   return undefined;
@@ -1087,12 +1297,33 @@ export function computeOrthogonalRoute(
     points = computeOrthogonalSegment(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, options);
   } else {
     const all: Array<{ x: number; y: number }> = [];
+    // Through-waypoints are not node edges: approach them from the travel direction
+    // (entry = opposite of travel). Using travel as entryAngle made horizontal trunk
+    // legs overshoot past the waypoint (e.g. rightward bus with entry 90 stubbed to
+    // the right) and create a small loop before the final node approach.
+    const travelIntoFirst = directionFromTo(
+      fromX, fromY, snappedWaypoints[0].x, snappedWaypoints[0].y,
+    );
     const legs = [
-      { ax: fromX, ay: fromY, bx: snappedWaypoints[0].x, by: snappedWaypoints[0].y, exitAngle: fromAngle, entryAngle: directionFromTo(fromX, fromY, snappedWaypoints[0].x, snappedWaypoints[0].y) },
+      {
+        ax: fromX,
+        ay: fromY,
+        bx: snappedWaypoints[0].x,
+        by: snappedWaypoints[0].y,
+        exitAngle: fromAngle,
+        entryAngle: oppositeOrthogonalAngle(travelIntoFirst),
+      },
       ...snappedWaypoints.slice(0, -1).map((wp, i) => {
         const next = snappedWaypoints[i + 1];
         const angle = directionFromTo(wp.x, wp.y, next.x, next.y);
-        return { ax: wp.x, ay: wp.y, bx: next.x, by: next.y, exitAngle: angle, entryAngle: angle };
+        return {
+          ax: wp.x,
+          ay: wp.y,
+          bx: next.x,
+          by: next.y,
+          exitAngle: angle,
+          entryAngle: oppositeOrthogonalAngle(angle),
+        };
       }),
       {
         ax: snappedWaypoints[snappedWaypoints.length - 1].x,
