@@ -3032,6 +3032,12 @@ export default function DiagramEditor() {
         if ('toPreferredEntry' in updates && updates.toPreferredEntry === undefined) {
           delete merged.toPreferredEntry;
         }
+        if ('fromEdgePosition' in updates && updates.fromEdgePosition === undefined) {
+          delete merged.fromEdgePosition;
+        }
+        if ('toEdgePosition' in updates && updates.toEdgePosition === undefined) {
+          delete merged.toEdgePosition;
+        }
         if ('orthogonalTrunkOffsetX' in updates && updates.orthogonalTrunkOffsetX === undefined) {
           delete merged.orthogonalTrunkOffsetX;
         }
@@ -3063,6 +3069,12 @@ export default function DiagramEditor() {
         }
         if ('toPreferredEntry' in updates && updates.toPreferredEntry === undefined) {
           delete (next as DiagramConnectionData).toPreferredEntry;
+        }
+        if ('fromEdgePosition' in updates && updates.fromEdgePosition === undefined) {
+          delete (next as DiagramConnectionData).fromEdgePosition;
+        }
+        if ('toEdgePosition' in updates && updates.toEdgePosition === undefined) {
+          delete (next as DiagramConnectionData).toEdgePosition;
         }
         if ('orthogonalTrunkOffsetX' in updates && updates.orthogonalTrunkOffsetX === undefined) {
           delete (next as DiagramConnectionData).orthogonalTrunkOffsetX;

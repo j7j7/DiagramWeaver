@@ -76,7 +76,7 @@ function connectionDataKey(c?: DiagramConnectionData): string {
   if (!c) return '';
   const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
   const anim = c.animation ? JSON.stringify(c.animation) : '';
-  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.style ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineWidthLock ?? ''}|${c.lineWidthEnd ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${isUseSourceLineColorOn(c) ? '1' : ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.colorLock ?? ''}|${c.colorEnd ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.style ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineWidthLock ?? ''}|${c.lineWidthEnd ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${isUseSourceLineColorOn(c) ? '1' : ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.colorLock ?? ''}|${c.colorEnd ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}|${c.fromEdgePosition ?? ''}|${c.toEdgePosition ?? ''}`;
 }
 
 function slideTransitionStyleEqual(
@@ -286,7 +286,51 @@ export function renderAnimatedShape(shape: 'dot' | 'square' | 'arrow' | 'triangl
   );
 }
 
-export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number, iconWidth?: number, iconOffsetX?: number, centerEdgeAnchors?: boolean): { x: number; y: number; angleDeg?: number } {
+/** Project a diagram point onto a node edge and return parametric position t ∈ [0, 1]. Exported for endpoint drag handles. */
+export function computeEdgePositionFraction(
+  px: number,
+  py: number,
+  obj: Positionable,
+  width: number,
+  height: number,
+  edge: 'top' | 'bottom' | 'left' | 'right',
+  iconHeight?: number,
+  iconWidth?: number,
+  iconOffset?: number,
+  iconOffsetX?: number,
+): number {
+  const isGroup = obj.type === 'group' || (obj as any).subType === 'zone';
+  const isTextNode = obj.type === 'generic.text.text' || obj.type === 'generic.text.textbox';
+  const isObjectNode = isGenericObjectOrChartShapeType(obj.type);
+  const isIconLikeNode = !isGroup && !isTextNode && !isObjectNode;
+  const inferredIconContainer = isIconLikeNode ? getIconTileAnchorSize(obj as any) : undefined;
+
+  const resolvedIconWidth = isIconLikeNode
+    ? (iconWidth ?? inferredIconContainer ?? iconHeight)
+    : iconWidth;
+  const resolvedIconHeight = iconHeight ?? inferredIconContainer;
+  const resolvedIconXOffset = iconOffsetX ?? (
+    resolvedIconWidth && width > resolvedIconWidth ? (width - resolvedIconWidth) / 2 : 0
+  );
+  const resolvedIconYOffset = iconOffset ?? (
+    (obj as any).textVerticalPosition === 'top' && resolvedIconHeight && height > resolvedIconHeight
+      ? height - resolvedIconHeight
+      : 0
+  );
+  const effectiveWidth = resolvedIconWidth ?? width;
+  const leftX = resolvedIconWidth ? obj.x + resolvedIconXOffset : obj.x;
+  const verticalEdgeLength = isGroup ? height : (resolvedIconHeight || height);
+  const verticalEdgeTop = isGroup ? obj.y : (resolvedIconHeight ? obj.y + resolvedIconYOffset : obj.y);
+
+  if (edge === 'top' || edge === 'bottom') {
+    if (effectiveWidth <= 0) return 0.5;
+    return Math.max(0, Math.min(1, (px - leftX) / effectiveWidth));
+  }
+  if (verticalEdgeLength <= 0) return 0.5;
+  return Math.max(0, Math.min(1, (py - verticalEdgeTop) / verticalEdgeLength));
+}
+
+export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number, iconWidth?: number, iconOffsetX?: number, centerEdgeAnchors?: boolean, edgePosition?: number): { x: number; y: number; angleDeg?: number } {
   const isGroup = obj.type === 'group' || obj.subType === 'zone';
   const isTextNode = obj.type === 'generic.text.text' || obj.type === 'generic.text.textbox';
   const isObjectNode = isGenericObjectOrChartShapeType(obj.type);
@@ -325,7 +369,37 @@ export function getConnectionPoint(obj: any, width: number, height: number, poin
   // Use to-specific indices if this is the "to" node and they're provided
   const effectiveIndex = (isToNode && toConnectionIndex !== undefined) ? toConnectionIndex : connectionIndex;
   const effectiveTotal = (isToNode && toTotalConnections !== undefined) ? toTotalConnections : totalConnections;
-  const spreadAlongEdge = centerEdgeAnchors !== true && effectiveIndex !== undefined && effectiveTotal !== undefined && effectiveTotal > 1;
+  const useCustomEdgePosition = edgePosition !== undefined && point !== 'center';
+  const spreadAlongEdge = !useCustomEdgePosition && centerEdgeAnchors !== true && effectiveIndex !== undefined && effectiveTotal !== undefined && effectiveTotal > 1;
+
+  if (useCustomEdgePosition) {
+    const t = Math.max(0, Math.min(1, edgePosition!));
+    if (isKiteShapeType(obj.type) && (point === 'top' || point === 'bottom' || point === 'left' || point === 'right')) {
+      return getKiteConnectionPoint(point, t, obj, width, height);
+    }
+    const verticalEdgeLength = isGroup ? height : (resolvedIconHeight || height);
+    const verticalEdgeTop = isGroup ? obj.y : (resolvedIconHeight ? obj.y + resolvedIconYOffset : obj.y);
+    if (point === 'top' || point === 'bottom') {
+      const x = leftX + t * effectiveWidth;
+      const y = point === 'top' ? obj.y - edgeOffset : (isGroup ? obj.y + height : (resolvedIconHeight ? obj.y + resolvedIconYOffset + resolvedIconHeight : obj.y + height)) + edgeOffset;
+      const shapeBounds = isObjectNode ? getShapeEdgeBounds(obj.type) : null;
+      if (shapeBounds) {
+        const base = shapeEdgeToPoint(shapeBounds, obj, width, height, point);
+        return { x, y: base.y + (point === 'top' ? -edgeOffset : edgeOffset), angleDeg: undefined };
+      }
+      return { x, y };
+    }
+    if (point === 'left' || point === 'right') {
+      const y = verticalEdgeTop + t * verticalEdgeLength;
+      const x = (point === 'left' ? leftX : rightX) + (point === 'left' ? -edgeOffset : edgeOffset);
+      const shapeBounds = isObjectNode ? getShapeEdgeBounds(obj.type) : null;
+      if (shapeBounds) {
+        const base = shapeEdgeToPoint(shapeBounds, obj, width, height, point);
+        return { x: base.x + (point === 'left' ? -edgeOffset : edgeOffset), y };
+      }
+      return { x, y };
+    }
+  }
 
   if (spreadAlongEdge) {
     // Distribute connections evenly along the edge length
@@ -730,8 +804,8 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
       fromExit = clampEdgeToAxisConstraint(fromExit, constraintKind, 'from', dx, dy);
       toEntry = clampEdgeToAxisConstraint(toEntry, constraintKind, 'to', dx, dy);
     }
-    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, fromExit, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors);
-    const toPoint = getConnectionPoint(to, toWidth, toHeight, toEntry, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors);
+    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, fromExit, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors, connectionData?.fromEdgePosition);
+    const toPoint = getConnectionPoint(to, toWidth, toHeight, toEntry, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors, connectionData?.toEdgePosition);
     const fromAngle = fromPoint.angleDeg ?? getExitAngle(fromExit);
     const toAngle = toPoint.angleDeg ?? getExitAngle(toEntry);
     return { fromX: fromPoint.x, fromY: fromPoint.y, toX: toPoint.x, toY: toPoint.y, fromAngle, toAngle };
@@ -798,8 +872,8 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
     clampedTo = clampEdgeToAxisConstraint(safeToPoint, constraintKind, 'to', dx, dy);
   }
 
-  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, clampedFrom, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors);
-  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, clampedTo, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors);
+  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, clampedFrom, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors, connectionData?.fromEdgePosition);
+  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, clampedTo, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors, connectionData?.toEdgePosition);
   
   const fromAngle = fromConnectionPoint.angleDeg ?? getExitAngle(clampedFrom);
   const toAngle = toConnectionPoint.angleDeg ?? getExitAngle(clampedTo);

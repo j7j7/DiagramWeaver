@@ -146,6 +146,7 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
   if (a.fromArrow !== b.fromArrow || a.toArrow !== b.toArrow || a.arrow !== b.arrow) return false;
   if (a.centerEdgeAnchors !== b.centerEdgeAnchors) return false;
   if (a.fromPreferredExit !== b.fromPreferredExit || a.toPreferredEntry !== b.toPreferredEntry) return false;
+  if (a.fromEdgePosition !== b.fromEdgePosition || a.toEdgePosition !== b.toEdgePosition) return false;
   if (a.edgeAttachmentConstraint !== b.edgeAttachmentConstraint) return false;
   if (a.smoothCorners !== b.smoothCorners) return false;
   if (a.text !== b.text || a.textPosition !== b.textPosition || a.style !== b.style) return false;

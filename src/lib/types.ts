@@ -798,8 +798,12 @@ export interface DiagramConnectionData {
   text?: string; // Optional text to display on the connection
   textPosition?: number; // Text position along the line (0-100%, default 50%)
   fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; // Preferred exit direction from source node
+  /** Parametric position along the chosen from edge (0 = start, 1 = end). Omitted = automatic spread. */
+  fromEdgePosition?: number;
   fromArrow?: boolean; // Enable arrow at source node edge
   toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; // Preferred entry direction to target node
+  /** Parametric position along the chosen to edge (0 = start, 1 = end). Omitted = automatic spread. */
+  toEdgePosition?: number;
   toArrow?: boolean; // Enable arrow at target node edge
   arrow?: boolean; // Legacy arrow property - backward compatibility
   

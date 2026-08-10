@@ -126,7 +126,7 @@ interface CanvasConnectionsProps {
   unrelatedConnectionRoutingDragIdsKey?: string;
 }
 
-type EdgeGroupEntry = { conn: DiagramConnectionData; connIndex: number };
+type EdgeGroupEntry = { conn: DiagramConnectionData; connIndex: number; isFrom: boolean; sortCoord: number };
 
 /** Drop slide fade-out lines from anchor spread — target slide connection set defines slot count. */
 function effectiveEdgeGroupForAnchor(
@@ -136,6 +136,11 @@ function effectiveEdgeGroupForAnchor(
 ): EdgeGroupEntry[] {
   if (!connectionAnimationStyles) return items;
   return items.filter((item) => !connectionAnimationStyles.get(connectionKey(item.conn))?.slideFadeOut);
+}
+
+function edgeGroupUsesAutoSpread(item: EdgeGroupEntry): boolean {
+  if (item.isFrom) return item.conn.fromEdgePosition === undefined;
+  return item.conn.toEdgePosition === undefined;
 }
 
 function resolveEdgeAnchorSpread(
@@ -148,6 +153,7 @@ function resolveEdgeAnchorSpread(
   const effective = connectionKey
     ? effectiveEdgeGroupForAnchor(items, connectionKey, connectionAnimationStyles)
     : items;
+  const autoSpread = effective.filter(edgeGroupUsesAutoSpread);
 
   const currentKey = currentConn && connectionKey ? connectionKey(currentConn) : undefined;
   const currentStyle = currentKey ? connectionAnimationStyles?.get(currentKey) : undefined;
@@ -155,18 +161,18 @@ function resolveEdgeAnchorSpread(
   if (currentStyle?.slideFadeOut) {
     const partnerKey = currentStyle.reversePairConnKey;
     if (partnerKey) {
-      const partnerIdx = effective.findIndex((item) => connectionKey(item.conn) === partnerKey);
+      const partnerIdx = autoSpread.findIndex((item) => connectionKey(item.conn) === partnerKey);
       if (partnerIdx >= 0) {
-        return { connectionIndex: partnerIdx, totalConnections: effective.length > 0 ? effective.length : 1 };
+        return { connectionIndex: partnerIdx, totalConnections: autoSpread.length > 0 ? autoSpread.length : 1 };
       }
     }
-    return { connectionIndex: 0, totalConnections: effective.length > 0 ? effective.length : 1 };
+    return { connectionIndex: 0, totalConnections: autoSpread.length > 0 ? autoSpread.length : 1 };
   }
 
-  const edgeIndex = effective.findIndex((item) => item.connIndex === connIndex);
+  const edgeIndex = autoSpread.findIndex((item) => item.connIndex === connIndex);
   return {
     connectionIndex: edgeIndex >= 0 ? edgeIndex : 0,
-    totalConnections: effective.length > 0 ? effective.length : 1,
+    totalConnections: autoSpread.length > 0 ? autoSpread.length : 1,
   };
 }
 

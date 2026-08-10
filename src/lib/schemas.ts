@@ -712,8 +712,10 @@ export const DiagramConnectionDataSchema = z.object({
   text: z.string().optional(), // Optional text to display on the connection
   textPosition: z.number().optional(), // Text position along the line (0-100%, default 50%)
   fromPreferredExit: z.enum(['top', 'bottom', 'left', 'right', 'center']).optional(), // Preferred exit direction from source node
+  fromEdgePosition: z.number().min(0).max(1).optional(), // Custom position along from edge (0–1); omitted = auto spread
   fromArrow: z.boolean().optional(), // Enable arrow at source node edge
   toPreferredEntry: z.enum(['top', 'bottom', 'left', 'right', 'center']).optional(), // Preferred entry direction to target node
+  toEdgePosition: z.number().min(0).max(1).optional(), // Custom position along to edge (0–1); omitted = auto spread
   toArrow: z.boolean().optional(), // Enable arrow at target node edge
   arrow: z.boolean().optional(), // Legacy arrow property - backward compatibility
   // Connection style options

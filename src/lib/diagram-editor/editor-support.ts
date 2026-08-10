@@ -471,8 +471,10 @@ export function stripConnectionDefaults(conn: DiagramData["connections"][number]
   if (conn.smoothCorners === true) result.smoothCorners = true;
   if (conn.curvature !== undefined && conn.curvature !== 0.6) result.curvature = conn.curvature;
   if (conn.fromPreferredExit !== undefined) result.fromPreferredExit = conn.fromPreferredExit;
+  if (conn.fromEdgePosition !== undefined) result.fromEdgePosition = conn.fromEdgePosition;
   if (conn.fromArrow !== undefined) result.fromArrow = conn.fromArrow;
   if (conn.toPreferredEntry !== undefined) result.toPreferredEntry = conn.toPreferredEntry;
+  if (conn.toEdgePosition !== undefined) result.toEdgePosition = conn.toEdgePosition;
   if (conn.toArrow !== undefined) result.toArrow = conn.toArrow;
   if (conn.arrow !== undefined) result.arrow = conn.arrow;
   if (conn.centerEdgeAnchors === true) result.centerEdgeAnchors = true;
