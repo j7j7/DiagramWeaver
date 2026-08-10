@@ -178,10 +178,22 @@ export function findOrthogonalTrunkVerticalSegment(
   return null;
 }
 
+function isHorizontalOrthogonalAngle(angleDeg: number): boolean {
+  return angleDeg === 90 || angleDeg === 270;
+}
+
+function isVerticalOrthogonalAngle(angleDeg: number): boolean {
+  return angleDeg === 0 || angleDeg === 180;
+}
+
+/** Stub length used when clamping trunk offsets outside node edges (matches computeOrthogonalSegment). */
+const TRUNK_STUB_LEN = CELL * 3;
+
 /**
  * When there are no manual {@link DiagramConnectionData.waypoints}, optional **orthogonalTrunkOffsetX**
  * (px) shifts the vertical trunk from the auto Z-route midline: negative moves the trunk toward the
  * left when the route runs left→right. Returns `undefined` when no extra waypoints should be injected.
+ * Clamp range uses exit/entry stubs so the trunk stays outside the nodes (not between raw endpoints).
  */
 export function mergeOrthogonalWaypointsWithTrunkOffset(
   fromX: number,
@@ -191,21 +203,24 @@ export function mergeOrthogonalWaypointsWithTrunkOffset(
   fromAngleDeg: number,
   trunkOffsetX: number | undefined,
   userWaypoints?: Array<{ x: number; y: number }>,
+  toAngleDeg?: number,
 ): Array<{ x: number; y: number }> | undefined {
   if (userWaypoints?.length) return userWaypoints;
   if (trunkOffsetX == null || !Number.isFinite(trunkOffsetX) || trunkOffsetX === 0) return undefined;
-  const horizontalFirst = fromAngleDeg === 90 || fromAngleDeg === 270;
+  const horizontalFirst = isHorizontalOrthogonalAngle(fromAngleDeg);
   if (!horizontalFirst) return undefined;
-  const autoMid = snap((fromX + toX) / 2);
+  const entryAngle = toAngleDeg ?? (fromAngleDeg === 90 ? 270 : fromAngleDeg === 270 ? 90 : fromAngleDeg);
+  const fromStub = exitStub(fromX, fromY, fromAngleDeg, TRUNK_STUB_LEN);
+  const toStub = exitStub(toX, toY, entryAngle, TRUNK_STUB_LEN);
+  const autoMid = snap((fromStub.x + toStub.x) / 2);
   const trunkX = snap(autoMid + trunkOffsetX);
-  const minEndX = Math.min(fromX, toX);
-  const maxEndX = Math.max(fromX, toX);
-  const lo = minEndX + CELL;
-  const hi = maxEndX - CELL;
-  const clamped = lo <= hi ? Math.max(lo, Math.min(hi, trunkX)) : snap((fromX + toX) / 2);
+  const lo = Math.min(fromStub.x, toStub.x) + CELL;
+  const hi = Math.max(fromStub.x, toStub.x) - CELL;
+  // No exterior span, or offset outside that span — skip (don't pin to the rim).
+  if (lo > hi || trunkX < lo || trunkX > hi) return undefined;
   return [
-    { x: clamped, y: fromY },
-    { x: clamped, y: toY },
+    { x: trunkX, y: fromStub.y },
+    { x: trunkX, y: toStub.y },
   ];
 }
 
@@ -245,6 +260,8 @@ export function findOrthogonalTrunkHorizontalSegment(
 /**
  * When there are no manual waypoints, optional **orthogonalTrunkOffsetY** (px) shifts the horizontal trunk
  * from the auto Z-route midline: negative moves the trunk **up** when the route runs top→bottom.
+ * Clamp range uses exit/entry stubs so the trunk stays outside the nodes (not between raw endpoints,
+ * which can lie inside a preferred top/bottom edge).
  */
 export function mergeOrthogonalWaypointsWithTrunkOffsetY(
   fromX: number,
@@ -254,26 +271,31 @@ export function mergeOrthogonalWaypointsWithTrunkOffsetY(
   fromAngleDeg: number,
   trunkOffsetY: number | undefined,
   userWaypoints?: Array<{ x: number; y: number }>,
+  toAngleDeg?: number,
 ): Array<{ x: number; y: number }> | undefined {
   if (userWaypoints?.length) return userWaypoints;
   if (trunkOffsetY == null || !Number.isFinite(trunkOffsetY) || trunkOffsetY === 0) return undefined;
-  const horizontalFirst = fromAngleDeg === 90 || fromAngleDeg === 270;
-  if (horizontalFirst) return undefined;
-  const autoMid = snap((fromY + toY) / 2);
+  if (isHorizontalOrthogonalAngle(fromAngleDeg)) return undefined;
+  const entryAngle = toAngleDeg ?? (fromAngleDeg === 0 ? 180 : fromAngleDeg === 180 ? 0 : fromAngleDeg);
+  const fromStub = exitStub(fromX, fromY, fromAngleDeg, TRUNK_STUB_LEN);
+  const toStub = exitStub(toX, toY, entryAngle, TRUNK_STUB_LEN);
+  const autoMid = snap((fromStub.y + toStub.y) / 2);
   const trunkY = snap(autoMid + trunkOffsetY);
-  const minEndY = Math.min(fromY, toY);
-  const maxEndY = Math.max(fromY, toY);
-  const lo = minEndY + CELL;
-  const hi = maxEndY - CELL;
-  const clamped = lo <= hi ? Math.max(lo, Math.min(hi, trunkY)) : snap((fromY + toY) / 2);
+  const lo = Math.min(fromStub.y, toStub.y) + CELL;
+  const hi = Math.max(fromStub.y, toStub.y) - CELL;
+  // No exterior span, or offset outside that span — skip (don't pin to the rim).
+  if (lo > hi || trunkY < lo || trunkY > hi) return undefined;
   return [
-    { x: fromX, y: clamped },
-    { x: toX, y: clamped },
+    { x: fromStub.x, y: trunkY },
+    { x: toStub.x, y: trunkY },
   ];
 }
 
 /**
- * Applies **orthogonalTrunkOffsetX** for horizontal-first Z-routes or **orthogonalTrunkOffsetY** for vertical-first.
+ * Applies **orthogonalTrunkOffsetX** when both ends approach horizontally (left/right),
+ * or **orthogonalTrunkOffsetY** when both approach vertically (top/bottom).
+ * Perpendicular edge pairs (e.g. bottom→left) ignore trunk offsets — injecting a Z trunk
+ * would force a final segment along the wrong axis into the target edge.
  * Manual `waypoints` disable both.
  */
 export function mergeOrthogonalTrunkWaypoints(
@@ -285,10 +307,24 @@ export function mergeOrthogonalTrunkWaypoints(
   trunkOffsetX: number | undefined,
   trunkOffsetY: number | undefined,
   userWaypoints?: Array<{ x: number; y: number }>,
+  toAngleDeg?: number,
 ): Array<{ x: number; y: number }> | undefined {
   if (userWaypoints?.length) return userWaypoints;
-  const horizontalFirst = fromAngleDeg === 90 || fromAngleDeg === 270;
-  if (horizontalFirst) {
+  const fromHorizontal = isHorizontalOrthogonalAngle(fromAngleDeg);
+  const toHorizontal = toAngleDeg === undefined
+    ? fromHorizontal
+    : isHorizontalOrthogonalAngle(toAngleDeg);
+  const toVertical = toAngleDeg === undefined
+    ? isVerticalOrthogonalAngle(fromAngleDeg)
+    : isVerticalOrthogonalAngle(toAngleDeg);
+
+  // Same-side pairs (top→top, left→left, …) use a U-route; an interior Z trunk
+  // does not apply and often collapses onto/through the node edge.
+  if (toAngleDeg !== undefined && fromAngleDeg === toAngleDeg) {
+    return undefined;
+  }
+
+  if (fromHorizontal && toHorizontal) {
     return mergeOrthogonalWaypointsWithTrunkOffset(
       fromX,
       fromY,
@@ -297,17 +333,22 @@ export function mergeOrthogonalTrunkWaypoints(
       fromAngleDeg,
       trunkOffsetX,
       undefined,
+      toAngleDeg,
     );
   }
-  return mergeOrthogonalWaypointsWithTrunkOffsetY(
-    fromX,
-    fromY,
-    toX,
-    toY,
-    fromAngleDeg,
-    trunkOffsetY,
-    undefined,
-  );
+  if (!fromHorizontal && toVertical) {
+    return mergeOrthogonalWaypointsWithTrunkOffsetY(
+      fromX,
+      fromY,
+      toX,
+      toY,
+      fromAngleDeg,
+      trunkOffsetY,
+      undefined,
+      toAngleDeg,
+    );
+  }
+  return undefined;
 }
 
 // -----------------------------------------------------------------------------
@@ -870,17 +911,15 @@ function ensureApproachSegment(
   const dx = adjacent.x - endpoint.x;
   const dy = adjacent.y - endpoint.y;
 
-  // Determine whether the existing segment already matches the required
-  // direction. Convention:
-  // angle 0   -> line must leave/arrive vertically upward   (dy < 0, dx === 0)
-  // angle 90  -> line must leave/arrive horizontally right  (dx > 0, dy === 0)
-  // angle 180 -> line must leave/arrive vertically downward (dy > 0, dx === 0)
-  // angle 270 -> line must leave/arrive horizontally left   (dx < 0, dy === 0)
-  // For a *source* we check the direction FROM endpoint TO adjacent.
-  // For a *destination* we check the direction FROM adjacent TO endpoint
-  // (i.e. the line must be arriving along the correct axis).
-  const checkDx = isSource ? dx : -dx;
-  const checkDy = isSource ? dy : -dy;
+  // Adjacent point must lie *outside* the node along the edge normal (same as exitStub).
+  // Convention (outward from the node):
+  // angle 0   -> adjacent above  (dy < 0, dx === 0)
+  // angle 90  -> adjacent right  (dx > 0, dy === 0)
+  // angle 180 -> adjacent below  (dy > 0, dx === 0)
+  // angle 270 -> adjacent left   (dx < 0, dy === 0)
+  // Applies to both source (departure) and destination (approach from outside).
+  const checkDx = dx;
+  const checkDy = dy;
 
   let aligned = false;
   switch (angle) {
@@ -1274,47 +1313,12 @@ export function closestTOnOrthogonalPath(
 
 /**
  * When the user explicitly chooses a connection edge (fromPreferredExit / toPreferredEntry),
- * endpoints are excluded from the obstacle list — so the router would otherwise allow
- * segments to cut through the node's interior (e.g. across the icon) before reaching the
- * chosen side. We add a thin "free" strip along that chosen edge and block the rest of the
- * node's interior so the path must approach from outside (e.g. top/bottom) instead of
- * through the node.
+ * endpoints are excluded from the obstacle catalog — so the router would otherwise allow
+ * segments to cut through the node's interior before reaching the chosen side.
+ * Re-add the **full** node/zone bounds as obstacles. Exit/entry stubs sit outside the node,
+ * so routing stays outside; a free strip along the preferred edge previously let same-side
+ * routes (e.g. left→left) thread through the node after obstacle inflation.
  */
-const PREFERRED_EDGE_STRIP_PX = CELL * 4; // 40px; ≥ stub length (CELL*3) so the corridor is usable
-
-function pushInteriorObstacleForPreferredEdge(
-  out: Rect[],
-  node: { x: number; y: number; width: number; height: number },
-  edge: 'top' | 'bottom' | 'left' | 'right',
-  stripWidth: number,
-): void {
-  const { x, y, width: w, height: h } = node;
-  const sw = Math.min(stripWidth, Math.max(0, w - 2), Math.max(0, h - 2));
-  if (sw <= 0) return;
-  switch (edge) {
-    case 'right': {
-      if (w - sw <= 2) return;
-      out.push({ x, y, width: w - sw, height: h });
-      break;
-    }
-    case 'left': {
-      if (w - sw <= 2) return;
-      out.push({ x: x + sw, y, width: w - sw, height: h });
-      break;
-    }
-    case 'top': {
-      if (h - sw <= 2) return;
-      out.push({ x, y: y + sw, width: w, height: h - sw });
-      break;
-    }
-    case 'bottom': {
-      if (h - sw <= 2) return;
-      out.push({ x, y, width: w, height: h - sw });
-      break;
-    }
-  }
-}
-
 function getNodeRectForRoutingObstacle(
   id: string,
   nodesById: Record<string, { x: number; y: number; width?: number; height?: number; [k: string]: any }>,
@@ -1339,11 +1343,11 @@ export function appendInteriorObstaclesForPreferredEdges(
   const out = [...obstacles];
   if (fromPreferredExit && fromPreferredExit !== 'center') {
     const r = getNodeRectForRoutingObstacle(fromId, nodesById, zonesById);
-    if (r) pushInteriorObstacleForPreferredEdge(out, r, fromPreferredExit, PREFERRED_EDGE_STRIP_PX);
+    if (r) out.push(r);
   }
   if (toPreferredEntry && toPreferredEntry !== 'center') {
     const r = getNodeRectForRoutingObstacle(toId, nodesById, zonesById);
-    if (r) pushInteriorObstacleForPreferredEdge(out, r, toPreferredEntry, PREFERRED_EDGE_STRIP_PX);
+    if (r) out.push(r);
   }
   return out;
 }

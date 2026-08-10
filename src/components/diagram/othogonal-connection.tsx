@@ -286,6 +286,7 @@ function OrthogonalConnectionInner({
           connectionData?.orthogonalTrunkOffsetX,
           connectionData?.orthogonalTrunkOffsetY,
           connectionData?.waypoints,
+          toAngle,
         ) ?? connectionData?.waypoints;
       return computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints, {
         smoothCorners: connectionData?.smoothCorners === true,

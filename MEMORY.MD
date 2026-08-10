@@ -2,6 +2,12 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-10 – Orthogonal routing: approach from outside + trunk stubs
+**`ensureApproachSegment`** requires the point next to each endpoint to lie **outside** along the edge normal (fixes arrows/lines ending inside the target). Trunk offsets use exit/entry **stubs** as the clamp corridor (not raw endpoints), skip same-side pairs and out-of-range offsets, and still ignore perpendicular edge pairs. Preferred-edge obstacles remain full node bounds. Patch bumped.
+
+### 2026-08-10 – Orthogonal routing: preferred edges + trunk offset
+**`orthogonalTrunkOffsetX/Y`** only apply when both ends share an axis (both horizontal or both vertical); perpendicular pairs (e.g. bottom→left) ignore trunk offsets so the final segment matches the target edge. When endpoints are too close on that axis for an interior Z trunk, the offset is skipped (no on-edge degenerate trunk). **`appendInteriorObstaclesForPreferredEdges`** re-adds the **full** node bounds (not a free edge strip) so same-side routes (left→left) stay outside instead of threading the node after inflation. Patch bumped.
+
 ### 2026-08-10 – Connection edge position: half-grid snap
 Custom connection anchors dragged along a node edge (`fromEdgePosition` / `toEdgePosition`) snap to **half-grid** diagram coords (`snapToHalfGrid`, **5px** when `GRID_STEP` is **10**) via `computeEdgePositionFraction`. Patch bumped.
 

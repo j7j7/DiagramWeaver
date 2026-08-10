@@ -726,6 +726,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           edge.orthogonalTrunkOffsetX,
           edge.orthogonalTrunkOffsetY,
           layout.enhancedEdge.waypoints,
+          layout.toAngle,
         ) ?? layout.enhancedEdge.waypoints;
 
       orthogonalRouteRequests.push({
