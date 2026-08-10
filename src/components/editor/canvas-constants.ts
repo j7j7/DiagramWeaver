@@ -32,9 +32,17 @@ export type PositionedGroup = DiagramZoneData & { x: number; y: number; width: n
 /** Grid step for position and dimension alignment (px) — matches `snapToGrid` / layout stepping. */
 export const GRID_STEP = 10;
 
+/** Half-grid step (px) — finer snaps for connection edge placement, etc. */
+export const GRID_STEP_HALF = GRID_STEP / 2;
+
 // Custom snap function: snaps to 10px increments
 export const snapToGrid = (v: number): number => {
   return Math.round(v / GRID_STEP) * GRID_STEP;
+};
+
+/** Snaps to half-grid increments (5px when `GRID_STEP` is 10). */
+export const snapToHalfGrid = (v: number): number => {
+  return Math.round(v / GRID_STEP_HALF) * GRID_STEP_HALF;
 };
 
 /** Snaps width/height to grid so right (x+width) and bottom (y+height) edges align for tessellation */

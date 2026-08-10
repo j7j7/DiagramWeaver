@@ -4,7 +4,7 @@ import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@
 import React from "react";
 import { useTheme } from "@/components/theme-provider";
 import { useResolvedGlobalText } from "./global-properties-context";
-import { measureNodeDims } from "@/components/editor/canvas-constants";
+import { measureNodeDims, snapToHalfGrid } from "@/components/editor/canvas-constants";
 import { isIconOrEmojiType, isShapeNodeType, isGenericObjectOrChartShapeType } from "@/lib/utils";
 import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
@@ -322,12 +322,19 @@ export function computeEdgePositionFraction(
   const verticalEdgeLength = isGroup ? height : (resolvedIconHeight || height);
   const verticalEdgeTop = isGroup ? obj.y : (resolvedIconHeight ? obj.y + resolvedIconYOffset : obj.y);
 
+  // Snap absolute diagram coords to half-grid so custom edge anchors align with the canvas grid.
   if (edge === 'top' || edge === 'bottom') {
     if (effectiveWidth <= 0) return 0.5;
-    return Math.max(0, Math.min(1, (px - leftX) / effectiveWidth));
+    const edgeEnd = leftX + effectiveWidth;
+    const clamped = Math.max(leftX, Math.min(edgeEnd, px));
+    const snapped = Math.max(leftX, Math.min(edgeEnd, snapToHalfGrid(clamped)));
+    return (snapped - leftX) / effectiveWidth;
   }
   if (verticalEdgeLength <= 0) return 0.5;
-  return Math.max(0, Math.min(1, (py - verticalEdgeTop) / verticalEdgeLength));
+  const edgeEnd = verticalEdgeTop + verticalEdgeLength;
+  const clamped = Math.max(verticalEdgeTop, Math.min(edgeEnd, py));
+  const snapped = Math.max(verticalEdgeTop, Math.min(edgeEnd, snapToHalfGrid(clamped)));
+  return (snapped - verticalEdgeTop) / verticalEdgeLength;
 }
 
 export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number, iconWidth?: number, iconOffsetX?: number, centerEdgeAnchors?: boolean, edgePosition?: number): { x: number; y: number; angleDeg?: number } {
