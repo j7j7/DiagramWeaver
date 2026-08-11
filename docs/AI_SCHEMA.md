@@ -179,6 +179,7 @@ Routing & style:
 | `smoothCorners` | Rounded bends for orthogonal |
 | `waypoints` | `[{ x, y, id? }]` canvas coordinates (orthogonal/bezier routing) |
 | `orthogonalTrunkOffsetX`, `orthogonalTrunkOffsetY` | Z-route trunk offsets when not using manual waypoints |
+| `orthogonalCustomRoute` | When true (orthogonal), follow `waypoints` as a manual polyline; editor can drag any segment (no auto obstacle routing) |
 | `fromPreferredExit`, `toPreferredEntry` | `top` \| `bottom` \| `left` \| `right` \| `center` |
 | `edgeAttachmentConstraint` | `auto` \| `top-bottom` \| `left-right` |
 | `centerEdgeAnchors` | Attach at edge midpoints |

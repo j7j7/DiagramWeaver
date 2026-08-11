@@ -6,6 +6,7 @@ import type { DiagramConnectionData } from "@/lib/types";
 import { useResolvedGlobalText } from "./global-properties-context";
 import {
   computeOrthogonalRoute,
+  computeCustomOrthogonalRoute,
   getPointOnOrthogonalPath,
   collectObstacles,
   appendInteriorObstaclesForPreferredEdges,
@@ -15,6 +16,8 @@ import {
   orthogonalExteriorTrunkBaseX,
   orthogonalExteriorTrunkBaseY,
   orthogonalTrunkOffsetYIsAbsolute,
+  listDraggableOrthogonalSegments,
+  dragOrthogonalSegment,
   type OrthogonalRoute,
   type Rect,
 } from "@/lib/orthogonal-routing";
@@ -92,10 +95,15 @@ interface OrthogonalConnectionProps {
   orthogonalFastRouting?: boolean;
   /** Editor: allow dragging the Z-route vertical trunk when set with transform + canvas ref. */
   orthogonalTrunkDragEnabled?: boolean;
+  /** Editor: drag any segment when `orthogonalCustomRoute` is enabled. */
+  orthogonalCustomSegmentDragEnabled?: boolean;
   diagramTransform?: DiagramTransform;
   diagramCanvasRef?: React.RefObject<HTMLElement | null>;
   onOrthogonalTrunkOffsetChange?: (offset: number | undefined) => void;
   onOrthogonalTrunkOffsetYChange?: (offset: number | undefined) => void;
+  onOrthogonalCustomWaypointsChange?: (
+    waypoints: Array<{ x: number; y: number; id?: string }>,
+  ) => void;
 }
 
 // --- Memo Comparators ---
@@ -161,6 +169,7 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
   if (animA !== animB) return false;
   if ((a.orthogonalTrunkOffsetX ?? 0) !== (b.orthogonalTrunkOffsetX ?? 0)) return false;
   if ((a.orthogonalTrunkOffsetY ?? 0) !== (b.orthogonalTrunkOffsetY ?? 0)) return false;
+  if (!!a.orthogonalCustomRoute !== !!b.orthogonalCustomRoute) return false;
   return true;
 }
 
@@ -194,10 +203,12 @@ function areOrthogonalPropsEqual(prev: OrthogonalConnectionProps, next: Orthogon
     slideTransitionStyleEqual(prev.slideTransitionStyle, next.slideTransitionStyle) &&
     prev.orthogonalFastRouting === next.orthogonalFastRouting &&
     prev.orthogonalTrunkDragEnabled === next.orthogonalTrunkDragEnabled &&
+    prev.orthogonalCustomSegmentDragEnabled === next.orthogonalCustomSegmentDragEnabled &&
     diagramTransformEqual(prev.diagramTransform, next.diagramTransform) &&
     prev.diagramCanvasRef === next.diagramCanvasRef &&
     prev.onOrthogonalTrunkOffsetChange === next.onOrthogonalTrunkOffsetChange &&
     prev.onOrthogonalTrunkOffsetYChange === next.onOrthogonalTrunkOffsetYChange &&
+    prev.onOrthogonalCustomWaypointsChange === next.onOrthogonalCustomWaypointsChange &&
     prev.onClick === next.onClick &&
     prev.onDoubleClick === next.onDoubleClick &&
     prev.onContextMenu === next.onContextMenu
@@ -226,10 +237,12 @@ function OrthogonalConnectionInner({
   slideTransitionStyle,
   orthogonalFastRouting = false,
   orthogonalTrunkDragEnabled = false,
+  orthogonalCustomSegmentDragEnabled = false,
   diagramTransform,
   diagramCanvasRef,
   onOrthogonalTrunkOffsetChange,
   onOrthogonalTrunkOffsetYChange,
+  onOrthogonalCustomWaypointsChange,
 }: OrthogonalConnectionProps) {
   const { applyFingerTapMarkerToMouseEventIfNeeded, fingerTapTouchSvgProps } = useDwFingerTapSyntheticClick();
   const { resolvedTheme } = useTheme();
@@ -279,6 +292,20 @@ function OrthogonalConnectionInner({
   const route: OrthogonalRoute = useMemo(
     () => {
       if (precomputedRoute) return precomputedRoute;
+      if (connectionData?.orthogonalCustomRoute) {
+        return computeCustomOrthogonalRoute(
+          fromX,
+          fromY,
+          toX,
+          toY,
+          connectionData?.waypoints,
+          {
+            smoothCorners: connectionData?.smoothCorners === true,
+            fromAngle,
+            toAngle,
+          },
+        );
+      }
       const waypoints =
         mergeOrthogonalTrunkWaypoints(
           fromX,
@@ -308,9 +335,74 @@ function OrthogonalConnectionInner({
       connectionData?.waypoints,
       connectionData?.orthogonalTrunkOffsetX,
       connectionData?.orthogonalTrunkOffsetY,
+      connectionData?.orthogonalCustomRoute,
       connectionData?.smoothCorners,
       orthogonalFastRouting,
     ]
+  );
+
+  const customDragSegments = useMemo(
+    () =>
+      orthogonalCustomSegmentDragEnabled &&
+      diagramTransform &&
+      diagramCanvasRef &&
+      onOrthogonalCustomWaypointsChange
+        ? listDraggableOrthogonalSegments(route.points)
+        : [],
+    [
+      orthogonalCustomSegmentDragEnabled,
+      diagramTransform,
+      diagramCanvasRef,
+      onOrthogonalCustomWaypointsChange,
+      route.pathData,
+    ],
+  );
+
+  const customSegmentDragRef = useRef<{
+    points: Array<{ x: number; y: number }>;
+    segmentIndex: number;
+  } | null>(null);
+
+  const onCustomSegmentPointerDown = useCallback(
+    (e: React.PointerEvent, segmentIndex: number) => {
+      if (!diagramTransform || !diagramCanvasRef || !onOrthogonalCustomWaypointsChange) return;
+      if (e.button !== 0) return;
+      const p = clientToDiagram(e.clientX, e.clientY, diagramCanvasRef, diagramTransform);
+      if (!p) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const startPoints = route.points.map((pt) => ({ x: pt.x, y: pt.y }));
+      customSegmentDragRef.current = { points: startPoints, segmentIndex };
+      const onMove = (ev: PointerEvent) => {
+        const drag = customSegmentDragRef.current;
+        if (!drag) return;
+        const p2 = clientToDiagram(ev.clientX, ev.clientY, diagramCanvasRef, diagramTransform);
+        if (!p2) return;
+        const next = dragOrthogonalSegment(
+          drag.points,
+          drag.segmentIndex,
+          p2,
+          connectionData?.waypoints,
+        );
+        onOrthogonalCustomWaypointsChange(next);
+      };
+      const onUp = () => {
+        customSegmentDragRef.current = null;
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    },
+    [
+      connectionData?.waypoints,
+      diagramCanvasRef,
+      diagramTransform,
+      onOrthogonalCustomWaypointsChange,
+      route.points,
+    ],
   );
 
   const trunkVertical = useMemo(
@@ -756,6 +848,38 @@ function OrthogonalConnectionInner({
               strokeWidth={2}
               pointerEvents="none"
             />
+          </g>
+        )}
+
+        {customDragSegments.length > 0 && (
+          <g style={{ pointerEvents: "auto" }}>
+            {customDragSegments.map((seg) => {
+              const handleStroke =
+                resolvedTheme === "dark" ? "rgba(74,222,128,0.5)" : "rgba(34,197,94,0.45)";
+              return (
+                <g key={`custom-seg-${seg.index}-${seg.orientation}`}>
+                  <line
+                    x1={seg.x1}
+                    y1={seg.y1}
+                    x2={seg.x2}
+                    y2={seg.y2}
+                    stroke="transparent"
+                    strokeWidth={26}
+                    onPointerDown={(e) => onCustomSegmentPointerDown(e, seg.index)}
+                    className={seg.orientation === "h" ? "cursor-ns-resize" : "cursor-ew-resize"}
+                  />
+                  <line
+                    x1={seg.x1}
+                    y1={seg.y1}
+                    x2={seg.x2}
+                    y2={seg.y2}
+                    stroke={handleStroke}
+                    strokeWidth={2}
+                    pointerEvents="none"
+                  />
+                </g>
+              );
+            })}
           </g>
         )}
 

@@ -76,7 +76,7 @@ function connectionDataKey(c?: DiagramConnectionData): string {
   if (!c) return '';
   const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
   const anim = c.animation ? JSON.stringify(c.animation) : '';
-  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.style ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineWidthLock ?? ''}|${c.lineWidthEnd ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${isUseSourceLineColorOn(c) ? '1' : ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.colorLock ?? ''}|${c.colorEnd ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}|${c.fromEdgePosition ?? ''}|${c.toEdgePosition ?? ''}`;
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.style ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineWidthLock ?? ''}|${c.lineWidthEnd ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${isUseSourceLineColorOn(c) ? '1' : ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.colorLock ?? ''}|${c.colorEnd ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}|${c.fromEdgePosition ?? ''}|${c.toEdgePosition ?? ''}|${c.orthogonalCustomRoute ? '1' : ''}|${c.orthogonalTrunkOffsetX ?? ''}|${c.orthogonalTrunkOffsetY ?? ''}`;
 }
 
 function slideTransitionStyleEqual(
@@ -679,7 +679,8 @@ export function determineConnectionEdges(
     );
   }
 
-  // When waypoints exist, use first/last waypoint to determine which edge the connector should exit/enter
+  // When waypoints exist, use first/last waypoint to infer attach edges — but never
+  // override an explicit preferred exit/entry (endpoint drag / custom orthogonal).
   const waypoints = connectionData?.waypoints;
   if (waypoints?.length) {
     const fromCenterX = from.x + (resolvedFromWidth || 0) / 2;
@@ -698,12 +699,19 @@ export function determineConnectionEdges(
     const fromIsHorizontal = Math.abs(fromDx) > Math.abs(fromDy);
     const toIsHorizontal = Math.abs(toDx) > Math.abs(toDy);
 
-    const fromEdge: 'top' | 'bottom' | 'left' | 'right' = fromIsHorizontal
+    let fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center' = fromIsHorizontal
       ? fromDx > 0 ? 'right' : 'left'
       : fromDy > 0 ? 'bottom' : 'top';
-    const toEdge: 'top' | 'bottom' | 'left' | 'right' = toIsHorizontal
+    let toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center' = toIsHorizontal
       ? toDx > 0 ? 'right' : 'left'
       : toDy > 0 ? 'bottom' : 'top';
+
+    if (connectionData?.fromPreferredExit !== undefined) {
+      fromEdge = connectionData.fromPreferredExit;
+    }
+    if (connectionData?.toPreferredEntry !== undefined) {
+      toEdge = connectionData.toPreferredEntry;
+    }
 
     return applyEdgeAttachmentConstraintToEdges({ fromEdge, toEdge }, connectionData?.edgeAttachmentConstraint, dx, dy);
   }

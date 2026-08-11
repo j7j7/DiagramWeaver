@@ -104,7 +104,7 @@ Below, “**key exports**” are representative; open the file for the full surf
 
 | Module | Key ideas |
 |--------|-----------|
-| **`orthogonal-routing.ts`** | Orthogonal path computation. |
+| **`orthogonal-routing.ts`** | Orthogonal path computation (auto A*, trunk offsets, **`orthogonalCustomRoute`** manual segment drag). |
 | **`line-curve-path.ts`**, **`line-styling.ts`** | Connector **line** node geometry (vertices, closed paths), stroke sync with visual styling. |
 | **`connection-line-style.ts`**, **`connection-ribbon-path.ts`** | Taper/ribbon styling along paths. |
 | **`connection-animation.ts`** | Defaults, patches, downstream chain nodes for emphasis. |

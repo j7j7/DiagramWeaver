@@ -2,6 +2,12 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-11 – Custom orthogonal: arrow faces target edge
+`computeCustomOrthogonalRoute` applies angle-aware exit/entry stubs (`applyCustomRouteTerminalStubs`) so after an endpoint moves to another side the last segment approaches from outside and arrows point into the node (wrong-side collinear waypoints trimmed so stubs are not simplified away). Preferred exit/entry also wins over waypoint-inferred edges in `determineConnectionEdges`. Patch bumped.
+
+### 2026-08-11 – Orthogonal custom routes (segment drag)
+Connection modal **Custom** switch (under **Attach on side**, orthogonal only) sets **`orthogonalCustomRoute`**: seeds bend `waypoints` from the current auto route, skips A*/obstacles/`orthogonalTrunkOffset*`, and lets the editor drag **any** H/V segment (`dragOrthogonalSegment` / `computeCustomOrthogonalRoute`). Turning Custom off clears waypoints and restores auto routing. Patch bumped.
+
 ### 2026-08-10 – Orthogonal waypoints: no through-point loop
 Waypoint chaining used travel direction as **entry** angle into through-points, so a rightward trunk stubbed past the waypoint (as if entering a right edge) and looped back. Through-waypoint legs now approach with the **opposite** angle; final node entry still uses `toAngle`. Patch bumped.
 

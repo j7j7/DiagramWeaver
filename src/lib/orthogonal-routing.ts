@@ -84,6 +84,11 @@ export interface OrthogonalRouteRequest extends OrthogonalRouteOptions {
   toAngle: number;
   obstacles: Rect[];
   waypoints?: Array<{ x: number; y: number }>;
+  /**
+   * Manual orthogonal polyline: follow waypoints with simple axis-aligned legs only
+   * (no A* / obstacle avoidance). Used when `DiagramConnectionData.orthogonalCustomRoute` is set.
+   */
+  customRoute?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -1364,21 +1369,34 @@ export function computeOrthogonalRoutesBatch(
   const occupiedSegments: OrthogonalSegment[] = [];
 
   return requests.map((request) => {
-    const route = computeOrthogonalRoute(
-      request.fromX,
-      request.fromY,
-      request.toX,
-      request.toY,
-      request.fromAngle,
-      request.toAngle,
-      request.obstacles,
-      request.waypoints,
-      {
-        occupiedSegments: request.occupiedSegments ?? occupiedSegments,
-        smoothCorners: request.smoothCorners === true,
-        fastObstacleRouting: request.fastObstacleRouting === true,
-      },
-    );
+    const route = request.customRoute
+      ? computeCustomOrthogonalRoute(
+          request.fromX,
+          request.fromY,
+          request.toX,
+          request.toY,
+          request.waypoints,
+          {
+            smoothCorners: request.smoothCorners === true,
+            fromAngle: request.fromAngle,
+            toAngle: request.toAngle,
+          },
+        )
+      : computeOrthogonalRoute(
+          request.fromX,
+          request.fromY,
+          request.toX,
+          request.toY,
+          request.fromAngle,
+          request.toAngle,
+          request.obstacles,
+          request.waypoints,
+          {
+            occupiedSegments: request.occupiedSegments ?? occupiedSegments,
+            smoothCorners: request.smoothCorners === true,
+            fastObstacleRouting: request.fastObstacleRouting === true,
+          },
+        );
 
     occupiedSegments.push(...pointsToSegments(route.points).filter((segment) => getSegmentLength(segment) > 0));
     return route;
@@ -1395,11 +1413,15 @@ export function orthogonalRouteRequestGeometryKey(request: OrthogonalRouteReques
         .map((w) => `${w.x},${w.y}`)
         .join("|")
     : "";
-  const obs = request.obstacles
-    .map((r) => `${r.x},${r.y},${r.width},${r.height}`)
-    .sort()
-    .join(";");
+  // Custom routes ignore obstacles — omit them so unrelated node moves do not bust the cache.
+  const obs = request.customRoute
+    ? ""
+    : request.obstacles
+        .map((r) => `${r.x},${r.y},${r.width},${r.height}`)
+        .sort()
+        .join(";");
   return [
+    request.customRoute ? "c1" : "c0",
     request.fromX,
     request.fromY,
     request.toX,
@@ -1650,4 +1672,358 @@ export function collectObstacles(
   }
 
   return rects;
+}
+
+// -----------------------------------------------------------------------------
+// Custom (manual) orthogonal routes — segment-editable polylines
+// -----------------------------------------------------------------------------
+
+export interface OrthogonalDragSegment {
+  /** Index of the segment start in the full polyline (including endpoints). */
+  index: number;
+  orientation: "h" | "v";
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+/** Insert L-bends so every consecutive pair is axis-aligned (no obstacle routing). */
+function makeSimpleOrthogonal(
+  points: Array<{ x: number; y: number }>,
+): Array<{ x: number; y: number }> {
+  if (points.length === 0) return [];
+  const result: Array<{ x: number; y: number }> = [
+    { x: snap(points[0].x), y: snap(points[0].y) },
+  ];
+  for (let i = 1; i < points.length; i++) {
+    const prev = result[result.length - 1];
+    const next = { x: snap(points[i].x), y: snap(points[i].y) };
+    if (prev.x === next.x && prev.y === next.y) continue;
+    if (prev.x !== next.x && prev.y !== next.y) {
+      // Prefer horizontal-then-vertical; preserves typical left/right exits.
+      result.push({ x: next.x, y: prev.y });
+    }
+    result.push(next);
+  }
+  return result;
+}
+
+/** True when `p` lies outside the node along the edge normal (same rules as ensureApproachSegment). */
+function isOutsideAlongEdgeNormal(
+  p: { x: number; y: number },
+  endpointX: number,
+  endpointY: number,
+  angle: number,
+): boolean {
+  const dx = p.x - endpointX;
+  const dy = p.y - endpointY;
+  switch (angle) {
+    case 0: return dx === 0 && dy < 0;
+    case 90: return dy === 0 && dx > 0;
+    case 180: return dx === 0 && dy > 0;
+    case 270: return dy === 0 && dx < 0;
+    default: return true;
+  }
+}
+
+/**
+ * Drop trailing (or leading) points that sit on the wrong side of the approach stub
+ * along the entry/exit axis — prevents a collinear “through-node” leg that simplify
+ * would otherwise keep after a stub insert.
+ */
+function trimWrongSideOfStub(
+  body: Array<{ x: number; y: number }>,
+  stub: { x: number; y: number },
+  endpointX: number,
+  endpointY: number,
+  angle: number,
+  fromStart: boolean,
+): Array<{ x: number; y: number }> {
+  const out = [...body];
+  const shouldTrim = (p: { x: number; y: number }) => {
+    if (p.x === endpointX && p.y === endpointY) return true;
+    if (p.x === stub.x && p.y === stub.y) return false;
+    if (angle === 0 || angle === 180) {
+      if (p.x !== endpointX) return false;
+      return angle === 0 ? p.y > stub.y : p.y < stub.y;
+    }
+    if (p.y !== endpointY) return false;
+    return angle === 90 ? p.x < stub.x : p.x > stub.x;
+  };
+  if (fromStart) {
+    while (out.length && shouldTrim(out[0])) out.shift();
+  } else {
+    while (out.length && shouldTrim(out[out.length - 1])) out.pop();
+  }
+  return out;
+}
+
+/** L-bend into an exit/entry stub; bend order keeps the final stub leg from collapsing. */
+function connectBodyToStub(
+  body: Array<{ x: number; y: number }>,
+  stub: { x: number; y: number },
+  angle: number,
+): Array<{ x: number; y: number }> {
+  if (!body.length) return [{ x: stub.x, y: stub.y }];
+  const last = body[body.length - 1];
+  if (last.x === stub.x && last.y === stub.y) return body;
+  // Vertical approach (top/bottom): reach stub Y first, then run horizontally to stub.
+  // Horizontal approach (left/right): reach stub X first, then run vertically to stub.
+  // This avoids a collinear wrong-side point on the stub→endpoint axis.
+  if (angle === 0 || angle === 180) {
+    if (last.y !== stub.y && last.x !== stub.x) {
+      return [...body, { x: last.x, y: stub.y }, { x: stub.x, y: stub.y }];
+    }
+    if (last.y !== stub.y) return [...body, { x: last.x, y: stub.y }, { x: stub.x, y: stub.y }];
+    return [...body, { x: stub.x, y: stub.y }];
+  }
+  if (last.x !== stub.x && last.y !== stub.y) {
+    return [...body, { x: stub.x, y: last.y }, { x: stub.x, y: stub.y }];
+  }
+  if (last.x !== stub.x) return [...body, { x: stub.x, y: last.y }, { x: stub.x, y: stub.y }];
+  return [...body, { x: stub.x, y: stub.y }];
+}
+
+/**
+ * Force outside exit/entry stubs for custom routes. Unlike ensureApproachSegment +
+ * simplifyPath, this trims wrong-side collinear points so the stub cannot be removed
+ * and arrows keep pointing into the attached edge after endpoint moves.
+ */
+function applyCustomRouteTerminalStubs(
+  points: Array<{ x: number; y: number }>,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngle: number | undefined,
+  toAngle: number | undefined,
+  stubLen: number,
+): Array<{ x: number; y: number }> {
+  if (points.length < 2) return points;
+
+  let mid = points.slice(1, -1);
+
+  if (fromAngle !== undefined) {
+    const fromStub = exitStub(fromX, fromY, fromAngle, stubLen);
+    const first = mid[0];
+    if (!first || !isOutsideAlongEdgeNormal(first, fromX, fromY, fromAngle)) {
+      mid = trimWrongSideOfStub(mid, fromStub, fromX, fromY, fromAngle, true);
+      // Prepend stub via reverse connect (body is mid; stub is source stub)
+      if (!mid.length) {
+        mid = [fromStub];
+      } else if (!(mid[0].x === fromStub.x && mid[0].y === fromStub.y)) {
+        const reversed = [...mid].reverse();
+        const connected = connectBodyToStub(reversed, fromStub, fromAngle).reverse();
+        mid = connected;
+      }
+    }
+  }
+
+  if (toAngle !== undefined) {
+    const toStub = exitStub(toX, toY, toAngle, stubLen);
+    const last = mid[mid.length - 1];
+    if (!last || !isOutsideAlongEdgeNormal(last, toX, toY, toAngle)) {
+      mid = trimWrongSideOfStub(mid, toStub, toX, toY, toAngle, false);
+      mid = connectBodyToStub(mid, toStub, toAngle);
+    }
+  }
+
+  const seq: Array<{ x: number; y: number }> = [
+    { x: snap(fromX), y: snap(fromY) },
+    ...mid,
+    { x: snap(toX), y: snap(toY) },
+  ];
+  // Dedupe only — do not run full simplifyPath here (it can drop the terminal stub
+  // when an older wrong-side point remains collinear on the same axis).
+  return dedupeConsecutivePoints(seq);
+}
+
+/**
+ * Orthogonal polyline that follows waypoints exactly (simple L-bends only).
+ * Used when the connection has `orthogonalCustomRoute` — no A* / obstacles.
+ * Exit/entry angles still force outside stubs so arrows face into the target edge
+ * after the endpoint is moved to another side.
+ */
+export function computeCustomOrthogonalRoute(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  waypoints?: Array<{ x: number; y: number }>,
+  options?: { smoothCorners?: boolean; fromAngle?: number; toAngle?: number },
+): OrthogonalRoute {
+  const raw = dedupeConsecutivePoints([
+    { x: fromX, y: fromY },
+    ...(waypoints ?? []).map((w) => ({ x: w.x, y: w.y })),
+    { x: toX, y: toY },
+  ]);
+  let points = simplifyPath(makeSimpleOrthogonal(raw));
+  if (options?.fromAngle !== undefined || options?.toAngle !== undefined) {
+    points = applyCustomRouteTerminalStubs(
+      points,
+      fromX,
+      fromY,
+      toX,
+      toY,
+      options.fromAngle,
+      options.toAngle,
+      CELL * 3,
+    );
+  }
+  const pathData = pointsToPathData(points, options?.smoothCorners === true);
+  let totalLength = 0;
+  for (let i = 1; i < points.length; i++) {
+    totalLength +=
+      Math.abs(points[i].x - points[i - 1].x) + Math.abs(points[i].y - points[i - 1].y);
+  }
+  return { points, pathData, totalLength };
+}
+
+/** Interior bend points of a full route (excludes endpoints) for storage as `waypoints`. */
+export function extractInteriorOrthogonalWaypoints(
+  routePoints: Array<{ x: number; y: number }>,
+  idPrefix = "wp-custom",
+): Array<{ x: number; y: number; id?: string }> {
+  if (routePoints.length <= 2) return [];
+  const stamp = Date.now();
+  return routePoints.slice(1, -1).map((p, i) => ({
+    x: snap(p.x),
+    y: snap(p.y),
+    id: `${idPrefix}-${stamp}-${i}`,
+  }));
+}
+
+/**
+ * Bake the current auto/A* orthogonal route into editable interior waypoints
+ * for custom mode (so the visible path does not jump when enabling Custom).
+ */
+export function seedOrthogonalCustomRouteWaypoints(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngle: number,
+  toAngle: number,
+  obstacles: Rect[],
+  existingWaypoints?: Array<{ x: number; y: number }>,
+  trunkOffsetX?: number,
+  trunkOffsetY?: number,
+): Array<{ x: number; y: number; id?: string }> {
+  const merged =
+    mergeOrthogonalTrunkWaypoints(
+      fromX,
+      fromY,
+      toX,
+      toY,
+      fromAngle,
+      trunkOffsetX,
+      trunkOffsetY,
+      existingWaypoints,
+      toAngle,
+    ) ?? existingWaypoints;
+  const route = computeOrthogonalRoute(
+    fromX,
+    fromY,
+    toX,
+    toY,
+    fromAngle,
+    toAngle,
+    obstacles,
+    merged,
+  );
+  return extractInteriorOrthogonalWaypoints(route.points);
+}
+
+/** All axis-aligned segments of a polyline (for custom segment drag handles). */
+export function listDraggableOrthogonalSegments(
+  points: Array<{ x: number; y: number }>,
+): OrthogonalDragSegment[] {
+  const segs: OrthogonalDragSegment[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    if (a.x === b.x && a.y !== b.y) {
+      segs.push({
+        index: i,
+        orientation: "v",
+        x1: a.x,
+        y1: a.y,
+        x2: b.x,
+        y2: b.y,
+      });
+    } else if (a.y === b.y && a.x !== b.x) {
+      segs.push({
+        index: i,
+        orientation: "h",
+        x1: a.x,
+        y1: a.y,
+        x2: b.x,
+        y2: b.y,
+      });
+    }
+  }
+  return segs;
+}
+
+function interiorWaypointsFromFullPoints(
+  fullPoints: Array<{ x: number; y: number }>,
+  prevWaypoints?: Array<{ x: number; y: number; id?: string }>,
+): Array<{ x: number; y: number; id?: string }> {
+  const interior = fullPoints.slice(1, -1);
+  const stamp = Date.now();
+  return interior.map((p, i) => ({
+    x: p.x,
+    y: p.y,
+    id: prevWaypoints?.[i]?.id ?? `wp-seg-${stamp}-${i}`,
+  }));
+}
+
+/**
+ * Visio-style orthogonal segment drag: move segment `segmentIndex` perpendicularly
+ * to `pointerDiagram`. Endpoints stay fixed (stubs are inserted as needed).
+ * Returns new interior `waypoints` (not including connection anchors).
+ */
+export function dragOrthogonalSegment(
+  points: Array<{ x: number; y: number }>,
+  segmentIndex: number,
+  pointerDiagram: { x: number; y: number },
+  prevWaypoints?: Array<{ x: number; y: number; id?: string }>,
+): Array<{ x: number; y: number; id?: string }> {
+  if (points.length < 2 || segmentIndex < 0 || segmentIndex >= points.length - 1) {
+    return interiorWaypointsFromFullPoints(points, prevWaypoints);
+  }
+
+  let pts = points.map((p) => ({ x: snap(p.x), y: snap(p.y) }));
+  let i0 = segmentIndex;
+  let i1 = segmentIndex + 1;
+
+  const isH = pts[i0].y === pts[i1].y;
+  const isV = pts[i0].x === pts[i1].x;
+  if (!isH && !isV) {
+    return interiorWaypointsFromFullPoints(simplifyPath(makeSimpleOrthogonal(pts)), prevWaypoints);
+  }
+
+  // Keep true terminals fixed: insert a movable copy when the segment includes an endpoint.
+  if (i0 === 0) {
+    pts = [pts[0], { x: pts[0].x, y: pts[0].y }, ...pts.slice(1)];
+    i0 = 1;
+    i1 = 2;
+  }
+  if (i1 === pts.length - 1) {
+    const end = pts[pts.length - 1];
+    pts = [...pts.slice(0, -1), { x: end.x, y: end.y }, end];
+  }
+
+  const axis = isH ? snap(pointerDiagram.y) : snap(pointerDiagram.x);
+  if (isH) {
+    pts[i0] = { x: pts[i0].x, y: axis };
+    pts[i1] = { x: pts[i1].x, y: axis };
+  } else {
+    pts[i0] = { x: axis, y: pts[i0].y };
+    pts[i1] = { x: axis, y: pts[i1].y };
+  }
+
+  pts = simplifyPath(makeSimpleOrthogonal(pts));
+  return interiorWaypointsFromFullPoints(pts, prevWaypoints);
 }

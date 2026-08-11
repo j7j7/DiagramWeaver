@@ -2977,6 +2977,7 @@ export default function DiagramEditor() {
       waypoints?: Array<{ x: number; y: number; id?: string }>;
       orthogonalTrunkOffsetX?: number;
       orthogonalTrunkOffsetY?: number;
+      orthogonalCustomRoute?: boolean;
       metaData?: Record<string, string>;
       animation?: DiagramConnectionData['animation'];
     },
@@ -3043,6 +3044,12 @@ export default function DiagramEditor() {
         }
         if ('orthogonalTrunkOffsetY' in updates && updates.orthogonalTrunkOffsetY === undefined) {
           delete merged.orthogonalTrunkOffsetY;
+        }
+        if ('orthogonalCustomRoute' in updates && updates.orthogonalCustomRoute !== true) {
+          delete merged.orthogonalCustomRoute;
+        }
+        if ('waypoints' in updates && updates.waypoints === undefined) {
+          delete merged.waypoints;
         }
         return merged;
       }),
@@ -3143,7 +3150,7 @@ export default function DiagramEditor() {
     setPendingAnimationUpdate(null);
   }, []);
 
-  const handleConnectionUpdate = React.useCallback((from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; lineWidthLock?: boolean; lineWidthEnd?: number; colorLock?: boolean; colorEnd?: string; shadow?: boolean; style?: 'bezier' | 'orthogonal'; smoothCorners?: boolean; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; centerEdgeAnchors?: boolean; edgeAttachmentConstraint?: DiagramConnectionData['edgeAttachmentConstraint']; waypoints?: Array<{ x: number; y: number; id?: string }>; orthogonalTrunkOffsetX?: number; orthogonalTrunkOffsetY?: number; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
+  const handleConnectionUpdate = React.useCallback((from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; lineWidthLock?: boolean; lineWidthEnd?: number; colorLock?: boolean; colorEnd?: string; shadow?: boolean; style?: 'bezier' | 'orthogonal'; smoothCorners?: boolean; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; centerEdgeAnchors?: boolean; edgeAttachmentConstraint?: DiagramConnectionData['edgeAttachmentConstraint']; waypoints?: Array<{ x: number; y: number; id?: string }>; orthogonalTrunkOffsetX?: number; orthogonalTrunkOffsetY?: number; orthogonalCustomRoute?: boolean; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
     const effectiveConnId = connectionId ?? (selectedItem?.itemType === 'edge' ? (selectedItem as { id?: string }).id : undefined);
     const connections = currentDiagramData.connections ?? [];
     const resolvedEdgeIds = connectionIdsFromSelectionSet(selectedItemIds, connections as DiagramConnectionData[]);

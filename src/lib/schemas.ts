@@ -738,6 +738,8 @@ export const DiagramConnectionDataSchema = z.object({
   orthogonalTrunkOffsetX: z.number().optional(),
   /** Vertical px offset of orthogonal Z-route horizontal trunk from auto midline, vertical-first routes only. */
   orthogonalTrunkOffsetY: z.number().optional(),
+  /** Manual orthogonal polyline: follow `waypoints` with segment drag (no auto obstacle routing). */
+  orthogonalCustomRoute: z.boolean().optional(),
 
   animation: z.object({
     enabled: z.boolean().optional(),

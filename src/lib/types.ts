@@ -858,6 +858,12 @@ export interface DiagramConnectionData {
    */
   orthogonalTrunkOffsetY?: number;
 
+  /**
+   * When true (orthogonal only), the path is a fully manual polyline driven by `waypoints`.
+   * Auto obstacle routing / trunk offsets are skipped; each segment can be dragged in the editor.
+   */
+  orthogonalCustomRoute?: boolean;
+
   /** Optional metadata as key/value pairs */
   metaData?: Record<string, string>;
 

@@ -716,18 +716,20 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       if (!layout || layout.connStyle !== "orthogonal") return;
 
       orthogonalRouteIndices.push(index);
-      const mergedWaypoints =
-        mergeOrthogonalTrunkWaypoints(
-          layout.fromX,
-          layout.fromY,
-          layout.toX,
-          layout.toY,
-          layout.fromAngle,
-          edge.orthogonalTrunkOffsetX,
-          edge.orthogonalTrunkOffsetY,
-          layout.enhancedEdge.waypoints,
-          layout.toAngle,
-        ) ?? layout.enhancedEdge.waypoints;
+      const isCustomRoute = layout.enhancedEdge.orthogonalCustomRoute === true;
+      const mergedWaypoints = isCustomRoute
+        ? layout.enhancedEdge.waypoints
+        : mergeOrthogonalTrunkWaypoints(
+            layout.fromX,
+            layout.fromY,
+            layout.toX,
+            layout.toY,
+            layout.fromAngle,
+            edge.orthogonalTrunkOffsetX,
+            edge.orthogonalTrunkOffsetY,
+            layout.enhancedEdge.waypoints,
+            layout.toAngle,
+          ) ?? layout.enhancedEdge.waypoints;
 
       orthogonalRouteRequests.push({
         fromX: layout.fromX,
@@ -736,10 +738,12 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         toY: layout.toY,
         fromAngle: layout.fromAngle,
         toAngle: layout.toAngle,
-        obstacles: layout.obstacles,
+        // Custom routes ignore obstacles (manual polyline); keeps cache stable when other nodes move.
+        obstacles: isCustomRoute ? [] : layout.obstacles,
         waypoints: mergedWaypoints,
         smoothCorners: layout.enhancedEdge.smoothCorners === true,
-        fastObstacleRouting: orthogonalFastRouting,
+        fastObstacleRouting: isCustomRoute ? false : orthogonalFastRouting,
+        customRoute: isCustomRoute,
       });
     });
 
@@ -1254,15 +1258,27 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 slideTransitionStyle={slideTransitionStyle}
                 orthogonalFastRouting={orthogonalFastRouting}
                 orthogonalTrunkDragEnabled={
-                  !isReadOnly && isConnectionHighlighted && !enhancedEdge.waypoints?.length
+                  !isReadOnly &&
+                  isConnectionHighlighted &&
+                  !enhancedEdge.orthogonalCustomRoute &&
+                  !enhancedEdge.waypoints?.length
+                }
+                orthogonalCustomSegmentDragEnabled={
+                  !isReadOnly &&
+                  isConnectionHighlighted &&
+                  enhancedEdge.orthogonalCustomRoute === true
                 }
                 diagramTransform={
-                  !isReadOnly && isConnectionHighlighted && !enhancedEdge.waypoints?.length
+                  !isReadOnly &&
+                  isConnectionHighlighted &&
+                  (enhancedEdge.orthogonalCustomRoute === true || !enhancedEdge.waypoints?.length)
                     ? transform
                     : undefined
                 }
                 diagramCanvasRef={
-                  !isReadOnly && isConnectionHighlighted && !enhancedEdge.waypoints?.length
+                  !isReadOnly &&
+                  isConnectionHighlighted &&
+                  (enhancedEdge.orthogonalCustomRoute === true || !enhancedEdge.waypoints?.length)
                     ? canvasRef
                     : undefined
                 }
@@ -1288,6 +1304,17 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                           offset === undefined
                             ? { orthogonalTrunkOffsetY: undefined }
                             : { orthogonalTrunkOffsetY: offset },
+                          (edge as DiagramConnectionData).id,
+                        )
+                    : undefined
+                }
+                onOrthogonalCustomWaypointsChange={
+                  onConnectionUpdate && enhancedEdge.orthogonalCustomRoute === true
+                    ? (waypoints) =>
+                        onConnectionUpdate(
+                          edge.from,
+                          edge.to,
+                          { waypoints: waypoints.length ? waypoints : undefined },
                           (edge as DiagramConnectionData).id,
                         )
                     : undefined

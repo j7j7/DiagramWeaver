@@ -13,6 +13,12 @@ import type { DiagramConnectionData, DiagramData } from "@/lib/types";
 import { resolveBezierConnectionPaint, type ConnectionEndpointOutline } from "@/lib/connection-line-style";
 import { ConnectionAnimationControls } from "@/components/editor/connection-animation-controls";
 import { ConnectionLineStyleFields } from "@/components/editor/connection-line-style-fields";
+import { getOptimalConnectionPoints } from "@/components/diagram/bezier-connection";
+import {
+  appendInteriorObstaclesForPreferredEdges,
+  collectObstacles,
+  seedOrthogonalCustomRouteWaypoints,
+} from "@/lib/orthogonal-routing";
 
 interface ConnectionContextModalProps {
   x: number;
@@ -95,7 +101,112 @@ export function ConnectionContextModal({
   };
 
   const handleLineStyleChange = (style: "bezier" | "orthogonal") => {
+    if (style === "bezier" && liveConnection.orthogonalCustomRoute) {
+      onConnectionUpdate(
+        connection.from,
+        connection.to,
+        { style, orthogonalCustomRoute: false },
+        connId,
+      );
+      return;
+    }
     onConnectionUpdate(connection.from, connection.to, { style }, connId);
+  };
+
+  const customRoute = lineStyle === "orthogonal" && liveConnection.orthogonalCustomRoute === true;
+
+  const handleCustomRouteChange = (checked: boolean) => {
+    if (!checked) {
+      onConnectionUpdate(
+        connection.from,
+        connection.to,
+        {
+          orthogonalCustomRoute: false,
+          waypoints: undefined,
+          orthogonalTrunkOffsetX: undefined,
+          orthogonalTrunkOffsetY: undefined,
+        },
+        connId,
+      );
+      return;
+    }
+
+    const fromItem = fromNode as { id?: string; x?: number; y?: number; width?: number; height?: number } | undefined;
+    const toItem = toNode as { id?: string; x?: number; y?: number; width?: number; height?: number } | undefined;
+    if (!fromItem || !toItem) {
+      onConnectionUpdate(
+        connection.from,
+        connection.to,
+        {
+          style: "orthogonal",
+          orthogonalCustomRoute: true,
+          orthogonalTrunkOffsetX: undefined,
+          orthogonalTrunkOffsetY: undefined,
+        },
+        connId,
+      );
+      return;
+    }
+
+    const fromWidth = fromItem.width ?? 80;
+    const fromHeight = fromItem.height ?? 80;
+    const toWidth = toItem.width ?? 80;
+    const toHeight = toItem.height ?? 80;
+    const { fromX, fromY, toX, toY, fromAngle, toAngle } = getOptimalConnectionPoints(
+      fromItem,
+      toItem,
+      fromWidth,
+      fromHeight,
+      toWidth,
+      toHeight,
+      liveConnection,
+    );
+
+    const nodesById: Record<string, { x: number; y: number; width?: number; height?: number; type?: string }> = {};
+    const zonesById: Record<string, { x: number; y: number; width: number; height: number }> = {};
+    for (const n of diagramData.nodes ?? []) {
+      nodesById[n.id] = n as { x: number; y: number; width?: number; height?: number; type?: string };
+    }
+    for (const z of diagramData.zones ?? []) {
+      zonesById[z.id] = z as { x: number; y: number; width: number; height: number };
+    }
+
+    const baseObstacles = collectObstacles(nodesById, zonesById, [connection.from, connection.to]);
+    const obstacles = appendInteriorObstaclesForPreferredEdges(
+      baseObstacles,
+      nodesById,
+      zonesById,
+      connection.from,
+      connection.to,
+      liveConnection.fromPreferredExit,
+      liveConnection.toPreferredEntry,
+    );
+
+    const seeded = seedOrthogonalCustomRouteWaypoints(
+      fromX,
+      fromY,
+      toX,
+      toY,
+      fromAngle,
+      toAngle,
+      obstacles,
+      liveConnection.waypoints,
+      liveConnection.orthogonalTrunkOffsetX,
+      liveConnection.orthogonalTrunkOffsetY,
+    );
+
+    onConnectionUpdate(
+      connection.from,
+      connection.to,
+      {
+        style: "orthogonal",
+        orthogonalCustomRoute: true,
+        waypoints: seeded.length ? seeded : undefined,
+        orthogonalTrunkOffsetX: undefined,
+        orthogonalTrunkOffsetY: undefined,
+      },
+      connId,
+    );
   };
 
   const handleStrokePatternChange = (lineType: "solid" | "dashed" | "dotted") => {
@@ -504,6 +615,26 @@ export function ConnectionContextModal({
                   </div>
                 </div>
               </div>
+
+              {lineStyle === "orthogonal" && (
+                <div className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <Label className="text-xs font-medium">Custom</Label>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                        Drag any straight segment to build a fully manual route (auto routing off)
+                      </p>
+                    </div>
+                    <Switch
+                      checked={customRoute}
+                      onCheckedChange={handleCustomRouteChange}
+                      disabled={isReadOnly}
+                      className="shrink-0 mt-0.5 scale-90"
+                      aria-label="Custom orthogonal route"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

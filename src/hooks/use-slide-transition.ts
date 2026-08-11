@@ -726,7 +726,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       const waypointChanged =
         JSON.stringify(prevConn.waypoints ?? null) !== JSON.stringify(currConn.waypoints ?? null) ||
         (prevConn.orthogonalTrunkOffsetX ?? 0) !== (currConn.orthogonalTrunkOffsetX ?? 0) ||
-        (prevConn.orthogonalTrunkOffsetY ?? 0) !== (currConn.orthogonalTrunkOffsetY ?? 0);
+        (prevConn.orthogonalTrunkOffsetY ?? 0) !== (currConn.orthogonalTrunkOffsetY ?? 0) ||
+        !!prevConn.orthogonalCustomRoute !== !!currConn.orthogonalCustomRoute;
 
       if (fromDx === 0 && fromDy === 0 && toDx === 0 && toDy === 0 && !waypointChanged) continue;
 
