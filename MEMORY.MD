@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-11 – Card overlap click-through (interleaved stack)
+Default canvas mode (`connectionsBehindNodesEnabled=false`) was not passing **`onOverlapClickThroughAttempt`** / **`onCardElementSelect`** / **`cardSelectedElementId`** into **`DiagramNode`**, so selected-card inner clicks **`stopPropagation`**’d without cycling to overlapping icons. Wired those props on the interleaved path (same as connections-behind); **`DiagramNode`** only attaches card element select when the parent provides it. Patch bumped.
+
 ### 2026-08-11 – Viewport cull: keep mid-path connections
 Connection culling no longer drops lines when both endpoints are off-screen but the path crosses the view (e.g. zoom into a shape the link passes through). **`isConnectionInViewport`** keeps endpoint-box hits and adds **segment–vs–view** tests on centers + waypoints (orthogonal also samples chord + mid Z trunks) — avoids the old full-segment AABB false positives when zoomed out. Patch bumped.
 

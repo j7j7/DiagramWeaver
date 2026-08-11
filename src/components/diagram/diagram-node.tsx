@@ -1183,7 +1183,9 @@ function DiagramNodeInner({
           isEditingCardElement={isEditingCardElement}
           cardEditRuns={cardElementEditRuns}
           cardSelectedElementId={cardSelectedElementId}
-          onCardElementSelect={handleCardElementSelect}
+          // Only wire when parent provides select — otherwise trySelectCardElement
+          // stopPropagates and blocks node-level overlap click-through.
+          onCardElementSelect={onCardElementSelect ? handleCardElementSelect : undefined}
           onOverlapClickThroughAttempt={
             onOverlapClickThroughAttempt
               ? (e) => onOverlapClickThroughAttempt(e, node.id)

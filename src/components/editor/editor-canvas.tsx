@@ -4122,6 +4122,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     }
                     onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                     onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
+                    cardSelectedElementId={
+                      cardElementSelection?.nodeId === node.id ? cardElementSelection.elementId : null
+                    }
+                    onCardElementSelect={onCardElementSelect}
+                    onOverlapClickThroughAttempt={onOverlapClickThroughAttempt}
                     visualStylingPanelOpen={visualStylingPanelOpen}
                     diagramNodesForMindmap={diagramData.nodes}
                   />
