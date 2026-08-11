@@ -420,6 +420,8 @@ interface VisualStylingPanelProps {
   cardTemplateId?: string;
   cardElements?: CardElementData;
   onCardElementsChange?: (elements: CardElementData) => void;
+  /** Apply a style patch to one card element id on every selected card (multi-select safe). */
+  onCardElementStyleChange?: (elementId: string, style: CardElementStyle) => void;
   agendaRowThemeHue?: boolean;
   onAgendaRowThemeHueChange?: (enabled: boolean) => void;
   agendaDividersEnabled?: boolean;
@@ -560,7 +562,7 @@ function IconBevelMatchColorPreview({
   );
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange: onStylingChangeProp, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRasterIconFilterStyling = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, bulletListUseItemIcons, onBulletListUseItemIconsChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange: onStylingChangeProp, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRasterIconFilterStyling = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, onCardElementStyleChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, bulletListUseItemIcons, onBulletListUseItemIconsChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -771,12 +773,16 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
 
   const patchFramedHeadingTabStyle = useCallback(
     (style: CardElementStyle) => {
+      if (onCardElementStyleChange) {
+        onCardElementStyleChange(FRAMED_HEADING_TAB_ID, style);
+        return;
+      }
       if (!cardElements || !onCardElementsChange) return;
       onCardElementsChange(
         updateFramedHeadingElementStyle(cardElements, FRAMED_HEADING_TAB_ID, style),
       );
     },
-    [cardElements, onCardElementsChange],
+    [cardElements, onCardElementsChange, onCardElementStyleChange],
   );
 
   return (
@@ -1878,7 +1884,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </StylingAccordionSection>
               ) : null}
 
-              {isFramedHeadingCard && framedHeadingTab && onCardElementsChange ? (
+              {isFramedHeadingCard &&
+              framedHeadingTab &&
+              (onCardElementStyleChange || onCardElementsChange) ? (
                 <StylingAccordionSection
                   defaultOpen={accordionDefaultOpen}
                   title="Heading"

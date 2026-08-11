@@ -81,6 +81,83 @@ export function updateCardElementTree(
   };
 }
 
+export type CardElementFieldPatch = {
+  id: string;
+  patch: Partial<CardElementData>;
+};
+
+function walkCardElementsById(
+  root: CardElementData,
+  into: Map<string, CardElementData>,
+): void {
+  into.set(root.id, root);
+  for (const child of root.children ?? []) {
+    walkCardElementsById(child, into);
+  }
+}
+
+function cardElementFieldEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a == null || b == null) return a === b;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Diff two card element trees by id (ignores newly added ids / children arrays).
+ * Used to replay Visual styling Heading/Border/Card-property edits onto multi-selected cards.
+ */
+export function diffCardElementTreePatches(
+  prev: CardElementData,
+  next: CardElementData,
+): CardElementFieldPatch[] {
+  const prevById = new Map<string, CardElementData>();
+  const nextById = new Map<string, CardElementData>();
+  walkCardElementsById(prev, prevById);
+  walkCardElementsById(next, nextById);
+  const patches: CardElementFieldPatch[] = [];
+  for (const [id, nextEl] of nextById) {
+    const prevEl = prevById.get(id);
+    if (!prevEl) continue;
+    const patch: Partial<CardElementData> = {};
+    const keys = new Set([
+      ...Object.keys(prevEl),
+      ...Object.keys(nextEl),
+    ]) as Set<keyof CardElementData>;
+    for (const key of keys) {
+      if (key === "children" || key === "id") continue;
+      if (!cardElementFieldEqual(prevEl[key], nextEl[key])) {
+        (patch as Record<string, unknown>)[key] = nextEl[key];
+      }
+    }
+    if (Object.keys(patch).length > 0) {
+      patches.push({ id, patch });
+    }
+  }
+  return patches;
+}
+
+/** Apply id-targeted field patches onto a card tree (skips missing ids). */
+export function applyCardElementFieldPatches(
+  root: CardElementData,
+  patches: readonly CardElementFieldPatch[],
+): CardElementData {
+  let out = root;
+  for (const { id, patch } of patches) {
+    const el = findCardElement(out, id);
+    if (!el) continue;
+    const merged: Partial<CardElementData> = { ...patch };
+    if (patch.style) {
+      merged.style = { ...el.style, ...patch.style };
+    }
+    out = updateCardElementTree(out, id, merged);
+  }
+  return out;
+}
+
 export function mapCardElementTree(
   root: CardElementData,
   mapFn: (el: CardElementData) => CardElementData,

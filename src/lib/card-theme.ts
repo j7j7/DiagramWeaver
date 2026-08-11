@@ -1,9 +1,19 @@
 import type { CardElementData, CardElementStyle } from "@/lib/card-types";
 import type { ThemeProperties } from "@/lib/theme-types";
-import { deriveBackgroundGradientColors, type VisualStyling } from "@/lib/visual-styling";
+import {
+  augmentGradientBackgroundPatch,
+  deriveBackgroundGradientColors,
+  type VisualStyling,
+} from "@/lib/visual-styling";
 import { multiplyLightnessOfColor, shiftHueOfColor } from "@/lib/color-shift";
 import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
-import { findCardElement, mapCardElementTree, updateCardElementTree } from "@/lib/card-utils";
+import {
+  findCardElement,
+  getCardTemplateIdFromNodeType,
+  isCardNodeType,
+  mapCardElementTree,
+  updateCardElementTree,
+} from "@/lib/card-utils";
 import {
   applyBulletListThemeColors,
   BULLET_LIST_TEMPLATE_ID,
@@ -231,6 +241,37 @@ export function cardPanelBackgroundVisual(
     };
   }
   return cardBg;
+}
+
+/**
+ * Route a Visual styling panel patch onto a card: background fields update the
+ * card background region; remaining fields stay on the node shell.
+ * Non-cards pass `stylingObj` through unchanged.
+ */
+export function routeCardVisualStylingPatch(
+  node: { type?: string; card?: { templateId?: string; elements?: CardElementData } },
+  stylingObj: Record<string, unknown>,
+): {
+  cardElements?: CardElementData;
+  stylingForNode: Record<string, unknown>;
+} {
+  const elements = node.card?.elements;
+  if (!isCardNodeType(node.type) || !elements) {
+    return { stylingForNode: stylingObj };
+  }
+  const cardTemplateId =
+    node.card?.templateId ?? getCardTemplateIdFromNodeType(node.type) ?? undefined;
+  const cardBg = cardBackgroundVisualFromElements(elements, cardTemplateId);
+  const stylingInput = augmentGradientBackgroundPatch(cardBg, stylingObj);
+  const { cardBackground, nodePatch } = partitionCardVisualStylingPatch(
+    stylingInput,
+    cardTemplateId,
+  );
+  let cardElements = elements;
+  if (Object.keys(cardBackground).length > 0) {
+    cardElements = applyCardBackgroundVisual(cardElements, cardTemplateId, cardBackground);
+  }
+  return { cardElements, stylingForNode: nodePatch };
 }
 
 /** Split visual styling patch: card background region vs shell/node fields. */

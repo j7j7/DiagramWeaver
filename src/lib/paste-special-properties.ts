@@ -7,6 +7,29 @@ import type {
   NodeChartSpecRing,
 } from "@/lib/types";
 import { isChartNodeType } from "@/lib/chart-node";
+import type { CardElementData, CardElementStyle } from "@/lib/card-types";
+import {
+  findCardElement,
+  getCardTemplateIdFromNodeType,
+  isCardNodeType,
+  updateCardElementTree,
+} from "@/lib/card-utils";
+import {
+  applyCardBackgroundVisual,
+  cardBackgroundVisualFromElements,
+} from "@/lib/card-theme";
+import {
+  applyFramedHeadingAlign,
+  applyFramedHeadingEdge,
+  applyFramedHeadingTabWidthPct,
+  applyFramedHeadingTextAlign,
+  FRAMED_HEADING_TEMPLATE_ID,
+  getFramedHeadingAlign,
+  getFramedHeadingEdge,
+  getFramedHeadingRegions,
+  getFramedHeadingTextAlign,
+  parseFramedHeadingTabWidthPct,
+} from "@/lib/card-framed-heading";
 import {
   isConnectorLineNodeType,
   isIconOrEmojiType,
@@ -34,6 +57,7 @@ export function getClipboardTemplateNode(c: PasteSpecialClipboardLike | null): D
 
 export type PastePropertyFamily =
   | { kind: "chart"; chartKind: "pie" | "bar" | "line" | "ring" | "grid" }
+  | { kind: "card"; templateId: string }
   | { kind: "connectorLine" }
   | { kind: "timeline" }
   | { kind: "mindmap" }
@@ -61,6 +85,10 @@ export function getPastePropertyFamily(type: string | undefined): PastePropertyF
     const ck = chartKindFromType(type);
     return ck ? { kind: "chart", chartKind: ck } : null;
   }
+  if (isCardNodeType(type)) {
+    const templateId = getCardTemplateIdFromNodeType(type);
+    return templateId ? { kind: "card", templateId } : null;
+  }
   if (isConnectorLineNodeType(type)) return { kind: "connectorLine" };
   if (isTimelineNodeType(type)) return { kind: "timeline" };
   if (isMindmapNodeType(type)) return { kind: "mindmap" };
@@ -82,6 +110,7 @@ export function pasteSpecialFamiliesCompatible(
   if (!a || !b) return false;
   if (a.kind !== b.kind) return false;
   if (a.kind === "chart" && b.kind === "chart") return a.chartKind === b.chartKind;
+  if (a.kind === "card" && b.kind === "card") return a.templateId === b.templateId;
   return true;
 }
 
@@ -309,6 +338,135 @@ function applySizeAspect(source: DiagramNodeData, target: DiagramNodeData): Diag
   return out;
 }
 
+function cloneCardElementStyle(style: CardElementStyle | undefined): CardElementStyle | undefined {
+  if (!style) return undefined;
+  return {
+    ...style,
+    backgroundColors: style.backgroundColors
+      ? ([...style.backgroundColors] as [string, string])
+      : undefined,
+    meshGradientPoints: style.meshGradientPoints
+      ? style.meshGradientPoints.map((p) => ({ ...p }))
+      : undefined,
+  };
+}
+
+function walkCardElements(root: CardElementData, visit: (el: CardElementData) => void): void {
+  visit(root);
+  for (const child of root.children ?? []) walkCardElements(child, visit);
+}
+
+const CARD_ELEMENT_TEXT_COLOUR_KEYS = [
+  "textColor",
+  "textOutlineColor",
+  "textGlowColor",
+  "textShadowColor",
+] as const satisfies readonly (keyof CardElementData)[];
+
+/**
+ * Paste special Colour for cards: shell border/fill already applied by caller;
+ * also copy background-region + per-element fills/borders (e.g. framed-heading tab)
+ * and text/icon colour fields onto matching element ids.
+ */
+function applyCardColourAspect(source: DiagramNodeData, target: DiagramNodeData): DiagramNodeData {
+  const srcEls = source.card?.elements;
+  const tgtEls = target.card?.elements;
+  if (!srcEls || !tgtEls || !isCardNodeType(source.type) || !isCardNodeType(target.type)) {
+    return target;
+  }
+  const srcTemplate =
+    source.card?.templateId ?? getCardTemplateIdFromNodeType(source.type) ?? undefined;
+  const tgtTemplate =
+    target.card?.templateId ?? getCardTemplateIdFromNodeType(target.type) ?? undefined;
+
+  let elements = tgtEls;
+  const bgVisual = cardBackgroundVisualFromElements(srcEls, srcTemplate);
+  elements = applyCardBackgroundVisual(elements, tgtTemplate, bgVisual);
+
+  walkCardElements(srcEls, (srcEl) => {
+    if (!findCardElement(elements, srcEl.id)) return;
+
+    const styleClone = cloneCardElementStyle(srcEl.style);
+    if (styleClone) {
+      // Replace (not merge) so missing source keys clear target borders/fills.
+      elements = updateCardElementTree(elements, srcEl.id, { style: styleClone });
+    }
+
+    const textColourPatch: Partial<CardElementData> = {};
+    for (const key of CARD_ELEMENT_TEXT_COLOUR_KEYS) {
+      if (srcEl[key] !== undefined) {
+        (textColourPatch as Record<string, unknown>)[key] = srcEl[key];
+      }
+    }
+    if (Object.keys(textColourPatch).length > 0) {
+      elements = updateCardElementTree(elements, srcEl.id, textColourPatch);
+    }
+
+    if (srcEl.iconRef) {
+      const tgt = findCardElement(elements, srcEl.id);
+      if (tgt?.iconRef) {
+        elements = updateCardElementTree(elements, srcEl.id, {
+          iconRef: {
+            ...tgt.iconRef,
+            ...(srcEl.iconRef.iconColor !== undefined
+              ? { iconColor: srcEl.iconRef.iconColor }
+              : {}),
+            ...(srcEl.iconRef.iconColorEnabled !== undefined
+              ? { iconColorEnabled: srcEl.iconRef.iconColorEnabled }
+              : {}),
+            ...(srcEl.iconRef.iconGreyscale !== undefined
+              ? { iconGreyscale: srcEl.iconRef.iconGreyscale }
+              : {}),
+            ...(srcEl.iconRef.iconOpacity !== undefined
+              ? { iconOpacity: srcEl.iconRef.iconOpacity }
+              : {}),
+          },
+        });
+      }
+    }
+  });
+
+  return {
+    ...target,
+    card: {
+      ...target.card!,
+      elements,
+    },
+  };
+}
+
+/** Paste special Properties: framed-heading tab placement/size/text align. */
+function applyCardPropertiesAspect(source: DiagramNodeData, target: DiagramNodeData): DiagramNodeData {
+  const srcEls = source.card?.elements;
+  const tgtEls = target.card?.elements;
+  if (!srcEls || !tgtEls) return target;
+  const srcTemplate =
+    source.card?.templateId ?? getCardTemplateIdFromNodeType(source.type) ?? undefined;
+  const tgtTemplate =
+    target.card?.templateId ?? getCardTemplateIdFromNodeType(target.type) ?? undefined;
+  if (srcTemplate !== FRAMED_HEADING_TEMPLATE_ID || tgtTemplate !== FRAMED_HEADING_TEMPLATE_ID) {
+    return target;
+  }
+
+  const { headingTab, heading } = getFramedHeadingRegions(srcEls);
+  let elements = tgtEls;
+  if (headingTab) {
+    elements = applyFramedHeadingEdge(elements, getFramedHeadingEdge(headingTab));
+    elements = applyFramedHeadingAlign(elements, getFramedHeadingAlign(headingTab));
+    elements = applyFramedHeadingTabWidthPct(elements, parseFramedHeadingTabWidthPct(headingTab));
+  }
+  if (heading) {
+    elements = applyFramedHeadingTextAlign(elements, getFramedHeadingTextAlign(heading));
+  }
+  return {
+    ...target,
+    card: {
+      ...target.card!,
+      elements,
+    },
+  };
+}
+
 function applyColourAspect(source: DiagramNodeData, target: DiagramNodeData): DiagramNodeData {
   let out = applyVisualStylingToNode(target, extractVisualStylingFromNode(source)) as DiagramNodeData;
   pickDefined(out, source, [
@@ -332,6 +490,9 @@ function applyColourAspect(source: DiagramNodeData, target: DiagramNodeData): Di
   ] as (keyof DiagramNodeData)[]);
   if (isChartNodeType(target.type) && source.chart && target.chart) {
     out = { ...out, chart: mergeChartColour(target.chart, source.chart) };
+  }
+  if (isCardNodeType(source.type) && isCardNodeType(target.type)) {
+    out = applyCardColourAspect(source, out);
   }
   return out;
 }
@@ -445,6 +606,9 @@ function applyPropertiesAspect(source: DiagramNodeData, target: DiagramNodeData)
   }
   if (isChartNodeType(target.type) && source.chart && target.chart) {
     out.chart = mergeChartProperties(target.chart, source.chart);
+  }
+  if (isCardNodeType(source.type) && isCardNodeType(target.type)) {
+    return applyCardPropertiesAspect(source, out);
   }
   return out;
 }

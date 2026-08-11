@@ -84,7 +84,13 @@ import {
 } from '@/lib/visual-styling';
 import { augmentSegmentedRectangleStylingPlacementPatch } from '@/lib/segmented-rectangle';
 import { augmentTimelineBarOrientationPatch } from '@/lib/timeline-bar';
-import { findCardElement, isCardNodeType, updateCardElementTree } from '@/lib/card-utils';
+import {
+  applyCardElementFieldPatches,
+  diffCardElementTreePatches,
+  findCardElement,
+  isCardNodeType,
+  updateCardElementTree,
+} from '@/lib/card-utils';
 import { getBorderTemplateIdFromNodeType, isBorderNodeType } from '@/lib/border-utils';
 import { patchBorderSpec } from '@/lib/border-template-swap';
 import type { NodeBorderSpec } from '@/lib/border-types';
@@ -92,13 +98,13 @@ import { cardIconVisualStyling, partitionCardIconVisualStylingPatch } from '@/li
 import { CARD_ICON_PLACEMENTS } from '@/lib/card-icon-layout';
 import {
   cardBackgroundVisualFromElements,
-  applyCardBackgroundVisual,
-  partitionCardVisualStylingPatch,
+  routeCardVisualStylingPatch,
   cardPanelBackgroundVisual,
+  updateCardElementStyleTree,
 } from '@/lib/card-theme';
 import { framedHeadingPanelBackgroundVisual } from '@/lib/card-framed-heading';
 import { getCardTemplateIdFromNodeType } from '@/lib/card-utils';
-import type { CardElementData } from '@/lib/card-types';
+import type { CardElementData, CardElementStyle } from '@/lib/card-types';
 import {
   applyBulletListUseItemIcons,
   applyTextStylingPatchToBulletListTitle,
@@ -995,10 +1001,16 @@ export function ContextToolbar({
   const handleAgendaRowThemeHueChange = useCallback(
     (enabled: boolean) => {
       if (!selectedItem?.id) return;
+      const targetIds =
+        selectedItemIds && selectedItemIds.size > 1
+          ? selectedItemIds
+          : new Set([selectedItem.id]);
       const applyPatch = (prev: DiagramData): DiagramData => ({
         ...prev,
         nodes: prev.nodes.map((n) =>
-          n.id === selectedItem.id ? { ...n, agendaRowThemeHue: enabled } : n,
+          targetIds.has(n.id) && isCardNodeType(n.type)
+            ? { ...n, agendaRowThemeHue: enabled }
+            : n,
         ),
       });
       if (onCurrentDiagramDataUpdate) {
@@ -1012,6 +1024,7 @@ export function ContextToolbar({
     },
     [
       selectedItem?.id,
+      selectedItemIds,
       onCurrentDiagramDataUpdate,
       onDiagramDataUpdate,
       diagramData,
@@ -1030,10 +1043,16 @@ export function ContextToolbar({
   const handleAgendaDividersEnabledChange = useCallback(
     (enabled: boolean) => {
       if (!selectedItem?.id) return;
+      const targetIds =
+        selectedItemIds && selectedItemIds.size > 1
+          ? selectedItemIds
+          : new Set([selectedItem.id]);
       const applyPatch = (prev: DiagramData): DiagramData => ({
         ...prev,
         nodes: prev.nodes.map((n) =>
-          n.id === selectedItem.id ? { ...n, agendaDividersEnabled: enabled } : n,
+          targetIds.has(n.id) && isCardNodeType(n.type)
+            ? { ...n, agendaDividersEnabled: enabled }
+            : n,
         ),
       });
       if (onCurrentDiagramDataUpdate) {
@@ -1047,6 +1066,7 @@ export function ContextToolbar({
     },
     [
       selectedItem?.id,
+      selectedItemIds,
       onCurrentDiagramDataUpdate,
       onDiagramDataUpdate,
       diagramData,
@@ -1065,10 +1085,16 @@ export function ContextToolbar({
   const handleBulletListItemThemeHueChange = useCallback(
     (enabled: boolean) => {
       if (!selectedItem?.id) return;
+      const targetIds =
+        selectedItemIds && selectedItemIds.size > 1
+          ? selectedItemIds
+          : new Set([selectedItem.id]);
       const applyPatch = (prev: DiagramData): DiagramData => ({
         ...prev,
         nodes: prev.nodes.map((n) =>
-          n.id === selectedItem.id ? { ...n, bulletListItemThemeHue: enabled } : n,
+          targetIds.has(n.id) && isCardNodeType(n.type)
+            ? { ...n, bulletListItemThemeHue: enabled }
+            : n,
         ),
       });
       if (onCurrentDiagramDataUpdate) {
@@ -1082,6 +1108,7 @@ export function ContextToolbar({
     },
     [
       selectedItem?.id,
+      selectedItemIds,
       onCurrentDiagramDataUpdate,
       onDiagramDataUpdate,
       diagramData,
@@ -1100,10 +1127,14 @@ export function ContextToolbar({
   const handleBulletListUseItemIconsChange = useCallback(
     (enabled: boolean) => {
       if (!selectedItem?.id) return;
+      const targetIds =
+        selectedItemIds && selectedItemIds.size > 1
+          ? selectedItemIds
+          : new Set([selectedItem.id]);
       const applyPatch = (prev: DiagramData): DiagramData => ({
         ...prev,
         nodes: prev.nodes.map((n) => {
-          if (n.id !== selectedItem.id || !n.card?.elements) return n;
+          if (!targetIds.has(n.id) || !n.card?.elements || !isCardNodeType(n.type)) return n;
           return {
             ...n,
             bulletListUseItemIcons: enabled,
@@ -1125,6 +1156,7 @@ export function ContextToolbar({
     },
     [
       selectedItem?.id,
+      selectedItemIds,
       onCurrentDiagramDataUpdate,
       onDiagramDataUpdate,
       diagramData,
@@ -1136,10 +1168,33 @@ export function ContextToolbar({
   const handleCardElementsChange = useCallback(
     (elements: CardElementData) => {
       if (!selectedItem?.id) return;
+      const multi =
+        !!selectedItemIds &&
+        selectedItemIds.size > 1 &&
+        !!selectedCardNodeElements &&
+        (!!onCurrentDiagramDataUpdate || (!!onDiagramDataUpdate && !!diagramData));
+
+      const fieldPatches = multi
+        ? diffCardElementTreePatches(selectedCardNodeElements!, elements)
+        : null;
+
       const applyPatch = (prev: DiagramData): DiagramData => ({
         ...prev,
         nodes: prev.nodes.map((n) => {
-          if (n.id !== selectedItem.id || !n.card) return n;
+          if (!n.card) return n;
+          if (multi && fieldPatches && fieldPatches.length > 0) {
+            if (!selectedItemIds!.has(n.id) || !n.card.elements || !isCardNodeType(n.type)) {
+              return n;
+            }
+            return {
+              ...n,
+              card: {
+                ...n.card,
+                elements: applyCardElementFieldPatches(n.card.elements, fieldPatches),
+              },
+            };
+          }
+          if (n.id !== selectedItem.id) return n;
           return { ...n, card: { ...n.card, elements } };
         }),
       });
@@ -1154,6 +1209,50 @@ export function ContextToolbar({
     },
     [
       selectedItem?.id,
+      selectedItemIds,
+      selectedCardNodeElements,
+      onCurrentDiagramDataUpdate,
+      onDiagramDataUpdate,
+      diagramData,
+      currentDiagramData,
+      onItemUpdate,
+    ],
+  );
+
+  /** Heading box fill/border (and similar): apply style to one element id on every selected card. */
+  const handleCardElementStyleChange = useCallback(
+    (elementId: string, style: CardElementStyle) => {
+      if (!selectedItem?.id) return;
+      const targetIds =
+        selectedItemIds && selectedItemIds.size > 1
+          ? selectedItemIds
+          : new Set([selectedItem.id]);
+      const applyPatch = (prev: DiagramData): DiagramData => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (!targetIds.has(n.id) || !isCardNodeType(n.type) || !n.card?.elements) return n;
+          if (!findCardElement(n.card.elements, elementId)) return n;
+          return {
+            ...n,
+            card: {
+              ...n.card,
+              elements: updateCardElementStyleTree(n.card.elements, elementId, style),
+            },
+          };
+        }),
+      });
+      if (onCurrentDiagramDataUpdate) {
+        onCurrentDiagramDataUpdate(applyPatch);
+      } else if (onDiagramDataUpdate && diagramData) {
+        onDiagramDataUpdate(applyPatch(diagramData));
+      }
+      const data = currentDiagramData ?? diagramData;
+      const patched = data ? applyPatch(data).nodes.find((n) => n.id === selectedItem.id) : undefined;
+      if (patched) onItemUpdate?.({ ...patched, itemType: "node" } as SelectedItem);
+    },
+    [
+      selectedItem?.id,
+      selectedItemIds,
       onCurrentDiagramDataUpdate,
       onDiagramDataUpdate,
       diagramData,
@@ -1725,16 +1824,20 @@ export function ContextToolbar({
       // Apply styling change to all selected items
       const updatedDiagramData = { ...diagramData };
       
-      // Update nodes
+      // Update nodes (cards route background into card.elements, same as single-select)
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
         if (selectedItemIds.has(node.id)) {
-          let augmented = augmentGradientBackgroundPatch(node, stylingObj);
+          const { cardElements, stylingForNode } = routeCardVisualStylingPatch(node, stylingObj);
+          let augmented = augmentGradientBackgroundPatch(node, stylingForNode);
           augmented = augmentSegmentedRectangleStylingPlacementPatch(node, augmented);
           augmented = augmentTimelineBarOrientationPatch(node, augmented);
           const merged = { ...node } as Record<string, unknown>;
           for (const [k, v] of Object.entries(augmented)) {
             if (v === null) merged[k] = null;
             else if (v !== undefined) merged[k] = v;
+          }
+          if (cardElements && node.card) {
+            merged.card = { ...node.card, elements: cardElements };
           }
           return syncClosedConnectorLineBorderWidth(merged as unknown as DiagramNodeData);
         }
@@ -1799,26 +1902,7 @@ export function ContextToolbar({
       }
 
       const selectedNode = selectedItem as DiagramNodeData;
-      const isCard =
-        isCardNodeType(selectedNode.type) && !!selectedNode.card?.elements;
-      const cardTemplateId =
-        selectedNode.card?.templateId ?? getCardTemplateIdFromNodeType(selectedNode.type) ?? undefined;
-
-      let stylingForNode = stylingObj;
-      let cardElements = selectedNode.card?.elements;
-
-      if (isCard && cardElements) {
-        const cardBg = cardBackgroundVisualFromElements(cardElements, cardTemplateId);
-        const stylingInput = augmentGradientBackgroundPatch(cardBg, stylingObj);
-        const { cardBackground, nodePatch } = partitionCardVisualStylingPatch(
-          stylingInput,
-          cardTemplateId,
-        );
-        if (Object.keys(cardBackground).length > 0) {
-          cardElements = applyCardBackgroundVisual(cardElements, cardTemplateId, cardBackground);
-        }
-        stylingForNode = nodePatch;
-      }
+      const { cardElements, stylingForNode } = routeCardVisualStylingPatch(selectedNode, stylingObj);
 
       const augmented = selectedItem
         ? augmentTimelineBarOrientationPatch(
@@ -1834,7 +1918,7 @@ export function ContextToolbar({
         if (v === null) merged[k] = null;
         else if (v !== undefined) merged[k] = v;
       }
-      if (isCard && cardElements && selectedNode.card) {
+      if (cardElements && selectedNode.card) {
         merged.card = { ...selectedNode.card, elements: cardElements };
       }
       onItemUpdate?.(
@@ -2983,6 +3067,7 @@ export function ContextToolbar({
                   cardTemplateId={selectedCardTemplateId}
                   cardElements={selectedCardNodeElements}
                   onCardElementsChange={handleCardElementsChange}
+                  onCardElementStyleChange={handleCardElementStyleChange}
                   agendaRowThemeHue={selectedAgendaRowThemeHue}
                   onAgendaRowThemeHueChange={handleAgendaRowThemeHueChange}
                   agendaDividersEnabled={selectedAgendaDividersEnabled}

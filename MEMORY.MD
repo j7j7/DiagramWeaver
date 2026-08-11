@@ -2,6 +2,15 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-11 – Paste special Colour/Properties for cards
+**Paste special → Colour** between same-template cards now copies card-region fills/borders (incl. framed-heading **heading-tab**), background region, and text/icon colour fields — not only shell border. **Properties** also copies framed-heading tab edge/align/width/text align. Cards are their own paste family (same template only). Patch bumped.
+
+### 2026-08-11 – Multi-select Heading box fill/border
+Framed-heading **Heading box** fill/border now uses **`onCardElementStyleChange`** → **`updateCardElementStyleTree`** on every selected card (same element id), instead of whole-tree replace/diff which only updated the primary. Shell **Border** was already multi-safe via visual styling. Patch bumped.
+
+### 2026-08-11 – Multi-select card Heading/Border/element styling
+Visual styling edits that go through **`onCardElementsChange`** (framed-heading **Heading** fill/border, Card properties element patches) now replay field diffs onto **all** selected cards via **`diffCardElementTreePatches`** / **`applyCardElementFieldPatches`**. Agenda/bullet card toggles also apply to every selected card. Patch bumped.
+
 ### 2026-08-11 – Rich text toolbar: custom size mirrors selection
 Custom font-size input syncs from the caret/selection block (and on reopen) so applied sizes show again; does not overwrite while typing in the field. Patch bumped.
 
@@ -10,6 +19,9 @@ Custom size input can be focused without closing edit: portal toolbar no longer 
 
 ### 2026-08-11 – Rich text toolbar: custom font size
 Textbox/heading edit toolbar keeps fixed sizes **12–24** and adds a small **custom px** number input beside **24** (Enter/blur applies; selection restored after focusing the field). Patch bumped.
+
+### 2026-08-11 – Multi-select card background visual styling
+Visual styling Background changes with **2+ cards** selected now update each card’s background region (same as single-select). Multi-select previously only patched node shell fields and skipped **`applyCardBackgroundVisual`**. Shared **`routeCardVisualStylingPatch`** in **`card-theme.ts`**; used by **`handleVisualStylingChange`** for both single and multi. Patch bumped.
 
 ### 2026-08-11 – Card overlap click-through (interleaved stack)
 Default canvas mode (`connectionsBehindNodesEnabled=false`) was not passing **`onOverlapClickThroughAttempt`** / **`onCardElementSelect`** / **`cardSelectedElementId`** into **`DiagramNode`**, so selected-card inner clicks **`stopPropagation`**’d without cycling to overlapping icons. Wired those props on the interleaved path (same as connections-behind); **`DiagramNode`** only attaches card element select when the parent provides it. Patch bumped.
