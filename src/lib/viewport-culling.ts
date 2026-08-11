@@ -11,7 +11,10 @@ export const VIEWPORT_CULL_SCREEN_MARGIN_PX = 32;
 /** Cap diagram-space margin so zoomed-out views do not keep distant items (128px at k=0.2 → 640 diagram units). */
 export const VIEWPORT_CULL_MAX_DIAGRAM_MARGIN = 48;
 
-/** Tighter margin for connection endpoint tests (lines use endpoints only, not segment bbox). */
+/**
+ * Screen margin for connection cull tests (endpoint boxes + path segments).
+ * Prefer segment–vs–view over a full endpoint AABB so zoomed-out empty corners stay culled.
+ */
 export const VIEWPORT_CULL_CONNECTION_SCREEN_MARGIN_PX = 16;
 
 /** Legacy threshold — kept for docs/tests; activation uses {@link shouldActivateViewportRenderCull}. */
@@ -189,9 +192,169 @@ function itemBounds(
   return { minX: x, minY: y, maxX: x + w, maxY: y + h };
 }
 
+function itemCenter(
+  item: PositionedItemRef,
+  asNode: boolean,
+): { x: number; y: number } | null {
+  const bounds = itemBounds(item, asNode);
+  if (!bounds) return null;
+  return {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2,
+  };
+}
+
+function pointInExpandedView(
+  x: number,
+  y: number,
+  view: ViewportBounds,
+  margin: number,
+): boolean {
+  return (
+    x >= view.minX - margin &&
+    x <= view.maxX + margin &&
+    y >= view.minY - margin &&
+    y <= view.maxY + margin
+  );
+}
+
+/** Orientation for segment intersection (0 collinear, 1/2 clockwise/ccw). */
+function orient3(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+): number {
+  const value = (by - ay) * (cx - bx) - (bx - ax) * (cy - by);
+  if (Math.abs(value) < 1e-9) return 0;
+  return value > 0 ? 1 : 2;
+}
+
+function pointOnSegment(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+): boolean {
+  return (
+    bx <= Math.max(ax, cx) + 1e-9 &&
+    bx >= Math.min(ax, cx) - 1e-9 &&
+    by <= Math.max(ay, cy) + 1e-9 &&
+    by >= Math.min(ay, cy) - 1e-9
+  );
+}
+
+function segmentsIntersect(
+  p1x: number,
+  p1y: number,
+  q1x: number,
+  q1y: number,
+  p2x: number,
+  p2y: number,
+  q2x: number,
+  q2y: number,
+): boolean {
+  const o1 = orient3(p1x, p1y, q1x, q1y, p2x, p2y);
+  const o2 = orient3(p1x, p1y, q1x, q1y, q2x, q2y);
+  const o3 = orient3(p2x, p2y, q2x, q2y, p1x, p1y);
+  const o4 = orient3(p2x, p2y, q2x, q2y, q1x, q1y);
+  if (o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && pointOnSegment(p1x, p1y, p2x, p2y, q1x, q1y)) return true;
+  if (o2 === 0 && pointOnSegment(p1x, p1y, q2x, q2y, q1x, q1y)) return true;
+  if (o3 === 0 && pointOnSegment(p2x, p2y, p1x, p1y, q2x, q2y)) return true;
+  if (o4 === 0 && pointOnSegment(p2x, p2y, q1x, q1y, q2x, q2y)) return true;
+  return false;
+}
+
+/** True if the open segment crosses or touches the padded viewport rectangle. */
+export function segmentIntersectsExpandedView(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  view: ViewportBounds,
+  margin: number,
+): boolean {
+  if (pointInExpandedView(ax, ay, view, margin) || pointInExpandedView(bx, by, view, margin)) {
+    return true;
+  }
+  const minX = view.minX - margin;
+  const minY = view.minY - margin;
+  const maxX = view.maxX + margin;
+  const maxY = view.maxY + margin;
+  // Quick reject against padded view AABB
+  if (
+    Math.max(ax, bx) < minX ||
+    Math.min(ax, bx) > maxX ||
+    Math.max(ay, by) < minY ||
+    Math.min(ay, by) > maxY
+  ) {
+    return false;
+  }
+  return (
+    segmentsIntersect(ax, ay, bx, by, minX, minY, maxX, minY) ||
+    segmentsIntersect(ax, ay, bx, by, maxX, minY, maxX, maxY) ||
+    segmentsIntersect(ax, ay, bx, by, maxX, maxY, minX, maxY) ||
+    segmentsIntersect(ax, ay, bx, by, minX, maxY, minX, minY)
+  );
+}
+
+function polylineIntersectsExpandedView(
+  points: Array<{ x: number; y: number }>,
+  view: ViewportBounds,
+  margin: number,
+): boolean {
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    if (segmentIntersectsExpandedView(a.x, a.y, b.x, b.y, view, margin)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
- * Connection is drawn when either endpoint box intersects the padded view.
- * (Segment-bbox tests kept long off-screen edges visible when zoomed out.)
+ * Cheap path samples for cull tests (not full router output).
+ * Centers + waypoints cover stored routes; orthogonal without waypoints also
+ * samples both simple Z trunks so mid-path zooms keep L/Z lines mounted.
+ */
+function connectionCullPolylines(
+  connection: DiagramConnectionData,
+  fromCenter: { x: number; y: number },
+  toCenter: { x: number; y: number },
+): Array<Array<{ x: number; y: number }>> {
+  const waypoints = (connection.waypoints ?? []).filter(
+    (wp) => typeof wp.x === "number" && typeof wp.y === "number" && Number.isFinite(wp.x) && Number.isFinite(wp.y),
+  );
+  if (waypoints.length > 0) {
+    return [[fromCenter, ...waypoints.map((wp) => ({ x: wp.x, y: wp.y })), toCenter]];
+  }
+  if (connection.style === "orthogonal") {
+    const midX = (fromCenter.x + toCenter.x) / 2;
+    const midY = (fromCenter.y + toCenter.y) / 2;
+    return [
+      // Chord covers mid-path zooms even when the live trunk is offset from mid
+      [fromCenter, toCenter],
+      // Horizontal-first Z (vertical trunk at midX)
+      [fromCenter, { x: midX, y: fromCenter.y }, { x: midX, y: toCenter.y }, toCenter],
+      // Vertical-first Z (horizontal trunk at midY)
+      [fromCenter, { x: fromCenter.x, y: midY }, { x: toCenter.x, y: midY }, toCenter],
+    ];
+  }
+  // Bezier / default: chord is enough for cull (curve bow stays near the chord at typical curvature)
+  return [[fromCenter, toCenter]];
+}
+
+/**
+ * Connection is drawn when either endpoint box intersects the padded view, or when
+ * a cheap path sample (centers + waypoints, or orthogonal Z trunks) crosses the view.
+ * Uses segment–vs–rect (not the endpoint AABB) so zoomed-out empty corners stay culled
+ * while mid-path zoom (endpoints off-screen) still shows the line.
  */
 export function isConnectionInViewport(
   connection: DiagramConnectionData,
@@ -207,10 +370,12 @@ export function isConnectionInViewport(
   const fromItem = nodesById[connection.from] ?? zonesById[connection.from];
   const toItem = nodesById[connection.to] ?? zonesById[connection.to];
   if (!fromItem || !toItem) return false;
-  const fromBounds = itemBounds(fromItem, connection.from in nodesById);
-  const toBounds = itemBounds(toItem, connection.to in nodesById);
+  const fromIsNode = connection.from in nodesById;
+  const toIsNode = connection.to in nodesById;
+  const fromBounds = itemBounds(fromItem, fromIsNode);
+  const toBounds = itemBounds(toItem, toIsNode);
   if (!fromBounds || !toBounds) return false;
-  return (
+  if (
     rectIntersectsExpandedView(
       fromBounds.minX,
       fromBounds.minY,
@@ -227,7 +392,20 @@ export function isConnectionInViewport(
       viewportBounds,
       margin,
     )
-  );
+  ) {
+    return true;
+  }
+
+  const fromCenter = itemCenter(fromItem, fromIsNode);
+  const toCenter = itemCenter(toItem, toIsNode);
+  if (!fromCenter || !toCenter) return false;
+
+  for (const poly of connectionCullPolylines(connection, fromCenter, toCenter)) {
+    if (polylineIntersectsExpandedView(poly, viewportBounds, margin)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** @deprecated Prefer {@link isConnectionInViewport} — both endpoints visible is too strict for panning. */

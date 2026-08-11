@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-11 – Viewport cull: keep mid-path connections
+Connection culling no longer drops lines when both endpoints are off-screen but the path crosses the view (e.g. zoom into a shape the link passes through). **`isConnectionInViewport`** keeps endpoint-box hits and adds **segment–vs–view** tests on centers + waypoints (orthogonal also samples chord + mid Z trunks) — avoids the old full-segment AABB false positives when zoomed out. Patch bumped.
+
 ### 2026-08-11 – Custom orthogonal: arrow faces target edge
 `computeCustomOrthogonalRoute` applies angle-aware exit/entry stubs (`applyCustomRouteTerminalStubs`) so after an endpoint moves to another side the last segment approaches from outside and arrows point into the node (wrong-side collinear waypoints trimmed so stubs are not simplified away). Preferred exit/entry also wins over waypoint-inferred edges in `determineConnectionEdges`. Patch bumped.
 
