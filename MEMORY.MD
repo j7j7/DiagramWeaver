@@ -2,6 +2,15 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-11 – Rich text toolbar: custom size mirrors selection
+Custom font-size input syncs from the caret/selection block (and on reopen) so applied sizes show again; does not overwrite while typing in the field. Patch bumped.
+
+### 2026-08-11 – Rich text toolbar: custom font size focus
+Custom size input can be focused without closing edit: portal toolbar no longer `preventDefault`s mousedown on inputs, and editor blur skips flush while focus stays in the toolbar. Patch bumped.
+
+### 2026-08-11 – Rich text toolbar: custom font size
+Textbox/heading edit toolbar keeps fixed sizes **12–24** and adds a small **custom px** number input beside **24** (Enter/blur applies; selection restored after focusing the field). Patch bumped.
+
 ### 2026-08-11 – Card overlap click-through (interleaved stack)
 Default canvas mode (`connectionsBehindNodesEnabled=false`) was not passing **`onOverlapClickThroughAttempt`** / **`onCardElementSelect`** / **`cardSelectedElementId`** into **`DiagramNode`**, so selected-card inner clicks **`stopPropagation`**’d without cycling to overlapping icons. Wired those props on the interleaved path (same as connections-behind); **`DiagramNode`** only attaches card element select when the parent provides it. Patch bumped.
 

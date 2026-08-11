@@ -22,6 +22,29 @@ const TEXTBOX_RICH_TOOLBAR_Z_INDEX = 10_050;
 /** Vertical overhead: outer p-1 (8) + inner py-0.5 (4) + contentEditable border (2). scrollHeight includes contentEditable padding (py-0.5 = 4). */
 const TEXTBOX_CONTENT_OVERHEAD = 14;
 
+const FONT_SIZES = [12, 14, 16, 18, 20, 24] as const;
+
+function parsePxFontSize(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const px = Number.parseFloat(raw);
+  return Number.isFinite(px) && px > 0 ? Math.round(px) : null;
+}
+
+/** Font size on the block containing `start` (inline style, else computed). */
+function readBlockFontSize(start: Node | null, editor: HTMLElement): number | null {
+  let block: Node | null = start;
+  while (block && block !== editor) {
+    if (block.nodeType === Node.ELEMENT_NODE) {
+      const el = block as HTMLElement;
+      if (["DIV", "P", "LI"].includes(el.tagName)) {
+        return parsePxFontSize(el.style.fontSize) ?? parsePxFontSize(getComputedStyle(el).fontSize);
+      }
+    }
+    block = block.parentElement;
+  }
+  return null;
+}
+
 interface TextboxRichEditorProps {
   node: DiagramNodeData;
   runs: RichTextRun[];
@@ -66,6 +89,7 @@ export function TextboxRichEditor({
   void _toolbarFixedToViewport;
   const rootRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
   const submitFlushedRef = useRef(false);
   const onSubmitRef = useRef(onSubmit);
@@ -77,11 +101,18 @@ export function TextboxRichEditor({
   const onHeightChangeRef = useRef(onHeightChange);
   onHeightChangeRef.current = onHeightChange;
 
+  const isWithinEditorChrome = useCallback((node: Node | null) => {
+    if (!node) return false;
+    return Boolean(rootRef.current?.contains(node) || toolbarRef.current?.contains(node));
+  }, []);
+
   const useShapeTopToolbar = toolbarPinToShapeTop === true;
   /** `pin` without a host still mounts — hide bar until the host ref is set. */
   const toolbarUsesBodyPortal = !useShapeTopToolbar || Boolean(toolbarPortalHost);
 
   const [floatingToolbarAnchor, setFloatingToolbarAnchor] = useState<{ cx: number; top: number } | null>(null);
+  const [customFontSize, setCustomFontSize] = useState("");
+  const savedFontSizeRangeRef = useRef<Range | null>(null);
 
   const updateFloatingToolbarAnchor = useCallback(() => {
     if (!toolbarUsesBodyPortal) return;
@@ -135,15 +166,52 @@ export function TextboxRichEditor({
     };
   }, [toolbarUsesBodyPortal, updateFloatingToolbarAnchor]);
 
+  const syncCustomFontSizeFromSelection = useCallback(() => {
+    const active = document.activeElement;
+    // Don't overwrite while the user is typing in the custom size field.
+    if (active instanceof HTMLInputElement && toolbarRef.current?.contains(active)) return;
+
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const sel = window.getSelection();
+    let size: number | null = null;
+    if (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+      size = readBlockFontSize(sel.anchorNode, editor);
+    }
+    if (size == null) {
+      const first = editor.querySelector("div, p, li");
+      if (first) size = readBlockFontSize(first, editor);
+    }
+    if (size == null) {
+      const nodeFs = Number((node as { fontSize?: number }).fontSize);
+      if (Number.isFinite(nodeFs) && nodeFs > 0) size = Math.round(nodeFs);
+    }
+    if (size != null) setCustomFontSize(String(size));
+  }, [node]);
+
   useEffect(() => {
     if (!editorRef.current || hasInitialized.current) return;
     editorRef.current.innerHTML = runsToHtml(runs, node);
     hasInitialized.current = true;
-  }, [runs]);
+    requestAnimationFrame(() => syncCustomFontSizeFromSelection());
+  }, [runs, node, syncCustomFontSizeFromSelection]);
 
   useEffect(() => {
     editorRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    const onSelectionChange = () => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      const sel = window.getSelection();
+      if (!sel || !editor.contains(sel.anchorNode)) return;
+      syncCustomFontSizeFromSelection();
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+  }, [syncCustomFontSizeFromSelection]);
 
   const flushEditorToSubmit = useCallback(() => {
     if (submitFlushedRef.current || !editorRef.current || !hasInitialized.current) return;
@@ -207,8 +275,14 @@ export function TextboxRichEditor({
     };
   }, [onHeightChange, scheduleHeightCheck]);
 
-  const handleBlur = () => {
-    flushEditorToSubmit();
+  const handleBlur = (e?: React.FocusEvent) => {
+    const related = (e?.relatedTarget as Node | null) ?? null;
+    if (isWithinEditorChrome(related)) return;
+    // Portaled toolbar / number input: relatedTarget can be null; defer and re-check.
+    window.setTimeout(() => {
+      if (isWithinEditorChrome(document.activeElement)) return;
+      flushEditorToSubmit();
+    }, 0);
   };
 
   const applyFormat = (command: "bold" | "italic" | "underline" | "insertUnorderedList" | "insertOrderedList", e: React.MouseEvent) => {
@@ -227,9 +301,23 @@ export function TextboxRichEditor({
     editorRef.current?.focus();
   };
 
-  const applyFontSize = (size: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const saveFontSizeSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+      savedFontSizeRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const applyFontSize = (size: number, e?: React.MouseEvent, opts?: { focusEditor?: boolean }) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (savedFontSizeRangeRef.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedFontSizeRangeRef.current);
+      }
+    }
     const sel = window.getSelection();
     if (!sel || !editorRef.current) return;
     let block: HTMLElement | null = sel.anchorNode as HTMLElement;
@@ -240,8 +328,17 @@ export function TextboxRichEditor({
       }
       block = block.parentElement;
     }
-    editorRef.current?.focus();
+    setCustomFontSize(String(size));
+    if (opts?.focusEditor !== false) {
+      editorRef.current?.focus();
+    }
     scheduleHeightCheck();
+  };
+
+  const applyCustomFontSize = (opts?: { focusEditor?: boolean }) => {
+    const n = Number.parseInt(customFontSize, 10);
+    if (!Number.isFinite(n) || n < 1) return;
+    applyFontSize(Math.min(n, 400), undefined, opts);
   };
 
   const applyVerticalAlign = (position: 'top' | 'middle' | 'bottom', e: React.MouseEvent) => {
@@ -253,14 +350,13 @@ export function TextboxRichEditor({
 
   const nodeAny = node as unknown as Record<string, unknown>;
   const currentVerticalPos = (nodeAny.textVerticalPosition as 'top' | 'middle' | 'bottom' | undefined) || 'middle';
-  const FONT_SIZES = [12, 14, 16, 18, 20, 24];
 
   const toolbarClass =
     "flex gap-0.5 rounded-md border border-border bg-background/95 text-foreground px-1 py-1 shadow-sm";
   const counterRot = !useShapeTopToolbar && toolbarCounterRotationDeg != null;
 
   const toolbarBar = (
-    <div className={toolbarClass} onMouseDown={(e) => e.stopPropagation()}>
+    <div ref={toolbarRef} className={toolbarClass} onMouseDown={(e) => e.stopPropagation()}>
         <button
           type="button"
           title="Bold"
@@ -358,6 +454,39 @@ export function TextboxRichEditor({
             {s}
           </button>
         ))}
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={400}
+          title="Custom font size"
+          aria-label="Custom font size"
+          placeholder="px"
+          value={customFontSize}
+          onChange={(e) => setCustomFontSize(e.target.value)}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            saveFontSizeSelection();
+          }}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") {
+              e.preventDefault();
+              applyCustomFontSize({ focusEditor: true });
+            }
+          }}
+          onBlur={(e) => {
+            const related = e.relatedTarget as Node | null;
+            const stayingInChrome = isWithinEditorChrome(related);
+            applyCustomFontSize({ focusEditor: stayingInChrome });
+            if (stayingInChrome) return;
+            window.setTimeout(() => {
+              if (isWithinEditorChrome(document.activeElement)) return;
+              flushEditorToSubmit();
+            }, 0);
+          }}
+          className="w-9 h-6 rounded border border-border bg-background px-0.5 text-[10px] text-center tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
         <button
           type="button"
           title="Bullet list"
@@ -406,8 +535,11 @@ export function TextboxRichEditor({
               zIndex: TEXTBOX_RICH_TOOLBAR_Z_INDEX,
             }}
             onMouseDown={(e) => {
-              e.preventDefault();
               e.stopPropagation();
+              // Buttons use preventDefault so the editor keeps focus; allow real focus for inputs.
+              const t = e.target as HTMLElement | null;
+              if (t?.closest("input, textarea, select")) return;
+              e.preventDefault();
             }}
           >
             {toolbarBarWrapped}
