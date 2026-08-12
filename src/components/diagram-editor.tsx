@@ -128,6 +128,15 @@ import { useDiagramEditorHistory } from '@/hooks/use-diagram-editor-history';
 import { useDiagramEditorKeyboard } from '@/hooks/use-diagram-editor-keyboard';
 import { usePresentationStorageHydration } from '@/hooks/use-presentation-storage-hydration';
 import { usePresentationTabSwitchSync } from '@/hooks/use-presentation-tab-switch-sync';
+import type { ParsedEditorHistorySnapshot } from '@/lib/editor-history-snapshot';
+import {
+  mergePresentationDeckThumbnails,
+  presentationDecksStructurallyEqual,
+} from '@/lib/editor-history-snapshot';
+import {
+  capturePresentationRestorePoint,
+  type PresentationRestorePoint,
+} from '@/lib/presentation-restore-point';
 import { useDiagramEditorRulesScratchLayerEffects } from '@/hooks/use-diagram-editor-rules-scratch-layer-effects';
 import { useToolbarTriggerAutoResets } from '@/hooks/use-toolbar-trigger-auto-reset';
 import { useDiagramEditorClientBootstrap } from '@/hooks/use-diagram-editor-client-bootstrap';
@@ -967,20 +976,330 @@ export default function DiagramEditor() {
     updateActiveTab({ selectedItem: newItem });
   }, [activeTabId, selectedItem, updateActiveTab]);
 
-  const { history, historyIndex, undo, redo, updateHistory } = useDiagramEditorHistory({
+  const historyPresentation = React.useMemo(
+    () =>
+      presentationDecks.length > 0
+        ? {
+            decks: presentationDecks,
+            activeDeckId: activePresentationDeckId,
+            activeSlideId: activePresentationSlideId,
+            draftDiagram: presentationDraftDiagram,
+          }
+        : null,
+    [
+      presentationDecks,
+      activePresentationDeckId,
+      activePresentationSlideId,
+      presentationDraftDiagram,
+    ],
+  );
+
+  const applyEditorHistorySnapshot = React.useCallback(
+    (snapshot: ParsedEditorHistorySnapshot) => {
+      recordDiagramReplace(snapshot.diagram);
+
+      const presentation = snapshot.presentation;
+      if (presentation && snapshot.hasPresentation) {
+        const restoredDecksRaw = safeClone(presentation.decks);
+        const liveDecks = presentationDecksRef.current;
+        const structureUnchanged = presentationDecksStructurallyEqual(
+          restoredDecksRaw,
+          liveDecks,
+        );
+        // Keep live strip PNGs: history commits strip images to avoid thumb-churn undo steps.
+        const decks = structureUnchanged
+          ? liveDecks
+          : mergePresentationDeckThumbnails(restoredDecksRaw, liveDecks);
+        const activeDeckId = presentation.activeDeckId;
+        const activeSlideId = presentation.activeSlideId;
+        const draftDiagram = presentation.draftDiagram
+          ? safeClone(presentation.draftDiagram)
+          : null;
+
+        const deck = decks.find((d) => d.id === activeDeckId) ?? decks[0];
+        const primaryId = deck?.slides[0]?.id ?? null;
+        const onPrimary = !activeSlideId || activeSlideId === primaryId;
+        const nextDraft = onPrimary ? null : (draftDiagram ?? safeClone(snapshot.diagram));
+
+        if (activeTabId) {
+          const prev = presentationStateByTabRef.current[activeTabId];
+          presentationStateByTabRef.current[activeTabId] = {
+            decks,
+            activeDeckId,
+            activeSlideId,
+            selectedSlideIds: [],
+            masterDiagram: prev?.masterDiagram ?? presentationMasterDiagram,
+            draftDiagram: nextDraft,
+          };
+          presentationSlideCanvasKeyRef.current = `${activeTabId}:${activeDeckId}:${activeSlideId}`;
+        }
+        // Prevent master-rebase effect from treating undo diagram restore as an edit.
+        presentationPrevBaseJsonRef.current = JSON.stringify(
+          diagramForPresentationThumbnailFingerprint(snapshot.diagram),
+        );
+
+        const connections = snapshot.diagram.connections || [];
+        const needsIds = connections.some((c) => !(c as DiagramConnectionData).id);
+        const restoredDiagram = {
+          ...snapshot.diagram,
+          connections: needsIds ? ensureConnectionIds(connections) : connections,
+        };
+
+        flushSync(() => {
+          if (!structureUnchanged) {
+            setPresentationDecks(decks);
+          }
+          setActivePresentationDeckId(activeDeckId);
+          setActivePresentationSlideId(activeSlideId);
+          setSelectedPresentationSlideIds(new Set());
+          setPresentationDraftDiagram(nextDraft);
+          if (onPrimary) {
+            updateActiveTab({
+              diagramData: restoredDiagram,
+              hasUnsavedPresentations: true,
+            });
+          } else {
+            updateActiveTab({ hasUnsavedPresentations: true });
+          }
+        });
+        return;
+      }
+
+      // Legacy diagram-only entries: restore canvas, leave presentation decks alone.
+      const connections = snapshot.diagram.connections || [];
+      const needsIds = connections.some((c) => !(c as DiagramConnectionData).id);
+      updateActiveTab({
+        diagramData: {
+          ...snapshot.diagram,
+          connections: needsIds ? ensureConnectionIds(connections) : connections,
+        },
+      });
+    },
+    [activeTabId, presentationMasterDiagram, updateActiveTab],
+  );
+
+  const editorUndoChronologyRef = React.useRef<Array<'structural' | 'diagram'>>([]);
+  const editorRedoChronologyRef = React.useRef<Array<'structural' | 'diagram'>>([]);
+
+  const onDiagramHistoryEntryCommitted = React.useCallback(() => {
+    editorUndoChronologyRef.current.push('diagram');
+    editorRedoChronologyRef.current = [];
+  }, []);
+
+  const { history, historyIndex, undo: undoDiagramHistory, redo: redoDiagramHistory, updateHistory, flushHistory, suppressHistoryPushes, jumpToHistoryIndex: jumpToDiagramHistoryIndex } = useDiagramEditorHistory({
     activeTabId,
     activeTab,
     diagramData,
+    presentation: historyPresentation,
+    presentationReady: presentationStorageHydrated,
     isDragging: isDragging || chartValueDragActive,
     getHistoryRef,
     setHistoryRef,
     updateActiveTab,
-    setDiagramData,
     setSelectedItem,
-    onHistoryNavigate: (nextDiagram) => {
-      recordDiagramReplace(nextDiagram);
-    },
+    onApplyHistorySnapshot: applyEditorHistorySnapshot,
+    onHistoryEntryCommitted: onDiagramHistoryEntryCommitted,
   });
+
+  /** Dedicated stack for structural slide ops — full decks + tab diagram, not mixed canvas history. */
+  const presentationStructuralUndoStackRef = React.useRef<PresentationRestorePoint[]>([]);
+  const presentationStructuralRedoStackRef = React.useRef<PresentationRestorePoint[]>([]);
+  /** True after first hover-reorder in a strip drag — undo pushed once, not every hover. */
+  const presentationReorderGestureUndoPushedRef = React.useRef(false);
+  /** Live slide order during strip DnD (avoids stale state without flushSync). */
+  const presentationReorderLiveSlidesRef = React.useRef<Slide[] | null>(null);
+  /** Slide list at drag begin — used to resolve absolutes on commit. */
+  const presentationReorderPreSlidesRef = React.useRef<Slide[] | null>(null);
+  /** Primary slot id captured at drag begin (kept stable across mid-drag permutes). */
+  const presentationReorderPrimarySlotIdRef = React.useRef<string | null>(null);
+  const [presentationStructuralUndoDepth, setPresentationStructuralUndoDepth] = React.useState(0);
+  const [presentationStructuralRedoDepth, setPresentationStructuralRedoDepth] = React.useState(0);
+
+  const captureCurrentPresentationRestorePoint = React.useCallback((): PresentationRestorePoint => {
+    return capturePresentationRestorePoint({
+      decks: presentationDecks,
+      activeDeckId: activePresentationDeckId,
+      activeSlideId: activePresentationSlideId,
+      selectedSlideIds: selectedPresentationSlideIds,
+      draftDiagram: presentationDraftDiagram,
+      masterDiagram: presentationMasterDiagram,
+      tabDiagramData,
+    });
+  }, [
+    presentationDecks,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    selectedPresentationSlideIds,
+    presentationDraftDiagram,
+    presentationMasterDiagram,
+    tabDiagramData,
+  ]);
+
+  const pushPresentationStructuralUndo = React.useCallback(() => {
+    presentationStructuralUndoStackRef.current.push(captureCurrentPresentationRestorePoint());
+    if (presentationStructuralUndoStackRef.current.length > 20) {
+      presentationStructuralUndoStackRef.current.shift();
+    }
+    presentationStructuralRedoStackRef.current = [];
+    editorUndoChronologyRef.current.push('structural');
+    editorRedoChronologyRef.current = [];
+    // Deck updates would otherwise debounce-push canvas history for the same op.
+    suppressHistoryPushes(1500);
+    setPresentationStructuralUndoDepth(presentationStructuralUndoStackRef.current.length);
+    setPresentationStructuralRedoDepth(0);
+  }, [captureCurrentPresentationRestorePoint, suppressHistoryPushes]);
+
+  const applyPresentationRestorePoint = React.useCallback(
+    (point: PresentationRestorePoint) => {
+      const decks = safeClone(point.decks);
+      const draft = point.draftDiagram ? safeClone(point.draftDiagram) : null;
+      const master = point.masterDiagram ? safeClone(point.masterDiagram) : null;
+      const tabDiagram = safeClone(point.tabDiagramData);
+      const connections = tabDiagram.connections || [];
+      const needsIds = connections.some((c) => !(c as DiagramConnectionData).id);
+      const restoredTab = {
+        ...tabDiagram,
+        connections: needsIds ? ensureConnectionIds(connections) : connections,
+      };
+
+      if (activeTabId) {
+        presentationStateByTabRef.current[activeTabId] = {
+          decks,
+          activeDeckId: point.activeDeckId,
+          activeSlideId: point.activeSlideId,
+          selectedSlideIds: point.selectedSlideIds,
+          masterDiagram: master,
+          draftDiagram: draft,
+        };
+        presentationSlideCanvasKeyRef.current = `${activeTabId}:${point.activeDeckId}:${point.activeSlideId}`;
+      }
+      presentationPrevBaseJsonRef.current = JSON.stringify(
+        diagramForPresentationThumbnailFingerprint(restoredTab),
+      );
+      presentationMasterFromTabSyncKeyRef.current = null;
+
+      flushSync(() => {
+        setPresentationDecks(decks);
+        setActivePresentationDeckId(point.activeDeckId);
+        setActivePresentationSlideId(point.activeSlideId);
+        setSelectedPresentationSlideIds(new Set(point.selectedSlideIds));
+        setPresentationDraftDiagram(draft);
+        setPresentationMasterDiagram(master);
+        updateActiveTab({
+          diagramData: restoredTab,
+          hasUnsavedPresentations: true,
+        });
+        setSelectedItem(null);
+      });
+      // Keep canvas history tip aligned without inventing a new undo step.
+      suppressHistoryPushes(1500);
+    },
+    [activeTabId, updateActiveTab, setSelectedItem, suppressHistoryPushes],
+  );
+
+  const undo = React.useCallback(() => {
+    const chronology = editorUndoChronologyRef.current;
+    while (chronology.length > 0) {
+      const kind = chronology.pop()!;
+      if (kind === 'structural') {
+        const stack = presentationStructuralUndoStackRef.current;
+        if (stack.length === 0) continue;
+        const current = captureCurrentPresentationRestorePoint();
+        const point = stack.pop()!;
+        presentationStructuralRedoStackRef.current.push(current);
+        editorRedoChronologyRef.current.push('structural');
+        setPresentationStructuralUndoDepth(stack.length);
+        setPresentationStructuralRedoDepth(presentationStructuralRedoStackRef.current.length);
+        applyPresentationRestorePoint(point);
+        return;
+      }
+      if (undoDiagramHistory()) {
+        editorRedoChronologyRef.current.push('diagram');
+        return;
+      }
+    }
+
+    // Fallback when chronology is empty/out of sync (e.g. older sessions).
+    const stack = presentationStructuralUndoStackRef.current;
+    if (stack.length > 0) {
+      const current = captureCurrentPresentationRestorePoint();
+      const point = stack.pop()!;
+      presentationStructuralRedoStackRef.current.push(current);
+      editorRedoChronologyRef.current.push('structural');
+      setPresentationStructuralUndoDepth(stack.length);
+      setPresentationStructuralRedoDepth(presentationStructuralRedoStackRef.current.length);
+      applyPresentationRestorePoint(point);
+      return;
+    }
+    if (undoDiagramHistory()) {
+      editorRedoChronologyRef.current.push('diagram');
+    }
+  }, [captureCurrentPresentationRestorePoint, applyPresentationRestorePoint, undoDiagramHistory]);
+
+  const redo = React.useCallback(() => {
+    const chronology = editorRedoChronologyRef.current;
+    while (chronology.length > 0) {
+      const kind = chronology.pop()!;
+      if (kind === 'structural') {
+        const stack = presentationStructuralRedoStackRef.current;
+        if (stack.length === 0) continue;
+        const current = captureCurrentPresentationRestorePoint();
+        const point = stack.pop()!;
+        presentationStructuralUndoStackRef.current.push(current);
+        editorUndoChronologyRef.current.push('structural');
+        setPresentationStructuralUndoDepth(presentationStructuralUndoStackRef.current.length);
+        setPresentationStructuralRedoDepth(stack.length);
+        applyPresentationRestorePoint(point);
+        return;
+      }
+      if (redoDiagramHistory()) {
+        editorUndoChronologyRef.current.push('diagram');
+        return;
+      }
+    }
+
+    const stack = presentationStructuralRedoStackRef.current;
+    if (stack.length > 0) {
+      const current = captureCurrentPresentationRestorePoint();
+      const point = stack.pop()!;
+      presentationStructuralUndoStackRef.current.push(current);
+      editorUndoChronologyRef.current.push('structural');
+      setPresentationStructuralUndoDepth(presentationStructuralUndoStackRef.current.length);
+      setPresentationStructuralRedoDepth(stack.length);
+      applyPresentationRestorePoint(point);
+      return;
+    }
+    if (redoDiagramHistory()) {
+      editorUndoChronologyRef.current.push('diagram');
+    }
+  }, [captureCurrentPresentationRestorePoint, applyPresentationRestorePoint, redoDiagramHistory]);
+
+  const canUndo = presentationStructuralUndoDepth > 0 || historyIndex > 0;
+  const canRedo =
+    presentationStructuralRedoDepth > 0 || historyIndex < history.length - 1;
+
+  const jumpToHistoryIndex = React.useCallback(
+    (index: number) => {
+      presentationStructuralUndoStackRef.current = [];
+      presentationStructuralRedoStackRef.current = [];
+      editorUndoChronologyRef.current = [];
+      editorRedoChronologyRef.current = [];
+      setPresentationStructuralUndoDepth(0);
+      setPresentationStructuralRedoDepth(0);
+      jumpToDiagramHistoryIndex(index);
+    },
+    [jumpToDiagramHistoryIndex],
+  );
+
+  // Structural slide undo is per-tab session; clear when switching tabs.
+  React.useEffect(() => {
+    presentationStructuralUndoStackRef.current = [];
+    presentationStructuralRedoStackRef.current = [];
+    editorUndoChronologyRef.current = [];
+    editorRedoChronologyRef.current = [];
+    setPresentationStructuralUndoDepth(0);
+    setPresentationStructuralRedoDepth(0);
+  }, [activeTabId]);
 
   const selectedItemForSyncRef = React.useRef(selectedItem);
   selectedItemForSyncRef.current = selectedItem;
@@ -4758,28 +5077,33 @@ export default function DiagramEditor() {
 
       await captureOutgoingSlideThumbnailIfNeeded();
 
-      setPresentationDecks((prev) => prev.map((deck) => {
-        if (deck.id !== activePresentationDeckId) return deck;
-        const currentIdx = activePresentationSlideId
-          ? deck.slides.findIndex((s) => s.id === activePresentationSlideId)
-          : -1;
-        const insertAt = currentIdx >= 0 ? currentIdx + 1 : deck.slides.length;
-        const slide: Slide = {
-          id: slideId,
-          ...payload,
-          title: `Slide ${deck.slides.length + 1}`,
-          createdAt: slideCreatedAt,
-        };
-        const slides = [...deck.slides.slice(0, insertAt), slide, ...deck.slides.slice(insertAt)];
-        return {
-          ...deck,
-          slides,
-          presentationDeltaMode: deck.presentationDeltaMode ?? 'master',
-          updatedAt: Date.now(),
-        };
-      }));
-      setActivePresentationSlideId(slideId);
-      setSelectedPresentationSlideIds(new Set());
+      pushPresentationStructuralUndo();
+      flushSync(() => {
+        setPresentationDecks((prev) =>
+          prev.map((deck) => {
+            if (deck.id !== activePresentationDeckId) return deck;
+            const currentIdx = activePresentationSlideId
+              ? deck.slides.findIndex((s) => s.id === activePresentationSlideId)
+              : -1;
+            const insertAt = currentIdx >= 0 ? currentIdx + 1 : deck.slides.length;
+            const slide: Slide = {
+              id: slideId,
+              ...payload,
+              title: `Slide ${deck.slides.length + 1}`,
+              createdAt: slideCreatedAt,
+            };
+            const slides = [...deck.slides.slice(0, insertAt), slide, ...deck.slides.slice(insertAt)];
+            return {
+              ...deck,
+              slides,
+              presentationDeltaMode: deck.presentationDeltaMode ?? 'master',
+              updatedAt: Date.now(),
+            };
+          }),
+        );
+        setActivePresentationSlideId(slideId);
+        setSelectedPresentationSlideIds(new Set());
+      });
       toast({ title: 'Snapshot Added', description: 'Captured after the current slide; later slides shifted.' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not capture snapshot';
@@ -4805,6 +5129,7 @@ export default function DiagramEditor() {
     activePresentationSlideId,
     captureOutgoingSlideThumbnailIfNeeded,
     capturePresentationSlidePayload,
+    pushPresentationStructuralUndo,
     toast,
   ]);
 
@@ -4849,37 +5174,42 @@ export default function DiagramEditor() {
       const slideId = `slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const slideCreatedAt = Date.now();
 
-      setPresentationDecks((prev) => prev.map((deck) => {
-        if (deck.id !== activePresentationDeckId) return deck;
-        const currentIdx = activePresentationSlideId
-          ? deck.slides.findIndex((s) => s.id === activePresentationSlideId)
-          : -1;
-        const insertAt = currentIdx >= 0 ? currentIdx + 1 : deck.slides.length;
-        const slide: Slide = {
-          id: slideId,
-          diagramDelta,
-          animationState: {
-            enabled: animationConnectionsEnabled,
-            filterSourceIds: effectiveAnimationFilterIds ? Array.from(effectiveAnimationFilterIds) : undefined,
-            disabledSourceIds: animationDisabledSources.size > 0 ? Array.from(animationDisabledSources) : undefined,
-          },
-          autoZoomLevel: canvasTransformRef.current.k,
-          viewPanX: canvasTransformRef.current.x,
-          viewPanY: canvasTransformRef.current.y,
-          visibleLayerIds: listVisibleLayerIds(diagramData),
-          title: `Slide ${deck.slides.length + 1}`,
-          createdAt: slideCreatedAt,
-        };
-        const slides = [...deck.slides.slice(0, insertAt), slide, ...deck.slides.slice(insertAt)];
-        return {
-          ...deck,
-          slides,
-          presentationDeltaMode: deck.presentationDeltaMode ?? 'master',
-          updatedAt: Date.now(),
-        };
-      }));
-      setActivePresentationSlideId(slideId);
-      setSelectedPresentationSlideIds(new Set());
+      pushPresentationStructuralUndo();
+      flushSync(() => {
+        setPresentationDecks((prev) =>
+          prev.map((deck) => {
+            if (deck.id !== activePresentationDeckId) return deck;
+            const currentIdx = activePresentationSlideId
+              ? deck.slides.findIndex((s) => s.id === activePresentationSlideId)
+              : -1;
+            const insertAt = currentIdx >= 0 ? currentIdx + 1 : deck.slides.length;
+            const slide: Slide = {
+              id: slideId,
+              diagramDelta,
+              animationState: {
+                enabled: animationConnectionsEnabled,
+                filterSourceIds: effectiveAnimationFilterIds ? Array.from(effectiveAnimationFilterIds) : undefined,
+                disabledSourceIds: animationDisabledSources.size > 0 ? Array.from(animationDisabledSources) : undefined,
+              },
+              autoZoomLevel: canvasTransformRef.current.k,
+              viewPanX: canvasTransformRef.current.x,
+              viewPanY: canvasTransformRef.current.y,
+              visibleLayerIds: listVisibleLayerIds(diagramData),
+              title: `Slide ${deck.slides.length + 1}`,
+              createdAt: slideCreatedAt,
+            };
+            const slides = [...deck.slides.slice(0, insertAt), slide, ...deck.slides.slice(insertAt)];
+            return {
+              ...deck,
+              slides,
+              presentationDeltaMode: deck.presentationDeltaMode ?? 'master',
+              updatedAt: Date.now(),
+            };
+          }),
+        );
+        setActivePresentationSlideId(slideId);
+        setSelectedPresentationSlideIds(new Set());
+      });
       toast({ title: 'Blank slide added', description: 'Inserted after the current slide.' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not add blank slide';
@@ -4897,6 +5227,7 @@ export default function DiagramEditor() {
     diagramData,
     presentationDecks,
     presentationDraftDiagram,
+    pushPresentationStructuralUndo,
     toast,
   ]);
 
@@ -4915,6 +5246,9 @@ export default function DiagramEditor() {
 
     const confirmed = window.confirm(`Delete slide "${targetSlide.title || 'Untitled'}"?`);
     if (!confirmed) return;
+
+    // Full presentation restore point (decks + primary tab diagram) for Undo.
+    pushPresentationStructuralUndo();
 
     const masterRaw = presentationMasterDiagram ?? tabDiagramData;
     const mode = getPresentationDeltaMode(activePresentationDeck);
@@ -4936,33 +5270,50 @@ export default function DiagramEditor() {
         ? (nextSlidesFiltered[0]?.id ?? null)
         : (activePresentationSlideId ?? nextSlidesFiltered[0]?.id ?? null);
 
-    setPresentationDecks((prev) => prev.map((deck) => {
+    let nextDraft: DiagramData | null = presentationDraftDiagram;
+    if (nextActiveSlideId) {
+      const nextSlide = nextSlidesFiltered.find((slide) => slide.id === nextActiveSlideId);
+      if (nextSlide) {
+        if (nextSlidesFiltered[0]?.id === nextSlide.id) {
+          nextDraft = null;
+        } else if (mode === 'master') {
+          nextDraft = applyDiagramDelta(masterRaw, nextSlide.diagramDelta);
+        } else {
+          const idx = nextSlidesFiltered.findIndex((s) => s.id === nextSlide.id);
+          const diagrams = resolvePresentationSlideDiagrams(masterRaw, nextSlidesFiltered, 'chain');
+          nextDraft = diagrams[idx] ?? applyDiagramDelta(masterRaw, nextSlide.diagramDelta);
+        }
+      }
+    } else {
+      nextDraft = null;
+    }
+
+    const afterDecks = presentationDecks.map((deck) => {
       if (deck.id !== activePresentationDeckId) return deck;
       return {
         ...deck,
         slides: nextSlidesFiltered,
         updatedAt: Date.now(),
       };
-    }));
+    });
 
-    setActivePresentationSlideId(nextActiveSlideId);
-    setSelectedPresentationSlideIds(new Set());
+    flushSync(() => {
+      setPresentationDecks(afterDecks);
+      setActivePresentationSlideId(nextActiveSlideId);
+      setSelectedPresentationSlideIds(new Set());
+      setPresentationDraftDiagram(nextDraft);
+      updateActiveTab({ hasUnsavedPresentations: true });
+    });
 
-    if (nextActiveSlideId) {
-      const nextSlide = nextSlidesFiltered.find((slide) => slide.id === nextActiveSlideId);
-      if (nextSlide) {
-        if (nextSlidesFiltered[0]?.id === nextSlide.id) {
-          setPresentationDraftDiagram(null);
-        } else if (mode === 'master') {
-          setPresentationDraftDiagram(applyDiagramDelta(masterRaw, nextSlide.diagramDelta));
-        } else {
-          const idx = nextSlidesFiltered.findIndex((s) => s.id === nextSlide.id);
-          const diagrams = resolvePresentationSlideDiagrams(masterRaw, nextSlidesFiltered, 'chain');
-          setPresentationDraftDiagram(diagrams[idx] ?? applyDiagramDelta(masterRaw, nextSlide.diagramDelta));
-        }
-      }
-    } else {
-      setPresentationDraftDiagram(null);
+    if (activeTabId) {
+      presentationStateByTabRef.current[activeTabId] = {
+        decks: afterDecks,
+        activeDeckId: activePresentationDeckId,
+        activeSlideId: nextActiveSlideId,
+        selectedSlideIds: [],
+        masterDiagram: presentationMasterDiagram,
+        draftDiagram: nextDraft,
+      };
     }
 
     toast({ title: 'Slide deleted', description: 'The slide has been removed from this presentation.' });
@@ -4970,41 +5321,40 @@ export default function DiagramEditor() {
     activePresentationDeckId,
     activePresentationDeck,
     activePresentationSlideId,
+    activeTabId,
+    presentationDecks,
     presentationMasterDiagram,
+    presentationDraftDiagram,
     tabDiagramData,
+    pushPresentationStructuralUndo,
+    updateActiveTab,
     toast,
   ]);
 
-  const handleMovePresentationSlide = React.useCallback(
-    (fromIndex: number, toIndex: number) => {
-      if (!activePresentationDeckId || fromIndex === toIndex) return;
+  const commitPresentationSlideOrder = React.useCallback(
+    (orderedSlides: Slide[], primarySlotId: string) => {
+      if (!activePresentationDeckId || orderedSlides.length === 0) return;
 
       const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
-      if (!deck || deck.slides.length === 0) return;
+      if (!deck) return;
 
-      if (
-        fromIndex < 0 ||
-        toIndex < 0 ||
-        fromIndex >= deck.slides.length ||
-        toIndex >= deck.slides.length
-      ) {
-        return;
-      }
-
-      const pid = deck.slides[0].id;
+      const pid = primarySlotId;
       const masterFull = presentationMasterDiagram ?? tabDiagramData;
       const mode = getPresentationDeltaMode(deck);
+      const preSlides = presentationReorderPreSlidesRef.current ?? orderedSlides;
 
-      const absolutes = resolvePresentationSlideDiagrams(masterFull, deck.slides, mode);
+      const preAbsolutes = resolvePresentationSlideDiagrams(masterFull, preSlides, mode);
+      const absById = new Map(
+        preSlides.map((slide, i) => [slide.id, preAbsolutes[i]] as const),
+      );
+      const nextAbs = orderedSlides.map((slide, i) => {
+        const found = absById.get(slide.id);
+        if (found) return found;
+        // Fallback: same index from pre-resolve (should not happen for permute-only).
+        return preAbsolutes[Math.min(i, preAbsolutes.length - 1)] ?? masterFull;
+      });
 
-      const nextSlides = [...deck.slides];
-      const nextAbs = [...absolutes];
-      const [movedSlide] = nextSlides.splice(fromIndex, 1);
-      nextSlides.splice(toIndex, 0, movedSlide);
-      const [movedAbs] = nextAbs.splice(fromIndex, 1);
-      nextAbs.splice(toIndex, 0, movedAbs);
-
-      const shouldReplaceTabDiagram = nextSlides[0].id !== pid;
+      const shouldReplaceTabDiagram = orderedSlides[0]?.id !== pid;
 
       const emptyDelta: DiagramDelta = {
         version: '1.0',
@@ -5012,7 +5362,7 @@ export default function DiagramEditor() {
         compressed: true,
       };
 
-      let withPrimary = nextSlides.map((row, i) =>
+      let withPrimary = orderedSlides.map((row, i) =>
         i === 0
           ? {
               ...row,
@@ -5033,12 +5383,6 @@ export default function DiagramEditor() {
       let finalSlides: Slide[];
 
       if (shouldReplaceTabDiagram) {
-        updateActiveTab({ diagramData: baseDiagramClone });
-        setPresentationMasterDiagram(safeClone(baseDiagramClone));
-        presentationMasterFromTabSyncKeyRef.current = null;
-        setActivePresentationSlideId(pid);
-        setPresentationDraftDiagram(null);
-
         if (mode === 'master') {
           finalSlides = withPrimary.map((slide, i) =>
             i === 0
@@ -5059,7 +5403,7 @@ export default function DiagramEditor() {
           );
         }
       } else if (mode === 'master') {
-        finalSlides = nextSlides;
+        finalSlides = orderedSlides;
       } else {
         finalSlides = rechainSlideDeltasFromAbsoluteDiagrams(
           masterFull,
@@ -5068,6 +5412,13 @@ export default function DiagramEditor() {
         );
       }
 
+      if (shouldReplaceTabDiagram) {
+        updateActiveTab({ diagramData: baseDiagramClone });
+        setPresentationMasterDiagram(safeClone(baseDiagramClone));
+        presentationMasterFromTabSyncKeyRef.current = null;
+        setActivePresentationSlideId(pid);
+        setPresentationDraftDiagram(null);
+      }
       setPresentationDecks((prev) =>
         prev.map((d) =>
           d.id !== activePresentationDeckId
@@ -5091,6 +5442,84 @@ export default function DiagramEditor() {
       setActivePresentationSlideId,
       setPresentationDraftDiagram,
       setPresentationDecks,
+    ],
+  );
+
+  const handlePresentationReorderDragBegin = React.useCallback(() => {
+    presentationReorderGestureUndoPushedRef.current = false;
+    const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
+    const slides = deck ? [...deck.slides] : null;
+    presentationReorderLiveSlidesRef.current = slides;
+    presentationReorderPreSlidesRef.current = slides ? [...slides] : null;
+    presentationReorderPrimarySlotIdRef.current = deck?.slides[0]?.id ?? null;
+  }, [activePresentationDeckId, presentationDecks]);
+
+  const handlePresentationReorderDragEnd = React.useCallback(() => {
+    const live = presentationReorderLiveSlidesRef.current;
+    const pid = presentationReorderPrimarySlotIdRef.current;
+    const dirty = presentationReorderGestureUndoPushedRef.current;
+    presentationReorderLiveSlidesRef.current = null;
+    presentationReorderPrimarySlotIdRef.current = null;
+    presentationReorderGestureUndoPushedRef.current = false;
+    if (dirty && live && pid) {
+      commitPresentationSlideOrder(live, pid);
+    }
+    presentationReorderPreSlidesRef.current = null;
+  }, [commitPresentationSlideOrder]);
+
+  const handleMovePresentationSlide = React.useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (!activePresentationDeckId || fromIndex === toIndex) return;
+
+      let live = presentationReorderLiveSlidesRef.current;
+      if (!live) {
+        const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
+        if (!deck || deck.slides.length === 0) return;
+        live = [...deck.slides];
+        presentationReorderLiveSlidesRef.current = live;
+        presentationReorderPreSlidesRef.current = [...deck.slides];
+        presentationReorderPrimarySlotIdRef.current = deck.slides[0]?.id ?? null;
+      }
+
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= live.length ||
+        toIndex >= live.length
+      ) {
+        return;
+      }
+
+      // Push undo once per drag gesture — not every hover — and avoid flushSync so
+      // react-dnd targets are not remounted mid-hover (Expected to find a valid target).
+      if (!presentationReorderGestureUndoPushedRef.current) {
+        pushPresentationStructuralUndo();
+        presentationReorderGestureUndoPushedRef.current = true;
+      }
+
+      const nextSlides = [...live];
+      const [movedSlide] = nextSlides.splice(fromIndex, 1);
+      nextSlides.splice(toIndex, 0, movedSlide);
+      presentationReorderLiveSlidesRef.current = nextSlides;
+
+      // Mid-drag: permute only (stable ids). Primary remapping / tab sync on drag end.
+      setPresentationDecks((prev) =>
+        prev.map((d) =>
+          d.id !== activePresentationDeckId
+            ? d
+            : {
+                ...d,
+                slides: nextSlides,
+                updatedAt: Date.now(),
+              },
+        ),
+      );
+    },
+    [
+      activePresentationDeckId,
+      presentationDecks,
+      setPresentationDecks,
+      pushPresentationStructuralUndo,
     ],
   );
 
@@ -5391,6 +5820,9 @@ export default function DiagramEditor() {
         redo={redo}
         historyIndex={historyIndex}
         history={history}
+        jumpToHistoryIndex={jumpToHistoryIndex}
+        canUndo={canUndo}
+        canRedo={canRedo}
         handleSelectAll={handleSelectAll}
         hoverEnabled={hoverEnabled}
         setHoverEnabled={setHoverEnabled}
@@ -5468,6 +5900,8 @@ export default function DiagramEditor() {
         simulationModeEnabled={simulationModeEnabled}
         handleToggleSimulationMode={handleToggleSimulationMode}
         handleMovePresentationSlide={handleMovePresentationSlide}
+        handlePresentationReorderDragBegin={handlePresentationReorderDragBegin}
+        handlePresentationReorderDragEnd={handlePresentationReorderDragEnd}
         handleSelectPresentationSlide={handleSelectPresentationSlide}
         handleTogglePresentationSlideSelection={handleTogglePresentationSlideSelection}
         handlePreviousPresentationSlide={handlePreviousPresentationSlide}

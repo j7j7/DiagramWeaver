@@ -2,6 +2,42 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-12 – History labels summarize edits
+History browser labels diff consecutive snapshots (moved/renamed/styled objects by name, connections, slides) instead of generic “Diagram edit”. Patch bumped.
+
+### 2026-08-12 – History list more concise
+History entries drop “Undo to here” / “Redo target” subtitles; only the current step is labeled. Patch bumped.
+
+### 2026-08-12 – History panel: bottom-left
+Show History docks bottom-left; description text removed. Patch bumped.
+
+### 2026-08-12 – History panel: sticky, no dim
+Show History stays open while jumping, docks bottom-right with a Close button, and skips the dark overlay so the canvas stays visible. Patch bumped.
+
+### 2026-08-12 – Edit → Show History
+Undo/Redo menu gains **Show History…**: modal lists canvas history steps with short labels; click jumps to that snapshot (redo chain kept until the next edit). Patch bumped.
+
+### 2026-08-12 – Undo canvas edit: keep slide thumbs
+History snapshots strip PNG thumbs; applying them on undo was blanking the strip and re-capturing every slide. Undo now keeps live thumbnails (and skips replacing decks when only canvas/draft changed). Patch bumped.
+
+### 2026-08-12 – Undo chronology: canvas vs slide ops
+Undo/redo no longer always prefer the slide structural stack (that blocked undoing moves after any slide change). Chronological interleave of diagram vs structural steps; structural ops suppress canvas history pushes so they don’t double-commit. Patch bumped.
+
+### 2026-08-12 – Slide strip DnD: no mid-hover remount
+Reordering slides no longer pushes undo + `flushSync` on every hover (that remounted react-dnd targets → `Expected to find a valid target`). Undo once per gesture; live permute with stable ids; primary remapping on drag end; single strip item component. Patch bumped.
+
+### 2026-08-12 – Slide delete undo: full presentation restore point
+Deleting/adding/reordering slides pushes a local restore point (all decks + primary tab diagram + draft/master/selection). Undo/Redo prefers that stack so a deleted slide returns in its original position without overwriting slide 1. Separate from canvas diagram history. Patch bumped.
+
+### 2026-08-12 – PNG export: no selection chrome
+PNG capture suppresses selection/hover/card-element/timeline highlights and connection handles on the live canvas during rasterize, and always strips residual selection chrome from the html-to-image clone. Patch bumped.
+
+### 2026-08-12 – PNG export: static connection animation markers
+Slide/PNG capture freezes connection animation markers as static SVG (same path as GIF frames via **`exportAnimationTimeSeconds=0`**) so html-to-image includes dots/arrows/etc. Live PNG also force-enables markers and clears click-filters for the capture; presentation strip thumbnails render markers the same way. Patch bumped.
+
+### 2026-08-12 – Undo restores deleted presentation slides
+Slide delete now commits explicit before/after presentation snapshots into undo history. Fixed races that dropped the restore step: stale `historyRefs` on index-only updates, history ref reset on every tab field change, thumbnail `updatedAt` inventing extra “still deleted” entries, and post-undo churn truncating redo. Undo/redo suppress pushes briefly and tip-sync instead. Patch bumped.
+
 ### 2026-08-11 – Paste special Colour/Properties for cards
 **Paste special → Colour** between same-template cards now copies card-region fills/borders (incl. framed-heading **heading-tab**), background region, and text/icon colour fields — not only shell border. **Properties** also copies framed-heading tab edge/align/width/text align. Cards are their own paste family (same template only). Patch bumped.
 

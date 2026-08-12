@@ -204,6 +204,9 @@ export function DiagramEditorInner({
   redo,
   historyIndex,
   history,
+  jumpToHistoryIndex,
+  canUndo,
+  canRedo,
   handleSelectAll,
   hoverEnabled,
   setHoverEnabled,
@@ -277,6 +280,8 @@ export function DiagramEditorInner({
   simulationModeEnabled,
   handleToggleSimulationMode,
   handleMovePresentationSlide,
+  handlePresentationReorderDragBegin,
+  handlePresentationReorderDragEnd,
   handleSelectPresentationSlide,
   handleTogglePresentationSlideSelection,
   handlePreviousPresentationSlide,
@@ -557,8 +562,11 @@ export function DiagramEditorInner({
                     canPaste={canPasteFromMenu}
                     onUndo={undo}
                     onRedo={redo}
-                    canUndo={historyIndex > 0}
-                    canRedo={historyIndex < history.length - 1}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
+                    history={history}
+                    historyIndex={historyIndex}
+                    onJumpToHistoryIndex={jumpToHistoryIndex}
                     onSelectAll={handleSelectAll}
                     selectedItem={selectedItem}
                     selectedItemIds={selectedItemIds}
@@ -719,6 +727,8 @@ export function DiagramEditorInner({
                   onMoveSlide={handleMovePresentationSlide}
                   onSelectSlide={handleSelectPresentationSlide}
                   onSelectBaseSlide={handleSelectPresentationBaseSlide}
+                  onReorderDragBegin={handlePresentationReorderDragBegin}
+                  onReorderDragEnd={handlePresentationReorderDragEnd}
                 />
             </header>
                 <div className="relative flex min-h-0 flex-1 flex-col">

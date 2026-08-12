@@ -70,7 +70,8 @@ function ThumbnailCaptureShell({
               showDotGrid={false}
               showRulers={false}
               metadataPopupsEnabled={false}
-              animationConnectionsEnabled={false}
+              animationConnectionsEnabled
+              exportAnimationTimeSeconds={0}
               skipInitialFitToView
               viewportCullingEnabled={false}
             />

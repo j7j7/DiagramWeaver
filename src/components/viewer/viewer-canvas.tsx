@@ -109,11 +109,16 @@ interface ViewerCanvasProps {
   showDotGrid?: boolean;
   /** When false, all items and connections render (export, tiny diagrams, etc.). */
   viewportCullingEnabled?: boolean;
+  /**
+   * When set (e.g. `0` for PNG), freeze connection animation markers as static SVG
+   * instead of SMIL — required for html-to-image rasterization.
+   */
+  exportAnimationTimeSeconds?: number | null;
   /** Built-in `%day%`, `%slide%`, etc. and expression evaluation context. */
   globalVariableContext?: GlobalVariableContext;
 }
 
-export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision, showDotGrid = true, viewportCullingEnabled = true, globalVariableContext }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision, showDotGrid = true, viewportCullingEnabled = true, exportAnimationTimeSeconds = null, globalVariableContext }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(false);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -539,6 +544,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               closeContextMenu={() => {}}
               onConnectionDelete={undefined}
               stackZIndex={linesBehindNodesConnectionZ.connectionZIndex}
+              exportAnimationTimeSeconds={exportAnimationTimeSeconds}
               animationConnectionsEnabled={animationConnectionsEnabled}
               animationFilterSourceIds={animationFilterSourceIds}
               animationDisabledSources={animationDisabledSources}
@@ -658,6 +664,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                     onConnectionDelete={undefined}
                     connectionIndices={connIndices}
                     stackZIndex={connZIndex}
+                    exportAnimationTimeSeconds={exportAnimationTimeSeconds}
                     animationConnectionsEnabled={animationConnectionsEnabled}
                     animationFilterSourceIds={animationFilterSourceIds}
                     animationDisabledSources={animationDisabledSources}
@@ -712,6 +719,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                     onConnectionDelete={undefined}
                     connectionIndices={lastConnIndices}
                     stackZIndex={lastStack.connectionZIndex}
+                    exportAnimationTimeSeconds={exportAnimationTimeSeconds}
                     animationConnectionsEnabled={animationConnectionsEnabled}
                     animationFilterSourceIds={animationFilterSourceIds}
                     animationDisabledSources={animationDisabledSources}

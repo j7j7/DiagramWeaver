@@ -26,6 +26,8 @@ interface UseCanvasExportOptions {
   processedZones: PositionedGroup[];
   selectedItemIds?: Set<string>;
   onGifAnimationTimeUpdate?: (timeSeconds: number | null) => void;
+  /** Live-canvas PNG only: disable culling / force static animation markers for the capture. */
+  onLivePngCaptureActive?: (active: boolean) => void;
 }
 
 const DEFAULT_GIF_DURATION_SECONDS = 3;
@@ -44,6 +46,7 @@ export function useCanvasExport({
   processedZones,
   selectedItemIds = new Set(),
   onGifAnimationTimeUpdate,
+  onLivePngCaptureActive,
 }: UseCanvasExportOptions) {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [pendingExportOptions, setPendingExportOptions] = useState<{ backgroundColor?: 'transparent' | 'white' | 'dark'; useSelection: boolean } | null>(null);
@@ -218,115 +221,141 @@ export function useCanvasExport({
       throw new Error('Could not find diagram content');
     }
 
-    const isDark = document.documentElement.classList.contains('dark');
-    const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' :
-      options?.backgroundColor === 'white' ? '#ffffff' :
-      options?.backgroundColor === 'dark' ? '#0f172a' :
-      isDark ? '#0f172a' :
-      getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
-
-    const quality = options?.quality || 'medium';
-    let pixelRatio: number;
-
-    switch (quality) {
-      case 'low':
-        pixelRatio = 1;
-        break;
-      case 'medium':
-        pixelRatio = 2;
-        break;
-      case 'high':
-        pixelRatio = 4;
-        break;
-      default:
-        pixelRatio = 2;
+    // Live-canvas PNG: freeze SMIL connection markers as static SVG transforms (html-to-image
+    // does not rasterize animateMotion). Isolated captureRoot hosts manage this themselves.
+    const freezeLiveConnectionAnimations = !options?.captureRoot;
+    if (freezeLiveConnectionAnimations) {
+      onLivePngCaptureActive?.(true);
+      onGifAnimationTimeUpdate?.(0);
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
     }
 
-    const toPngOptions = {
-      pixelRatio,
-      cacheBust: options?.cacheBust ?? true,
-      backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
-      _dwSelectionItemIds: options?.itemIds,
-      ...(options?.fastThumbnail ? { _dwFastThumbnail: true } : {}),
-      ...(options?.abortSignal ? { _dwAbortSignal: options.abortSignal } : {}),
-    };
+    try {
+      const isDark = document.documentElement.classList.contains('dark');
+      const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' :
+        options?.backgroundColor === 'white' ? '#ffffff' :
+        options?.backgroundColor === 'dark' ? '#0f172a' :
+        isDark ? '#0f172a' :
+        getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
 
-    if (options?.fitContent) {
-      const { width: vw, height: vh } =
-        options.fitViewportPx ??
-        getCanvasElementSizeForImageCapture(
-          options.captureRoot ?? canvasRef.current!,
-        );
-      if (vw > 0 && vh > 0) {
-        const fitPadding = options.fitPadding ?? 40;
-        const union = options.unionDiagrams;
-        let fitTransform: Transform | null = null;
+      const quality = options?.quality || 'medium';
+      let pixelRatio: number;
 
-        if (options.tightContentFrame) {
-          let boundsForTight: ContentBounds | null = null;
-          if (options.itemIds && options.itemIds.size > 0) {
+      switch (quality) {
+        case 'low':
+          pixelRatio = 1;
+          break;
+        case 'medium':
+          pixelRatio = 2;
+          break;
+        case 'high':
+          pixelRatio = 4;
+          break;
+        default:
+          pixelRatio = 2;
+      }
+
+      const toPngOptions = {
+        pixelRatio,
+        cacheBust: options?.cacheBust ?? true,
+        backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
+        _dwSelectionItemIds: options?.itemIds,
+        ...(options?.fastThumbnail ? { _dwFastThumbnail: true } : {}),
+        ...(options?.abortSignal ? { _dwAbortSignal: options.abortSignal } : {}),
+      };
+
+      if (options?.fitContent) {
+        const { width: vw, height: vh } =
+          options.fitViewportPx ??
+          getCanvasElementSizeForImageCapture(
+            options.captureRoot ?? canvasRef.current!,
+          );
+        if (vw > 0 && vh > 0) {
+          const fitPadding = options.fitPadding ?? 40;
+          const union = options.unionDiagrams;
+          let fitTransform: Transform | null = null;
+
+          if (options.tightContentFrame) {
+            let boundsForTight: ContentBounds | null = null;
+            if (options.itemIds && options.itemIds.size > 0) {
+              const itemBounds = calculateItemBounds(options.itemIds);
+              if (itemBounds) {
+                boundsForTight = {
+                  minX: itemBounds.x,
+                  minY: itemBounds.y,
+                  maxX: itemBounds.x + itemBounds.width,
+                  maxY: itemBounds.y + itemBounds.height,
+                };
+              }
+            } else if (union && union.length > 0) {
+              const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
+              boundsForTight = computeUnionExportContentBounds(pruned);
+            } else {
+              boundsForTight = computeExportContentBounds(diagramData, processedNodes, processedZones);
+            }
+            if (boundsForTight) {
+              fitTransform = transformToFitBounds(boundsForTight, vw, vh, fitPadding);
+              const borderPx = options.frameBorderPx ?? 20;
+              let tightFrame = computeTightPngFrameForBounds(
+                boundsForTight,
+                fitTransform,
+                borderPx
+              );
+              if (options.maxOutputPx && options.maxOutputPx > 0) {
+                tightFrame = capTightPngFrameDimensions(tightFrame, options.maxOutputPx);
+              }
+              const { width: tw, height: th, transform: tightTransform } = tightFrame;
+              return await toPngWithDotGridTransform(captureHost, {
+                ...toPngOptions,
+                width: tw,
+                height: th,
+              }, tightTransform);
+            }
+          }
+
+          if (union && union.length > 0) {
+            const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
+            fitTransform = computeUnionFitTransformForDiagrams(pruned, vw, vh, fitPadding);
+          } else if (options.itemIds && options.itemIds.size > 0) {
             const itemBounds = calculateItemBounds(options.itemIds);
             if (itemBounds) {
-              boundsForTight = {
-                minX: itemBounds.x,
-                minY: itemBounds.y,
-                maxX: itemBounds.x + itemBounds.width,
-                maxY: itemBounds.y + itemBounds.height,
-              };
+              const bounds = { minX: itemBounds.x, minY: itemBounds.y, maxX: itemBounds.x + itemBounds.width, maxY: itemBounds.y + itemBounds.height };
+              fitTransform = transformToFitBounds(bounds, vw, vh, fitPadding);
             }
-          } else if (union && union.length > 0) {
-            const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
-            boundsForTight = computeUnionExportContentBounds(pruned);
           } else {
-            boundsForTight = computeExportContentBounds(diagramData, processedNodes, processedZones);
-          }
-          if (boundsForTight) {
-            fitTransform = transformToFitBounds(boundsForTight, vw, vh, fitPadding);
-            const borderPx = options.frameBorderPx ?? 20;
-            let tightFrame = computeTightPngFrameForBounds(
-              boundsForTight,
-              fitTransform,
-              borderPx
-            );
-            if (options.maxOutputPx && options.maxOutputPx > 0) {
-              tightFrame = capTightPngFrameDimensions(tightFrame, options.maxOutputPx);
+            const bounds = computeContentBounds(processedNodes, processedZones);
+            if (bounds) {
+              fitTransform = transformToFitBounds(bounds, vw, vh, fitPadding);
             }
-            const { width: tw, height: th, transform: tightTransform } = tightFrame;
+          }
+          if (fitTransform) {
             return await toPngWithDotGridTransform(captureHost, {
               ...toPngOptions,
-              width: tw,
-              height: th,
-            }, tightTransform);
+              width: vw,
+              height: vh,
+            }, fitTransform);
           }
-        }
-
-        if (union && union.length > 0) {
-          const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
-          fitTransform = computeUnionFitTransformForDiagrams(pruned, vw, vh, fitPadding);
-        } else if (options.itemIds && options.itemIds.size > 0) {
-          const itemBounds = calculateItemBounds(options.itemIds);
-          if (itemBounds) {
-            const bounds = { minX: itemBounds.x, minY: itemBounds.y, maxX: itemBounds.x + itemBounds.width, maxY: itemBounds.y + itemBounds.height };
-            fitTransform = transformToFitBounds(bounds, vw, vh, fitPadding);
-          }
-        } else {
-          const bounds = computeContentBounds(processedNodes, processedZones);
-          if (bounds) {
-            fitTransform = transformToFitBounds(bounds, vw, vh, fitPadding);
-          }
-        }
-        if (fitTransform) {
-          return await toPngWithDotGridTransform(captureHost, {
-            ...toPngOptions,
-            width: vw,
-            height: vh,
-          }, fitTransform);
         }
       }
-    }
 
-    return await toPngWithDiagramExportFixes(captureHost, toPngOptions);
-  }, [canvasRef, diagramData, processedNodes, processedZones, calculateItemBounds]);
+      return await toPngWithDiagramExportFixes(captureHost, toPngOptions);
+    } finally {
+      if (freezeLiveConnectionAnimations) {
+        onGifAnimationTimeUpdate?.(null);
+        onLivePngCaptureActive?.(false);
+      }
+    }
+  }, [
+    canvasRef,
+    diagramData,
+    processedNodes,
+    processedZones,
+    calculateItemBounds,
+    onGifAnimationTimeUpdate,
+    onLivePngCaptureActive,
+  ]);
 
   const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; selectionOnly?: boolean }) => {
     if (!canvasRef.current) return;

@@ -404,17 +404,19 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
       return tab;
     }));
 
-    // Update history ref if needed
+    // Keep historyRefs in sync without clobbering a fresher stack from historyRef
+    // when only historyIndex is updated (stale `tabs` closure used to wipe entries).
     if (updates.history || updates.historyIndex !== undefined) {
-      const tab = tabs.find(t => t.id === activeTabId);
-      if (tab) {
-        historyRefs.current[activeTabId] = {
-          history: updates.history || tab.history,
-          index: updates.historyIndex !== undefined ? updates.historyIndex : tab.historyIndex,
-        };
-      }
+      const existing = historyRefs.current[activeTabId];
+      historyRefs.current[activeTabId] = {
+        history: updates.history ?? existing?.history ?? [],
+        index:
+          updates.historyIndex !== undefined
+            ? updates.historyIndex
+            : (existing?.index ?? 0),
+      };
     }
-  }, [activeTabId, tabs]);
+  }, [activeTabId]);
 
   const getActiveTab = useCallback((): TabState | null => {
     return tabs.find(t => t.id === activeTabId) || null;

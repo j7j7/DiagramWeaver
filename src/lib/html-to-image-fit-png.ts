@@ -21,22 +21,15 @@ const DW_FAST_THUMBNAIL_KEY = '_dwFastThumbnail' as const;
 const DW_ABORT_SIGNAL_KEY = '_dwAbortSignal' as const;
 
 /**
- * Strip non-selected nodes, selection handles, and selection borders from a clone for selection-only PNG exports.
+ * Strip selection handles, selection borders/rings, connection selection glow, and other
+ * editor-only chrome from an export clone. Always safe for full-diagram PNG (does not hide nodes).
  *
  * IMPORTANT: never remove() elements from the clone — `nodeToDataURLInLayoutHost` re-syncs styles from the source
  * by walking source and clone in parallel by child index. Removing elements desynchronises indices so a card
  * section could receive a resize-handle's computed styles, collapsing the layout.
  * Use display:none (keeps elements in the DOM tree, preserving child indices) instead of remove().
  */
-function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<string>): void {
-  // Hide non-selected nodes (display:none preserves tree structure for child-index sync).
-  clonedRoot.querySelectorAll<HTMLElement>('[data-node-id]').forEach(el => {
-    const id = el.getAttribute('data-node-id');
-    if (id && !selectedIds.has(id)) {
-      el.style.setProperty('display', 'none', 'important');
-    }
-  });
-
+function stripEditorSelectionChromeFromExportClone(clonedRoot: HTMLElement): void {
   // Hide selection handles, connection handles, rotation handles, corner-radius handles, URL handles.
   clonedRoot.querySelectorAll<HTMLElement>('.dw-resize-handle, .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, .dw-url-handle, [data-handle]')
     .forEach(el => el.style.setProperty('display', 'none', 'important'));
@@ -55,7 +48,7 @@ function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<
   clonedRoot.querySelectorAll<HTMLElement>('[data-dw-grid-structure-action], [data-dw-line-vertex-handle]')
     .forEach(el => el.style.setProperty('display', 'none', 'important'));
 
-  // Strip selection border from remaining selected nodes.
+  // Strip selection border from nodes (class may remain if render-time suppress missed).
   clonedRoot.querySelectorAll<HTMLElement>('[data-node-id].border-primary').forEach(el => {
     el.classList.remove('border-primary');
   });
@@ -64,6 +57,43 @@ function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<
   clonedRoot.querySelectorAll<HTMLElement>('.ring-2.ring-primary.ring-inset').forEach(el => {
     el.classList.remove('ring-2', 'ring-primary', 'ring-inset');
   });
+
+  // Strip selected-connection glow (Tailwind arbitrary drop-shadow class).
+  clonedRoot.querySelectorAll<Element>('[class*="drop-shadow-[0_0_6px_rgba(0,200,150"]').forEach(el => {
+    el.classList.forEach((cls) => {
+      if (cls.startsWith('drop-shadow-[0_0_6px_rgba(0,200,150')) {
+        el.classList.remove(cls);
+      }
+    });
+    if (el instanceof HTMLElement || el instanceof SVGElement) {
+      const filter = el.style.filter || '';
+      if (filter.includes('rgba(0, 200, 150') || filter.includes('rgba(0,200,150')) {
+        el.style.removeProperty('filter');
+      }
+    }
+  });
+
+  // Hide dashed group selection outline.
+  clonedRoot.querySelectorAll<HTMLElement>('.border-dashed.border-primary.pointer-events-none').forEach(el => {
+    if (el.classList.contains('border-2') && el.getAttribute('aria-hidden') === 'true') {
+      el.style.setProperty('display', 'none', 'important');
+    }
+  });
+}
+
+/**
+ * Strip non-selected nodes plus editor selection chrome for selection-only PNG exports.
+ */
+function cleanCloneForSelectionExport(clonedRoot: HTMLElement, selectedIds: Set<string>): void {
+  // Hide non-selected nodes (display:none preserves tree structure for child-index sync).
+  clonedRoot.querySelectorAll<HTMLElement>('[data-node-id]').forEach(el => {
+    const id = el.getAttribute('data-node-id');
+    if (id && !selectedIds.has(id)) {
+      el.style.setProperty('display', 'none', 'important');
+    }
+  });
+
+  stripEditorSelectionChromeFromExportClone(clonedRoot);
 }
 
 /** Wait for `@font-face` files used on `root` so export matches live canvas typography. */
@@ -403,8 +433,11 @@ async function nodeToDataURLInLayoutHost(
     applyCloneDiagramTransform(node, dotGridTransform);
   }
   // Apply selection-export cleanup AFTER all style-sync is done (last setProperty wins on style object).
+  // Live capture also clears selection during snapshotCaptureActive; this is a clone-side safety net.
   if (selectedIds && selectedIds.size > 0) {
     cleanCloneForSelectionExport(node, selectedIds);
+  } else {
+    stripEditorSelectionChromeFromExportClone(node);
   }
   if (!skipStyleSync) {
     await document.fonts.ready;

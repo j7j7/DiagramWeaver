@@ -579,6 +579,26 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
   /** Disable viewport culling while snapshot PNG runs so off-screen items mount for capture. */
   const [snapshotCaptureActive, setSnapshotCaptureActive] = React.useState(false);
+  const emptyAnimationDisabledSources = React.useMemo(() => new Set<string>(), []);
+  /** PNG/GIF freeze: show static markers even if idle/menu pause hid live animations. */
+  const animationConnectionsEnabledForRender =
+    animationConnectionsEnabled ||
+    snapshotCaptureActive ||
+    gifExportAnimationTimeSeconds !== null;
+  /** PNG capture: show every connection's markers (ignore click-filter / disabled sources). */
+  const animationFilterSourceIdsForRender = snapshotCaptureActive
+    ? undefined
+    : animationFilterSourceIds;
+  const animationDisabledSourcesForRender = snapshotCaptureActive
+    ? emptyAnimationDisabledSources
+    : animationDisabledSources;
+  /** PNG capture: hide selection / hover chrome so it is not baked into the raster. */
+  const selectedItemIdForRender = snapshotCaptureActive ? undefined : selectedItemId;
+  const selectedItemIdsForRender = snapshotCaptureActive
+    ? emptyAnimationDisabledSources
+    : selectedItemIds;
+  const selectedItemForRender = snapshotCaptureActive ? null : selectedItem;
+  const hoverEnabledForRender = snapshotCaptureActive ? false : hoverEnabled;
   const thumbCaptureAbortRef = React.useRef<AbortController | null>(null);
 
   const abortPresentationThumbnailCapture = React.useCallback(() => {
@@ -1714,7 +1734,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [zonesWithDragPositions, zonesById, altKeyHeld, dragPosition, multiDragPositions]);
 
   const activeGroupSelectionOutline = useMemo(() => {
-    if (isReadOnly) return null;
+    if (isReadOnly || snapshotCaptureActive) return null;
     const group = resolveGroupSelectionForOutline(
       selectedItemId,
       selectedItemIds,
@@ -1730,6 +1750,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return { groupId: group.id, bounds };
   }, [
     isReadOnly,
+    snapshotCaptureActive,
     selectedItemId,
     selectedItemIds,
     diagramData,
@@ -1963,6 +1984,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     processedZones,
     selectedItemIds,
     onGifAnimationTimeUpdate: setGifExportAnimationTimeSeconds,
+    onLivePngCaptureActive: setSnapshotCaptureActive,
   });
 
   const captureSnapshotPngWithFullDiagram = useCallback(
@@ -3857,9 +3879,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   diagramData={diagramData}
                   nodesById={displayNodesById}
                   zonesById={displayZonesById}
-                  selectedItemId={selectedItemId}
-                  selectedItem={selectedItem}
-                  selectedItemIds={selectedItemIds}
+                  selectedItemId={selectedItemIdForRender}
+                  selectedItem={selectedItemForRender}
+                  selectedItemIds={selectedItemIdsForRender}
                   onItemSelect={onItemSelect}
                   closeContextMenu={closeContextMenu}
                   onConnectionDelete={onConnectionDelete}
@@ -3869,9 +3891,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onConnectionInsertNode={onConnectionInsertNode}
                   stackZIndex={linesBehindNodesConnectionZ.connectionZIndex}
                   exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
-                  animationConnectionsEnabled={animationConnectionsEnabled}
-                  animationFilterSourceIds={animationFilterSourceIds}
-                  animationDisabledSources={animationDisabledSources}
+                  animationConnectionsEnabled={animationConnectionsEnabledForRender}
+                  animationFilterSourceIds={animationFilterSourceIdsForRender}
+                  animationDisabledSources={animationDisabledSourcesForRender}
                   connectionAnimationStyles={connectionAnimationStyles}
                   connectionKey={connectionKey}
                   connectionRenderRevision={connectionRenderRevision}
@@ -3920,8 +3942,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       key={node.id}
                       node={displayNodesById[node.id] || node}
                       stackZIndex={nodeZIndex}
-                  isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
-                  isMultiSelected={selectedItemIds?.has(node.id) && (selectedItemIds?.size ?? 0) > 1}
+                  isSelected={selectedItemIdForRender === node.id || (selectedItemIdsForRender?.has(node.id) ?? false)}
+                  isMultiSelected={selectedItemIdsForRender?.has(node.id) && (selectedItemIdsForRender?.size ?? 0) > 1}
                   isGroupMember={
                     selectedItemId !== node.id &&
                     selectedItemId !== undefined &&
@@ -3945,7 +3967,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   suppressShadowsDuringCanvasDrag={shouldSuppressNodeShadowsDuringCanvasDrag(node.id)}
                   onChartValueDragSessionChange={onChartValueDragSessionChange}
                   onUpdate={handleNodeUpdate}
-                  hoverEnabled={hoverEnabled}
+                  hoverEnabled={hoverEnabledForRender}
                   isReadOnly={isReadOnly}
                   onHoverChange={handleHoverChange}
                   onConnect={onConnect}
@@ -3970,14 +3992,18 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
                   highlightAnimStaggerCount={highlightAnimStagger.count}
                   connectorLineFocusedVertexIndex={
-                    connectorLineFocusedVertex?.nodeId === node.id
-                      ? connectorLineFocusedVertex.vertexIndex
-                      : null
+                    snapshotCaptureActive
+                      ? null
+                      : connectorLineFocusedVertex?.nodeId === node.id
+                        ? connectorLineFocusedVertex.vertexIndex
+                        : null
                   }
                   onConnectorLineVertexFocus={onConnectorLineVertexFocus}
-                  timelineActiveEntryId={timelineActiveEntryId}
+                  timelineActiveEntryId={snapshotCaptureActive ? null : timelineActiveEntryId}
                   timelineSelectedEntryIds={
-                    timelineSelectedEntryIdsByNodeId.get(node.id) ?? EMPTY_TIMELINE_CARD_SELECTION_IDS
+                    snapshotCaptureActive
+                      ? EMPTY_TIMELINE_CARD_SELECTION_IDS
+                      : timelineSelectedEntryIdsByNodeId.get(node.id) ?? EMPTY_TIMELINE_CARD_SELECTION_IDS
                   }
                   onTimelineEntrySelect={
                     onTimelineEntrySelect
@@ -3990,7 +4016,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                   onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
                   cardSelectedElementId={
-                    cardElementSelection?.nodeId === node.id ? cardElementSelection.elementId : null
+                    snapshotCaptureActive
+                      ? null
+                      : cardElementSelection?.nodeId === node.id
+                        ? cardElementSelection.elementId
+                        : null
                   }
                   onCardElementSelect={onCardElementSelect}
                   onOverlapClickThroughAttempt={onOverlapClickThroughAttempt}
@@ -4053,8 +4083,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     key={node.id}
                     node={displayNodesById[node.id] || node}
                     stackZIndex={nodeZIndex}
-                    isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
-                    isMultiSelected={selectedItemIds?.has(node.id) && (selectedItemIds?.size ?? 0) > 1}
+                    isSelected={selectedItemIdForRender === node.id || (selectedItemIdsForRender?.has(node.id) ?? false)}
+                    isMultiSelected={selectedItemIdsForRender?.has(node.id) && (selectedItemIdsForRender?.size ?? 0) > 1}
                     isGroupMember={
                       selectedItemId !== node.id &&
                       selectedItemId !== undefined &&
@@ -4078,7 +4108,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     suppressShadowsDuringCanvasDrag={shouldSuppressNodeShadowsDuringCanvasDrag(node.id)}
                     onChartValueDragSessionChange={onChartValueDragSessionChange}
                     onUpdate={handleNodeUpdate}
-                    hoverEnabled={hoverEnabled}
+                    hoverEnabled={hoverEnabledForRender}
                     isReadOnly={isReadOnly}
                     onHoverChange={handleHoverChange}
                     onConnect={onConnect}
@@ -4103,14 +4133,18 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
                     highlightAnimStaggerCount={highlightAnimStagger.count}
                     connectorLineFocusedVertexIndex={
-                      connectorLineFocusedVertex?.nodeId === node.id
-                        ? connectorLineFocusedVertex.vertexIndex
-                        : null
+                      snapshotCaptureActive
+                        ? null
+                        : connectorLineFocusedVertex?.nodeId === node.id
+                          ? connectorLineFocusedVertex.vertexIndex
+                          : null
                     }
                     onConnectorLineVertexFocus={onConnectorLineVertexFocus}
-                    timelineActiveEntryId={timelineActiveEntryId}
+                    timelineActiveEntryId={snapshotCaptureActive ? null : timelineActiveEntryId}
                     timelineSelectedEntryIds={
-                      timelineSelectedEntryIdsByNodeId.get(node.id) ?? EMPTY_TIMELINE_CARD_SELECTION_IDS
+                      snapshotCaptureActive
+                        ? EMPTY_TIMELINE_CARD_SELECTION_IDS
+                        : timelineSelectedEntryIdsByNodeId.get(node.id) ?? EMPTY_TIMELINE_CARD_SELECTION_IDS
                     }
                     onTimelineEntrySelect={
                       onTimelineEntrySelect
@@ -4123,7 +4157,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onTimelineEntryContextMenu={handleTimelineEntryContextMenu}
                     onTimelineSpineContextMenu={handleTimelineSpineContextMenu}
                     cardSelectedElementId={
-                      cardElementSelection?.nodeId === node.id ? cardElementSelection.elementId : null
+                      snapshotCaptureActive
+                        ? null
+                        : cardElementSelection?.nodeId === node.id
+                          ? cardElementSelection.elementId
+                          : null
                     }
                     onCardElementSelect={onCardElementSelect}
                     onOverlapClickThroughAttempt={onOverlapClickThroughAttempt}
@@ -4141,9 +4179,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       diagramData={diagramData}
                       nodesById={displayNodesById}
                       zonesById={displayZonesById}
-                      selectedItemId={selectedItemId}
-                      selectedItem={selectedItem}
-                      selectedItemIds={selectedItemIds}
+                      selectedItemId={selectedItemIdForRender}
+                      selectedItem={selectedItemForRender}
+                      selectedItemIds={selectedItemIdsForRender}
                       onItemSelect={onItemSelect}
                       closeContextMenu={closeContextMenu}
                       onConnectionDelete={onConnectionDelete}
@@ -4154,9 +4192,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       connectionIndices={connIndices}
                       stackZIndex={connZIndex}
                       exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
-                      animationConnectionsEnabled={animationConnectionsEnabled}
-                      animationFilterSourceIds={animationFilterSourceIds}
-                      animationDisabledSources={animationDisabledSources}
+                      animationConnectionsEnabled={animationConnectionsEnabledForRender}
+                      animationFilterSourceIds={animationFilterSourceIdsForRender}
+                      animationDisabledSources={animationDisabledSourcesForRender}
                       connectionAnimationStyles={connectionAnimationStyles}
                       connectionKey={connectionKey}
                       connectionRenderRevision={connectionRenderRevision}
@@ -4238,9 +4276,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     diagramData={diagramData}
                     nodesById={displayNodesById}
                     zonesById={displayZonesById}
-                    selectedItemId={selectedItemId}
-                    selectedItem={selectedItem}
-                    selectedItemIds={selectedItemIds}
+                    selectedItemId={selectedItemIdForRender}
+                    selectedItem={selectedItemForRender}
+                    selectedItemIds={selectedItemIdsForRender}
                     onItemSelect={onItemSelect}
                     closeContextMenu={closeContextMenu}
                     onConnectionDelete={onConnectionDelete}
@@ -4251,9 +4289,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     connectionIndices={lastConnIndices}
                     stackZIndex={lastStack.connectionZIndex}
                     exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
-                    animationConnectionsEnabled={animationConnectionsEnabled}
-                    animationFilterSourceIds={animationFilterSourceIds}
-                    animationDisabledSources={animationDisabledSources}
+                    animationConnectionsEnabled={animationConnectionsEnabledForRender}
+                    animationFilterSourceIds={animationFilterSourceIdsForRender}
+                    animationDisabledSources={animationDisabledSourcesForRender}
                     connectionAnimationStyles={connectionAnimationStyles}
                     connectionKey={connectionKey}
                     connectionRenderRevision={connectionRenderRevision}
@@ -4295,9 +4333,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 Renders arrow toggle buttons only when a connection is selected
                 (not when a node/shape is selected). See: canvas-arrow-toggles.tsx
             */}
-            {selectedItem?.itemType === 'edge' && (
+            {selectedItemForRender?.itemType === 'edge' && (
               <CanvasArrowToggles
-                selectedItemId={selectedItemId}
+                selectedItemId={selectedItemIdForRender}
                 diagramData={diagramData}
                 nodesById={displayNodesById}
                 zonesById={displayZonesById}
@@ -4312,8 +4350,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             */}
             {(() => {
               if (isReadOnly || !onConnectionWaypointMove) return null;
-              if (selectedItem?.itemType !== "edge" || !selectedItem) return null;
-              const connId = (selectedItem as { id?: string }).id;
+              if (selectedItemForRender?.itemType !== "edge" || !selectedItemForRender) return null;
+              const connId = (selectedItemForRender as { id?: string }).id;
               const conn = diagramData.connections.find((c, idx) => {
                 const cid = (c as DiagramConnectionData & { id?: string }).id ?? `${c.from}-${c.to}-${idx}`;
                 return cid === connId;

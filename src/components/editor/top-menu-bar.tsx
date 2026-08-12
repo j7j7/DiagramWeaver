@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save, Ruler, Images } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, History, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save, Ruler, Images } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -20,6 +20,7 @@ import { ThemeMenuSelector } from './theme-menu-selector';
 import { AboutDialog } from './about-dialog';
 import { CanvasBackgroundDialog } from './canvas-background-dialog';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
+import { HistoryBrowserDialog } from './history-browser-dialog';
 import { PwaInstallDialog } from './pwa-install-dialog';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { IconMaintenanceDialog } from './icon-maintenance-dialog';
@@ -200,6 +201,10 @@ interface TopMenuBarProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  /** Canvas undo stack snapshots (JSON strings). */
+  history?: string[];
+  historyIndex?: number;
+  onJumpToHistoryIndex?: (index: number) => void;
   onSelectAll?: () => void;
   selectedItem?: SelectedItem | null;
   selectedItemIds?: Set<string>;
@@ -347,6 +352,9 @@ export function TopMenuBar({
   onRedo,
   canUndo,
   canRedo,
+  history = [],
+  historyIndex = 0,
+  onJumpToHistoryIndex,
   onSelectAll,
   selectedItem,
   selectedItemIds = new Set(),
@@ -483,6 +491,7 @@ export function TopMenuBar({
   }, [currentDiagramData, selectedItemIds]);
 
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
+  const [historyBrowserOpen, setHistoryBrowserOpen] = React.useState(false);
   const [canvasBackgroundDialogOpen, setCanvasBackgroundDialogOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = React.useState(false);
@@ -737,9 +746,18 @@ export function TopMenuBar({
                 <MenubarShortcut>Ctrl+Shift+Z</MenubarShortcut>
               </MenubarItem>
             )}
+            {onJumpToHistoryIndex && (
+              <MenubarItem
+                onClick={() => setHistoryBrowserOpen(true)}
+                disabled={isReadOnly || history.length === 0}
+              >
+                <History className="mr-2 h-4 w-4" />
+                Show History…
+              </MenubarItem>
+            )}
             {onFitToView && (
               <>
-                {(onUndo || onRedo) && <MenubarSeparator />}
+                {(onUndo || onRedo || onJumpToHistoryIndex) && <MenubarSeparator />}
                 <MenubarItem onClick={onFitToView}>
                   <Maximize2 className="mr-2 h-4 w-4" />
                   Fit to View
@@ -1622,6 +1640,16 @@ export function TopMenuBar({
 
       
       {/* Theme Editor Dialog */}
+      {onJumpToHistoryIndex && (
+        <HistoryBrowserDialog
+          open={historyBrowserOpen}
+          onOpenChange={setHistoryBrowserOpen}
+          history={history}
+          historyIndex={historyIndex}
+          onJumpToIndex={onJumpToHistoryIndex}
+          isReadOnly={isReadOnly}
+        />
+      )}
       <CanvasBackgroundDialog
         open={canvasBackgroundDialogOpen}
         onOpenChange={setCanvasBackgroundDialogOpen}

@@ -75,7 +75,7 @@ Grouping by concern (each file encapsulates **`use*`** logic used by **`diagram-
 | **Canvas transforms & fit** | **`use-canvas-transform`** (`handleFitToView`, scale/pan consistent with thumbnails and presentation union fit). |
 | **Pointer / gestures** | **`use-canvas-interactions`**, **`use-canvas-drag-drop`**, **`use-canvas-selection`**, **`use-alignment-guides`**, **`use-canvas-context-menu`**. |
 | **Clipboard & export surface** | **`use-canvas-clipboard`**, **`use-canvas-export`**. |
-| **History** | **`use-diagram-editor-history`** (debounced snapshots; defers during drags). |
+| **History** | **`use-diagram-editor-history`** (debounced snapshots; defers during drags). **Edit → Show History…** opens **`history-browser-dialog`** to jump to a snapshot. |
 | **Keyboard** | **`use-diagram-editor-keyboard`**. |
 | **Layers** | **`use-layers`** (visibility, order, optional global apply for presentation). |
 | **Presentation** | **`use-presentation-thumbnails`**, **`use-presentation-slide-viewport-sync`**, **`use-presentation-tab-switch-sync`**, **`use-presentation-storage-hydration`**, **`use-presentation-slide-view`**, **`use-slide-transition`**. |
