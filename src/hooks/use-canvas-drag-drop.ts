@@ -581,6 +581,7 @@ export function useCanvasDragDrop({
             }
           }
         }
+        if (monitor.didDrop()) assignedCanvasIconToSlot = true;
         // Skip move operation if dropped on scratchpad or assigned into a card icon-slot
         if (!isDroppedOnScratchpad && !assignedCanvasIconToSlot) {
         // Check if item is in multi-select first, then check group membership

@@ -552,6 +552,8 @@ export default function DiagramEditor() {
   presentationMasterDiagramRef.current = presentationMasterDiagram;
   const tabDiagramDataRef = React.useRef(tabDiagramData);
   tabDiagramDataRef.current = tabDiagramData;
+  const diagramDataRef = React.useRef(diagramData);
+  diagramDataRef.current = diagramData;
 
   const presentationLayersSyncFingerprint = React.useMemo(
     () => (tabDiagramData.layers ? JSON.stringify(tabDiagramData.layers) : ''),
@@ -939,11 +941,12 @@ export default function DiagramEditor() {
   // Helper functions to update active tab
   const setDiagramData = React.useCallback((updater: DiagramData | ((prev: DiagramData) => DiagramData)) => {
     if (!activeTabId) return;
-    const newData = typeof updater === 'function' ? updater(diagramData) : updater;
+    const newData = typeof updater === 'function' ? updater(diagramDataRef.current) : updater;
     const connections = newData.connections || [];
     const needsIds = connections.some((c: DiagramConnectionData) => !(c as DiagramConnectionData).id);
     const ensuredConnections = needsIds ? ensureConnectionIds(connections) : connections;
     const nextData = { ...newData, connections: ensuredConnections };
+    diagramDataRef.current = nextData;
 
     if (
       activePresentationPrimarySlideId &&
@@ -958,7 +961,6 @@ export default function DiagramEditor() {
     updateActiveTab({ diagramData: nextData });
   }, [
     activeTabId,
-    diagramData,
     activePresentationSlideId,
     activePresentationPrimarySlideId,
     updateActiveTab,

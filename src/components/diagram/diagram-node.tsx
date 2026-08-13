@@ -30,7 +30,7 @@ import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
 import { isCardNodeType, findCardElement, mergeCardIconRefPreservingSlotVisuals, updateCardElementTree } from "@/lib/card-utils";
-import { commitIconBorderDroppedIcon, isIconBorderCard } from "@/lib/card-icon-border";
+import { cardIconRefIdentity, commitIconBorderDroppedIcon, isIconBorderCard } from "@/lib/card-icon-border";
 import { isBorderNodeType } from "@/lib/border-utils";
 import { isVectorPathNodeType } from "@/lib/vector-path-utils";
 import type { VectorPathRing } from "@/lib/vector-path-types";
@@ -354,6 +354,8 @@ interface DiagramNodeProps {
   /** Bar/line/pie chart value drag — parent may defer undo/redo snapshots until drag ends. */
   onChartValueDragSessionChange?: (active: boolean) => void;
   onUpdate?: (node: DiagramNodeData) => void;
+  /** After an Icon Border slot drop, sample the new glyph and tint the card border. */
+  onIconBorderTintAfterDrop?: (nodeId: string, elementId: string, iconRef: CardIconRef) => void;
   hoverEnabled?: boolean;
   isReadOnly?: boolean;
   onHoverChange?: (id: string, itemType: 'node' | 'zone', isHovered: boolean) => void;
@@ -567,6 +569,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onResizeStart === next.onResizeStart &&
     prev.onResizeEnd === next.onResizeEnd &&
     prev.onUpdate === next.onUpdate &&
+    prev.onIconBorderTintAfterDrop === next.onIconBorderTintAfterDrop &&
     prev.onPositionUpdate === next.onPositionUpdate &&
     prev.onDraggingChange === next.onDraggingChange &&
     prev.hideSelectionAffordancesDuringCanvasDrag ===
@@ -625,6 +628,7 @@ function DiagramNodeInner({
   suppressShadowsDuringCanvasDrag = false,
   onChartValueDragSessionChange,
   onUpdate,
+  onIconBorderTintAfterDrop,
   hoverEnabled = true,
   isReadOnly = false,
   onHoverChange,
@@ -2484,12 +2488,22 @@ function DiagramNodeInner({
       const existing = findCardElement(node.card.elements, elementId)?.iconRef;
       const merged = mergeCardIconRefPreservingSlotVisuals(iconRef, existing);
       const iconRefNormalized = normalizeDashboardDecorIconRef(node.card.elements, elementId, merged);
-      const elements = isIconBorderCard(node.card.templateId)
+      const isBorderCard = isIconBorderCard(node.card.templateId);
+      const elements = isBorderCard
         ? commitIconBorderDroppedIcon(node.card.elements, elementId, iconRefNormalized)
         : updateCardElementTree(node.card.elements, elementId, { iconRef: iconRefNormalized });
       onUpdate({ ...node, card: { ...node.card, elements } });
+      const committed = findCardElement(elements, elementId)?.iconRef;
+      if (
+        isBorderCard &&
+        committed &&
+        onIconBorderTintAfterDrop &&
+        cardIconRefIdentity(existing) !== cardIconRefIdentity(committed)
+      ) {
+        onIconBorderTintAfterDrop(node.id, elementId, committed);
+      }
     },
-    [isReadOnly, onUpdate, node],
+    [isReadOnly, onUpdate, onIconBorderTintAfterDrop, node],
   );
 
   const handleCardIconContextMenu = useCallback(

@@ -456,6 +456,58 @@ async function loadImageFromUrl(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
+function majorityNonNeutralFillFromSvg(svg: string): string | null {
+  const re =
+    /fill\s*[:=]\s*["']?(#[0-9a-fA-F]{3,8}|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\))/gi;
+  const counts = new Map<string, number>();
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(svg))) {
+    const raw = m[1];
+    let rgb: [number, number, number] | null = null;
+    if (raw.startsWith("#")) {
+      rgb = parseHexColor(raw);
+    } else {
+      const p = raw.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+      if (p) rgb = [Number(p[1]), Number(p[2]), Number(p[3])];
+    }
+    if (!rgb) continue;
+    const lum = pixelLuminance(rgb[0], rgb[1], rgb[2]);
+    if (lum <= 0.08 || lum >= 0.92) continue;
+    const hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
+    counts.set(hex, (counts.get(hex) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestN = 0;
+  for (const [hex, n] of counts) {
+    if (n > bestN) {
+      best = hex;
+      bestN = n;
+    }
+  }
+  return best;
+}
+
+/** Majority plate colour from an icon URL (skips near-white / near-black). */
+export async function sampleIconDominantColorFromUrl(url: string): Promise<string | null> {
+  const path = url.toLowerCase().split("?")[0];
+  if (path.endsWith(".svg")) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const fromMarkup = majorityNonNeutralFillFromSvg(await res.text());
+        if (fromMarkup) return fromMarkup;
+      }
+    } catch {
+      /* fall through to raster sample */
+    }
+  }
+  const img = await loadImageFromUrl(url);
+  if (!img || img.naturalWidth <= 0) return null;
+  const data = rasterizeImageSourceForSampling(img, img.naturalWidth, img.naturalHeight);
+  if (!data) return null;
+  return sampleDominantPlateColorFromRgba(data, EDGE_SAMPLE_SIZE, EDGE_SAMPLE_SIZE);
+}
+
 /** Sample plate colour from icon URL before any bevel / CSS clip is applied. */
 export async function sampleIconPlateColorFromUrl(url: string): Promise<string | null> {
   const img = await loadImageFromUrl(url);

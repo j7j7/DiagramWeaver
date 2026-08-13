@@ -2,6 +2,18 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-13 – Icon Border slot drop keeps glyph + tint
+Palette drops onto the Icon Border **icon slot** (not the whole card) update the corner glyph and then tint the border. Sampling is async; diagram updates now apply against the latest diagram so the colour write cannot roll the icon back. Patch bumped.
+
+### 2026-08-13 – Icon Border drop anywhere on the card
+Dragging an icon onto an Icon Border card (not only the small corner slot) replaces the corner glyph and tints the border from that icon. Canvas icons dropped onto the card stay on the canvas. Patch bumped.
+
+### 2026-08-13 – Icon Border tint from slot drop
+Dropping an icon onto the Icon Border slot now tints the card border even when the nested slot drop is what changes the glyph (the canvas hit-test often misses, so sampling never started). The colour patch applies only if that icon is still in the slot. Patch bumped.
+
+### 2026-08-13 – Icon Border matches dropped icon colour
+Dropping a new icon onto an Icon Border slot samples the glyph’s majority colour (SVG fills, else raster histogram; skips white/black) and applies it to the card border. Same icon again does not retint. Patch bumped.
+
 ### 2026-08-13 – Icon Border title not bold
 Icon Border **TITLE** defaults to normal weight (400), not semi-bold. The text edit toolbar Bold control now round-trips: un-bold no longer stays stuck at 600. Patch bumped.
 

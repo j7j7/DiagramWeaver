@@ -142,7 +142,7 @@ import { combineShapeNodes } from "@/lib/vector-path-boolean";
 import type { ShapeBooleanOperation } from "@/lib/vector-path-types";
 import { cardTemplateSwapMenuOptions, swapCardTemplate } from "@/lib/card-template-swap";
 import { isCardNodeType, findCardElement, mergeCardIconRefPreservingSlotVisuals, updateCardElementTree, resolveCardIconSlotFromPoint } from "@/lib/card-utils";
-import { commitIconBorderDroppedIcon, isIconBorderCard } from "@/lib/card-icon-border";
+import { cardIconRefIdentity, commitIconBorderDroppedIcon, iconBorderShellTintIfMatch, isIconBorderCard, sampleCardIconDominantColor } from "@/lib/card-icon-border";
 import { normalizeDashboardDecorIconRef } from "@/lib/card-dashboard-stat";
 import type { CardIconRef } from "@/lib/card-types";
 import {
@@ -1285,18 +1285,49 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }));
   }, [setDiagramData]);
 
+  const handleIconBorderTintFromDrop = useCallback(
+    (nodeId: string, elementId: string, iconRef: CardIconRef) => {
+      const expected = cardIconRefIdentity(iconRef);
+      if (!expected) return;
+      void sampleCardIconDominantColor(iconRef).then((hex) => {
+        if (!hex) return;
+        setDiagramData((prev) => {
+          let changed = false;
+          const nodes = prev.nodes.map((n) => {
+            if (n.id !== nodeId) return n;
+            const next = iconBorderShellTintIfMatch(n, elementId, expected, hex);
+            if (next !== n) changed = true;
+            return next;
+          });
+          return changed ? { ...prev, nodes } : prev;
+        });
+      });
+    },
+    [setDiagramData],
+  );
+
   const handleCardIconDrop = useCallback(
     (nodeId: string, elementId: string, iconRef: CardIconRef) => {
+      let tintRef: CardIconRef | undefined;
       setDiagramData((prev) => ({
         ...prev,
         nodes: prev.nodes.map((n) => {
           if (n.id !== nodeId || !n.card?.elements) return n;
-          const existing = findCardElement(n.card.elements, elementId)?.iconRef;
-          const merged = mergeCardIconRefPreservingSlotVisuals(iconRef, existing);
+          const existingRef = findCardElement(n.card.elements, elementId)?.iconRef;
+          const merged = mergeCardIconRefPreservingSlotVisuals(iconRef, existingRef);
           const iconRefNormalized = normalizeDashboardDecorIconRef(n.card.elements, elementId, merged);
-          const elements = isIconBorderCard(n.card.templateId)
+          const isBorderCard = isIconBorderCard(n.card.templateId);
+          const elements = isBorderCard
             ? commitIconBorderDroppedIcon(n.card.elements, elementId, iconRefNormalized)
             : updateCardElementTree(n.card.elements, elementId, { iconRef: iconRefNormalized });
+          const nextRef = findCardElement(elements, elementId)?.iconRef;
+          if (
+            isBorderCard &&
+            nextRef &&
+            cardIconRefIdentity(existingRef) !== cardIconRefIdentity(nextRef)
+          ) {
+            tintRef = nextRef;
+          }
           return {
             ...n,
             card: {
@@ -1306,8 +1337,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           };
         }),
       }));
+      if (tintRef) handleIconBorderTintFromDrop(nodeId, elementId, tintRef);
     },
-    [setDiagramData],
+    [setDiagramData, handleIconBorderTintFromDrop],
   );
 
   const handleNodeResize = useCallback((nodeId: string, newWidth: number, newHeight: number, newX?: number, newY?: number) => {
@@ -3957,6 +3989,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   suppressShadowsDuringCanvasDrag={shouldSuppressNodeShadowsDuringCanvasDrag(node.id)}
                   onChartValueDragSessionChange={onChartValueDragSessionChange}
                   onUpdate={handleNodeUpdate}
+                  onIconBorderTintAfterDrop={handleIconBorderTintFromDrop}
                   hoverEnabled={hoverEnabledForRender}
                   isReadOnly={isReadOnly}
                   onHoverChange={handleHoverChange}
@@ -4098,6 +4131,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     suppressShadowsDuringCanvasDrag={shouldSuppressNodeShadowsDuringCanvasDrag(node.id)}
                     onChartValueDragSessionChange={onChartValueDragSessionChange}
                     onUpdate={handleNodeUpdate}
+                    onIconBorderTintAfterDrop={handleIconBorderTintFromDrop}
                     hoverEnabled={hoverEnabledForRender}
                     isReadOnly={isReadOnly}
                     onHoverChange={handleHoverChange}

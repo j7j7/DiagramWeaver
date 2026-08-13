@@ -1,7 +1,12 @@
 import type { CardElementData, CardElementStyle, CardIconRef, CardLayoutBox, CardTemplate } from "@/lib/card-types";
-import type { NodeSize } from "@/lib/types";
+import type { DiagramNodeData, NodeSize } from "@/lib/types";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
+import {
+  resolveIconBevelSampleSrcAsync,
+  sampleIconDominantColorFromUrl,
+  shadeHexColor,
+} from "@/lib/icon-bevel";
 
 export const ICON_BORDER_TEMPLATE_ID = "icon-border";
 export const ICON_BORDER_ROOT_ID = "root";
@@ -57,8 +62,60 @@ export function commitIconBorderDroppedIcon(
   return applyIconBorderNodeSize(next, ICON_BORDER_ICON_NODE_SIZE);
 }
 
+/** Identity of the glyph (not size / plate settings). */
+export function cardIconRefIdentity(ref?: CardIconRef | null): string {
+  if (!ref) return "";
+  return [ref.type ?? "", ref.file ?? "", ref.iconName ?? "", ref.emoji ?? "", ref.imageUrl ?? ""].join("\0");
+}
+
+/** Majority colour of a dropped catalog icon (Lucide/emoji: explicit iconColor only). */
+export async function sampleCardIconDominantColor(iconRef: CardIconRef): Promise<string | null> {
+  if (iconRef.iconType === "emoji") return null;
+  if (iconRef.iconType === "lucide") {
+    const tint = iconRef.iconColor?.trim();
+    return tint || null;
+  }
+  const src = await resolveIconBevelSampleSrcAsync({
+    type: iconRef.type,
+    provider: iconRef.provider,
+    category: iconRef.category,
+    file: iconRef.file,
+    imageUrl: iconRef.imageUrl,
+  });
+  if (src) {
+    const sampled = await sampleIconDominantColorFromUrl(src);
+    if (sampled) return sampled;
+  }
+  const fallback = iconRef.iconColor?.trim();
+  return fallback || null;
+}
+
+/** Apply sampled icon colour to the Icon Border shell (solid + gradient stops). */
+export function applyIconBorderShellFromHex(node: DiagramNodeData, hex: string): DiagramNodeData {
+  const dark = shadeHexColor(hex, -0.18);
+  return {
+    ...node,
+    borderColor: hex,
+    borderColors: [hex, dark],
+  };
+}
+
 export function isIconBorderCard(templateId: string | undefined): boolean {
   return templateId === ICON_BORDER_TEMPLATE_ID;
+}
+
+/** Tint the shell only if this node still shows the icon we sampled. */
+export function iconBorderShellTintIfMatch(
+  node: DiagramNodeData,
+  elementId: string,
+  expectedIdentity: string,
+  hex: string,
+): DiagramNodeData {
+  if (!expectedIdentity || !hex) return node;
+  if (!node.card?.elements || !isIconBorderCard(node.card.templateId)) return node;
+  const cur = findCardElement(node.card.elements, elementId)?.iconRef;
+  if (cardIconRefIdentity(cur) !== expectedIdentity) return node;
+  return applyIconBorderShellFromHex(node, hex);
 }
 
 export function getIconBorderRegions(root: CardElementData | undefined): {
