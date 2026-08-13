@@ -1,38 +1,4 @@
 import type { CardElementData, CardElementStyle, CardLayoutBox } from "@/lib/card-types";
-import type { VisualStyling } from "@/lib/visual-styling";
-import {
-  CARD_BACKGROUND_VISUAL_KEYS,
-  applyCardBackgroundVisual,
-  cardBackgroundVisualFromElements,
-  partitionCardVisualStylingPatch,
-} from "@/lib/card-theme";
-
-/** @deprecated use CARD_BACKGROUND_VISUAL_KEYS */
-export const PROFILE_BODY_BG_VISUAL_KEYS = CARD_BACKGROUND_VISUAL_KEYS;
-
-/** @deprecated use cardBackgroundVisualFromElements */
-export function profileBodyVisualBackgroundFromElements(elements: CardElementData): ReturnType<
-  typeof cardBackgroundVisualFromElements
-> {
-  return cardBackgroundVisualFromElements(elements, "profile-feature");
-}
-
-/** @deprecated use applyCardBackgroundVisual */
-export function applyProfileBodyVisualBackground(
-  elements: CardElementData,
-  styling: Partial<VisualStyling>,
-): CardElementData {
-  return applyCardBackgroundVisual(elements, "profile-feature", styling);
-}
-
-/** @deprecated use partitionCardVisualStylingPatch */
-export function partitionProfileCardVisualStylingPatch(styling: Record<string, unknown>): {
-  bodyBackground: Partial<VisualStyling>;
-  nodePatch: Record<string, unknown>;
-} {
-  const { cardBackground, nodePatch } = partitionCardVisualStylingPatch(styling);
-  return { bodyBackground: cardBackground, nodePatch };
-}
 
 export const PROFILE_CARD_TEMPLATE_ID = "profile-feature";
 export const PROFILE_HERO_ID = "hero";

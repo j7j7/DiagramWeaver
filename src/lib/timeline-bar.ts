@@ -7,7 +7,7 @@ import {
   type TimelineBarAxisLabelData,
   type TimelineBarSectionData,
 } from "@/lib/types";
-import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
+import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-menu-hue-step";
 
 export const TIMELINE_BAR_NODE_TYPE = "generic.object.timeline-bar" as const;
 

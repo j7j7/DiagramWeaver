@@ -24,12 +24,9 @@ import {
 } from './card-element-feature';
 import { AGENDA_TEMPLATE_ID } from './card-agenda';
 import { BULLET_LIST_TEMPLATE_ID } from './card-bullet-list';
+import { DIAGRAM_THEME_HUE_STEP_DEG } from './theme-menu-hue-step';
 
-/**
- * Hue step per pie/bar/line series row and per item when multi-select hue staggering is on
- * (degrees on the color wheel). Kept in sync with chart theming.
- */
-export const DIAGRAM_THEME_HUE_STEP_DEG = 36;
+export { DIAGRAM_THEME_HUE_STEP_DEG };
 
 /** When applying a diagram theme to a progress bar: fill hues are rotated vs the themed background hues. */
 const PROGRESS_BAR_THEME_FILL_HUE_OFFSET = 42;

@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-13 – Production build: /_not-found TDZ
+`next build` prerender of `/_not-found` could throw `Cannot access 'aZ' before initialization` (minified TDZ from a circular import). `DIAGRAM_THEME_HUE_STEP_DEG` now lives in **`theme-menu-hue-step.ts`**; card/theme helpers import it there instead of **`theme-manager`**. Unused **`card-profile`** re-exports of **`card-theme`** constants removed. Patch bumped.
+
 ### 2026-08-13 – Icon Border slot drop keeps glyph + tint
 Palette drops onto the Icon Border **icon slot** (not the whole card) update the corner glyph and then tint the border. Sampling is async; diagram updates now apply against the latest diagram so the colour write cannot roll the icon back. Patch bumped.
 

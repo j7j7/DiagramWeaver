@@ -1,6 +1,6 @@
 import { shiftHueOfColor } from "@/lib/color-shift";
 import type { DiagramNodeData } from "@/lib/types";
-import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
+import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-menu-hue-step";
 
 /**
  * When `timelineCardFillMode === 'theme-hues'`, rotate card fill/outline hues by **`hueRank`**

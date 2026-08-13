@@ -10,7 +10,7 @@ import { flexJustifyToTextJustify } from "@/lib/card-layout";
 import { applyTextStylingToCardElement, extractTextStylingFromCardElement, type TextStyling } from "@/lib/text-styling";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 import { shiftHueOfColor, hueDeltaBetweenColors } from "@/lib/color-shift";
-import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
+import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-menu-hue-step";
 
 export const BULLET_LIST_TEMPLATE_ID = "bullet-list";
 

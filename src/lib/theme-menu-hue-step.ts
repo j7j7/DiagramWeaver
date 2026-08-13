@@ -1,4 +1,8 @@
-import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
+/**
+ * Default hue step (degrees) for theme stagger, charts, and card theming.
+ * Lives here (not in `theme-manager`) so card/theme helpers can import it without a cycle.
+ */
+export const DIAGRAM_THEME_HUE_STEP_DEG = 36;
 
 /** Persisted by Themes dropdown (`ThemeMenuSelector`). */
 export const THEME_MENU_HUE_STEP_STORAGE_KEY = "diagram-weaver-theme-multi-hue-step-deg";

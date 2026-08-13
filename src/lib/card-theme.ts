@@ -6,7 +6,7 @@ import {
   type VisualStyling,
 } from "@/lib/visual-styling";
 import { multiplyLightnessOfColor, shiftHueOfColor } from "@/lib/color-shift";
-import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
+import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-menu-hue-step";
 import {
   findCardElement,
   getCardTemplateIdFromNodeType,

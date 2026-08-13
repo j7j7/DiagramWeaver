@@ -4,7 +4,7 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { flexJustifyToTextJustify } from "@/lib/card-layout";
 import { findCardElement, updateCardElementTree } from "@/lib/card-utils";
 import { shiftHueOfColor, hueDeltaBetweenColors } from "@/lib/color-shift";
-import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-manager";
+import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-menu-hue-step";
 
 export const AGENDA_TEMPLATE_ID = "agenda";
 
