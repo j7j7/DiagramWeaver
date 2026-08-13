@@ -2,6 +2,12 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-13 – Ctrl/Cmd+V pastes a single copy
+Paste no longer inserts two sets. The copy/paste shortcut is **keydown only** (the extra document `copy`/`paste` listeners still ran after `preventDefault` on the key). Module-level debounce as a backstop. Patch bumped.
+
+### 2026-08-13 – Ctrl/Cmd+C copies the current selection on the first press
+Copy no longer needs two or three presses, and paste after deselect no longer drops in leftover palette/sidebar items. Causes: canvas **keydown** was torn down on Ctrl/Cmd (modifier tracking re-render + unstable `operations` deps), a second handler preferred **`selectedResource`** over the canvas set, and **`paletteClipboardItem`** (set when placing from the sidebar) won on paste. Copy/paste now use one stable listener (`copy`/`paste` events + keydown, refs for the live selection); canvas copy clears the palette clipboard. Patch bumped.
+
 ### 2026-08-13 – Remove-background icons fill the grid tile
 With **Remove background**, the glyph now fills the 80px (scaled) icon tile instead of staying inset at 70px, so the plate edges snap to the 10px grid and align with shapes. Shared via **`getIconGlyphSize`**. Patch bumped.
 

@@ -3190,22 +3190,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEventFromEditableElement(e)) return;
 
-      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
-        e.preventDefault();
-        // Multi-selection: copy all. Check first so we don't copy only primary when both are set.
-        if (selectedItemIds && selectedItemIds.size > 1) {
-          handleCopy();
-        } else if (selectedItemIds && selectedItemIds.size === 1) {
-          handleCopy(Array.from(selectedItemIds)[0]);
-        } else if (selectedItemId) {
-          handleCopy(selectedItemId);
-        }
-      } else if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
-        e.preventDefault();
-        if (canPaste()) {
-          handlePaste();
-        }
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      // Copy/paste: handled once in useDiagramEditorKeyboard (stable keydown).
+      if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
 
         // Keep keyboard delete behavior identical to the on-canvas connection
@@ -3249,7 +3235,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedItem, selectedItemId, selectedItemIds, diagramData.nodes, onConnectionDelete, handleCopy, handlePaste, canPaste, operations, tryDeleteConnectorLineVertexBeforeNodeDelete]);
+  }, [selectedItem, selectedItemId, selectedItemIds, diagramData.nodes, onConnectionDelete, operations, tryDeleteConnectorLineVertexBeforeNodeDelete]);
 
   // ============================================================================
   // CANVAS DIMENSIONS TRACKING
@@ -3301,16 +3287,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // Exposes methods that parent components can call via ref
   // Used by diagram-editor.tsx for menu bar actions and other external controls
   const copyHandler = useCallback(() => {
-    // Multi-selection: copy all items (including connections). Must check first so we
-    // don't fall through to single-item copy when selectedItemId is set as primary.
-    if (selectedItemIds && selectedItemIds.size > 1) {
+    const ids = selectedItemIdsRef.current;
+    const primaryId = selectedItemIdRef.current;
+    if (ids && ids.size > 0) {
       handleCopy();
-    } else if (selectedItemIds && selectedItemIds.size === 1) {
-      handleCopy(Array.from(selectedItemIds)[0]);
-    } else if (selectedItemId) {
-      handleCopy(selectedItemId);
+    } else if (primaryId) {
+      handleCopy(primaryId);
     }
-  }, [selectedItemId, selectedItemIds, handleCopy]);
+  }, [handleCopy]);
 
   const pasteHandler = useCallback(() => {
     if (canPaste()) {

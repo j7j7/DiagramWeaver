@@ -661,6 +661,8 @@ export default function DiagramEditor() {
 
   const selectedItem = activeTab?.selectedItem || null;
   const selectedItemIds = activeTab?.selectedItemIds || new Set();
+  const selectedItemIdsRef = React.useRef(selectedItemIds);
+  selectedItemIdsRef.current = selectedItemIds;
   const isConnectMode = activeTab?.isConnectMode || false;
   const jsonPanelOpen = activeTab?.jsonPanelOpen || false;
   const sanitizeCanvasTransform = React.useCallback((transform?: { x: number; y: number; k: number } | null) => {
@@ -3973,21 +3975,35 @@ export default function DiagramEditor() {
     void closeTab(tutorialId, true);
   }, [createTab, closeTab]);
 
+  const handleCanvasClipboardChange = React.useCallback((hasClipboard: boolean) => {
+    setCanPaste(hasClipboard);
+    if (hasClipboard) {
+      setPaletteClipboardItem(null);
+    }
+  }, []);
+
   const handleMenuCopy = React.useCallback(() => {
+    // Canvas selection always wins. A leftover sidebar `selectedResource` used to
+    // copy a palette item instead of the highlighted objects (and then paste that).
+    if (selectedItemIdsRef.current.size > 0) {
+      setPaletteClipboardItem(null);
+      editorRef.current?.copy();
+      return;
+    }
     if (selectedResource) {
       const item = createPaletteItem(selectedResource.resource, selectedResource.provider, selectedResource.category);
       setPaletteClipboardItem(item);
-    } else {
-      editorRef.current?.copy();
+      return;
     }
+    editorRef.current?.copy();
   }, [selectedResource, setPaletteClipboardItem, editorRef]);
 
   const handleMenuPaste = React.useCallback(() => {
     if (paletteClipboardItem && editorRef.current) {
       editorRef.current.pastePaletteItem(paletteClipboardItem);
-    } else {
-      editorRef.current?.paste();
+      return;
     }
+    editorRef.current?.paste();
   }, [paletteClipboardItem, editorRef]);
 
   const handleSelectAll = React.useCallback(() => {
@@ -6119,7 +6135,7 @@ export default function DiagramEditor() {
         setIsDragging={handleCanvasDraggingChange}
         setChartValueDragActive={handleChartValueDragSessionChange}
         setCanvasGeometrySessionActive={handleCanvasGeometrySessionChange}
-        setCanPaste={setCanPaste}
+        setCanPaste={handleCanvasClipboardChange}
         setMousePosition={setMousePositionForIdle}
         handleGroupItems={handleGroupItems}
         handleUngroupItems={handleUngroupItems}

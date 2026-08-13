@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, DiagramGroupData, DiagramGroupingData } from "@/lib/types";
 import { generateSequentialId, generateGroupId, collectOccupiedDiagramIds } from "@/lib/id-generator";
 import { generateConnectionId } from "@/lib/connection-order-utils";
@@ -167,8 +167,23 @@ export function useCanvasClipboard({
   toast,
 }: UseCanvasClipboardOptions) {
   const [clipboard, setClipboard] = useState<ClipboardData | null>(null);
+  const selectedItemIdsRef = useRef(selectedItemIds);
+  selectedItemIdsRef.current = selectedItemIds;
+  const diagramDataRef = useRef(diagramData);
+  diagramDataRef.current = diagramData;
+  const clipboardRef = useRef<ClipboardData | null>(clipboard);
+  clipboardRef.current = clipboard;
+
+  const commitClipboard = useCallback((data: ClipboardData) => {
+    clipboardRef.current = data;
+    setClipboard(data);
+  }, []);
 
   const handleCopy = useCallback((itemId?: string) => {
+    // Read from refs so the first Ctrl/Cmd+C copies the live selection even if this
+    // callback was created before the latest select (keyboard listeners can be stale).
+    const selectedItemIds = selectedItemIdsRef.current;
+    const diagramData = diagramDataRef.current;
     // `selectedItemIds` is the source of truth for what is highlighted on the canvas.
     // `itemId` is only used when there is no id set (legacy callers); never let a stale
     // primary `selectedItem.id` override a single id in `selectedItemIds`.
@@ -215,7 +230,7 @@ export function useCanvasClipboard({
               }
             });
 
-            setClipboard({
+            commitClipboard({
               nodes: groupedNodes,
               connections: groupConnections,
               connectionReferenceIds: groupConnectionReferenceIds,
@@ -241,7 +256,7 @@ export function useCanvasClipboard({
             touchConnectionReferenceIds.push(sourceConnectionReferenceId(connection, index));
           }
         });
-        setClipboard({ node: { ...node }, connections: touchConnections, connectionReferenceIds: touchConnectionReferenceIds });
+        commitClipboard({ node: { ...node }, connections: touchConnections, connectionReferenceIds: touchConnectionReferenceIds });
         onClipboardChange?.(true);
 
         toast({
@@ -290,7 +305,7 @@ export function useCanvasClipboard({
         };
 
         const children = collectChildren(singleCopyId);
-        setClipboard({ zone: { ...zone }, children, originalGroupingRelationships, originalGroupingMemberOrder });
+        commitClipboard({ zone: { ...zone }, children, originalGroupingRelationships, originalGroupingMemberOrder });
         onClipboardChange?.(true);
 
         toast({
@@ -407,7 +422,7 @@ export function useCanvasClipboard({
         }
       });
 
-      setClipboard({
+      commitClipboard({
         nodes: selectedNodes,
         zones: selectedZones,
         connections: selectedConnections,
@@ -436,7 +451,7 @@ export function useCanvasClipboard({
             touchConnectionReferenceIds.push(sourceConnectionReferenceId(connection, index));
           }
         });
-        setClipboard({ node: { ...node }, connections: touchConnections, connectionReferenceIds: touchConnectionReferenceIds });
+        commitClipboard({ node: { ...node }, connections: touchConnections, connectionReferenceIds: touchConnectionReferenceIds });
         onClipboardChange?.(true);
       } else if (zone) {
         // Recursively collect all children
@@ -466,7 +481,7 @@ export function useCanvasClipboard({
         };
 
         const children = collectChildren(itemId);
-        setClipboard({ zone: { ...zone }, children });
+        commitClipboard({ zone: { ...zone }, children });
         onClipboardChange?.(true);
       }
 
@@ -475,9 +490,11 @@ export function useCanvasClipboard({
         description: "The selected item has been copied to clipboard.",
       });
     }
-  }, [selectedItemIds, diagramData, onClipboardChange, toast]);
+  }, [onClipboardChange, toast, commitClipboard]);
 
   const handlePaste = useCallback(() => {
+    const clipboard = clipboardRef.current;
+    const diagramData = diagramDataRef.current;
     if (!clipboard) return;
 
     // Handle multi-selection paste
@@ -938,11 +955,11 @@ export function useCanvasClipboard({
         description: "The copied item has been pasted to the canvas.",
       });
     }
-  }, [clipboard, diagramData, setDiagramData, onItemSelect, toast]);
+  }, [setDiagramData, onItemSelect, toast, setSelectedItemIds, setSelectedItem]);
 
   const canPaste = useCallback(() => {
-    return !!clipboard;
-  }, [clipboard]);
+    return !!clipboardRef.current;
+  }, []);
 
   const clipboardTemplateNode = useMemo(() => getClipboardTemplateNode(clipboard), [clipboard]);
 

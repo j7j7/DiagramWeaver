@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import type { EditorCanvasHandle } from "@/components/editor/editor-canvas";
 import type { DiagramData } from "@/lib/types";
 import type { SelectedItem } from "@/components/editor/diagram-editor-types";
@@ -42,6 +42,9 @@ export interface UseDiagramEditorKeyboardParams {
   handleAutoLayout: () => void;
 }
 
+/** Shared so a keydown + clipboard event (or a duplicate listener) cannot paste twice. */
+let lastClipboardInvokeAt = { copy: 0, paste: 0 };
+
 /**
  * Global window `keydown` shortcuts for the diagram editor (same behavior as previous inline effect).
  */
@@ -79,6 +82,42 @@ export function useDiagramEditorKeyboard(p: UseDiagramEditorKeyboardParams): voi
     handleAutoLayout,
     animationToggleOnClickEnabled,
   } = p;
+
+  const handleMenuCopyRef = useRef(handleMenuCopy);
+  handleMenuCopyRef.current = handleMenuCopy;
+  const handleMenuPasteRef = useRef(handleMenuPaste);
+  handleMenuPasteRef.current = handleMenuPaste;
+  const isReadOnlyRef = useRef(isReadOnly);
+  isReadOnlyRef.current = isReadOnly;
+
+  // Stable keydown only. Listening to both keydown and the browser `paste`/`copy`
+  // events pasted twice (preventDefault on keydown does not always cancel `paste`).
+  useEffect(() => {
+    const invoke = (kind: "copy" | "paste") => {
+      if (isReadOnlyRef.current) return;
+      const now = performance.now();
+      if (now - lastClipboardInvokeAt[kind] < 200) return;
+      lastClipboardInvokeAt[kind] = now;
+      if (kind === "copy") handleMenuCopyRef.current();
+      else handleMenuPasteRef.current();
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isEventFromEditableElement(e)) return;
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === "c") {
+        e.preventDefault();
+        invoke("copy");
+      } else if (key === "v") {
+        e.preventDefault();
+        invoke("paste");
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -124,18 +163,6 @@ export function useDiagramEditorKeyboard(p: UseDiagramEditorKeyboardParams): voi
       if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "a" && !e.shiftKey) {
         e.preventDefault();
         handleSelectAll();
-      }
-
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "c" && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleMenuCopy();
-        return;
-      }
-
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "v" && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleMenuPaste();
-        return;
       }
 
       if ((isMac ? e.metaKey : e.ctrlKey) && e.key === "0" && !e.shiftKey && !e.altKey) {
@@ -294,8 +321,6 @@ export function useDiagramEditorKeyboard(p: UseDiagramEditorKeyboardParams): voi
     setAnimationConnectionsUserEnabled,
     setAnimationToggleOnClickEnabled,
     isReadOnly,
-    handleMenuCopy,
-    handleMenuPaste,
     presentationPlayerOpen,
     handleEnterPresentationPlayMode,
     simulationModeEnabled,
