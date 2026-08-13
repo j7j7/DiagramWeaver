@@ -2,6 +2,27 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-13 – Icon Border title not bold
+Icon Border **TITLE** defaults to normal weight (400), not semi-bold. The text edit toolbar Bold control now round-trips: un-bold no longer stays stuck at 600. Patch bumped.
+
+### 2026-08-13 – Icon Border default look
+New Icon Border cards match the styled sample: **680×440**, white fill, **32px TITLE**, tighter corner radius, orange border/shadow, half-size Compute Optimizer with no tile. Patch bumped.
+
+### 2026-08-13 – Canvas drag: restore pointer events
+Dragging canvas objects no longer sets `pointer-events-none` on the node (that cancelled HTML5 drag). Icon-slot hit-testing still disables the source only for the drop-point check. Patch bumped.
+
+### 2026-08-13 – Icon Border default AWS icon
+Icon Border defaults to **AWS Compute Optimizer** (`aws.compute.compute-optimizer`), half size, no icon tile border. Every palette or canvas icon dropped onto the slot is forced to those same size/chrome settings. Patch bumped.
+
+### 2026-08-13 – Drag canvas icon onto card slot
+Dropping an existing canvas icon onto a card icon-slot (Icon Border and other cards) copies that glyph into the slot. The source stays on the canvas (snaps back). Slot size / plate settings are kept. Patch bumped.
+
+### 2026-08-13 – Icon Border icon size + Icon Styling
+Icon Border corner icons use the standard **Normal / Half / Quarter / Double** size presets (same as canvas icons). The slot no longer fill-bleeds, so Visual styling **Icon Styling** (size, opacity, remove background, placement) applies. Card properties size control matches those presets. Patch bumped.
+
+### 2026-08-13 – Icon Border card
+New **`icon-border`** card (`generic.card.icon-border`): rounded-rectangle shell with a droppable icon in the top-left and a left-justified title spanning from the icon’s right edge to the card width. Card properties: icon size, fill/border/shadow/position, text alignment, title fill. Palette SVG **`icon-border.svg`**. Helpers in **`card-icon-border.ts`**. Patch bumped.
+
 ### 2026-08-13 – Ctrl/Cmd+V pastes a single copy
 Paste no longer inserts two sets. The copy/paste shortcut is **keydown only** (the extra document `copy`/`paste` listeners still ran after `preventDefault` on the key). Module-level debounce as a backstop. Patch bumped.
 

@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { CardElementData, CardElementStyle, CardIconPlacement } from "@/lib/card-types";
+import type { NodeSize } from "@/lib/types";
 import { CARD_ICON_PLACEMENTS } from "@/lib/card-icon-layout";
 import { updateCardElementTree } from "@/lib/card-utils";
 import {
@@ -98,6 +99,18 @@ import {
   type FramedHeadingEdge,
   type FramedHeadingTextAlign,
 } from "@/lib/card-framed-heading";
+import {
+  applyIconBorderNodeSize,
+  applyIconBorderTextAlign,
+  getIconBorderRegions,
+  getIconBorderTextAlign,
+  ICON_BORDER_ICON_ID,
+  ICON_BORDER_TITLE_ID,
+  isIconBorderCard,
+  parseIconBorderNodeSize,
+  updateIconBorderElementStyle,
+  type IconBorderTextAlign,
+} from "@/lib/card-icon-border";
 import {
   applyElementFeatureAccentColor,
   applyElementFeatureAccentLineHeight,
@@ -811,6 +824,12 @@ const FRAMED_HEADING_TEXT_ALIGN_OPTIONS: { value: FramedHeadingTextAlign; label:
   { value: "right", label: "Right" },
 ];
 
+const ICON_BORDER_TEXT_ALIGN_OPTIONS: { value: IconBorderTextAlign; label: string }[] = [
+  { value: "left", label: "Left" },
+  { value: "center", label: "Center" },
+  { value: "right", label: "Right" },
+];
+
 function FramedHeadingCardProperties({
   elements,
   onElementsChange,
@@ -911,6 +930,140 @@ function FramedHeadingCardProperties({
           </SelectContent>
         </Select>
       </div>
+    </div>
+  );
+}
+
+function IconBorderCardProperties({
+  elements,
+  onElementsChange,
+}: {
+  elements: CardElementData;
+  onElementsChange: (elements: CardElementData) => void;
+}) {
+  const { icon, title } = getIconBorderRegions(elements);
+  const iconSize = parseIconBorderNodeSize(icon);
+  const textAlign = getIconBorderTextAlign(title);
+
+  const setRegionStyle = (elementId: string, style: CardElementStyle) => {
+    onElementsChange(updateIconBorderElementStyle(elements, elementId, style));
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Rounded rectangle with a corner icon and a title along the top. Use Visual styling{" "}
+        <span className="font-medium">Background</span> for the interior fill and{" "}
+        <span className="font-medium">Border</span> for the outline. Drop an icon onto the
+        top-left slot on the canvas; it fills the slot.
+      </p>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Icon size</Label>
+        <Select
+          value={iconSize}
+          onValueChange={(value) =>
+            onElementsChange(applyIconBorderNodeSize(elements, value as NodeSize))
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="Normal" />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            <SelectItem value="normal" className="text-sm">Normal</SelectItem>
+            <SelectItem value="half" className="text-sm">Half</SelectItem>
+            <SelectItem value="quarter" className="text-sm">Quarter</SelectItem>
+            <SelectItem value="double" className="text-sm">Double</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Icon border (match card)</Label>
+        <Switch
+          checked={icon?.matchCardBorder ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, ICON_BORDER_ICON_ID, { matchCardBorder: checked }),
+            )
+          }
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm text-muted-foreground">Icon shadow</Label>
+        <Switch
+          checked={icon?.iconSlotShadow ?? false}
+          onCheckedChange={(checked) =>
+            onElementsChange(
+              updateCardElementTree(elements, ICON_BORDER_ICON_ID, { iconSlotShadow: checked }),
+            )
+          }
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Icon position (in slot)</Label>
+        <Select
+          value={icon?.iconPlacement ?? "center"}
+          onValueChange={(value) =>
+            onElementsChange(
+              updateCardElementTree(elements, ICON_BORDER_ICON_ID, {
+                iconPlacement: value as CardIconPlacement,
+              }),
+            )
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="Center" />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {CARD_ICON_PLACEMENTS.map(({ value, label }) => (
+              <SelectItem key={value} value={value} className="text-sm">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {icon ? (
+        <CardFillStyleControls
+          label="Icon region fill"
+          style={icon.style}
+          onChange={(style) => setRegionStyle(ICON_BORDER_ICON_ID, style)}
+        />
+      ) : null}
+
+      <div className="space-y-1">
+        <Label className="text-sm text-muted-foreground">Text alignment</Label>
+        <Select
+          value={textAlign}
+          onValueChange={(value) =>
+            onElementsChange(applyIconBorderTextAlign(elements, value as IconBorderTextAlign))
+          }
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {ICON_BORDER_TEXT_ALIGN_OPTIONS.map(({ value, label }) => (
+              <SelectItem key={value} value={value} className="text-sm">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {title ? (
+        <CardFillStyleControls
+          label="Title segment"
+          style={title.style}
+          onChange={(style) => setRegionStyle(ICON_BORDER_TITLE_ID, style)}
+          supportsMesh={false}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1746,6 +1899,9 @@ export function CardPropertiesPanel({
   }
   if (isFramedHeadingCard(cardTemplateId)) {
     return <FramedHeadingCardProperties elements={elements} onElementsChange={onElementsChange} />;
+  }
+  if (isIconBorderCard(cardTemplateId)) {
+    return <IconBorderCardProperties elements={elements} onElementsChange={onElementsChange} />;
   }
   if (isSidebarAccentCard(cardTemplateId)) {
     return <SidebarAccentCardProperties elements={elements} onElementsChange={onElementsChange} />;

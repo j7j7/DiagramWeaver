@@ -16,7 +16,7 @@ import {
   cardIconSlotContainerStyle,
 } from "@/lib/card-icon-layout";
 import { cardIconGlyphImageStyle, cardIconResolvedLucideColor } from "@/lib/card-icon-styling";
-import { iconDragItemToCardIconRef, isIconPaletteDragItem } from "@/lib/card-utils";
+import { iconDragItemToCardIconRef, isIconPaletteDragItem, mergeCardIconRefPreservingSlotVisuals } from "@/lib/card-utils";
 import {
   cardShellExitStaggerSegmentIndex,
   flattenCardElementsForSlideStaggerTiming,
@@ -131,6 +131,13 @@ import {
   isFramedHeadingTabSection,
   resolveFramedHeadingTextLayout,
 } from "@/lib/card-framed-heading";
+import {
+  applyIconBorderDroppedIconSettings,
+  resolveIconBorderHeaderLayout,
+  resolveIconBorderIconLayout,
+  resolveIconBorderTextLayout,
+  isIconBorderCard,
+} from "@/lib/card-icon-border";
 import { findCardElement } from "@/lib/card-utils";
 import { getCardBackgroundElementId, cardShellUsesFrostedInterior } from "@/lib/card-theme";
 import { FramedHeadingCardShell } from "@/components/diagram/shapes/card-framed-heading-shell";
@@ -587,6 +594,7 @@ function CardIconSlot({
     resolveDashboardStatDecorLayout(element.id, cardTemplateId, element.layout) ??
     resolveProfileDiagonalAvatarLayout(element.id, cardTemplateId, element.layout) ??
     resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ??
+    resolveIconBorderIconLayout(element.id, cardTemplateId, element.layout, element.iconRef) ??
     element.layout;
   const layoutCss = cardLayoutToCss(effectiveLayout);
   const decorOverlayStyle = dashboardStatDecorSlotStyle(element.id, cardTemplateId, effectiveLayout);
@@ -595,6 +603,7 @@ function CardIconSlot({
   const rawStyleCss = cardElementStyleToCss(element.style);
   const { styleCss, meshLayer } = cardElementBackgroundLayers(element, rawStyleCss);
   const isCircle = element.placeholder === "circle" || element.style?.borderRadius === 999;
+  const iconBorderCard = isIconBorderCard(cardTemplateId);
   const listItemPlainIcon =
     isListItemRowCard(cardTemplateId) &&
     element.id === LIST_ITEM_INDICATOR_ID &&
@@ -604,7 +613,9 @@ function CardIconSlot({
     isBulletListCubeId(element.id) &&
     element.kind === "icon-slot";
   const isSelected = cardSelectedElementId === element.id;
-  const fillSlot = element.iconFillSlot ?? element.placeholder === "circle";
+  const fillSlot = iconBorderCard
+    ? false
+    : (element.iconFillSlot ?? element.placeholder === "circle");
   const isDashboardActionIcon = isDashboardStatActionIcon(element.id, cardTemplateId);
   const useFillSlotGlyphLayout = fillSlot && !isDashboardActionIcon;
   const useShellBorder =
@@ -615,6 +626,8 @@ function CardIconSlot({
 
   type IconDropItem = {
     type?: string;
+    originalType?: string;
+    id?: string;
     provider?: string;
     category?: string;
     file?: string;
@@ -631,15 +644,29 @@ function CardIconSlot({
     { isOver: boolean; canDrop: boolean }
   >(
     () => ({
-      accept: ItemTypes.DIAGRAM_NODE,
-      canDrop: (item) => !isReadOnly && isIconPaletteDragItem(item),
-      drop: (item) => {
-        if (!item.type) return;
-        let iconRef = iconDragItemToCardIconRef({ ...item, type: item.type });
+      accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE],
+      canDrop: (item, monitor) => {
+        if (isReadOnly) return false;
+        const dragType = monitor.getItemType();
+        if (dragType === ItemTypes.CANVAS_NODE) {
+          return isIconPaletteDragItem({ type: item.originalType ?? "" });
+        }
+        return isIconPaletteDragItem(item);
+      },
+      drop: (item, monitor) => {
+        const dragType = monitor.getItemType();
+        const sourceType =
+          dragType === ItemTypes.CANVAS_NODE ? item.originalType : item.type;
+        if (!sourceType) return;
+        let iconRef = iconDragItemToCardIconRef({ ...item, type: sourceType });
+        iconRef = iconBorderCard
+          ? applyIconBorderDroppedIconSettings(iconRef)
+          : mergeCardIconRefPreservingSlotVisuals(iconRef, element.iconRef);
         const forceNoIconBackground =
           element.iconDecorGradient ||
           listItemPlainIcon ||
           bulletListItemIcon ||
+          iconBorderCard ||
           ((element.iconFillSlot ?? element.placeholder === "circle") && !isDashboardActionIcon);
         if (forceNoIconBackground) {
           iconRef = { ...iconRef, noIconBackground: true };
@@ -651,7 +678,7 @@ function CardIconSlot({
         canDrop: monitor.canDrop(),
       }),
     }),
-    [element.id, element.iconDecorGradient, element.iconFillSlot, element.placeholder, cardTemplateId, isDashboardActionIcon, isReadOnly, listItemPlainIcon, bulletListItemIcon, onCardIconDrop],
+    [element.id, element.iconDecorGradient, element.iconFillSlot, element.placeholder, element.iconRef, cardTemplateId, isDashboardActionIcon, isReadOnly, listItemPlainIcon, bulletListItemIcon, iconBorderCard, onCardIconDrop],
   );
 
   const ref = useCallback(
@@ -666,6 +693,8 @@ function CardIconSlot({
   const placement = element.iconPlacement ?? (isDashboardActionIcon ? "top-right" : "center");
   const { style: placementStyle } = cardIconPlacementToAbsoluteStyle(placement);
   const iconSizeMode = iconRef?.iconSizeMode;
+  const glyphNodeSize =
+    iconBorderCard && (iconSizeMode ?? "fixed") === "scaled" ? "normal" : iconRef?.nodeSize;
   const noIconBackground = (iconRef?.noIconBackground ?? false) || listItemPlainIcon || bulletListItemIcon;
   const hideIconTile = isDashboardActionIcon || noIconBackground || (fillSlot && !isDashboardActionIcon);
   const rawIconOpacity = iconRef?.iconOpacity;
@@ -767,7 +796,7 @@ function CardIconSlot({
                 ? dashboardStatActionGlyphStyle(element, iconRef, placement)
                 : useFillSlotGlyphLayout
                   ? {}
-                  : { ...placementStyle, ...cardIconGlyphSizeStyle(iconRef.nodeSize, iconSizeMode, useFillSlotGlyphLayout, noIconBackground) }),
+                  : { ...placementStyle, ...cardIconGlyphSizeStyle(glyphNodeSize, iconSizeMode, useFillSlotGlyphLayout, noIconBackground) }),
               containerType: "size",
             }}
           >
@@ -948,7 +977,8 @@ function CardElementRenderer({
         resolveProfileSocialDescriptionLayout(element.id, cardTemplateId, element.layout) ??
         resolveBulletListTitleTextLayout(element.id, cardTemplateId, element.layout) ??
         resolveElementFeatureNumberLayout(element.id, cardTemplateId, element.layout) ??
-        resolveFramedHeadingTextLayout(element.id, cardTemplateId, element.layout)
+        resolveFramedHeadingTextLayout(element.id, cardTemplateId, element.layout) ??
+        resolveIconBorderTextLayout(element.id, cardTemplateId, element.layout)
       : element.kind === "section"
         ? resolveProfileFeatureBodyLayout(element.id, cardTemplateId, element.layout) ??
           resolveProfileDiagonalTextStackLayout(element.id, cardTemplateId, element.layout) ??
@@ -957,10 +987,12 @@ function CardElementRenderer({
           resolveElementFeatureContentColLayout(element.id, cardTemplateId, element.layout) ??
           resolveDetailPostBodySectionLayout(element.id, cardTemplateId, element.layout) ??
           resolveDetailPostFooterSectionLayout(element.id, cardTemplateId, element.layout) ??
-          resolveProfileSocialSectionLayout(element.id, cardTemplateId, element.layout)
+          resolveProfileSocialSectionLayout(element.id, cardTemplateId, element.layout) ??
+          resolveIconBorderHeaderLayout(element.id, cardTemplateId, element.layout)
         : element.kind === "icon-slot"
           ? resolveProfileDiagonalAvatarLayout(element.id, cardTemplateId, element.layout) ??
             resolveProfileSocialAvatarLayout(element.id, cardTemplateId, element.layout) ??
+            resolveIconBorderIconLayout(element.id, cardTemplateId, element.layout, element.iconRef) ??
             element.layout
           : element.kind === "decor"
             ? resolveSidebarAccentBarLayout(element.id, cardTemplateId, element.layout) ??

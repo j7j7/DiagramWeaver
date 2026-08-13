@@ -434,7 +434,10 @@ export function applyTextStylingToCardElement(
       const r = { ...run };
       if ("fontSize" in styling) delete r.lineFontSize;
       if ("fontFamily" in styling) delete r.lineFontFamily;
-      if ("fontWeight" in styling) delete r.lineFontWeight;
+      if ("fontWeight" in styling) {
+        delete r.lineFontWeight;
+        delete r.bold;
+      }
       if ("textJustify" in styling) delete r.lineJustify;
       return r;
     });

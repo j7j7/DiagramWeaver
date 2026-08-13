@@ -103,6 +103,7 @@ import {
   updateCardElementStyleTree,
 } from '@/lib/card-theme';
 import { framedHeadingPanelBackgroundVisual } from '@/lib/card-framed-heading';
+import { applyIconBorderNodeSize, isIconBorderCard } from '@/lib/card-icon-border';
 import { getCardTemplateIdFromNodeType } from '@/lib/card-utils';
 import type { CardElementData, CardElementStyle } from '@/lib/card-types';
 import {
@@ -1879,11 +1880,15 @@ export function ContextToolbar({
           ...prev,
           nodes: prev.nodes.map((n) => {
             if (n.id !== cardElementSelection.nodeId || !n.card?.elements) return n;
+            let elements = updateCardElementTree(n.card.elements, cardElementSelection.elementId, patch);
+            if (isIconBorderCard(n.card.templateId) && iconRefPatch.nodeSize) {
+              elements = applyIconBorderNodeSize(elements, iconRefPatch.nodeSize);
+            }
             return {
               ...n,
               card: {
                 ...n.card,
-                elements: updateCardElementTree(n.card.elements, cardElementSelection.elementId, patch),
+                elements,
               },
             };
           }),

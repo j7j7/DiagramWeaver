@@ -141,7 +141,8 @@ import { canBooleanCombineNodes } from "@/lib/shape-to-polygon";
 import { combineShapeNodes } from "@/lib/vector-path-boolean";
 import type { ShapeBooleanOperation } from "@/lib/vector-path-types";
 import { cardTemplateSwapMenuOptions, swapCardTemplate } from "@/lib/card-template-swap";
-import { isCardNodeType, findCardElement, updateCardElementTree, resolveCardIconSlotFromPoint } from "@/lib/card-utils";
+import { isCardNodeType, findCardElement, mergeCardIconRefPreservingSlotVisuals, updateCardElementTree, resolveCardIconSlotFromPoint } from "@/lib/card-utils";
+import { commitIconBorderDroppedIcon, isIconBorderCard } from "@/lib/card-icon-border";
 import { normalizeDashboardDecorIconRef } from "@/lib/card-dashboard-stat";
 import type { CardIconRef } from "@/lib/card-types";
 import {
@@ -1290,12 +1291,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         ...prev,
         nodes: prev.nodes.map((n) => {
           if (n.id !== nodeId || !n.card?.elements) return n;
-          const iconRefNormalized = normalizeDashboardDecorIconRef(n.card.elements, elementId, iconRef);
+          const existing = findCardElement(n.card.elements, elementId)?.iconRef;
+          const merged = mergeCardIconRefPreservingSlotVisuals(iconRef, existing);
+          const iconRefNormalized = normalizeDashboardDecorIconRef(n.card.elements, elementId, merged);
+          const elements = isIconBorderCard(n.card.templateId)
+            ? commitIconBorderDroppedIcon(n.card.elements, elementId, iconRefNormalized)
+            : updateCardElementTree(n.card.elements, elementId, { iconRef: iconRefNormalized });
           return {
             ...n,
             card: {
               ...n.card,
-              elements: updateCardElementTree(n.card.elements, elementId, { iconRef: iconRefNormalized }),
+              elements,
             },
           };
         }),

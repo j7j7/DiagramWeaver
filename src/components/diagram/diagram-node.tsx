@@ -17,7 +17,7 @@ import {
   type IconBevelSampleNode,
 } from "@/lib/icon-bevel";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
-import { getPlainTextFromRuns, labelToRuns, normalizeRuns } from "@/lib/rich-text";
+import { getPlainTextFromRuns, labelToRuns, normalizeRuns, resolvedFontWeightFromRuns } from "@/lib/rich-text";
 import {
   isAdditiveLabelSelectionClick,
   isPrintableLabelEditKey,
@@ -29,7 +29,8 @@ import { useGlobalProperties, useGlobalVariableContext } from "./global-properti
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isMindmapNodeType, isShapeNodeType, isTimelineNodeType } from "@/lib/utils";
-import { isCardNodeType, findCardElement, updateCardElementTree } from "@/lib/card-utils";
+import { isCardNodeType, findCardElement, mergeCardIconRefPreservingSlotVisuals, updateCardElementTree } from "@/lib/card-utils";
+import { commitIconBorderDroppedIcon, isIconBorderCard } from "@/lib/card-icon-border";
 import { isBorderNodeType } from "@/lib/border-utils";
 import { isVectorPathNodeType } from "@/lib/vector-path-utils";
 import type { VectorPathRing } from "@/lib/vector-path-types";
@@ -2454,11 +2455,16 @@ function DiagramNodeInner({
       const richTextPatch = isBulletListItem
         ? normalizeBulletListItemDisplayRuns(normNew)
         : normNew;
+      const fontWeightPatch = isTag ? undefined : resolvedFontWeightFromRuns(richTextPatch);
       let elements = unchanged
         ? node.card.elements
         : updateCardElementTree(node.card.elements, elementId, isTag
             ? { tag: nextPlain }
-            : { text: nextPlain, richText: richTextPatch });
+            : {
+                text: nextPlain,
+                richText: richTextPatch,
+                ...(fontWeightPatch ? { fontWeight: fontWeightPatch } : {}),
+              });
       if (!unchanged && isBulletListItem) {
         elements = applyBulletListUniformItemFontSize(elements);
       }
@@ -2475,8 +2481,12 @@ function DiagramNodeInner({
   const handleCardIconDrop = useCallback(
     (elementId: string, iconRef: CardIconRef) => {
       if (isReadOnly || !onUpdate || !node.card?.elements) return;
-      const iconRefNormalized = normalizeDashboardDecorIconRef(node.card.elements, elementId, iconRef);
-      const elements = updateCardElementTree(node.card.elements, elementId, { iconRef: iconRefNormalized });
+      const existing = findCardElement(node.card.elements, elementId)?.iconRef;
+      const merged = mergeCardIconRefPreservingSlotVisuals(iconRef, existing);
+      const iconRefNormalized = normalizeDashboardDecorIconRef(node.card.elements, elementId, merged);
+      const elements = isIconBorderCard(node.card.templateId)
+        ? commitIconBorderDroppedIcon(node.card.elements, elementId, iconRefNormalized)
+        : updateCardElementTree(node.card.elements, elementId, { iconRef: iconRefNormalized });
       onUpdate({ ...node, card: { ...node.card, elements } });
     },
     [isReadOnly, onUpdate, node],

@@ -220,6 +220,11 @@
           "type": "shape"
         },
         {
+          "name": "Icon Border",
+          "file": "icon-border.svg",
+          "type": "shape"
+        },
+        {
           "name": "Element Feature",
           "file": "element-feature.svg",
           "type": "shape"

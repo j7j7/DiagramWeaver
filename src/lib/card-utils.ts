@@ -1,4 +1,5 @@
 import type { CardElementData, CardIconRef, NodeCardSpec } from "@/lib/card-types";
+import type { DiagramNodeData } from "@/lib/types";
 import { CARD_NODE_TYPE_PREFIX } from "@/lib/card-types";
 import { AGENDA_TEMPLATE_ID, createDefaultAgendaRoot } from "@/lib/card-agenda";
 import { getCardTemplate } from "@/lib/card-templates";
@@ -179,6 +180,10 @@ export function iconDragItemToCardIconRef(item: {
   iconName?: string;
   emoji?: string;
   iconColor?: string;
+  iconColorEnabled?: boolean;
+  iconGreyscale?: boolean;
+  iconOpacity?: number;
+  noIconBackground?: boolean;
   imageUrl?: string;
   imageOptions?: CardIconRef["imageOptions"];
 }): CardIconRef {
@@ -191,16 +196,59 @@ export function iconDragItemToCardIconRef(item: {
     iconName: item.iconName,
     emoji: item.emoji,
     iconColor: item.iconColor,
+    iconColorEnabled: item.iconColorEnabled,
+    iconGreyscale: item.iconGreyscale,
+    iconOpacity: item.iconOpacity,
+    noIconBackground: item.noIconBackground,
     imageUrl: item.imageUrl,
     imageOptions: item.imageOptions,
   };
 }
 
+/** Keep slot size / plate settings when a new glyph is dropped into an icon-slot. */
+export function mergeCardIconRefPreservingSlotVisuals(
+  incoming: CardIconRef,
+  existing?: CardIconRef,
+): CardIconRef {
+  if (!existing) return incoming;
+  return {
+    ...incoming,
+    ...(existing.nodeSize ? { nodeSize: existing.nodeSize } : {}),
+    ...(existing.iconSizeMode ? { iconSizeMode: existing.iconSizeMode } : {}),
+    ...(existing.iconOpacity != null ? { iconOpacity: existing.iconOpacity } : {}),
+    ...(existing.noIconBackground != null ? { noIconBackground: existing.noIconBackground } : {}),
+    ...(existing.iconColorEnabled != null ? { iconColorEnabled: existing.iconColorEnabled } : {}),
+    ...(existing.iconGreyscale != null ? { iconGreyscale: existing.iconGreyscale } : {}),
+  };
+}
+
+/** Canvas icon/resource node → card icon-slot payload, or null if it is not an icon tile. */
+export function canvasNodeToCardIconRef(node: DiagramNodeData | undefined): CardIconRef | null {
+  if (!node?.type || !isIconPaletteDragItem({ type: node.type })) return null;
+  return iconDragItemToCardIconRef({
+    type: node.type,
+    provider: node.provider,
+    category: node.category,
+    file: node.file,
+    iconType: node.iconType,
+    iconName: node.iconName,
+    emoji: node.emoji,
+    iconColor: node.iconColor,
+    iconColorEnabled: node.iconColorEnabled,
+    iconGreyscale: node.iconGreyscale,
+    iconOpacity: node.iconOpacity,
+    noIconBackground: node.noIconBackground,
+    imageUrl: node.imageUrl,
+    imageOptions: node.imageOptions,
+  });
+}
+
 export function resolveCardIconDropFromPoint(
   clientX: number,
   clientY: number,
+  excludeNodeId?: string,
 ): { nodeId: string; elementId: string } | null {
-  return resolveCardIconSlotFromPoint(clientX, clientY);
+  return resolveCardIconSlotFromPoint(clientX, clientY, undefined, excludeNodeId);
 }
 
 /** Bullet list rows: drop on row text/section still targets the row icon-slot marker. */
@@ -228,26 +276,50 @@ export function resolveCardIconSlotFromPoint(
   clientX: number,
   clientY: number,
   nodeId?: string,
+  excludeNodeId?: string,
 ): { nodeId: string; elementId: string } | null {
   if (typeof document === "undefined") return null;
-  const stack =
-    typeof document.elementsFromPoint === "function"
-      ? document.elementsFromPoint(clientX, clientY)
-      : [document.elementFromPoint(clientX, clientY)].filter(Boolean);
-  for (const el of stack) {
-    if (!(el instanceof Element)) continue;
-    const slot = el.closest("[data-dw-card-icon-slot]") as HTMLElement | null;
-    if (slot) {
-      const hitNodeId = slot.dataset.dwCardNodeId;
-      const elementId = slot.dataset.dwCardElementId;
-      if (hitNodeId && elementId && (!nodeId || hitNodeId === nodeId)) {
-        return { nodeId: hitNodeId, elementId };
-      }
+
+  let restorePointerEvents: (() => void) | undefined;
+  if (excludeNodeId) {
+    const dragged = document.querySelector(
+      `[data-node-id="${CSS.escape(excludeNodeId)}"]`,
+    ) as HTMLElement | null;
+    if (dragged) {
+      const prev = dragged.style.pointerEvents;
+      dragged.style.pointerEvents = "none";
+      restorePointerEvents = () => {
+        dragged.style.pointerEvents = prev;
+      };
     }
-    const rowSlot = resolveRowSectionIconSlotFromElement(el, nodeId);
-    if (rowSlot) return rowSlot;
   }
-  return null;
+
+  try {
+    const stack =
+      typeof document.elementsFromPoint === "function"
+        ? document.elementsFromPoint(clientX, clientY)
+        : [document.elementFromPoint(clientX, clientY)].filter(Boolean);
+    for (const el of stack) {
+      if (!(el instanceof Element)) continue;
+      if (excludeNodeId) {
+        const owner = el.closest("[data-node-id]");
+        if (owner?.getAttribute("data-node-id") === excludeNodeId) continue;
+      }
+      const slot = el.closest("[data-dw-card-icon-slot]") as HTMLElement | null;
+      if (slot) {
+        const hitNodeId = slot.dataset.dwCardNodeId;
+        const elementId = slot.dataset.dwCardElementId;
+        if (hitNodeId && elementId && (!nodeId || hitNodeId === nodeId)) {
+          return { nodeId: hitNodeId, elementId };
+        }
+      }
+      const rowSlot = resolveRowSectionIconSlotFromElement(el, nodeId);
+      if (rowSlot) return rowSlot;
+    }
+    return null;
+  } finally {
+    restorePointerEvents?.();
+  }
 }
 
 export function isIconPaletteDragItem(item: { type?: string }): boolean {

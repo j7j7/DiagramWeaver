@@ -15,6 +15,7 @@ import {
 import { collectMindmapDragCoMembers } from "@/lib/mindmap-layout";
 import { getConnectorLikeSpinePlacementAnchor } from "@/lib/line-curve-path";
 import {
+  canvasNodeToCardIconRef,
   iconDragItemToCardIconRef,
   isIconPaletteDragItem,
   resolveCardIconDropFromPoint,
@@ -556,8 +557,32 @@ export function useCanvasDragDrop({
           }
         }
       } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
-        // Skip move operation if dropped on scratchpad
-        if (!isDroppedOnScratchpad) {
+        const clientOffsetForIcon = monitor.getClientOffset();
+        let assignedCanvasIconToSlot = false;
+        const soloCanvasDrag =
+          selectedItemIds.size <= 1 || !selectedItemIds.has(item.id);
+        if (
+          soloCanvasDrag &&
+          itemType === ItemTypes.CANVAS_NODE &&
+          clientOffsetForIcon &&
+          onCardIconDrop
+        ) {
+          const sourceNode = nodesById[item.id];
+          const iconRef = canvasNodeToCardIconRef(sourceNode);
+          if (iconRef) {
+            const slot = resolveCardIconDropFromPoint(
+              clientOffsetForIcon.x,
+              clientOffsetForIcon.y,
+              item.id,
+            );
+            if (slot && slot.nodeId !== item.id) {
+              onCardIconDrop(slot.nodeId, slot.elementId, iconRef);
+              assignedCanvasIconToSlot = true;
+            }
+          }
+        }
+        // Skip move operation if dropped on scratchpad or assigned into a card icon-slot
+        if (!isDroppedOnScratchpad && !assignedCanvasIconToSlot) {
         // Check if item is in multi-select first, then check group membership
         // Multi-select takes priority over group membership when multiple items are selected
         const group = getItemGroup(item.id, diagramData);
@@ -845,6 +870,20 @@ export function useCanvasDragDrop({
       const droppedOnScratch = Boolean(scratchpadElement && hit && scratchpadElement.contains(hit));
       if (droppedOnScratch) return;
 
+      const soloCanvasDrag =
+        selectedItemIds.size <= 1 || !selectedItemIds.has(id);
+      if (soloCanvasDrag && itemType === ItemTypes.CANVAS_NODE && onCardIconDrop) {
+        const sourceNode = nodesById[id];
+        const iconRef = canvasNodeToCardIconRef(sourceNode);
+        if (iconRef) {
+          const slot = resolveCardIconDropFromPoint(clientEndX, clientEndY, id);
+          if (slot && slot.nodeId !== id) {
+            onCardIconDrop(slot.nodeId, slot.elementId, iconRef);
+            return;
+          }
+        }
+      }
+
       const targetGroupIdForFreeflow: string | null = null;
 
       if (isDiagramNodeLocked(diagramData.nodes, id) && !zonesById[id]) {
@@ -934,6 +973,7 @@ export function useCanvasDragDrop({
     zonesById,
     selectedItemIds,
     diagramData,
+    onCardIconDrop,
   ]);
 
   // Interaction recorder playback — apply diagram moves without HTML5 drag.

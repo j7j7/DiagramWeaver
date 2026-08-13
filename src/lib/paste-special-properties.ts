@@ -31,6 +31,15 @@ import {
   parseFramedHeadingTabWidthPct,
 } from "@/lib/card-framed-heading";
 import {
+  applyIconBorderNodeSize,
+  applyIconBorderTextAlign,
+  getIconBorderRegions,
+  getIconBorderTextAlign,
+  ICON_BORDER_ICON_ID,
+  ICON_BORDER_TEMPLATE_ID,
+  parseIconBorderNodeSize,
+} from "@/lib/card-icon-border";
+import {
   isConnectorLineNodeType,
   isIconOrEmojiType,
   isMindmapNodeType,
@@ -435,7 +444,7 @@ function applyCardColourAspect(source: DiagramNodeData, target: DiagramNodeData)
   };
 }
 
-/** Paste special Properties: framed-heading tab placement/size/text align. */
+/** Paste special Properties: framed-heading tab placement/size/text align; icon-border icon size/text align. */
 function applyCardPropertiesAspect(source: DiagramNodeData, target: DiagramNodeData): DiagramNodeData {
   const srcEls = source.card?.elements;
   const tgtEls = target.card?.elements;
@@ -444,27 +453,52 @@ function applyCardPropertiesAspect(source: DiagramNodeData, target: DiagramNodeD
     source.card?.templateId ?? getCardTemplateIdFromNodeType(source.type) ?? undefined;
   const tgtTemplate =
     target.card?.templateId ?? getCardTemplateIdFromNodeType(target.type) ?? undefined;
-  if (srcTemplate !== FRAMED_HEADING_TEMPLATE_ID || tgtTemplate !== FRAMED_HEADING_TEMPLATE_ID) {
-    return target;
+  if (srcTemplate !== tgtTemplate) return target;
+
+  if (srcTemplate === FRAMED_HEADING_TEMPLATE_ID) {
+    const { headingTab, heading } = getFramedHeadingRegions(srcEls);
+    let elements = tgtEls;
+    if (headingTab) {
+      elements = applyFramedHeadingEdge(elements, getFramedHeadingEdge(headingTab));
+      elements = applyFramedHeadingAlign(elements, getFramedHeadingAlign(headingTab));
+      elements = applyFramedHeadingTabWidthPct(elements, parseFramedHeadingTabWidthPct(headingTab));
+    }
+    if (heading) {
+      elements = applyFramedHeadingTextAlign(elements, getFramedHeadingTextAlign(heading));
+    }
+    return {
+      ...target,
+      card: {
+        ...target.card!,
+        elements,
+      },
+    };
   }
 
-  const { headingTab, heading } = getFramedHeadingRegions(srcEls);
-  let elements = tgtEls;
-  if (headingTab) {
-    elements = applyFramedHeadingEdge(elements, getFramedHeadingEdge(headingTab));
-    elements = applyFramedHeadingAlign(elements, getFramedHeadingAlign(headingTab));
-    elements = applyFramedHeadingTabWidthPct(elements, parseFramedHeadingTabWidthPct(headingTab));
+  if (srcTemplate === ICON_BORDER_TEMPLATE_ID) {
+    const { icon, title } = getIconBorderRegions(srcEls);
+    let elements = tgtEls;
+    if (icon) {
+      elements = applyIconBorderNodeSize(elements, parseIconBorderNodeSize(icon));
+      elements = updateCardElementTree(elements, ICON_BORDER_ICON_ID, {
+        matchCardBorder: icon.matchCardBorder,
+        iconSlotShadow: icon.iconSlotShadow,
+        iconPlacement: icon.iconPlacement,
+      });
+    }
+    if (title) {
+      elements = applyIconBorderTextAlign(elements, getIconBorderTextAlign(title));
+    }
+    return {
+      ...target,
+      card: {
+        ...target.card!,
+        elements,
+      },
+    };
   }
-  if (heading) {
-    elements = applyFramedHeadingTextAlign(elements, getFramedHeadingTextAlign(heading));
-  }
-  return {
-    ...target,
-    card: {
-      ...target.card!,
-      elements,
-    },
-  };
+
+  return target;
 }
 
 function applyColourAspect(source: DiagramNodeData, target: DiagramNodeData): DiagramNodeData {

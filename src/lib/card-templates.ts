@@ -7,6 +7,7 @@ import {
   buildElementFeatureRoot,
   ELEMENT_FEATURE_VARIANT_VIOLET,
 } from "@/lib/card-element-feature";
+import { ICON_BORDER_TEMPLATE } from "@/lib/card-icon-border";
 
 const TEAL = "#2ab7bc";
 const SLATE_DARK = "#2d3748";
@@ -640,6 +641,8 @@ export const CARD_TEMPLATES: Record<string, CardTemplate> = {
     },
   },
 
+  "icon-border": ICON_BORDER_TEMPLATE,
+
   "sidebar-accent": {
     id: "sidebar-accent",
     name: "Sidebar Accent",
@@ -1157,6 +1160,33 @@ const CARD_PALETTE_NODE_DEFAULTS = {
     textDropShadowEnabled: false,
     cornerRadius: 0.15,
     borderColor: "#315d96",
+  },
+  "icon-border": {
+    sizeMode: "custom",
+    borderStyle: "solid",
+    borderColors: ["#ed7100", "#c2410c"],
+    borderWidth: 2,
+    backgroundStyle: "none",
+    backgroundOpacity: 1,
+    lineStyle: "solid",
+    lineColor: "#ea580c",
+    lineWidth: 3,
+    lineOpacity: 1,
+    shadow: true,
+    shadowColor: "#ca8a04",
+    shadowOpacity: 0.35,
+    shadowBlur: 7,
+    textColor: "#374151",
+    textOpacity: 1,
+    textGlowBlur: 0,
+    textGlowColor: "#d8b4fe",
+    textJustify: "left",
+    textOutlineWidth: 0,
+    textVerticalPosition: "middle",
+    fontSize: 32,
+    fontWeight: "400",
+    cornerRadius: 0.04,
+    borderColor: "#ed7100",
   },
   "sidebar-accent": {
     sizeMode: "custom",

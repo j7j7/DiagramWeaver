@@ -36,6 +36,30 @@ export function labelToRuns(label: string | undefined): RichTextRun[] {
   return [{ text: label }];
 }
 
+function isCssFontWeightBold(fw: string | number | undefined): boolean {
+  if (fw == null) return false;
+  const s = String(fw).trim().toLowerCase();
+  if (s === "bold" || s === "bolder") return true;
+  if (s === "normal" || s === "lighter") return false;
+  const n = parseInt(s, 10);
+  return !Number.isNaN(n) && n >= 600;
+}
+
+/** Base element weight after an editor Bold toggle: un-bold → 400, all-bold → 700. */
+export function resolvedFontWeightFromRuns(
+  runs: RichTextRun[],
+): DiagramNodeData["fontWeight"] | undefined {
+  const textRuns = runs.filter((r) => r.text && r.text !== "\n");
+  if (textRuns.length === 0) return undefined;
+  const allUnbold = textRuns.every((r) => !r.bold && !isCssFontWeightBold(r.lineFontWeight));
+  if (allUnbold) return "400";
+  const anyBoldTag = textRuns.some((r) => r.bold);
+  if (anyBoldTag && textRuns.every((r) => r.bold || isCssFontWeightBold(r.lineFontWeight))) {
+    return "700";
+  }
+  return undefined;
+}
+
 function wrapRun(run: RichTextRun): string {
   let html = escapeHtml(run.text).replace(/\n/g, "<br>");
   if (run.underline) html = `<u>${html}</u>`;
@@ -280,16 +304,27 @@ export function htmlToRuns(html: string, node?: DiagramNodeData | null): RichTex
       const nextFmt = { ...fmt };
       const st = (el as HTMLElement).style;
       const fw = st.fontWeight;
-      if (fw && fw !== "inherit" && fw !== "normal" && fw !== "400") {
+      const childBlock = { ...effectiveBlockFormat };
+      if (fw && fw !== "inherit") {
         const n = parseInt(String(fw), 10);
-        if (fw === "bold" || fw === "bolder" || (!Number.isNaN(n) && n >= 600)) nextFmt.bold = true;
+        const isNormal =
+          fw === "normal" || fw === "lighter" || n === 400 || n === 300 || n === 200 || n === 100;
+        const isBold = fw === "bold" || fw === "bolder" || (!Number.isNaN(n) && n >= 600);
+        if (isNormal) {
+          nextFmt.bold = false;
+          childBlock.lineFontWeight = "400";
+        } else if (isBold) {
+          nextFmt.bold = true;
+          childBlock.lineFontWeight = Number.isNaN(n) ? "700" : String(n);
+        } else if (!Number.isNaN(n)) {
+          childBlock.lineFontWeight = String(n);
+        }
       }
       const fs = st.fontStyle;
       if (fs === "italic" || fs === "oblique") nextFmt.italic = true;
       const td = String(st.textDecorationLine || st.textDecoration || "");
       if (td.includes("underline")) nextFmt.underline = true;
       const alignFromSpan = normalizeTextAlignToLineJustify(st.textAlign);
-      const childBlock = { ...effectiveBlockFormat };
       if (alignFromSpan) childBlock.lineJustify = alignFromSpan;
       stack.push(nextFmt);
       for (const child of el.childNodes) visit(child, childBlock);

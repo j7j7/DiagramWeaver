@@ -454,6 +454,16 @@ function CardPaletteGlyph({ type, ...props }: React.SVGProps<SVGSVGElement> & { 
       </svg>
     );
   }
+  if (slug === "icon-border") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden {...props}>
+        <rect x="3" y="3.5" width="18" height="17" rx="3" fill="rgba(120,120,120,0.18)" stroke="#ed7100" strokeWidth={1.3} />
+        <rect x="3" y="3.5" width="6.2" height="6.2" rx="1.1" fill="#ed7100" />
+        <path d="M4.7 6.6h2.8M6.1 5.2v2.8" stroke="#fff" strokeWidth={0.85} strokeLinecap="round" />
+        <rect x="10.4" y="5.35" width="8.2" height="2.15" rx="0.55" fill="#374151" opacity={0.9} />
+      </svg>
+    );
+  }
   if (slug === "element-feature") {
     const bgId = "card-element-feature-bg";
     const lineId = "card-element-feature-line";

@@ -35,6 +35,10 @@ import {
   isFramedHeadingFillVisible,
   partitionFramedHeadingVisualStylingPatch,
 } from "@/lib/card-framed-heading";
+import {
+  ICON_BORDER_ICON_ID,
+  ICON_BORDER_TEMPLATE_ID,
+} from "@/lib/card-icon-border";
 
 /** Profile Social theme apply — kept here to avoid card-theme ↔ card-profile-social import cycle. */
 const PROFILE_SOCIAL_TEMPLATE_ID = "profile-social";
@@ -476,6 +480,10 @@ export function applyThemeToCardElements(
         borderWidth: el.style?.borderWidth ?? 2,
         borderStyle: "solid",
       });
+    }
+
+    if (templateId === ICON_BORDER_TEMPLATE_ID && el.id === ICON_BORDER_ICON_ID) {
+      return el;
     }
 
     if (el.id === "hero" || (el.kind === "icon-slot" && !el.iconDecorGradient)) {

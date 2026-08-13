@@ -10,6 +10,7 @@ import { isProfileDiagonalSplitCard } from "@/lib/card-profile-diagonal-split";
 import { isSidebarAccentCard } from "@/lib/card-sidebar-accent";
 import { isElementFeatureCard } from "@/lib/card-element-feature";
 import { isFramedHeadingCard } from "@/lib/card-framed-heading";
+import { isIconBorderCard } from "@/lib/card-icon-border";
 
 export const COMPACT_HORIZONTAL_TEMPLATE_ID = "compact-horizontal";
 export const COMPACT_AVATAR_ID = "avatar";
@@ -71,7 +72,8 @@ export function cardTemplateHasDedicatedPropertiesPanel(templateId: string | und
     isBulletListCard(templateId) ||
     isSidebarAccentCard(templateId) ||
     isElementFeatureCard(templateId) ||
-    isFramedHeadingCard(templateId)
+    isFramedHeadingCard(templateId) ||
+    isIconBorderCard(templateId)
   );
 }
 
