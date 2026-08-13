@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { startInteractionRecordingCapture } from "@/lib/interaction-recording-capture";
 import {
   prepareRecordingForPlayback,
@@ -22,42 +22,15 @@ import type {
 } from "@/lib/interaction-recording-types";
 import { RECORDER_START_KEY, RECORDER_STOP_KEY } from "@/lib/interaction-recording-types";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
+import {
+  InteractionRecorderContext,
+  type InteractionRecorderContextValue,
+} from "./interaction-recorder-context";
 import { InteractionRecorderDialog } from "./interaction-recorder-dialog";
 import { InteractionRecorderIndicator } from "./interaction-recorder-indicator";
 import { InteractionRecorderPlaybackOverlay } from "./interaction-recorder-playback-overlay";
 
-interface InteractionRecorderContextValue {
-  status: InteractionRecordingStatus;
-  armed: boolean;
-  setArmed: (armed: boolean) => void;
-  dialogOpen: boolean;
-  setDialogOpen: (open: boolean) => void;
-  library: InteractionRecordingLibraryEntry[];
-  pendingRecording: InteractionRecording | null;
-  playbackProgress: { current: number; total: number } | null;
-  playbackPaused: boolean;
-  startRecording: () => void;
-  stopRecording: () => void;
-  dismissPendingSave: () => void;
-  savePendingRecording: (title: string, description: string, saveToLibrary: boolean) => void;
-  loadFromFile: (file: File) => Promise<void>;
-  playRecording: (recording: InteractionRecording, speed?: number) => void;
-  pausePlayback: () => void;
-  resumePlayback: () => void;
-  stopPlayback: () => void;
-  removeFromLibrary: (id: string) => void;
-  refreshLibrary: () => void;
-}
-
-const InteractionRecorderContext = createContext<InteractionRecorderContextValue | null>(null);
-
-export function useInteractionRecorder(): InteractionRecorderContextValue {
-  const ctx = useContext(InteractionRecorderContext);
-  if (!ctx) {
-    throw new Error("useInteractionRecorder must be used within InteractionRecorderProvider");
-  }
-  return ctx;
-}
+export { useInteractionRecorder } from "./interaction-recorder-context";
 
 export function InteractionRecorderProvider({ children }: { children: React.ReactNode }) {
   const [armed, setArmedState] = useState(false);

@@ -18,41 +18,6 @@ export const ItemTypes = {
 
 const EDITOR_CANVAS_SELECTOR = '[data-testid="editor-canvas"]';
 
-/**
- * Sidebar palette touch gestures: emits `mobileDrop` on the editor canvas element with viewport
- * coordinates — `useCanvasDragDrop` converts to diagram space with pan/zoom.
- */
-export function emitMobilePaletteDropIfOverCanvas(opts: {
-  touchClientX: number;
-  touchClientY: number;
-  item: unknown;
-}): boolean {
-  const canvas =
-    typeof document !== "undefined" ? (document.querySelector(EDITOR_CANVAS_SELECTOR) as HTMLElement | null) : null;
-  if (!canvas) return false;
-  const canvasRect = canvas.getBoundingClientRect();
-  const { touchClientX, touchClientY, item } = opts;
-  if (
-    touchClientX < canvasRect.left ||
-    touchClientX > canvasRect.right ||
-    touchClientY < canvasRect.top ||
-    touchClientY > canvasRect.bottom
-  ) {
-    return false;
-  }
-  canvas.dispatchEvent(
-    new CustomEvent("mobileDrop", {
-      detail: {
-        item,
-        clientX: touchClientX,
-        clientY: touchClientY,
-        itemType: ItemTypes.DIAGRAM_NODE,
-      },
-    }),
-  );
-  return true;
-}
-
 /** On-canvas touch move (after long-press): diagram delta derived from viewport start/end inside `useCanvasDragDrop`. */
 export function emitMobileCanvasDeltaMove(opts: {
   id: string;

@@ -15,17 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Download, FolderOpen, Play, Square, Trash2, Upload } from "lucide-react";
-import {
-  formatRecordingDuration,
-  recordingDurationMs,
-  useInteractionRecorder,
-} from "./interaction-recorder-provider";
-import { downloadInteractionRecording, summarizeRecordingEvents } from "@/lib/interaction-recording-playback";
+import { downloadInteractionRecording, formatRecordingDuration, recordingDurationMs, summarizeRecordingEvents } from "@/lib/interaction-recording-playback";
 import {
   countEventsMissingSemanticTarget,
   summarizeSemanticRecordingTimeline,
 } from "@/lib/interaction-recording-overlay";
 import { RECORDER_START_KEY, RECORDER_STOP_KEY } from "@/lib/interaction-recording-types";
+import { useInteractionRecorder } from "./interaction-recorder-context";
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (

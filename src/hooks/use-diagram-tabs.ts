@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import type { DiagramData } from '@/lib/types';
-import type { SelectedItem } from '@/components/diagram-editor';
+import type { SelectedItem } from '@/components/editor/diagram-editor-types';
 import { ensureConnectionIds } from '@/lib/connection-order-utils';
 import {
   loadTabsFromIndexedDB,

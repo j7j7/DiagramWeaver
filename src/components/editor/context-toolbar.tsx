@@ -59,7 +59,7 @@ import { CardElementStylingPanel } from './card-element-styling-panel';
 import { LineStylingPanel } from './line-styling-panel';
 import { ConnectionAnimationControls } from './connection-animation-controls';
 import { ConnectionLineStyleFields } from './connection-line-style-fields';
-import type { SelectedItem } from '../diagram-editor';
+import type { SelectedItem } from './diagram-editor-types';
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from '@/lib/types';
 import { buildIconBevelSampleNode } from '@/lib/icon-bevel';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';

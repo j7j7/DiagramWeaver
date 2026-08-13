@@ -1,11 +1,27 @@
-import {
-  DEFAULT_PIE_SLICE_COLORS,
-  DEFAULT_PIE_SLICE_LABEL_COLOR,
-  newChartSliceId,
-} from "@/lib/chart-node";
 import { shiftHueOfColor } from "@/lib/color-shift";
 import { readThemeMenuHueStepDegFromStorage } from "@/lib/theme-menu-hue-step";
 import type { ChartGridCell, DiagramNodeData, NodeChartSpecGrid } from "@/lib/types";
+
+export const DEFAULT_PIE_SLICE_COLORS = [
+  "#3b82f6",
+  "#22c55e",
+  "#eab308",
+  "#ef4444",
+  "#a855f7",
+  "#14b8a6",
+  "#f97316",
+  "#64748b",
+];
+
+/** Default slice label color when `labelColor` is omitted on a series row. */
+export const DEFAULT_PIE_SLICE_LABEL_COLOR = "#f9fafb";
+
+export function newChartSliceId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `chart-slice-${Math.random().toString(36).slice(2, 11)}`;
+}
 
 export type GridCellFillMode = "none" | "solid" | "gradient";
 

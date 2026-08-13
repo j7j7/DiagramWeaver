@@ -22,7 +22,7 @@ import { Check, Minus, X } from "lucide-react";
 import { DiagramNode } from "../diagram/diagram-node";
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import type { SelectedItem } from "../diagram-editor";
+import type { SelectedItem } from "./diagram-editor-types";
 import { ContextMenu } from "../ui/context-menu";
 import { SimulationPopupMenu, type SimulationFeature } from "../ui/simulation-popup-menu";
 import {

@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-13 – Production build TDZ on `/`
+Turbopack `next build` prerender of `/` threw `Cannot access 'j' before initialization` from remaining circular imports. Broke value cycles: **`createInitialCardSpec`** moved to **`card-templates`**, **`GLOBAL_VARIABLE_PATTERN`** to **`builtin-global-variables`**, pie defaults / **`newChartSliceId`** to **`grid-chart-layout`**, timeline grid snap kept local, palette drop emit moved into **`use-palette-pointer-drag`**, recorder hook/context split to **`interaction-recorder-context.tsx`**, **`SelectedItem`** imports retargeted to **`diagram-editor-types`**. Patch bumped.
+
 ### 2026-08-13 – Production build: /_not-found TDZ
 `next build` prerender of `/_not-found` could throw `Cannot access 'aZ' before initialization` (minified TDZ from a circular import). `DIAGRAM_THEME_HUE_STEP_DEG` now lives in **`theme-menu-hue-step.ts`**; card/theme helpers import it there instead of **`theme-manager`**. Unused **`card-profile`** re-exports of **`card-theme`** constants removed. Patch bumped.
 

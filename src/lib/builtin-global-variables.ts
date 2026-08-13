@@ -1,5 +1,3 @@
-import { GLOBAL_VARIABLE_PATTERN } from "@/lib/global-properties";
-
 /** Runtime context for built-in `%var%` placeholders (date/time and presentation slide). */
 export interface GlobalVariableContext {
   now?: Date;
@@ -7,6 +5,9 @@ export interface GlobalVariableContext {
   slideIndex?: number;
   slideCount?: number;
 }
+
+/** `%varname%` placeholders in text — varname is `[a-zA-Z_][a-zA-Z0-9_]*`. */
+export const GLOBAL_VARIABLE_PATTERN = /%([a-zA-Z_][a-zA-Z0-9_]*)%/g;
 
 export const BUILTIN_GLOBAL_VARIABLE_NAMES = [
   "day",

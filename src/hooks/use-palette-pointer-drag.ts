@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from 'react';
-import { emitMobilePaletteDropIfOverCanvas } from '@/components/editor/draggable-item';
 import {
   paletteDragPreviewEnd,
   paletteDragPreviewMove,
@@ -7,6 +6,38 @@ import {
 } from '@/lib/palette-drag-preview';
 
 const DRAG_THRESHOLD_PX = 10;
+const EDITOR_CANVAS_SELECTOR = '[data-testid="editor-canvas"]';
+
+function emitMobilePaletteDropIfOverCanvas(opts: {
+  touchClientX: number;
+  touchClientY: number;
+  item: unknown;
+}): boolean {
+  const canvas =
+    typeof document !== "undefined" ? (document.querySelector(EDITOR_CANVAS_SELECTOR) as HTMLElement | null) : null;
+  if (!canvas) return false;
+  const canvasRect = canvas.getBoundingClientRect();
+  const { touchClientX, touchClientY, item } = opts;
+  if (
+    touchClientX < canvasRect.left ||
+    touchClientX > canvasRect.right ||
+    touchClientY < canvasRect.top ||
+    touchClientY > canvasRect.bottom
+  ) {
+    return false;
+  }
+  canvas.dispatchEvent(
+    new CustomEvent("mobileDrop", {
+      detail: {
+        item,
+        clientX: touchClientX,
+        clientY: touchClientY,
+        itemType: 'diagram_node',
+      },
+    }),
+  );
+  return true;
+}
 
 /**
  * Pointer-driven palette drag (desktop + touch). Drops via `mobileDrop` on the canvas —

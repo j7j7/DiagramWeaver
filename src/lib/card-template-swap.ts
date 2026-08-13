@@ -1,9 +1,8 @@
 import type { DiagramNodeData } from "@/lib/types";
 import type { CardElementData } from "@/lib/card-types";
-import { CARD_TEMPLATE_LIST, getCardTemplate } from "@/lib/card-templates";
+import { CARD_TEMPLATE_LIST, createInitialCardSpec, getCardTemplate } from "@/lib/card-templates";
 import {
   cardNodeTypeForTemplate,
-  createInitialCardSpec,
   getCardTemplateIdFromNodeType,
   isCardNodeType,
 } from "@/lib/card-utils";

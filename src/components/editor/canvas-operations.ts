@@ -31,7 +31,8 @@ import { TIMELINE_DEFAULT_SPINE_LENGTH_PX, TIMELINE_NODE_TYPE } from "@/lib/time
 import { defaultPalettePyramidNodeProps } from "@/lib/pyramid";
 import { defaultPaletteTimelineBarNodeProps } from "@/lib/timeline-bar";
 import { defaultPaletteSegmentedRectangleNodeProps } from "@/lib/segmented-rectangle";
-import { getCardTemplateIdFromNodeType, createInitialCardSpec } from "@/lib/card-utils";
+import { getCardTemplateIdFromNodeType } from "@/lib/card-utils";
+import { createInitialCardSpec } from "@/lib/card-templates";
 import { deleteDiagramItemsByIds, expandIdsForDeletion } from "@/lib/grouping-utils";
 import {
   getBorderTemplateIdFromNodeType,

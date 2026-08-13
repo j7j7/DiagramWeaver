@@ -8,7 +8,7 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
-import type { SelectedItem } from '../diagram-editor';
+import type { SelectedItem } from './diagram-editor-types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ResourceBrowser } from './resource-browser';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';

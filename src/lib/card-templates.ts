@@ -1,6 +1,7 @@
-import type { CardElementData, CardTemplate } from "@/lib/card-types";
+import type { CardElementData, CardTemplate, NodeCardSpec } from "@/lib/card-types";
 import type { DiagramNodeData } from "@/lib/types";
-import { createAgendaTemplate } from "@/lib/card-agenda";
+import { AGENDA_TEMPLATE_ID, createAgendaTemplate, createDefaultAgendaRoot } from "@/lib/card-agenda";
+import { cloneCardElementTree } from "@/lib/card-utils";
 import { createBulletListTemplate } from "@/lib/card-bullet-list";
 import { createDashboardStatTemplate } from "@/lib/card-dashboard-stat";
 import {
@@ -1382,4 +1383,19 @@ export const CARD_TEMPLATE_LIST = Object.values(CARD_TEMPLATES);
 
 export function getCardTemplate(templateId: string): CardTemplate | undefined {
   return CARD_TEMPLATES[templateId];
+}
+
+export function createInitialCardSpec(templateId: string): NodeCardSpec | undefined {
+  const template = getCardTemplate(templateId);
+  if (!template) return undefined;
+  if (templateId === AGENDA_TEMPLATE_ID) {
+    return {
+      templateId,
+      elements: createDefaultAgendaRoot(new Date()),
+    };
+  }
+  return {
+    templateId,
+    elements: cloneCardElementTree(template.root),
+  };
 }

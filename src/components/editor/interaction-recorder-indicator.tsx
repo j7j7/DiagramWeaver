@@ -4,7 +4,7 @@ import React from "react";
 import { Circle, Pause, Play, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useInteractionRecorder } from "./interaction-recorder-provider";
+import { useInteractionRecorder } from "./interaction-recorder-context";
 import { RECORDER_START_KEY, RECORDER_STOP_KEY } from "@/lib/interaction-recording-types";
 
 export function InteractionRecorderIndicator() {

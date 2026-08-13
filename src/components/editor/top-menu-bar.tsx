@@ -28,7 +28,7 @@ import { ICON_MAINTENANCE_MENU_ENABLED } from '@/lib/maintenance-config';
 import { ViewerUrlDialog } from './viewer-url-dialog';
 import { InteractionRecorderHelpMenuItem } from './interaction-recorder-menu-item';
 import { useTheme } from '@/components/theme-provider';
-import type { SelectedItem } from '../diagram-editor';
+import type { SelectedItem } from './diagram-editor-types';
 import type { DiagramData, PresentationDeck } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';

@@ -1,5 +1,6 @@
 import {
   evaluateGlobalTextExpressions,
+  GLOBAL_VARIABLE_PATTERN,
   mergeGlobalProperties,
   type GlobalVariableContext,
 } from "@/lib/builtin-global-variables";
@@ -9,6 +10,7 @@ export type { GlobalVariableContext } from "@/lib/builtin-global-variables";
 export {
   BUILTIN_GLOBAL_VARIABLE_NAMES,
   getBuiltinGlobalProperties,
+  GLOBAL_VARIABLE_PATTERN,
   mergeGlobalProperties,
   isBuiltinGlobalVariableName,
 } from "@/lib/builtin-global-variables";
@@ -16,9 +18,6 @@ export {
   GRID_CELL_FILL_GLOBAL_PROPERTY,
   resolveGridDefaultCellFill,
 } from "@/lib/grid-chart-layout";
-
-/** `%varname%` placeholders in text — varname is `[a-zA-Z_][a-zA-Z0-9_]*`. */
-export const GLOBAL_VARIABLE_PATTERN = /%([a-zA-Z_][a-zA-Z0-9_]*)%/g;
 
 export function normalizeGlobalPropertyKey(raw: string): string | null {
   const trimmed = raw.trim();

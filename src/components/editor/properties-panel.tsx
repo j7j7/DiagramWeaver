@@ -16,7 +16,7 @@ import { GRID_CELL_FILL_GLOBAL_PROPERTY } from "@/lib/global-properties";
 import { normalizeGlobalPropertyKey, collectUsedGlobalVariableNames } from "@/lib/global-properties";
 import { CustomIconPreviewEditor } from "@/components/editor/custom-icon-preview-editor";
 import { DEFAULT_CUSTOM_IMAGE_OPTIONS, normalizeCustomImageOptions, normalizeHttpImageUrl, validateCustomImageUrl } from "@/lib/custom-icon-utils";
-import type { SelectedItem } from "../diagram-editor";
+import type { SelectedItem } from "./diagram-editor-types";
 import type { CustomImageOptions, DiagramData } from "@/lib/types";
 
 const BUILTIN_GLOBAL_VARIABLE_REFERENCES: ReadonlyArray<{ name: string; description: string }> = [

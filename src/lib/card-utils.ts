@@ -1,8 +1,6 @@
-import type { CardElementData, CardIconRef, NodeCardSpec } from "@/lib/card-types";
+import type { CardElementData, CardIconRef } from "@/lib/card-types";
 import type { DiagramNodeData } from "@/lib/types";
 import { CARD_NODE_TYPE_PREFIX } from "@/lib/card-types";
-import { AGENDA_TEMPLATE_ID, createDefaultAgendaRoot } from "@/lib/card-agenda";
-import { getCardTemplate } from "@/lib/card-templates";
 
 export function isCardNodeType(type: string | undefined): boolean {
   return !!type?.startsWith(CARD_NODE_TYPE_PREFIX);
@@ -35,21 +33,6 @@ function deepCloneElement(el: CardElementData): CardElementData {
       : undefined,
     layout: el.layout ? { ...el.layout } : undefined,
     children: el.children ? el.children.map(deepCloneElement) : undefined,
-  };
-}
-
-export function createInitialCardSpec(templateId: string): NodeCardSpec | undefined {
-  const template = getCardTemplate(templateId);
-  if (!template) return undefined;
-  if (templateId === AGENDA_TEMPLATE_ID) {
-    return {
-      templateId,
-      elements: createDefaultAgendaRoot(new Date()),
-    };
-  }
-  return {
-    templateId,
-    elements: cloneCardElementTree(template.root),
   };
 }
 

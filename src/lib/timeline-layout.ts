@@ -1,4 +1,3 @@
-import { snapToGrid } from "@/components/editor/canvas-constants";
 import type { DiagramNodeData, TimelineEntryData } from "@/lib/types";
 import {
   curveBoundsExpanded,
@@ -15,6 +14,12 @@ export const TIMELINE_ENTRY_KEY_SEP = "\u001f";
 
 /** Default horizontal spine length when dropping a new timeline from the palette (`endPos.x - startPos.x`). */
 export const TIMELINE_DEFAULT_SPINE_LENGTH_PX = 280;
+
+/** Matches `GRID_STEP` in canvas-constants (kept local to avoid an import cycle). */
+const TIMELINE_GRID_STEP = 10;
+function snapTimelineToGrid(v: number): number {
+  return Math.round(v / TIMELINE_GRID_STEP) * TIMELINE_GRID_STEP;
+}
 
 export function makeTimelineEntryKey(nodeId: string, entryId: string): string {
   return `${nodeId}${TIMELINE_ENTRY_KEY_SEP}${entryId}`;
@@ -117,7 +122,7 @@ const CARD_TAIL_GAP = 2;
 
 /**
  * Map pointer position → spine ratio `t`, perpendicular offset, and which side of the spine (above vs below).
- * Diagram coordinates are snapped to the canvas grid (10px via `snapToGrid` in `canvas-constants`) before projection.
+ * Diagram coordinates are snapped to the canvas grid (10px, same step as `snapToGrid`) before projection.
  * `preferSide` stabilizes side choice when the pointer lies near the spine (deadband).
  */
 export function timelineDragSolveFromDiagramPoint(
@@ -130,8 +135,8 @@ export function timelineDragSolveFromDiagramPoint(
   lineSmoothJoints?: boolean,
   preferSide?: TimelineCardSideResolved,
 ): { t: number; cardNormalOffsetPx: number; cardSide: TimelineCardSideResolved } {
-  const gx = snapToGrid(px);
-  const gy = snapToGrid(py);
+  const gx = snapTimelineToGrid(px);
+  const gy = snapTimelineToGrid(py);
   const tRaw = projectDiagramPointToTimelineStrokeRatio(gx, gy, verts, linePathStyle, lineSmoothJoints);
   const t = Math.max(0, Math.min(1, tRaw));
   const entries = node.timelineEntries ?? [];

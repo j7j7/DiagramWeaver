@@ -3,7 +3,7 @@
 import React from "react";
 import { CircleDot } from "lucide-react";
 import { MenubarItem, MenubarShortcut } from "@/components/ui/menubar";
-import { useInteractionRecorder } from "./interaction-recorder-provider";
+import { useInteractionRecorder } from "./interaction-recorder-context";
 
 export function InteractionRecorderHelpMenuItem() {
   const { setDialogOpen, setArmed, status } = useInteractionRecorder();

@@ -13,23 +13,18 @@ import type {
   RichTextRun,
 } from "@/lib/types";
 import {
+  DEFAULT_PIE_SLICE_COLORS,
+  DEFAULT_PIE_SLICE_LABEL_COLOR,
+  newChartSliceId,
   normalizeGridChartCells,
   resizeGridTrackWeights,
 } from "@/lib/grid-chart-layout";
 
-export const DEFAULT_PIE_SLICE_COLORS = [
-  "#3b82f6",
-  "#22c55e",
-  "#eab308",
-  "#ef4444",
-  "#a855f7",
-  "#14b8a6",
-  "#f97316",
-  "#64748b",
-];
-
-/** Default slice label color when `labelColor` is omitted on a series row. */
-export const DEFAULT_PIE_SLICE_LABEL_COLOR = "#f9fafb";
+export {
+  DEFAULT_PIE_SLICE_COLORS,
+  DEFAULT_PIE_SLICE_LABEL_COLOR,
+  newChartSliceId,
+};
 
 /** Default segment label font size (SVG viewBox units) for multi-slice wedges. */
 export const DEFAULT_PIE_WEDGE_LABEL_FONT = 4.75;
@@ -135,13 +130,6 @@ export function isChartNodeType(nodeType: string | undefined): boolean {
 
 export function isGridChartNodeType(nodeType: string | undefined): boolean {
   return nodeType === "generic.chart.grid" || !!nodeType?.endsWith(".chart.grid");
-}
-
-export function newChartSliceId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `chart-slice-${Math.random().toString(36).slice(2, 11)}`;
 }
 
 /** Non-negative chart datum rounded to at most 2 decimal places. */
