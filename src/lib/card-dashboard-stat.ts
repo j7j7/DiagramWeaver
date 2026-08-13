@@ -236,7 +236,12 @@ export function dashboardStatActionGlyphStyle(
   placement: CardIconPlacement = "top-right",
 ): CSSProperties {
   const placementCss = cardIconPlacementToAbsoluteStyle(placement).style;
-  const sizeCss = cardIconGlyphSizeStyle(iconRef?.nodeSize, iconRef?.iconSizeMode, false);
+  const sizeCss = cardIconGlyphSizeStyle(
+    iconRef?.nodeSize,
+    iconRef?.iconSizeMode,
+    false,
+    iconRef?.noIconBackground,
+  );
   return { ...placementCss, ...sizeCss, pointerEvents: "auto" };
 }
 

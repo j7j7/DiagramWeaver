@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { CardIconPlacement, CardIconSizeMode } from "@/lib/card-types";
 import type { NodeSize } from "@/lib/types";
-import { getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
+import { getIconGlyphSize, getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
 
 export const CARD_ICON_PLACEMENTS: Array<{ value: CardIconPlacement; label: string }> = [
   { value: "center", label: "Center" },
@@ -84,9 +84,10 @@ export function cardIconPlacementToAbsoluteStyle(placement: CardIconPlacement): 
 }
 
 /** Icon footprint within an icon-slot as a percentage of the slot box (matches canvas icon/container ratio × nodeSize). */
-export function cardIconSlotSizePercent(nodeSize?: NodeSize): number {
-  const { container, icon } = getNodeSizeDimensions(nodeSize);
-  const ratio = container > 0 ? icon / container : 0.875;
+export function cardIconSlotSizePercent(nodeSize?: NodeSize, noIconBackground?: boolean): number {
+  const { container } = getNodeSizeDimensions(nodeSize);
+  const glyph = getIconGlyphSize(nodeSize, noIconBackground);
+  const ratio = container > 0 ? glyph / container : noIconBackground ? 1 : 0.875;
   const scale = getNodeSizeMultiplier(nodeSize ?? "normal");
   return Math.min(100, Math.round(ratio * scale * 100));
 }
@@ -104,16 +105,17 @@ export function cardIconGlyphSizeStyle(
   nodeSize?: NodeSize,
   sizeMode?: CardIconSizeMode,
   fillSlot?: boolean,
+  noIconBackground?: boolean,
 ): CSSProperties {
   if (fillSlot) {
     return { width: "100%", height: "100%" };
   }
   const mode = sizeMode ?? "scaled";
   if (mode === "fixed") {
-    const { icon } = getNodeSizeDimensions(nodeSize);
-    return { width: icon, height: icon };
+    const glyph = getIconGlyphSize(nodeSize, noIconBackground);
+    return { width: glyph, height: glyph };
   }
-  const iconSizePct = cardIconSlotSizePercent(nodeSize);
+  const iconSizePct = cardIconSlotSizePercent(nodeSize, noIconBackground);
   const size = `min(${iconSizePct}cqw, ${iconSizePct}cqh)`;
   return { width: size, height: size };
 }

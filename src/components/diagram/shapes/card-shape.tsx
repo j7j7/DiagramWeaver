@@ -767,7 +767,7 @@ function CardIconSlot({
                 ? dashboardStatActionGlyphStyle(element, iconRef, placement)
                 : useFillSlotGlyphLayout
                   ? {}
-                  : { ...placementStyle, ...cardIconGlyphSizeStyle(iconRef.nodeSize, iconSizeMode, useFillSlotGlyphLayout) }),
+                  : { ...placementStyle, ...cardIconGlyphSizeStyle(iconRef.nodeSize, iconSizeMode, useFillSlotGlyphLayout, noIconBackground) }),
               containerType: "size",
             }}
           >

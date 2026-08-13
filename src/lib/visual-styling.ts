@@ -381,6 +381,15 @@ export function getNodeSizeDimensions(nodeSize?: NodeSize): { container: number;
 }
 
 /**
+ * Glyph px inside the icon tile. With a plate (`bg-card`) the glyph is inset;
+ * with **Remove background** it fills the tile so edges snap to the 10px grid.
+ */
+export function getIconGlyphSize(nodeSize?: NodeSize, noIconBackground?: boolean): number {
+  const { container, icon } = getNodeSizeDimensions(nodeSize);
+  return noIconBackground ? container : icon;
+}
+
+/**
  * Extracts visual styling from a group data object
  */
 export function extractVisualStylingFromGroup(group: DiagramGroupData | DiagramGroupItem): VisualStyling {

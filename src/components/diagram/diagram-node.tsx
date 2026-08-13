@@ -53,7 +53,7 @@ import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, snapIconLabelWidthToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getIconTileAnchorSize } from "@/lib/icon-bevel";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
-import { getNodeSizeDimensions } from "@/lib/visual-styling";
+import { getIconGlyphSize, getNodeSizeDimensions } from "@/lib/visual-styling";
 import { isDiagramRasterIconTile, resolveIconGlyphCssFilter, resolveActiveIconColor } from "@/lib/icon-glyph-filter";
 import { diagramNodeVisualStylingSignature } from "@/lib/slide-visual-color";
 import { simplifyVisualNodeForCanvasDrag } from "@/lib/canvas-drag-fill-simplify";
@@ -1977,7 +1977,8 @@ function DiagramNodeInner({
   // Regular icon node content (avoids IIFE parsing issues in Turbopack)
   const renderIconNodeContentForVisualNode = (visualNode: DiagramNodeData) => {
     const nodeAny = visualNode as any;
-    const { container, icon } = getNodeSizeDimensions(nodeAny.nodeSize);
+    const { container } = getNodeSizeDimensions(nodeAny.nodeSize);
+    const icon = getIconGlyphSize(nodeAny.nodeSize, nodeAny.noIconBackground);
     const textVerticalPosition = nodeAny.textVerticalPosition || 'bottom';
     const isMiddle = textVerticalPosition === 'middle';
     const isTop = textVerticalPosition === 'top';
@@ -2084,7 +2085,7 @@ function DiagramNodeInner({
     const flatIconContainerClass = cn(
       "flex items-center justify-center flex-shrink-0",
       animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
-      nodeAny.noIconBackground ? "" : "rounded-lg shadow-md bg-card dw-icon-container",
+      nodeAny.noIconBackground ? "overflow-hidden" : "rounded-lg shadow-md bg-card dw-icon-container",
       useDefaultIconBorderClass && "border",
       isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchCanvasDrag) ? "" : !showCustomIconOutline && "group-hover:border-accent",
       isTargetable && "border-dashed border-primary",

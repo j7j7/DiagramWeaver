@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-13 – Remove-background icons fill the grid tile
+With **Remove background**, the glyph now fills the 80px (scaled) icon tile instead of staying inset at 70px, so the plate edges snap to the 10px grid and align with shapes. Shared via **`getIconGlyphSize`**. Patch bumped.
+
 ### 2026-08-13 – Edit → Copy Slide / Paste Slide
 Copy the current slide (full diagram + title/zoom/thumb) and paste it into another diagram tab or browser window. Payload is self-contained (not source-relative delta); paste inserts after the current slide. Patch bumped.
 
