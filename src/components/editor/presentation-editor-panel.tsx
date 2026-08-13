@@ -18,6 +18,7 @@ interface SlideStripItemProps {
   onMove: (fromIndex: number, toIndex: number) => void;
   onSelect: () => void;
   onDelete?: (slideId: string) => void;
+  onRename?: (slideId: string, title: string) => void;
   onReorderDragBegin?: () => void;
   onReorderDragEnd?: () => void;
 }
@@ -30,11 +31,16 @@ function SlideStripItem({
   onMove,
   onSelect,
   onDelete,
+  onRename,
   onReorderDragBegin,
   onReorderDragEnd,
 }: SlideStripItemProps) {
   const ref = React.useRef<HTMLDivElement | null>(null);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
   const isPrimary = index === 0;
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editValue, setEditValue] = React.useState('');
+  const editingRef = React.useRef(false);
 
   const [, drop] = useDrop<{ index: number }>({
     accept: DND_TYPE,
@@ -47,6 +53,7 @@ function SlideStripItem({
 
   const [{ isDragging }, drag] = useDrag({
     type: DND_TYPE,
+    canDrag: () => !editingRef.current,
     item: () => {
       onReorderDragBegin?.();
       return { index };
@@ -60,6 +67,38 @@ function SlideStripItem({
   });
 
   drag(drop(ref));
+
+  const startEditing = React.useCallback(
+    (e: React.MouseEvent) => {
+      if (!onRename) return;
+      e.stopPropagation();
+      e.preventDefault();
+      editingRef.current = true;
+      setEditValue(slide.title ?? '');
+      setIsEditing(true);
+      setTimeout(() => inputRef.current?.select(), 0);
+    },
+    [onRename, slide.title],
+  );
+
+  const commitRename = React.useCallback(() => {
+    if (!editingRef.current) return;
+    editingRef.current = false;
+    const trimmed = editValue.trim();
+    const prev = (slide.title ?? '').trim();
+    if (onRename && trimmed !== prev) {
+      onRename(slide.id, trimmed);
+    }
+    setIsEditing(false);
+  }, [editValue, onRename, slide.id, slide.title]);
+
+  const cancelRename = React.useCallback(() => {
+    editingRef.current = false;
+    setIsEditing(false);
+    setEditValue(slide.title ?? '');
+  }, [slide.title]);
+
+  const displayTitle = slide.title?.trim() || '';
 
   return (
     <div
@@ -107,8 +146,38 @@ function SlideStripItem({
           </Tooltip>
         ) : null}
       </div>
-      <div className="flex shrink-0 items-center gap-1.5 pt-0.5 text-left">
-        <span className="text-[11px] font-medium text-foreground">#{index + 1}</span>
+      <div
+        className="flex min-w-0 shrink-0 items-center gap-1 pt-0.5 text-left"
+        onDoubleClick={onRename ? startEditing : undefined}
+        title={onRename ? 'Double-click to rename' : undefined}
+      >
+        <span className="shrink-0 text-[11px] font-medium text-foreground">#{index + 1}</span>
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            spellCheck
+            aria-label={`Rename slide ${index + 1}`}
+            className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0 text-[11px] leading-tight text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitRename();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelRename();
+              }
+            }}
+            autoFocus
+          />
+        ) : displayTitle ? (
+          <span className="min-w-0 truncate text-[11px] text-muted-foreground">{displayTitle}</span>
+        ) : null}
       </div>
     </div>
   );
@@ -123,6 +192,7 @@ interface PresentationEditorPanelProps {
   onMoveSlide: (fromIndex: number, toIndex: number) => void;
   onSelectSlide: (slideId: string) => void;
   onSelectBaseSlide: () => void;
+  onRenameSlide?: (slideId: string, title: string) => void;
   onReorderDragBegin?: () => void;
   onReorderDragEnd?: () => void;
 }
@@ -136,6 +206,7 @@ export function PresentationEditorPanel({
   onMoveSlide,
   onSelectSlide,
   onSelectBaseSlide,
+  onRenameSlide,
   onReorderDragBegin,
   onReorderDragEnd,
 }: PresentationEditorPanelProps) {
@@ -164,6 +235,7 @@ export function PresentationEditorPanel({
                         : () => onSelectSlide(slide.id)
                     }
                     onDelete={index === 0 ? undefined : onDeleteSlide}
+                    onRename={onRenameSlide}
                     onReorderDragBegin={onReorderDragBegin}
                     onReorderDragEnd={onReorderDragEnd}
                   />

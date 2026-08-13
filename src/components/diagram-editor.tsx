@@ -5231,6 +5231,43 @@ export default function DiagramEditor() {
     toast,
   ]);
 
+  const handleRenamePresentationSlide = React.useCallback(
+    (slideId: string, title: string) => {
+      if (!activePresentationDeckId) return;
+      const nextTitle = title.trim();
+      const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
+      const target = deck?.slides.find((s) => s.id === slideId);
+      if (!target) return;
+      if ((target.title ?? '').trim() === nextTitle) return;
+
+      pushPresentationStructuralUndo();
+      setPresentationDecks((prev) =>
+        prev.map((d) => {
+          if (d.id !== activePresentationDeckId) return d;
+          return {
+            ...d,
+            slides: d.slides.map((slide) =>
+              slide.id !== slideId
+                ? slide
+                : {
+                    ...slide,
+                    title: nextTitle || undefined,
+                  },
+            ),
+            updatedAt: Date.now(),
+          };
+        }),
+      );
+      updateActiveTab({ hasUnsavedPresentations: true });
+    },
+    [
+      activePresentationDeckId,
+      presentationDecks,
+      pushPresentationStructuralUndo,
+      updateActiveTab,
+    ],
+  );
+
   const handleDeletePresentationSlide = React.useCallback((slideId: string) => {
     if (!activePresentationDeckId || !activePresentationDeck) return;
     if (activePresentationDeck.slides[0]?.id === slideId) {
@@ -5894,6 +5931,7 @@ export default function DiagramEditor() {
         handleAddPresentationSnapshot={handleAddPresentationSnapshot}
         handleAddBlankPresentationSlide={handleAddBlankPresentationSlide}
         handleDeletePresentationSlide={handleDeletePresentationSlide}
+        handleRenamePresentationSlide={handleRenamePresentationSlide}
         presentationHasLaterSlides={hasLaterSlides}
         handlePropagateAddToLaterSlides={handlePropagateAddToLaterSlides}
         handlePropagateDeleteToLaterSlides={handlePropagateDeleteToLaterSlides}

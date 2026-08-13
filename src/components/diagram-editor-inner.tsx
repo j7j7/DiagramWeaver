@@ -274,6 +274,7 @@ export function DiagramEditorInner({
   handleAddPresentationSnapshot,
   handleAddBlankPresentationSlide,
   handleDeletePresentationSlide,
+  handleRenamePresentationSlide,
   presentationHasLaterSlides,
   handlePropagateAddToLaterSlides,
   handlePropagateDeleteToLaterSlides,
@@ -727,6 +728,7 @@ export function DiagramEditorInner({
                   onMoveSlide={handleMovePresentationSlide}
                   onSelectSlide={handleSelectPresentationSlide}
                   onSelectBaseSlide={handleSelectPresentationBaseSlide}
+                  onRenameSlide={handleRenamePresentationSlide}
                   onReorderDragBegin={handlePresentationReorderDragBegin}
                   onReorderDragEnd={handlePresentationReorderDragEnd}
                 />

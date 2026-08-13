@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-13 – Slide strip: rename via double-click
+Presentation strip shows slide title next to `#N` when set; double-click the label to edit (Enter/blur commit, Escape cancel). New/duplicate slides still get default titles; rename is undoable. Patch bumped.
+
 ### 2026-08-12 – History labels summarize edits
 History browser labels diff consecutive snapshots (moved/renamed/styled objects by name, connections, slides) instead of generic “Diagram edit”. Patch bumped.
 

@@ -57,6 +57,7 @@ flowchart LR
 |-------|----------------|
 | **`diagram-editor.tsx`** | Large orchestrator: tabs (**`useDiagramTabs`**), **`useLayers`**, **`useDiagramEditorHistory`**, Mermaid/custom icon/Mermaid parsing, **`presentation-slide-chain`** (deltas between slides), deck merge/storage, breadcrumbs/sub‑diagram stack, save/export handler wiring, keyboard rules. |
 | **`diagram-editor-inner.tsx`** | Layout: toolbars, side panels, **`EditorCanvas`**, presentation UI, properties, JSON panel — props bridge from **`diagram-editor`**. |
+| **`editor/presentation-editor-panel.tsx`** | Slide strip: thumbnails, reorder DnD, delete; shows `#N` + optional **`slide.title`**; double-click label to rename (`onRenameSlide`). |
 | **`editor/editor-canvas.tsx`** | Interactive SVG canvas: transforms (**`useCanvasTransform`**), **`DiagramNode`**, **`CanvasConnections`**, selection, clipboard, guides, connectors, grouping affordances, context-menu **Change shape** for swappable **`*.object.*`** closed shapes (**`shape-type-swap`**, same node id → connections preserved), mind-map **add child** vs **add without moving others** (**`mindmap-layout`**) — mirrors viewer behaviour with editing hooks. |
 | **`viewer/viewer-canvas.tsx`** | Read‑only canvas; passes **`isReadOnly`** through connections — same **`CanvasConnections`** / connection components as the editor. |
 | **`editor/canvas-connections.tsx`** | Sorts/z‑orders connections, branches **Bezier** vs **orthogonal** routing props, animations, waypoint editing (editor paths). |
