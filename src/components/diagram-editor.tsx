@@ -89,6 +89,14 @@ import { extractEmbeddedPresentations } from '@/lib/extract-embedded-presentatio
 import { savePresentationsByTab } from '@/lib/presentation-storage';
 import { collapsePresentationDecksToOne } from '@/lib/presentation-deck-merge';
 import { createPresentationPrimarySlide } from '@/lib/presentation-primary-slide';
+import {
+  createPresentationSlideClipboardPayload,
+  insertAbsoluteSlideIntoDeck,
+  readPresentationSlideClipboard,
+  resolveActiveSlideAbsoluteDiagram,
+  writePresentationSlideClipboard,
+} from '@/lib/presentation-slide-clipboard';
+import { usePresentationSlideClipboardAvailable } from '@/hooks/use-presentation-slide-clipboard';
 import type { BreadcrumbSegment } from './editor/diagram-breadcrumb';
 import { removeConnectorLineVertexAtIndex, isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import {
@@ -268,6 +276,7 @@ export default function DiagramEditor() {
   const isPrimaryPresentationSlideActive = Boolean(
     activePresentationPrimarySlideId && activePresentationSlideId === activePresentationPrimarySlideId,
   );
+  const canPastePresentationSlide = usePresentationSlideClipboardAvailable();
   const [selectedPresentationSlideIds, setSelectedPresentationSlideIds] = React.useState<Set<string>>(new Set());
   const [presentationPlayerOpen, setPresentationPlayerOpen] = React.useState<boolean>(false);
   const [presentationPlayerIndex, setPresentationPlayerIndex] = React.useState<number>(0);
@@ -5231,6 +5240,111 @@ export default function DiagramEditor() {
     toast,
   ]);
 
+  const handleCopyPresentationSlide = React.useCallback(async () => {
+    if (isReadOnly || !activePresentationDeckId) return;
+    const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
+    if (!deck || deck.slides.length === 0) {
+      toast({ variant: 'destructive', title: 'Copy slide failed', description: 'No slide to copy.' });
+      return;
+    }
+    const master = presentationMasterDiagram ?? tabDiagramData;
+    const slideId = activePresentationSlideId ?? deck.slides[0].id;
+    const slide = deck.slides.find((s) => s.id === slideId) ?? deck.slides[0];
+    const absolute = resolveActiveSlideAbsoluteDiagram({
+      deck,
+      master,
+      tabDiagramData,
+      activeSlideId: slideId,
+      draftDiagram: presentationDraftDiagram,
+    });
+    const payload = createPresentationSlideClipboardPayload({
+      diagram: absolute,
+      slide: {
+        title: slide.title,
+        description: slide.description,
+        animationState: slide.animationState,
+        autoZoomLevel: slide.autoZoomLevel ?? canvasTransformRef.current.k,
+        viewPanX: slide.viewPanX ?? canvasTransformRef.current.x,
+        viewPanY: slide.viewPanY ?? canvasTransformRef.current.y,
+        visibleLayerIds: slide.visibleLayerIds,
+        snapshotImage: slide.snapshotImage,
+      },
+    });
+    await writePresentationSlideClipboard(payload);
+    toast({
+      title: 'Slide copied',
+      description: 'Paste it into another diagram from Edit → Paste Slide.',
+    });
+  }, [
+    isReadOnly,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    presentationDecks,
+    presentationMasterDiagram,
+    presentationDraftDiagram,
+    tabDiagramData,
+    toast,
+  ]);
+
+  const handlePastePresentationSlide = React.useCallback(async () => {
+    if (isReadOnly || !activePresentationDeckId) return;
+    const payload = await readPresentationSlideClipboard();
+    if (!payload) {
+      toast({
+        variant: 'destructive',
+        title: 'Nothing to paste',
+        description: 'Copy a slide first (Edit → Copy Slide).',
+      });
+      return;
+    }
+    const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
+    if (!deck) {
+      toast({
+        variant: 'destructive',
+        title: 'Paste slide failed',
+        description: 'No presentation on this diagram yet.',
+      });
+      return;
+    }
+
+    try {
+      await captureOutgoingSlideThumbnailIfNeeded();
+      const master = presentationMasterDiagram ?? tabDiagramData;
+      const result = insertAbsoluteSlideIntoDeck({
+        deck,
+        master,
+        absoluteDiagram: payload.diagram,
+        meta: payload.slide,
+        afterSlideId: activePresentationSlideId,
+      });
+      pushPresentationStructuralUndo();
+      flushSync(() => {
+        setPresentationDecks((prev) =>
+          prev.map((d) => (d.id === result.deck.id ? result.deck : d)),
+        );
+        setActivePresentationSlideId(result.newSlideId);
+        setSelectedPresentationSlideIds(new Set());
+        setPresentationDraftDiagram(safeClone(payload.diagram));
+        updateActiveTab({ hasUnsavedPresentations: true });
+      });
+      toast({ title: 'Slide pasted', description: 'Inserted after the current slide.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not paste slide';
+      toast({ variant: 'destructive', title: 'Paste slide failed', description: message });
+    }
+  }, [
+    isReadOnly,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    presentationDecks,
+    presentationMasterDiagram,
+    tabDiagramData,
+    captureOutgoingSlideThumbnailIfNeeded,
+    pushPresentationStructuralUndo,
+    updateActiveTab,
+    toast,
+  ]);
+
   const handleRenamePresentationSlide = React.useCallback(
     (slideId: string, title: string) => {
       if (!activePresentationDeckId) return;
@@ -5765,6 +5879,7 @@ export default function DiagramEditor() {
   }, []);
 
   const canPasteFromMenu = paletteClipboardItem != null || canPaste;
+  const canCopyPresentationSlide = Boolean(activePresentationDeckId && !isReadOnly);
 
   return (
     <TooltipProvider>
@@ -5930,6 +6045,10 @@ export default function DiagramEditor() {
         handleApplyPresentationZoomToAll={handleApplyPresentationZoomToAll}
         handleAddPresentationSnapshot={handleAddPresentationSnapshot}
         handleAddBlankPresentationSlide={handleAddBlankPresentationSlide}
+        handleCopyPresentationSlide={handleCopyPresentationSlide}
+        handlePastePresentationSlide={handlePastePresentationSlide}
+        canCopyPresentationSlide={canCopyPresentationSlide}
+        canPastePresentationSlide={canPastePresentationSlide}
         handleDeletePresentationSlide={handleDeletePresentationSlide}
         handleRenamePresentationSlide={handleRenamePresentationSlide}
         presentationHasLaterSlides={hasLaterSlides}

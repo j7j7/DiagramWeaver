@@ -1,6 +1,6 @@
 {
   "name": "nextn",
-  "version": "0.1.1099",
+  "version": "0.1.1100",
   "private": true,
   "scripts": {
     "predev": "node scripts/bump-build.mjs",

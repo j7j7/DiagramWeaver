@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-13 – Edit → Copy Slide / Paste Slide
+Copy the current slide (full diagram + title/zoom/thumb) and paste it into another diagram tab or browser window. Payload is self-contained (not source-relative delta); paste inserts after the current slide. Patch bumped.
+
 ### 2026-08-13 – Slide strip: rename via double-click
 Presentation strip shows slide title next to `#N` when set; double-click the label to edit (Enter/blur commit, Escape cancel). New/duplicate slides still get default titles; rename is undoable. Patch bumped.
 

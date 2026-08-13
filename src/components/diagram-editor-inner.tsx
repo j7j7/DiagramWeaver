@@ -273,6 +273,10 @@ export function DiagramEditorInner({
   handleApplyPresentationZoomToAll,
   handleAddPresentationSnapshot,
   handleAddBlankPresentationSlide,
+  handleCopyPresentationSlide,
+  handlePastePresentationSlide,
+  canCopyPresentationSlide,
+  canPastePresentationSlide,
   handleDeletePresentationSlide,
   handleRenamePresentationSlide,
   presentationHasLaterSlides,
@@ -561,6 +565,10 @@ export function DiagramEditorInner({
                     onCopy={handleMenuCopy}
                     onPaste={handleMenuPaste}
                     canPaste={canPasteFromMenu}
+                    onCopySlide={handleCopyPresentationSlide}
+                    onPasteSlide={handlePastePresentationSlide}
+                    canCopySlide={canCopyPresentationSlide}
+                    canPasteSlide={canPastePresentationSlide}
                     onUndo={undo}
                     onRedo={redo}
                     canUndo={canUndo}

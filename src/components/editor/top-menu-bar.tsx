@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, History, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save, Ruler, Images } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, History, Copy, Clipboard, ClipboardPaste, CopyPlus, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save, Ruler, Images } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -197,6 +197,10 @@ interface TopMenuBarProps {
   onCopy?: () => void;
   onPaste?: () => void;
   canPaste?: boolean;
+  onCopySlide?: () => void;
+  onPasteSlide?: () => void;
+  canCopySlide?: boolean;
+  canPasteSlide?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
@@ -348,6 +352,10 @@ export function TopMenuBar({
   onCopy,
   onPaste,
   canPaste,
+  onCopySlide,
+  onPasteSlide,
+  canCopySlide = false,
+  canPasteSlide = false,
   onUndo,
   onRedo,
   canUndo,
@@ -717,6 +725,19 @@ export function TopMenuBar({
                 <Clipboard className="mr-2 h-4 w-4" />
                 Paste
                 <MenubarShortcut>Ctrl+V</MenubarShortcut>
+              </MenubarItem>
+            )}
+            {(onCopySlide || onPasteSlide) && (onCopy || onPaste) && <MenubarSeparator />}
+            {onCopySlide && (
+              <MenubarItem onClick={onCopySlide} disabled={isReadOnly || !canCopySlide}>
+                <CopyPlus className="mr-2 h-4 w-4" />
+                Copy Slide
+              </MenubarItem>
+            )}
+            {onPasteSlide && (
+              <MenubarItem onClick={onPasteSlide} disabled={isReadOnly || !canPasteSlide}>
+                <ClipboardPaste className="mr-2 h-4 w-4" />
+                Paste Slide
               </MenubarItem>
             )}
             {onSelectAll && (
