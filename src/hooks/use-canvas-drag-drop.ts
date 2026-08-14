@@ -72,6 +72,17 @@ function canvasDraggableIdsFromSelection(
   return out;
 }
 
+/** True when the dragged id is part of a multi object selection (nodes/zones only). */
+function isMultiCanvasDrag(
+  draggedId: string,
+  selectedItemIds: Set<string>,
+  nodesById: Record<string, PositionedNode>,
+  zonesById: Record<string, PositionedGroup>,
+): boolean {
+  if (!selectedItemIds.has(draggedId)) return false;
+  return canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById).size > 1;
+}
+
 function getCanvasDragAnchor(
   itemId: string,
   nodesById: Record<string, PositionedNode>,
@@ -212,6 +223,14 @@ export function useCanvasDragDrop({
   } | null>(null);
   const dragRafIdRef = useRef<number | null>(null);
   const lastCanvasDragCommitRef = useRef<CanvasDragCommitSnapshot | null>(null);
+  /** Always-current selection (useDrop closures can lag a render behind marquee / preserve-multi). */
+  const selectedItemIdsRef = useRef(selectedItemIds);
+  selectedItemIdsRef.current = selectedItemIds;
+  /**
+   * Selection snapshot for the active canvas drag. Captured on first hover so mouseup/click
+   * collapsing the set before drop cannot turn a multi-drag into a solo move.
+   */
+  const dragSessionSelectedIdsRef = useRef<Set<string> | null>(null);
 
   const noOpDrop = () => {};
 
@@ -225,7 +244,10 @@ export function useCanvasDragDrop({
       if (!isDraggingRef.current) {
         axisLockRef.current = null;
         lastCanvasDragCommitRef.current = null;
+        dragSessionSelectedIdsRef.current = new Set(selectedItemIdsRef.current);
       }
+
+      const sessionSelectedIds = dragSessionSelectedIdsRef.current ?? selectedItemIdsRef.current;
 
       const clientOffset = monitor.getClientOffset();
       if (!clientOffset) return;
@@ -286,20 +308,20 @@ export function useCanvasDragDrop({
       if (item.id) {
         if (isDiagramNodeLocked(diagramData.nodes, item.id)) {
           itemsToMove.clear();
-        } else if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
+        } else if (isMultiCanvasDrag(item.id, sessionSelectedIds, nodesById, zonesById)) {
           // Multiple items are selected and the dragged item is one of them - move all selected items
           // This takes priority over group membership (omit connection ids — not draggable nodes)
           filterUnlockedCanvasDragIds(
             diagramData.nodes,
             zonesById,
-            canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById),
+            canvasDraggableIdsFromSelection(sessionSelectedIds, nodesById, zonesById),
           ).forEach((id) => itemsToMove.add(id));
         } else {
           const draggedNode = item.id ? nodesById[item.id] : undefined;
           if (
             draggedNode &&
             isMindmapNodeType(draggedNode.type) &&
-            !(selectedItemIds.size > 1 && selectedItemIds.has(item.id))
+            !isMultiCanvasDrag(item.id, sessionSelectedIds, nodesById, zonesById)
           ) {
             filterUnlockedCanvasDragIds(
               diagramData.nodes,
@@ -519,6 +541,7 @@ export function useCanvasDragDrop({
         onDraggingChange?.(false);
         setHoveredGroupId(null);
         lastCanvasDragCommitRef.current = null;
+        dragSessionSelectedIdsRef.current = null;
         
         // Force browser refresh after a short delay to ensure item is added to scratchpad first
         setTimeout(() => {
@@ -557,10 +580,10 @@ export function useCanvasDragDrop({
           }
         }
       } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
+        const sessionSelectedIds = dragSessionSelectedIdsRef.current ?? selectedItemIdsRef.current;
         const clientOffsetForIcon = monitor.getClientOffset();
         let assignedCanvasIconToSlot = false;
-        const soloCanvasDrag =
-          selectedItemIds.size <= 1 || !selectedItemIds.has(item.id);
+        const soloCanvasDrag = !isMultiCanvasDrag(item.id, sessionSelectedIds, nodesById, zonesById);
         if (
           soloCanvasDrag &&
           itemType === ItemTypes.CANVAS_NODE &&
@@ -588,23 +611,36 @@ export function useCanvasDragDrop({
         // Multi-select takes priority over group membership when multiple items are selected
         const group = getItemGroup(item.id, diagramData);
         let itemsToMoveSet = new Set<string>();
+
+        // Prefer hover's multi commit if present — selection may have collapsed on mouseup/click before drop.
+        const commitMultiEarly = lastCanvasDragCommitRef.current?.multi;
+        const commitMultiIds =
+          commitMultiEarly && item.id && commitMultiEarly[item.id] != null
+            ? Object.keys(commitMultiEarly)
+            : [];
         
         if (isDiagramNodeLocked(diagramData.nodes, item.id)) {
           itemsToMoveSet.clear();
-        } else if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
+        } else if (commitMultiIds.length > 1) {
+          filterUnlockedCanvasDragIds(
+            diagramData.nodes,
+            zonesById,
+            new Set(commitMultiIds),
+          ).forEach((id) => itemsToMoveSet.add(id));
+        } else if (isMultiCanvasDrag(item.id, sessionSelectedIds, nodesById, zonesById)) {
           // Multiple items are selected and the dragged item is one of them - move all selected items
           // This takes priority over group membership (omit connection ids — not draggable nodes)
           filterUnlockedCanvasDragIds(
             diagramData.nodes,
             zonesById,
-            canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById),
+            canvasDraggableIdsFromSelection(sessionSelectedIds, nodesById, zonesById),
           ).forEach((id) => itemsToMoveSet.add(id));
         } else {
           const draggedNodeDrop = item.id ? nodesById[item.id] : undefined;
           if (
             draggedNodeDrop &&
             isMindmapNodeType(draggedNodeDrop.type) &&
-            !(selectedItemIds.size > 1 && selectedItemIds.has(item.id))
+            !isMultiCanvasDrag(item.id, sessionSelectedIds, nodesById, zonesById)
           ) {
             filterUnlockedCanvasDragIds(
               diagramData.nodes,
@@ -757,6 +793,7 @@ export function useCanvasDragDrop({
       isDraggingRef.current = false;
       axisLockRef.current = null;
       lastCanvasDragCommitRef.current = null;
+      dragSessionSelectedIdsRef.current = null;
       onDraggingChange?.(false);
       setHoveredGroupId(null);
     },
@@ -764,7 +801,7 @@ export function useCanvasDragDrop({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
-  }), [transform, processedZones, hoveredGroupId, moveItem, moveMultipleItems, duplicateNodesAtPositions, onDuplicateNodesPlaced, addNode, onCardIconDrop, nodesById, zonesById, selectedItemIds, canvasRef, diagramData]);
+  }), [transform, processedZones, hoveredGroupId, moveItem, moveMultipleItems, duplicateNodesAtPositions, onDuplicateNodesPlaced, addNode, onCardIconDrop, nodesById, zonesById, canvasRef, diagramData, isReadOnly]);
 
   // Touch palette drops (sidebar icons/shapes): HTML5 DnD is unreliable on mobile — palette items
   // dispatch `mobileDrop` on the canvas element with viewport coordinates.
@@ -871,8 +908,7 @@ export function useCanvasDragDrop({
       const droppedOnScratch = Boolean(scratchpadElement && hit && scratchpadElement.contains(hit));
       if (droppedOnScratch) return;
 
-      const soloCanvasDrag =
-        selectedItemIds.size <= 1 || !selectedItemIds.has(id);
+      const soloCanvasDrag = !isMultiCanvasDrag(id, selectedItemIdsRef.current, nodesById, zonesById);
       if (soloCanvasDrag && itemType === ItemTypes.CANVAS_NODE && onCardIconDrop) {
         const sourceNode = nodesById[id];
         const iconRef = canvasNodeToCardIconRef(sourceNode);
@@ -894,18 +930,18 @@ export function useCanvasDragDrop({
       const group = getItemGroup(id, diagramData);
       let itemsToMoveSet = new Set<string>();
 
-      if (selectedItemIds.size > 1 && selectedItemIds.has(id)) {
+      if (isMultiCanvasDrag(id, selectedItemIdsRef.current, nodesById, zonesById)) {
         filterUnlockedCanvasDragIds(
           diagramData.nodes,
           zonesById,
-          canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById),
+          canvasDraggableIdsFromSelection(selectedItemIdsRef.current, nodesById, zonesById),
         ).forEach((mid) => itemsToMoveSet.add(mid));
       } else {
         const draggedNodeMobile = nodesById[id];
         if (
           draggedNodeMobile &&
           isMindmapNodeType(draggedNodeMobile.type) &&
-          !(selectedItemIds.size > 1 && selectedItemIds.has(id))
+          !isMultiCanvasDrag(id, selectedItemIdsRef.current, nodesById, zonesById)
         ) {
           filterUnlockedCanvasDragIds(
             diagramData.nodes,
@@ -972,7 +1008,6 @@ export function useCanvasDragDrop({
     moveMultipleItems,
     nodesById,
     zonesById,
-    selectedItemIds,
     diagramData,
     onCardIconDrop,
   ]);
@@ -1025,6 +1060,7 @@ export function useCanvasDragDrop({
         setMultiDragPositions(null);
         isDraggingRef.current = false;
         axisLockRef.current = null;
+        // Keep dragSessionSelectedIdsRef until drop() finishes — mouseup often runs first.
         onDraggingChange?.(false);
       }
     };

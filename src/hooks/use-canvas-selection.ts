@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { emitDwBatchSelect } from "@/lib/interaction-recording-bridge";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import type { Transform } from "./use-canvas-transform";
@@ -172,6 +172,8 @@ export function useCanvasSelection({
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
   const [justCompletedSelection, setJustCompletedSelection] = useState(false);
+  /** Sync flag so the click that follows marquee mouseup sees completion before React re-renders. */
+  const justCompletedSelectionRef = useRef(false);
 
   const liveMarqueePlan = useMemo((): MarqueePlan | null => {
     if (!selectionStart || !selectionEnd) return null;
@@ -192,7 +194,7 @@ export function useCanvasSelection({
     const hasMultiSelectModifier = e.shiftKey || e.ctrlKey || e.metaKey;
 
     const target = e.target as HTMLElement;
-    if (justCompletedSelection) return;
+    if (justCompletedSelectionRef.current || justCompletedSelection) return;
 
     // Don't clear selection when clicking context menu (e.g. Text/Visual Styling)
     // Otherwise the panel would unmount before it can show
@@ -325,8 +327,12 @@ export function useCanvasSelection({
       setSelectionEnd(null);
 
       if (selectedIds.length > 0) {
+        justCompletedSelectionRef.current = true;
         setJustCompletedSelection(true);
-        setTimeout(() => setJustCompletedSelection(false), 100);
+        setTimeout(() => {
+          justCompletedSelectionRef.current = false;
+          setJustCompletedSelection(false);
+        }, 100);
       }
     }
   }, [selectionStart, selectionEnd, diagramData, onBatchSelect, onItemSelect]);

@@ -1682,7 +1682,8 @@ export default function DiagramEditor() {
 
     if (shiftKey && item) {
       const itemKind = item.itemType === "edge" ? "edge" : "object";
-      const mergedForAnchor = new Set(selectedItemIds);
+      const liveSelectedIds = selectedItemIdsRef.current;
+      const mergedForAnchor = new Set(liveSelectedIds);
       if (selectedItem?.id) {
         mergedForAnchor.add(selectedItem.id);
       }
@@ -1713,16 +1714,18 @@ export default function DiagramEditor() {
       setSelectedItem(item);
     } else {
       // Plain click on an item already in a multi-selection: primary only, keep the set.
+      // Read via ref so a stale handleItemSelect closure cannot collapse marquee selection before drag.
+      const liveSelectedIds = selectedItemIdsRef.current;
       let preserveMulti = false;
-      if (item && !shiftKey && selectedItemIds.size > 1) {
+      if (item && !shiftKey && liveSelectedIds.size > 1) {
         if (item.itemType === "edge") {
           const conns = (displayDiagramData.connections ?? []) as DiagramConnectionData[];
           for (let i = 0; i < conns.length; i++) {
             if (!connectionSelectionIdMatches(item.id, conns[i], i, conns)) continue;
-            preserveMulti = selectionSetContainsConnection(selectedItemIds, conns[i], i, conns);
+            preserveMulti = selectionSetContainsConnection(liveSelectedIds, conns[i], i, conns);
             break;
           }
-        } else if (selectedItemIds.has(item.id)) {
+        } else if (liveSelectedIds.has(item.id)) {
           preserveMulti = true;
         }
       }
@@ -1745,7 +1748,6 @@ export default function DiagramEditor() {
     isConnectMode,
     animationToggleOnClickEnabled,
     selectedItem,
-    selectedItemIds,
     setIsConnectMode,
     setAnimationDisabledSources,
     setSelectedItem,
@@ -1768,8 +1770,8 @@ export default function DiagramEditor() {
     setConnectorLineFocusedVertex(null);
     setTimelineEntrySelectionKeys([]);
     if (itemIds.length === 0) {
-      setSelectedItem(null);
-      setSelectedItemIds(new Set());
+      if (!activeTabId) return;
+      updateActiveTab({ selectedItem: null, selectedItemIds: new Set() });
       if (animationToggleOnClickEnabled) setAnimationDisabledSources(new Set());
       return;
     }
@@ -1817,10 +1819,13 @@ export default function DiagramEditor() {
     }
 
     if (items.length > 0) {
-      setSelectedItem(items[0]);
-      setSelectedItemIds(new Set(resolvedIds));
+      if (!activeTabId) return;
+      const newIds = new Set(resolvedIds);
+      // One tab update so selectedItem + selectedItemIds never race across two setTabs.
+      updateActiveTab({ selectedItem: items[0], selectedItemIds: newIds });
+      layers.updateActiveLayerFromSelection(newIds);
     }
-  }, [setSelectedItem, setSelectedItemIds, animationToggleOnClickEnabled, setAnimationDisabledSources, displayDiagramData, setConnectorLineFocusedVertex]);
+  }, [activeTabId, updateActiveTab, animationToggleOnClickEnabled, setAnimationDisabledSources, displayDiagramData, setConnectorLineFocusedVertex, layers]);
 
   const handleItemUpdate = React.useCallback((updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'edge') return;
