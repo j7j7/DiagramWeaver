@@ -334,14 +334,14 @@ export function applyFramedHeadingCardBackgroundVisual(
 
 function framedHeadingClearNodeBackgroundPatch(): Record<string, unknown> {
   return {
-    backgroundStyle: null,
-    backgroundColor: null,
-    backgroundColors: null,
-    gradientAngle: null,
-    meshGradientPoints: null,
-    frostedDiffusion: null,
-    frostedTransparency: null,
-    frostedPerlinNoise: null,
+    backgroundStyle: undefined,
+    backgroundColor: undefined,
+    backgroundColors: undefined,
+    gradientAngle: undefined,
+    meshGradientPoints: undefined,
+    frostedDiffusion: undefined,
+    frostedTransparency: undefined,
+    frostedPerlinNoise: undefined,
   };
 }
 
