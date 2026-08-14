@@ -10,7 +10,13 @@ interface MarqueePlan {
   itemIds: string[];
 }
 
-/** Pure marquee hit-test: picks object vs connection mode by top-left-first candidate. */
+/**
+ * Pure marquee hit-test: exclusive object vs connection mode.
+ * Fully contained nodes/zones always win over lines that merely cross the box
+ * (a common case: edges leaving the selection toward outside nodes).
+ * Connection mode is only used when no objects are fully enclosed — then any
+ * path that intersects the rect is selected (empty-canvas line marquee).
+ */
 export function computeMarqueeSelectionPlan(diagramData: DiagramData, x1: number, y1: number, x2: number, y2: number): MarqueePlan {
   const pointInRect = (x: number, y: number) => x >= x1 && x <= x2 && y >= y1 && y <= y2;
 
@@ -96,7 +102,11 @@ export function computeMarqueeSelectionPlan(diagramData: DiagramData, x1: number
     }
   });
 
-  objectHits.sort((a, b) => (a.sortY !== b.sortY ? a.sortY - b.sortY : a.sortX - b.sortX));
+  // Objects fully inside the box always take priority over crossing connections.
+  if (objectHits.length > 0) {
+    objectHits.sort((a, b) => (a.sortY !== b.sortY ? a.sortY - b.sortY : a.sortX - b.sortX));
+    return { mode: "objects", itemIds: objectHits.map((h) => h.id) };
+  }
 
   type ConnHit = { id: string; sortY: number; sortX: number };
   const connectionHits: ConnHit[] = [];
@@ -126,30 +136,11 @@ export function computeMarqueeSelectionPlan(diagramData: DiagramData, x1: number
     }
   });
 
-  connectionHits.sort((a, b) => (a.sortY !== b.sortY ? a.sortY - b.sortY : a.sortX - b.sortX));
-
-  const firstObject = objectHits[0];
-  const firstConn = connectionHits[0];
-
-  if (!firstObject && !firstConn) {
+  if (connectionHits.length === 0) {
     return { mode: "none", itemIds: [] };
   }
 
-  if (firstObject && !firstConn) {
-    return { mode: "objects", itemIds: objectHits.map((h) => h.id) };
-  }
-
-  if (!firstObject && firstConn) {
-    return { mode: "connections", itemIds: connectionHits.map((h) => h.id) };
-  }
-
-  const objectFirst =
-    firstObject.sortY < firstConn.sortY ||
-    (firstObject.sortY === firstConn.sortY && firstObject.sortX < firstConn.sortX);
-
-  if (objectFirst) {
-    return { mode: "objects", itemIds: objectHits.map((h) => h.id) };
-  }
+  connectionHits.sort((a, b) => (a.sortY !== b.sortY ? a.sortY - b.sortY : a.sortX - b.sortX));
   return { mode: "connections", itemIds: connectionHits.map((h) => h.id) };
 }
 

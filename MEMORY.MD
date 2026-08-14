@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-14 – Marquee prefers objects over crossing connections
+**`computeMarqueeSelectionPlan`**: fully contained nodes/zones always win; connection mode only when no objects are enclosed. Crossing edges that leave the box no longer steal the selection via top-left ordering. Empty-canvas line marquee (intersecting paths, no enclosed objects) unchanged. Patch bumped.
+
 ### 2026-08-13 – Production build TDZ on `/`
 Turbopack `next build` prerender of `/` threw `Cannot access 'j' before initialization` from remaining circular imports. Broke value cycles: **`createInitialCardSpec`** moved to **`card-templates`**, **`GLOBAL_VARIABLE_PATTERN`** to **`builtin-global-variables`**, pie defaults / **`newChartSliceId`** to **`grid-chart-layout`**, timeline grid snap kept local, palette drop emit moved into **`use-palette-pointer-drag`**, recorder hook/context split to **`interaction-recorder-context.tsx`**, **`SelectedItem`** imports retargeted to **`diagram-editor-types`**. Patch bumped.
 
