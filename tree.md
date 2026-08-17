@@ -2,13 +2,20 @@
 
 Canonical narrative: **README → Development → Project Structure**. Update this file when top-level directories or major `src/` groupings change.
 
-**Last verified:** 2026-05-19
+**Last verified:** 2026-08-17
 
 ```
 .
 ├── docs/
 │   ├── functional.md           # Modules, hooks, routes — how code fits together (see README / AGENTS.md)
 │   ├── e2e-perf-harness.md     # Playwright canvas performance workflow + env vars
+│   ├── AI_SCHEMA.md            # Pointer to the LLM authoring pack
+│   ├── ai-schema/              # LLM create/edit schema (generated catalogs + fixtures)
+│   │   ├── README.md
+│   │   ├── authoring-source.json
+│   │   ├── diagram-authoring.json
+│   │   ├── resource-types.json
+│   │   └── fixtures/
 ├── e2e/
 │   ├── helpers/                # editor-page, perf-logger, palette-items
 │   ├── perf/                   # canvas-workflow.spec.ts
@@ -19,7 +26,7 @@ Canonical narrative: **README → Development → Project Structure**. Update th
 ├── public/
 │   ├── examples/
 │   └── resources/          # Served JSON + icons (`/resources/*`)
-├── scripts/
+├── scripts/                    # bump-*, generate-*-resources, ai-schema generate/validate
 ├── resources/               # Templates / tooling beside public (optional); live catalogs under public/resources/
 ├── src/
 │   ├── app/

@@ -1,0 +1,62 @@
+{
+  "nodes": [
+    {
+      "id": "web",
+      "type": "generic.object.rounded-rectangle",
+      "label": "Web",
+      "x": 80,
+      "y": 120,
+      "width": 140,
+      "height": 64,
+      "sizeMode": "custom",
+      "backgroundStyle": "gradient",
+      "backgroundColors": ["#667eea", "#764ba2"],
+      "gradientAngle": 135,
+      "textColor": "#f8fafc",
+      "textPosition": "center",
+      "cornerRadius": 0.25
+    },
+    {
+      "id": "cache",
+      "type": "aws.databases.elasticache",
+      "label": "Cache",
+      "x": 320,
+      "y": 120
+    },
+    {
+      "id": "store",
+      "type": "aws.storage.simple-storage-service",
+      "label": "S3",
+      "x": 560,
+      "y": 120
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1",
+      "from": "web",
+      "to": "cache",
+      "toArrow": true,
+      "style": "bezier",
+      "color": "#667eea"
+    },
+    {
+      "id": "c2",
+      "from": "web",
+      "to": "store",
+      "toArrow": true,
+      "style": "orthogonal",
+      "smoothCorners": true,
+      "color": "#64748b",
+      "lineType": "dashed"
+    }
+  ],
+  "groupings": [
+    {
+      "id": "app-pair",
+      "type": "grouping",
+      "memberIds": ["web", "cache"],
+      "label": "Hot path"
+    }
+  ]
+}

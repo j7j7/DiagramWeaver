@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-17 – LLM diagram authoring schema
+Added **`docs/ai-schema/`**: generated **`diagram-authoring.json`** (create/edit contract, card/chart/shape recipes, themes, Lucide/emoji, examples) and **`resource-types.json`** (full icon type index). Rebuild with **`npm run generate-ai-schema`**; **`npm run validate-ai-schema`** checks catalog drift, fixtures, and family rules. No app-code patch bump.
+
 ### 2026-08-17 – Solid selection outline uses primary orange
 Solid-outline highlight colour is **`--primary`** orange in both light and dark (`--dw-selection-outline: hsl(var(--primary))`), not white/grey. Patch bumped.
 

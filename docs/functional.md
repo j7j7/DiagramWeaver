@@ -48,6 +48,7 @@ flowchart LR
 | **`lib/import-sanitize.ts`** | **`sanitizeImportedDiagram`**, ID collection/checks across imports. |
 | **`lib/flatten-on-import.ts`** | **`flattenDiagramOnImport`** for zone/nested payloads before strict schema parse. |
 | **`lib/layers-utils.ts`** | **`validateLayersConfig`**, **`filterByVisibleLayers`**, **`ensureDiagramLayersPersisted`**, reorder/rename helpers — layers are part of **`diagramData`**. |
+| **LLM authoring pack** (`docs/ai-schema/`) | Generated **`diagram-authoring.json`** + **`resource-types.json`** for models that create/edit diagrams. Source: **`authoring-source.json`**. Rebuild with **`npm run generate-ai-schema`**; **`npm run validate-ai-schema`** checks catalogs, fixtures, and family rules. |
 
 ---
 

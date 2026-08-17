@@ -1,0 +1,850 @@
+{
+  "schemaVersion": "1.0.0",
+  "app": "DiagramWeaver",
+  "purpose": "Instructions for an LLM to emit valid diagram JSON that the editor and viewer can import. Catalogs of types, icons, themes, and card skeletons are merged in at generate time.",
+  "outputContract": {
+    "emit": "A single JSON object. No markdown fences unless the user asked for fenced output.",
+    "rootKeys": {
+      "nodes": "required array (may be empty)",
+      "connections": "required array (may be empty)",
+      "groupings": "optional coordinated-selection groups (not a visible box)",
+      "layers": "optional; importer defaulted if omitted",
+      "recentColors": "optional hex strings used in this diagram",
+      "canvasBackgroundColor": "optional CSS colour for the viewport",
+      "viewState": "optional { x, y, k } pan/zoom",
+      "globalProperties": "optional string map; %key% in labels resolves at display time"
+    },
+    "forbiddenKeys": ["groups", "rootGroupId", "DiagramData.groups"],
+    "ids": "Stable unique strings per node. Hyphens/underscores OK; no spaces. Connections.from/to must match node ids. Give connections an id when two edges share the same pair."
+  },
+  "editProtocol": {
+    "input": "Current diagram JSON plus a natural-language edit.",
+    "output": "The complete updated diagram (full nodes + connections arrays), not a diff.",
+    "rules": [
+      "Preserve ids of objects the user did not ask to replace so connections stay attached.",
+      "To move/style an object, copy the node and change only the requested fields.",
+      "To delete, omit that node and drop connections that referenced it.",
+      "To add, insert a new node with a new unique id and optional connections.",
+      "Do not invent type strings; use catalogs.genericTypes or resource-types.json.",
+      "Keep layout: if adding a node, place it on the same grid as neighbours (see layoutRules)."
+    ]
+  },
+  "typeIdRules": {
+    "pattern": "provider.category.resource-slug",
+    "slug": "resource display name, spaces to hyphens, lower-case (e.g. 'EC2 Instance' → ec2-instance)",
+    "remaps": [
+      "generic text 'Text Box Heading' → generic.object.text-box-heading",
+      "generic object pie/bar/line/ring/grid chart → generic.chart.{pie|bar|line|ring|grid}",
+      "generic cards → generic.card.{template-id}",
+      "generic borders → generic.border.{template-id}",
+      "Lucide palette → generic.icon.{iconName slug} plus iconType lucide and iconName PascalCase",
+      "Emoji palette → generic.emoji.{name-slug} plus iconType emoji and emoji character",
+      "Custom image → generic.icon.custom with https imageUrl"
+    ],
+    "neverUse": "Bare names like 'Lambda' or 'Kubernetes'. Always the dotted type from the catalog (aws.compute.lambda, aws.databases.aurora, generic.user.user).",
+    "categoryGotchas": "Look up the exact category in resource-types.json. AWS uses databases (plural), not database. Storage S3 is aws.storage.simple-storage-service."
+  },
+  "layoutRules": {
+    "coordinates": "Canvas pixels. x right, y down. Never stack everything at (0,0).",
+    "grid": {
+      "iconStrideX": "160–280",
+      "shapeStrideX": "120–200",
+      "tierStrideY": "140–220",
+      "safeRegion": { "x": [40, 1400], "y": [40, 900] }
+    },
+    "flow": "Left→right for user→api→data. Top→bottom for layers/pipelines. Align peers on the same x or y.",
+    "sizes": {
+      "icon": "Omit width/height; use nodeSize normal|half|quarter|double (base tile 80px).",
+      "shape": "Set width, height, sizeMode custom.",
+      "defaultsPx": {
+        "generic.object.rectangle": [80, 50],
+        "generic.object.rounded-rectangle": [80, 50],
+        "generic.object.square": [60, 60],
+        "generic.object.circle": [60, 60],
+        "generic.object.point": [20, 20],
+        "generic.text.textbox": [240, 80],
+        "generic.chart.pie": [190, 190],
+        "generic.chart.bar": [380, 240],
+        "generic.chart.line": [470, 260],
+        "generic.chart.ring": [410, 280],
+        "generic.chart.grid": [500, 280],
+        "generic.object.uml-class": [120, 80],
+        "generic.border.*": [960, 540]
+      }
+    },
+    "labels": "2–5 words on label. Longer notes in info. Shapes: textPosition above or center. Icons: label under the glyph by default."
+  },
+  "styling": {
+    "colors": {
+      "format": "CSS hex (#rrggbb or #rgb). Reuse 2–4 accents plus neutrals.",
+      "neutrals": ["#0f172a", "#1f2937", "#64748b", "#e5e7eb", "#f8fafc", "#ffffff"],
+      "chartSlices": ["#3b82f6", "#22c55e", "#eab308", "#ef4444", "#a855f7", "#14b8a6", "#f97316", "#64748b"],
+      "sliceLabel": "#f9fafb",
+      "contrast": "Dark text #0f172a/#111827 on light fills; light text #f8fafc on dark fills."
+    },
+    "nodeVisual": {
+      "borderStyle": ["solid", "dotted", "gradient", "none"],
+      "backgroundStyle": ["solid", "gradient", "frosted", "none", "mesh_gradient"],
+      "gradient": "backgroundColors [start, end], gradientAngle 0–360 (90–135 reads well). Border gradient: borderColors + borderGradientAngle.",
+      "mesh_gradient": "meshGradientPoints: three { xPct, yPct, color } (0–100).",
+      "frosted": "frostedDiffusion, frostedTransparency 0–1; frostedPerlinNoise 0–10.",
+      "shadow": "boolean; use on 1–3 focal nodes only.",
+      "cornerRadius": "0–1 on rounded rect / cards / progress (0 square, 1 pill).",
+      "rotation": "degrees, typically 0 / ±45 / ±90."
+    },
+    "text": {
+      "fontFamily": [
+        "Inter, system-ui, sans-serif",
+        "Arial, sans-serif",
+        "Helvetica, sans-serif",
+        "Times New Roman, serif",
+        "Georgia, serif",
+        "Courier New, monospace",
+        "Monaco, monospace",
+        "Verdana, sans-serif",
+        "Tahoma, sans-serif",
+        "Trebuchet MS, sans-serif"
+      ],
+      "fontWeight": ["normal", "bold", "100", "200", "300", "400", "500", "600", "700", "800", "900"],
+      "fontStyle": ["normal", "italic", "oblique"],
+      "textDecoration": ["none", "underline", "overline", "line-through"],
+      "textTransform": ["none", "uppercase", "lowercase", "capitalize"],
+      "textJustify": ["left", "center", "right", "full"],
+      "textVerticalPosition": ["top", "middle", "bottom"],
+      "textPositionShapes": ["above", "center", "under"],
+      "richLabel": "Array of { text, bold?, italic?, underline?, listType bullet|numbered, lineJustify, lineFontSize, lineFontWeight, lineFontFamily }."
+    },
+    "iconChrome": {
+      "nodeSize": ["normal", "half", "quarter", "double"],
+      "noIconBackground": "true removes the white tile behind the glyph",
+      "iconColor": "hex for Lucide; set iconColorEnabled true to apply",
+      "iconOpacity": "0–1",
+      "iconGreyscale": "boolean"
+    },
+    "themes": "Built-in theme ids/colours are in catalogs.themes after generate. Copy a theme's border/background/text/line colours onto nodes rather than inventing a parallel palette."
+  },
+  "connections": {
+    "required": ["from", "to"],
+    "routing": {
+      "style": ["bezier", "orthogonal"],
+      "bezier": "curvature 0.1–1",
+      "orthogonal": "smoothCorners true for rounded bends. fromPreferredExit/toPreferredEntry: top|bottom|left|right|center. Left-to-right flow: right exit, left entry.",
+      "waypoints": "[{ x, y, id? }] absolute canvas. Advanced; omit unless routing around shapes.",
+      "orthogonalCustomRoute": "true + waypoints = manual polyline (no auto obstacles)."
+    },
+    "stroke": {
+      "color": "hex",
+      "lineWidth": "2–3 primary, omit for default ~2.5",
+      "lineType": ["solid", "dashed", "dotted"],
+      "taper": "lineWidthLock false + lineWidthEnd",
+      "gradientStroke": "colorLock false + colorEnd",
+      "shadow": "boolean"
+    },
+    "markers": {
+      "toArrow": "true for directed flow",
+      "fromArrow": "optional reverse marker",
+      "text": "optional label",
+      "textPosition": "0–100 along path (default 50)"
+    },
+    "animation": {
+      "use": "At most one primary link unless asked.",
+      "fields": {
+        "enabled": true,
+        "shape": ["dot", "square", "arrow", "triangle", "hexagon"],
+        "speed": -100,
+        "size": 0,
+        "spacing": 0,
+        "color": "hex",
+        "autoCount": true,
+        "shapeCount": 0
+      }
+    }
+  },
+  "nodeFamilies": {
+    "resource": {
+      "when": "Cloud/tech icons: aws.*, azure.*, gcp.*, k8s.*, programming.*, onprem.*, generic.user|device|os|office|status.*",
+      "fields": ["id", "type", "label", "x", "y", "nodeSize", "noIconBackground", "info"],
+      "notes": "Do not set file/provider unless you copied them from the catalog entry. ResourceIcon resolves the SVG from type."
+    },
+    "icon": {
+      "when": "generic.icon.* Lucide or generic.emoji.*",
+      "lucide": {
+        "type": "generic.icon.mappin",
+        "iconType": "lucide",
+        "iconName": "MapPin",
+        "iconColor": "#0d7b96",
+        "iconColorEnabled": true,
+        "noIconBackground": true
+      },
+      "emoji": {
+        "type": "generic.emoji.rocket",
+        "iconType": "emoji",
+        "emoji": "🚀",
+        "noIconBackground": true
+      },
+      "custom": {
+        "type": "generic.icon.custom",
+        "imageUrl": "https://example.com/logo.png"
+      }
+    },
+    "shape": {
+      "when": "generic.object.* closed shapes (rectangle, circle, hexagon, …)",
+      "fields": ["width", "height", "sizeMode", "backgroundColor", "backgroundStyle", "borderColor", "borderStyle", "textColor", "textPosition", "label", "cornerRadius", "shadow"],
+      "sizeMode": "custom",
+      "swapable": ["rounded-rectangle", "rectangle", "square", "circle", "triangle", "hexagon", "pentagon", "octagon", "star", "cloud", "parallelogram", "trapezoid", "kite"]
+    },
+    "text": {
+      "generic.text.text": "Plain label. width/height + sizeMode custom.",
+      "generic.text.textbox": "Multi-line box. Prefer richLabel for formatting."
+    },
+    "chart": {
+      "required": "chart object whose kind matches the type suffix (pie|bar|line|ring|grid).",
+      "kinds": {
+        "pie": {
+          "type": "generic.chart.pie",
+          "chart": {
+            "kind": "pie",
+            "series": [{ "id": "s1", "name": "A", "value": 60, "color": "#3b82f6" }],
+            "segmentGapDeg": 1,
+            "showSegmentLabels": true
+          }
+        },
+        "ring": {
+          "type": "generic.chart.ring",
+          "chart": {
+            "kind": "ring",
+            "innerRadius": 14,
+            "segmentAngularGapDeg": 2,
+            "series": [{ "id": "s1", "name": "A", "value": 45, "ringThickness": 10 }]
+          }
+        },
+        "bar": {
+          "type": "generic.chart.bar",
+          "chart": {
+            "kind": "bar",
+            "vertical": true,
+            "categoryLabels": ["Q1", "Q2", "Q3", "Q4"],
+            "series": [{ "id": "s1", "name": "Revenue", "values": [10, 20, 14, 22], "color": "#3b82f6" }],
+            "showGridX": true,
+            "showGridY": true,
+            "showLegend": true
+          }
+        },
+        "line": {
+          "type": "generic.chart.line",
+          "chart": {
+            "kind": "line",
+            "smooth": true,
+            "showAreaFill": true,
+            "categoryLabels": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+            "series": [{ "id": "s1", "name": "Traffic", "values": [4, 8, 6, 12, 9], "color": "#0d7b96" }]
+          }
+        },
+        "grid": {
+          "type": "generic.chart.grid",
+          "role": "This is the table/matrix/heatmap. There is no generic.table type.",
+          "chart": {
+            "kind": "grid",
+            "cols": 4,
+            "rows": 3,
+            "title": "Capacity",
+            "columnTitles": ["A", "B", "C", "D"],
+            "rowTitles": ["P1", "P2", "P3"],
+            "cellGap": 4,
+            "showGridLines": true,
+            "cells": [
+              { "id": "c00", "filled": true, "fillStyle": "solid", "color": "#86efac", "text": "OK" }
+            ]
+          },
+          "cells": "Row-major, length should be cols*rows. Unfilled cells: filled false or fillStyle none. fillStyle: none|solid|gradient|hue-step|theme-hue|default."
+        }
+      },
+      "seriesFill": "fillStyle none|solid|gradient; gradientColors [start,end]; labelColor on slices."
+    },
+    "card": {
+      "required": "type generic.card.{templateId}, card.templateId same suffix, card.elements tree, width/height/sizeMode custom.",
+      "how": "Copy defaultElements for that template from catalogs.cardTemplates. Change only text, tag, iconRef, and colours. Keep element ids — the renderer keys off them.",
+      "elementKinds": ["section", "text", "icon-slot", "tag", "decor"],
+      "iconRef": "Same as a canvas icon: type + optional iconType/iconName/emoji/file."
+    },
+    "border": {
+      "when": "Slide frames generic.border.*",
+      "fields": {
+        "type": "generic.border.corner-diagonal-accent",
+        "border": { "templateId": "corner-diagonal-accent" },
+        "width": 960,
+        "height": 540,
+        "sizeMode": "custom",
+        "borderStyle": "none",
+        "backgroundStyle": "none"
+      }
+    },
+    "line": {
+      "type": "generic.object.line",
+      "fields": ["startPos", "endPos", "startCap", "endCap", "lineThickness", "lineType", "linePathStyle"],
+      "caps": ["none", "arrow", "dot", "square"],
+      "linePathStyle": ["straight", "curved"]
+    },
+    "progress-bar": {
+      "type": "generic.object.progress-bar",
+      "fields": ["progressPercent", "progressShowPercent", "progressFillStyle", "progressFillColors", "progressTrackStyle", "progressTrackColors"]
+    },
+    "timeline-bar": {
+      "type": "generic.object.timeline-bar",
+      "fields": ["timelineBarSections", "timelineBarSizing", "timelineBarOrientation"],
+      "section": {
+        "id": "seg-1",
+        "label": "Phase 1",
+        "fill": "#3b82f6",
+        "fillStyle": "solid",
+        "weight": 1
+      }
+    },
+    "segmented-rectangle": {
+      "type": "generic.object.segmented-rectangle",
+      "fields": ["segmentedRectangleSections", "segmentedRectangleSizing", "segmentedRectanglePlacementOrder"]
+    },
+    "pyramid": {
+      "type": "generic.object.pyramid",
+      "fields": ["pyramidSections", "pyramidSizing", "pyramidDirection"]
+    },
+    "timeline": {
+      "type": "generic.object.timeline",
+      "fields": ["timelineEntries", "timelineDistribution", "timelineCardSide"],
+      "entry": { "id": "e1", "label": "Kickoff", "t": 0.2 }
+    },
+    "mindmap": {
+      "type": "generic.object.mind-map-node",
+      "fields": ["label", "mindmapParentId", "mindmapChildIds", "mindmapFillMode"],
+      "connections": "Tree edges may set mindmapRole tree and mindmapPrimary true."
+    },
+    "uml": {
+      "type": "generic.object.uml-class",
+      "umlClass": {
+        "name": "Order",
+        "attributes": ["+ id: string", "- total: number"],
+        "methods": ["+ submit()"]
+      }
+    },
+    "text-box-heading": {
+      "type": "generic.object.text-box-heading",
+      "fields": ["headingLabel", "headingEdge", "headingBackgroundColor", "headingTextColor", "label"]
+    }
+  },
+  "cardTemplates": [
+    {
+      "templateId": "profile-feature",
+      "nodeType": "generic.card.profile-feature",
+      "defaultWidth": 260,
+      "defaultHeight": 290,
+      "editable": ["hero (icon-slot)", "title", "subtitle"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "column", "width": "100%", "height": "100%", "overflow": "hidden" },
+        "children": [
+          {
+            "id": "hero",
+            "kind": "icon-slot",
+            "placeholder": "rect",
+            "layout": { "flex": 55, "width": "100%" },
+            "style": { "backgroundColor": "#fef3c7", "backgroundStyle": "solid" },
+            "iconRef": { "type": "generic.icon.mappin", "iconType": "lucide", "iconName": "MapPin", "iconColor": "#0d7b96", "noIconBackground": true }
+          },
+          {
+            "id": "body",
+            "kind": "section",
+            "layout": { "flexDirection": "column", "flex": 45, "width": "100%" },
+            "style": { "backgroundColor": "#fffbeb", "backgroundStyle": "solid" },
+            "children": [
+              { "id": "title", "kind": "text", "text": "Card title", "editable": true, "fontSize": 14, "fontWeight": "600", "textColor": "#713f12" },
+              { "id": "subtitle", "kind": "text", "text": "Subtitle", "editable": true, "fontSize": 11, "textColor": "#713f12" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "profile-diagonal-split",
+      "nodeType": "generic.card.profile-diagonal-split",
+      "defaultWidth": 250,
+      "defaultHeight": 250,
+      "editable": ["title", "subtitle", "avatar (icon-slot)"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "width": "100%", "height": "100%", "overflow": "hidden" },
+        "children": [
+          { "id": "body", "kind": "section", "style": { "backgroundStyle": "gradient", "backgroundColors": ["#ffe4e6", "#fca5a5"], "gradientAngle": 145 } },
+          { "id": "hero", "kind": "section" },
+          {
+            "id": "content",
+            "kind": "section",
+            "layout": { "flexDirection": "column", "alignItems": "center", "justifyContent": "center", "width": "100%", "height": "100%" },
+            "children": [
+              { "id": "title", "kind": "text", "text": "Title", "editable": true, "fontSize": 14, "fontWeight": "600", "textColor": "#991b1b" },
+              { "id": "subtitle", "kind": "text", "text": "small text", "editable": true, "fontSize": 11, "textColor": "#991b1b" }
+            ]
+          },
+          {
+            "id": "avatar",
+            "kind": "icon-slot",
+            "placeholder": "circle",
+            "iconFillSlot": true,
+            "iconRef": { "type": "generic.icon.globe", "iconType": "lucide", "iconName": "Globe", "noIconBackground": true }
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "profile-social",
+      "nodeType": "generic.card.profile-social",
+      "defaultWidth": 180,
+      "defaultHeight": 280,
+      "editable": ["avatar", "name", "age", "location", "description", "stat-1-value", "stat-1-label", "stat-2-value", "stat-2-label", "stat-3-value", "stat-3-label"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "column", "width": "100%", "height": "100%", "overflow": "hidden" },
+        "style": { "backgroundColor": "#ffffff", "backgroundStyle": "solid" },
+        "children": [
+          { "id": "hero", "kind": "section", "layout": { "flex": 38, "width": "100%" }, "style": { "backgroundColor": "#2ab7bc", "backgroundStyle": "solid" } },
+          {
+            "id": "body",
+            "kind": "section",
+            "layout": { "flexDirection": "column", "flex": 62, "alignItems": "center", "width": "100%" },
+            "children": [
+              {
+                "id": "avatar",
+                "kind": "icon-slot",
+                "placeholder": "circle",
+                "iconFillSlot": true,
+                "iconRef": { "type": "generic.user.user", "provider": "generic", "category": "user", "file": "user.png", "noIconBackground": true }
+              },
+              {
+                "id": "info",
+                "kind": "section",
+                "layout": { "flexDirection": "column", "alignItems": "center" },
+                "children": [
+                  {
+                    "id": "name-row",
+                    "kind": "section",
+                    "layout": { "flexDirection": "row", "justifyContent": "center" },
+                    "children": [
+                      { "id": "name", "kind": "text", "text": "Name", "editable": true, "fontSize": 14, "fontWeight": "700", "textColor": "#2d3748" },
+                      { "id": "age", "kind": "text", "text": "26", "editable": true, "fontSize": 12, "textColor": "#718096" }
+                    ]
+                  },
+                  { "id": "location", "kind": "text", "text": "City", "editable": true, "fontSize": 11, "textColor": "#718096" }
+                ]
+              },
+              { "id": "description", "kind": "text", "text": "Short bio", "editable": true, "fontSize": 10, "textColor": "#718096" },
+              {
+                "id": "footer",
+                "kind": "section",
+                "children": [
+                  { "id": "divider", "kind": "section", "layout": { "width": "100%", "height": 1 }, "style": { "backgroundColor": "#e2e8f0", "backgroundStyle": "solid" } },
+                  {
+                    "id": "stats",
+                    "kind": "section",
+                    "layout": { "flexDirection": "row", "justifyContent": "space-between", "width": "100%" },
+                    "children": [
+                      { "id": "stat-1", "kind": "section", "layout": { "flexDirection": "column", "alignItems": "center" }, "children": [{ "id": "stat-1-value", "kind": "text", "text": "80K", "editable": true, "fontWeight": "700" }, { "id": "stat-1-label", "kind": "text", "text": "Followers", "editable": true }] },
+                      { "id": "stat-2", "kind": "section", "layout": { "flexDirection": "column", "alignItems": "center" }, "children": [{ "id": "stat-2-value", "kind": "text", "text": "803K", "editable": true, "fontWeight": "700" }, { "id": "stat-2-label", "kind": "text", "text": "Likes", "editable": true }] },
+                      { "id": "stat-3", "kind": "section", "layout": { "flexDirection": "column", "alignItems": "center" }, "children": [{ "id": "stat-3-value", "kind": "text", "text": "1.4K", "editable": true, "fontWeight": "700" }, { "id": "stat-3-label", "kind": "text", "text": "Photos", "editable": true }] }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "compact-horizontal",
+      "nodeType": "generic.card.compact-horizontal",
+      "defaultWidth": 220,
+      "defaultHeight": 80,
+      "editable": ["avatar", "name", "status"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "row", "width": "100%", "height": "100%", "alignItems": "center", "gap": 12, "padding": [10, 12] },
+        "style": { "backgroundStyle": "gradient", "backgroundColors": ["#0369a1", "#0284c7"], "gradientAngle": 165 },
+        "children": [
+          {
+            "id": "avatar",
+            "kind": "icon-slot",
+            "placeholder": "circle",
+            "iconFillSlot": true,
+            "layout": { "width": 44, "height": 44 },
+            "iconRef": { "type": "generic.emoji.star", "iconType": "emoji", "emoji": "⭐", "noIconBackground": true }
+          },
+          {
+            "id": "text-col",
+            "kind": "section",
+            "layout": { "flexDirection": "column", "flex": 1, "gap": 5 },
+            "children": [
+              { "id": "name", "kind": "text", "text": "Name or label", "editable": true, "fontSize": 13, "fontWeight": "600", "textColor": "#f0f9ff" },
+              { "id": "status", "kind": "text", "text": "Status or role", "editable": true, "fontSize": 10, "textColor": "#f0f9ff" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "list-item-row",
+      "nodeType": "generic.card.list-item-row",
+      "defaultWidth": 250,
+      "defaultHeight": 40,
+      "editable": ["indicator (icon-slot)", "label"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "row", "width": "100%", "height": "100%", "alignItems": "center", "gap": 10, "padding": [8, 10] },
+        "style": { "backgroundStyle": "gradient", "backgroundColors": ["#ede9fe", "#e0e7ff"], "gradientAngle": 135 },
+        "children": [
+          {
+            "id": "indicator",
+            "kind": "icon-slot",
+            "placeholder": "rect",
+            "iconRef": { "type": "generic.icon.shield", "iconType": "lucide", "iconName": "Shield", "noIconBackground": true }
+          },
+          { "id": "label", "kind": "text", "text": "List item label", "editable": true, "fontSize": 12, "textColor": "#4c1d95" },
+          { "id": "drag-handle", "kind": "decor", "placeholder": "dots", "layout": { "width": 16, "height": 24 } }
+        ]
+      }
+    },
+    {
+      "templateId": "framed-heading",
+      "nodeType": "generic.card.framed-heading",
+      "defaultWidth": 260,
+      "defaultHeight": 280,
+      "editable": ["heading", "frame-fill (background)", "heading-tab framedHeadingEdge/Align/TabWidthPct"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "column", "width": "100%", "height": "100%", "overflow": "visible" },
+        "style": { "backgroundStyle": "none" },
+        "children": [
+          { "id": "frame-fill", "kind": "section", "style": { "backgroundStyle": "none" } },
+          {
+            "id": "heading-tab",
+            "kind": "section",
+            "framedHeadingEdge": "top",
+            "framedHeadingAlign": "center",
+            "framedHeadingTabWidthPct": 50,
+            "style": { "backgroundStyle": "gradient", "backgroundColors": ["#2b6ca1", "#193661"], "gradientAngle": 315 },
+            "children": [
+              { "id": "heading", "kind": "text", "text": "HEADING", "editable": true, "fontSize": 11, "fontWeight": "700", "textTransform": "uppercase", "textColor": "#ced7e3", "textJustify": "center" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "icon-border",
+      "nodeType": "generic.card.icon-border",
+      "defaultWidth": 680,
+      "defaultHeight": 440,
+      "editable": ["icon (icon-slot)", "title"],
+      "notes": "Shell uses node borderColor (default #ed7100). Corner icon defaults to aws.compute.compute-optimizer, nodeSize half, noIconBackground true.",
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "column", "width": "100%", "height": "100%", "overflow": "hidden" },
+        "style": { "backgroundStyle": "solid", "backgroundColor": "#ffffff" },
+        "children": [
+          {
+            "id": "header",
+            "kind": "section",
+            "layout": { "flexDirection": "row", "width": "100%", "gap": 10, "alignItems": "stretch" },
+            "children": [
+              {
+                "id": "icon",
+                "kind": "icon-slot",
+                "placeholder": "rect",
+                "iconRef": {
+                  "type": "aws.compute.compute-optimizer",
+                  "provider": "aws",
+                  "category": "compute",
+                  "noIconBackground": true,
+                  "nodeSize": "half",
+                  "iconSizeMode": "fixed"
+                }
+              },
+              { "id": "title", "kind": "text", "text": "TITLE", "editable": true, "fontSize": 32, "fontWeight": "400", "textColor": "#374151" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "sidebar-accent",
+      "nodeType": "generic.card.sidebar-accent",
+      "defaultWidth": 240,
+      "defaultHeight": 96,
+      "editable": ["heading", "body", "accent-bar"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "row", "width": "100%", "height": "100%", "padding": [12, 14], "gap": 12 },
+        "style": { "backgroundStyle": "gradient", "backgroundColors": ["#051923", "#004e64"], "gradientAngle": 135 },
+        "children": [
+          { "id": "accent-bar", "kind": "decor", "placeholder": "rect", "layout": { "width": 6 } },
+          {
+            "id": "content-col",
+            "kind": "section",
+            "layout": { "flexDirection": "column", "flex": 1, "justifyContent": "center", "gap": 6 },
+            "children": [
+              { "id": "heading", "kind": "text", "text": "HEADING TEXT TITLE", "editable": true, "fontSize": 11, "fontWeight": "700", "textTransform": "uppercase", "textColor": "#45d1af" },
+              { "id": "body", "kind": "text", "text": "Body text section", "editable": true, "fontSize": 10, "textColor": "#ffffff" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "element-feature",
+      "nodeType": "generic.card.element-feature",
+      "defaultWidth": 300,
+      "defaultHeight": 170,
+      "editable": ["label", "title", "watermark-number", "accent-line"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "width": "100%", "height": "100%", "overflow": "hidden" },
+        "children": [
+          { "id": "watermark-number", "kind": "text", "text": "01", "editable": true, "fontSize": 130, "fontWeight": "700" },
+          {
+            "id": "content-col",
+            "kind": "section",
+            "layout": { "flexDirection": "column", "width": "100%", "height": "100%" },
+            "children": [
+              { "id": "label", "kind": "text", "text": "CATEGORY", "editable": true, "fontSize": 11, "textTransform": "uppercase" },
+              { "id": "accent-line", "kind": "decor", "placeholder": "rect" },
+              { "id": "title", "kind": "text", "text": "Feature title", "editable": true, "fontSize": 18, "fontWeight": "700", "textColor": "#ffffff" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "detail-post",
+      "nodeType": "generic.card.detail-post",
+      "defaultWidth": 180,
+      "defaultHeight": 260,
+      "editable": ["header-icon", "header-tag", "headline", "body-line-1", "body-line-2", "cta"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "column", "width": "100%", "height": "100%", "padding": 12, "gap": 10 },
+        "style": { "backgroundStyle": "gradient", "backgroundColors": ["#ffedd5", "#fdba74"], "gradientAngle": 95 },
+        "children": [
+          {
+            "id": "header",
+            "kind": "section",
+            "layout": { "flexDirection": "row", "justifyContent": "space-between", "width": "100%" },
+            "children": [
+              { "id": "header-icon", "kind": "icon-slot", "placeholder": "rect", "iconFillSlot": true, "iconRef": { "type": "generic.icon.cpu", "iconType": "lucide", "iconName": "Cpu", "noIconBackground": true } },
+              { "id": "header-tag", "kind": "tag", "tag": "Tag", "editable": true, "fontSize": 9, "textColor": "#431407" }
+            ]
+          },
+          {
+            "id": "body",
+            "kind": "section",
+            "layout": { "flexDirection": "column", "flex": 1, "gap": 8, "width": "100%" },
+            "children": [
+              { "id": "headline", "kind": "text", "text": "Headline", "editable": true, "fontSize": 14, "fontWeight": "700", "textColor": "#431407" },
+              { "id": "body-line-1", "kind": "text", "text": "Body text line one", "editable": true, "fontSize": 10, "textColor": "#431407" },
+              { "id": "body-line-2", "kind": "text", "text": "Body text line two", "editable": true, "fontSize": 10, "textColor": "#431407" }
+            ]
+          },
+          {
+            "id": "footer",
+            "kind": "section",
+            "children": [
+              { "id": "cta", "kind": "text", "text": "Call to action", "editable": true, "fontSize": 10, "fontWeight": "600", "textColor": "#431407" }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "dashboard-score",
+      "nodeType": "generic.card.dashboard-score",
+      "defaultWidth": 200,
+      "defaultHeight": 120,
+      "editable": ["metric-title", "metric-subtitle", "metric-value", "metric-decor", "metric-action"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "column", "width": "100%", "height": "100%", "padding": [14, 16], "overflow": "hidden" },
+        "style": { "backgroundStyle": "gradient", "backgroundColors": ["#ddd6fe", "#7c3aed"], "gradientAngle": 135 },
+        "children": [
+          {
+            "id": "header",
+            "kind": "section",
+            "layout": { "flexDirection": "row", "width": "100%" },
+            "children": [
+              {
+                "id": "title-col",
+                "kind": "section",
+                "layout": { "flexDirection": "column", "flex": 1 },
+                "children": [
+                  { "id": "metric-title", "kind": "text", "text": "Overall Score", "editable": true, "fontSize": 11, "textColor": "#ffffff" },
+                  { "id": "metric-subtitle", "kind": "text", "text": "", "editable": true, "fontSize": 10, "textColor": "#ffffff" }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "metric-body",
+            "kind": "section",
+            "children": [
+              { "id": "metric-value", "kind": "text", "text": "8 / 10", "editable": true, "fontSize": 28, "fontWeight": "700", "textColor": "#ffffff" }
+            ]
+          },
+          { "id": "metric-decor", "kind": "icon-slot", "iconRef": { "type": "generic.icon.star", "iconType": "lucide", "iconName": "Star", "iconColor": "#ffffff", "noIconBackground": true } },
+          { "id": "metric-action", "kind": "icon-slot" }
+        ]
+      }
+    },
+    {
+      "templateId": "dashboard-ranking",
+      "nodeType": "generic.card.dashboard-ranking",
+      "defaultWidth": 200,
+      "defaultHeight": 120,
+      "editable": ["metric-title", "metric-value", "metric-decor"],
+      "cloneFrom": "dashboard-score",
+      "notes": "Same element ids as dashboard-score. Default title Ranking, value 25, green gradient #bbf7d0→#16a34a, decor Globe."
+    },
+    {
+      "templateId": "dashboard-incentives",
+      "nodeType": "generic.card.dashboard-incentives",
+      "defaultWidth": 200,
+      "defaultHeight": 160,
+      "editable": ["metric-title", "metric-subtitle", "metric-value", "metric-decor"],
+      "cloneFrom": "dashboard-score",
+      "notes": "Same ids. Title Incentives, subtitle worth of, value $ 15, blue gradient, decor MapPin."
+    },
+    {
+      "templateId": "dashboard-defaults",
+      "nodeType": "generic.card.dashboard-defaults",
+      "defaultWidth": 200,
+      "defaultHeight": 120,
+      "editable": ["metric-title", "metric-value", "metric-decor"],
+      "cloneFrom": "dashboard-score",
+      "notes": "Same ids as other dashboard-* cards."
+    },
+    {
+      "templateId": "agenda",
+      "nodeType": "generic.card.agenda",
+      "defaultWidth": 320,
+      "defaultHeight": 280,
+      "editable": ["date", "entries rows: row-N with time + session text"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "column", "width": "100%", "height": "100%", "overflow": "hidden" },
+        "style": { "backgroundColor": "#ffffff", "backgroundStyle": "solid" },
+        "children": [
+          {
+            "id": "date-header",
+            "kind": "section",
+            "children": [
+              { "id": "date", "kind": "text", "text": "Monday 17 August", "editable": true, "fontSize": 12, "fontWeight": "600", "textColor": "#1e293b" }
+            ]
+          },
+          {
+            "id": "table-header",
+            "kind": "section",
+            "layout": { "flexDirection": "row", "width": "100%" },
+            "style": { "backgroundColor": "#0f172a", "backgroundStyle": "solid" },
+            "children": [
+              { "id": "time-header", "kind": "text", "text": "Time", "fontSize": 10, "textColor": "#f8fafc" },
+              { "id": "session-header", "kind": "text", "text": "Session", "fontSize": 10, "textColor": "#f8fafc" }
+            ]
+          },
+          {
+            "id": "entries",
+            "kind": "section",
+            "layout": { "flexDirection": "column", "flex": 1, "width": "100%" },
+            "children": [
+              {
+                "id": "row-1",
+                "kind": "section",
+                "layout": { "flexDirection": "row", "width": "100%" },
+                "children": [
+                  { "id": "row-1-time", "kind": "text", "text": "09:00", "editable": true, "fontSize": 11 },
+                  { "id": "row-1-session", "kind": "text", "text": "Kickoff", "editable": true, "fontSize": 11 }
+                ]
+              },
+              {
+                "id": "row-2",
+                "kind": "section",
+                "layout": { "flexDirection": "row", "width": "100%" },
+                "children": [
+                  { "id": "row-2-time", "kind": "text", "text": "10:30", "editable": true, "fontSize": 11 },
+                  { "id": "row-2-session", "kind": "text", "text": "Workshop", "editable": true, "fontSize": 11 }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "templateId": "bullet-list",
+      "nodeType": "generic.card.bullet-list",
+      "defaultWidth": 320,
+      "defaultHeight": 160,
+      "editable": ["title", "row-N-text (and optional row-N-cube)"],
+      "defaultElements": {
+        "id": "root",
+        "kind": "section",
+        "layout": { "flexDirection": "column", "width": "100%", "height": "100%", "overflow": "hidden", "padding": [12, 0, 8, 0] },
+        "style": { "backgroundColor": "#0f172a", "backgroundStyle": "solid" },
+        "children": [
+          { "id": "title", "kind": "text", "text": "KEY POINTS", "editable": true, "fontSize": 14, "fontWeight": "700", "textTransform": "uppercase", "textColor": "#84cc16", "textJustify": "center" },
+          {
+            "id": "entries",
+            "kind": "section",
+            "layout": { "flexDirection": "column", "flex": 1, "width": "100%" },
+            "children": [
+              {
+                "id": "row-1",
+                "kind": "section",
+                "layout": { "flexDirection": "row", "alignItems": "center", "gap": 8, "width": "100%" },
+                "children": [
+                  { "id": "row-1-cube", "kind": "decor", "placeholder": "rect", "layout": { "width": 8, "height": 8 }, "style": { "backgroundColor": "#84cc16", "backgroundStyle": "solid" } },
+                  { "id": "row-1-text", "kind": "text", "text": "First item", "editable": true, "fontSize": 12, "textColor": "#ffffff" }
+                ]
+              },
+              {
+                "id": "row-2",
+                "kind": "section",
+                "layout": { "flexDirection": "row", "alignItems": "center", "gap": 8, "width": "100%" },
+                "children": [
+                  { "id": "row-2-cube", "kind": "decor", "placeholder": "rect", "layout": { "width": 8, "height": 8 }, "style": { "backgroundColor": "#84cc16", "backgroundStyle": "solid" } },
+                  { "id": "row-2-text", "kind": "text", "text": "Second item", "editable": true, "fontSize": 12, "textColor": "#ffffff" }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "antiPatterns": [
+    "type strings that are not in the catalog (use generic.object.rectangle + label instead).",
+    "All nodes at x:0 y:0.",
+    "Omitting chart on generic.chart.* or card.elements on generic.card.*.",
+    "card.templateId that does not match the type suffix.",
+    "Connections to missing node ids.",
+    "Every connection animated and shadowed.",
+    "Low-contrast grey-on-grey body text.",
+    "Deprecated groups / rootGroupId keys."
+  ]
+}

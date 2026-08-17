@@ -1,0 +1,53 @@
+{
+  "nodes": [
+    {
+      "id": "user",
+      "type": "generic.user.user",
+      "label": "User",
+      "x": 80,
+      "y": 180,
+      "nodeSize": "normal"
+    },
+    {
+      "id": "api",
+      "type": "aws.compute.lambda",
+      "label": "API",
+      "x": 320,
+      "y": 180,
+      "info": "Request handler"
+    },
+    {
+      "id": "db",
+      "type": "aws.databases.aurora",
+      "label": "Aurora",
+      "x": 560,
+      "y": 180
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-user-api",
+      "from": "user",
+      "to": "api",
+      "toArrow": true,
+      "style": "orthogonal",
+      "smoothCorners": true,
+      "fromPreferredExit": "right",
+      "toPreferredEntry": "left",
+      "color": "#6366f1",
+      "lineWidth": 2.5
+    },
+    {
+      "id": "c-api-db",
+      "from": "api",
+      "to": "db",
+      "toArrow": true,
+      "style": "orthogonal",
+      "smoothCorners": true,
+      "fromPreferredExit": "right",
+      "toPreferredEntry": "left",
+      "color": "#527fff"
+    }
+  ],
+  "recentColors": ["#6366f1", "#527fff"]
+}

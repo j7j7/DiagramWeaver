@@ -1,0 +1,7065 @@
+{
+  "schemaVersion": "1.0.0",
+  "app": "DiagramWeaver",
+  "purpose": "Instructions for an LLM to emit valid diagram JSON that the editor and viewer can import. Catalogs of types, icons, themes, and card skeletons are merged in at generate time.",
+  "outputContract": {
+    "emit": "A single JSON object. No markdown fences unless the user asked for fenced output.",
+    "rootKeys": {
+      "nodes": "required array (may be empty)",
+      "connections": "required array (may be empty)",
+      "groupings": "optional coordinated-selection groups (not a visible box)",
+      "layers": "optional; importer defaulted if omitted",
+      "recentColors": "optional hex strings used in this diagram",
+      "canvasBackgroundColor": "optional CSS colour for the viewport",
+      "viewState": "optional { x, y, k } pan/zoom",
+      "globalProperties": "optional string map; %key% in labels resolves at display time"
+    },
+    "forbiddenKeys": [
+      "groups",
+      "rootGroupId",
+      "DiagramData.groups"
+    ],
+    "ids": "Stable unique strings per node. Hyphens/underscores OK; no spaces. Connections.from/to must match node ids. Give connections an id when two edges share the same pair."
+  },
+  "editProtocol": {
+    "input": "Current diagram JSON plus a natural-language edit.",
+    "output": "The complete updated diagram (full nodes + connections arrays), not a diff.",
+    "rules": [
+      "Preserve ids of objects the user did not ask to replace so connections stay attached.",
+      "To move/style an object, copy the node and change only the requested fields.",
+      "To delete, omit that node and drop connections that referenced it.",
+      "To add, insert a new node with a new unique id and optional connections.",
+      "Do not invent type strings; use catalogs.genericTypes or resource-types.json.",
+      "Keep layout: if adding a node, place it on the same grid as neighbours (see layoutRules)."
+    ]
+  },
+  "typeIdRules": {
+    "pattern": "provider.category.resource-slug",
+    "slug": "resource display name, spaces to hyphens, lower-case (e.g. 'EC2 Instance' → ec2-instance)",
+    "remaps": [
+      "generic text 'Text Box Heading' → generic.object.text-box-heading",
+      "generic object pie/bar/line/ring/grid chart → generic.chart.{pie|bar|line|ring|grid}",
+      "generic cards → generic.card.{template-id}",
+      "generic borders → generic.border.{template-id}",
+      "Lucide palette → generic.icon.{iconName slug} plus iconType lucide and iconName PascalCase",
+      "Emoji palette → generic.emoji.{name-slug} plus iconType emoji and emoji character",
+      "Custom image → generic.icon.custom with https imageUrl"
+    ],
+    "neverUse": "Bare names like 'Lambda' or 'Kubernetes'. Always the dotted type from the catalog (aws.compute.lambda, aws.databases.aurora, generic.user.user).",
+    "categoryGotchas": "Look up the exact category in resource-types.json. AWS uses databases (plural), not database. Storage S3 is aws.storage.simple-storage-service."
+  },
+  "layoutRules": {
+    "coordinates": "Canvas pixels. x right, y down. Never stack everything at (0,0).",
+    "grid": {
+      "iconStrideX": "160–280",
+      "shapeStrideX": "120–200",
+      "tierStrideY": "140–220",
+      "safeRegion": {
+        "x": [
+          40,
+          1400
+        ],
+        "y": [
+          40,
+          900
+        ]
+      }
+    },
+    "flow": "Left→right for user→api→data. Top→bottom for layers/pipelines. Align peers on the same x or y.",
+    "sizes": {
+      "icon": "Omit width/height; use nodeSize normal|half|quarter|double (base tile 80px).",
+      "shape": "Set width, height, sizeMode custom.",
+      "defaultsPx": {
+        "generic.object.rectangle": [
+          80,
+          50
+        ],
+        "generic.object.rounded-rectangle": [
+          80,
+          50
+        ],
+        "generic.object.square": [
+          60,
+          60
+        ],
+        "generic.object.circle": [
+          60,
+          60
+        ],
+        "generic.object.point": [
+          20,
+          20
+        ],
+        "generic.text.textbox": [
+          240,
+          80
+        ],
+        "generic.chart.pie": [
+          190,
+          190
+        ],
+        "generic.chart.bar": [
+          380,
+          240
+        ],
+        "generic.chart.line": [
+          470,
+          260
+        ],
+        "generic.chart.ring": [
+          410,
+          280
+        ],
+        "generic.chart.grid": [
+          500,
+          280
+        ],
+        "generic.object.uml-class": [
+          120,
+          80
+        ],
+        "generic.border.*": [
+          960,
+          540
+        ]
+      }
+    },
+    "labels": "2–5 words on label. Longer notes in info. Shapes: textPosition above or center. Icons: label under the glyph by default."
+  },
+  "styling": {
+    "colors": {
+      "format": "CSS hex (#rrggbb or #rgb). Reuse 2–4 accents plus neutrals.",
+      "neutrals": [
+        "#0f172a",
+        "#1f2937",
+        "#64748b",
+        "#e5e7eb",
+        "#f8fafc",
+        "#ffffff"
+      ],
+      "chartSlices": [
+        "#3b82f6",
+        "#22c55e",
+        "#eab308",
+        "#ef4444",
+        "#a855f7",
+        "#14b8a6",
+        "#f97316",
+        "#64748b"
+      ],
+      "sliceLabel": "#f9fafb",
+      "contrast": "Dark text #0f172a/#111827 on light fills; light text #f8fafc on dark fills."
+    },
+    "nodeVisual": {
+      "borderStyle": [
+        "solid",
+        "dotted",
+        "gradient",
+        "none"
+      ],
+      "backgroundStyle": [
+        "solid",
+        "gradient",
+        "frosted",
+        "none",
+        "mesh_gradient"
+      ],
+      "gradient": "backgroundColors [start, end], gradientAngle 0–360 (90–135 reads well). Border gradient: borderColors + borderGradientAngle.",
+      "mesh_gradient": "meshGradientPoints: three { xPct, yPct, color } (0–100).",
+      "frosted": "frostedDiffusion, frostedTransparency 0–1; frostedPerlinNoise 0–10.",
+      "shadow": "boolean; use on 1–3 focal nodes only.",
+      "cornerRadius": "0–1 on rounded rect / cards / progress (0 square, 1 pill).",
+      "rotation": "degrees, typically 0 / ±45 / ±90."
+    },
+    "text": {
+      "fontFamily": [
+        "Inter, system-ui, sans-serif",
+        "Arial, sans-serif",
+        "Helvetica, sans-serif",
+        "Times New Roman, serif",
+        "Georgia, serif",
+        "Courier New, monospace",
+        "Monaco, monospace",
+        "Verdana, sans-serif",
+        "Tahoma, sans-serif",
+        "Trebuchet MS, sans-serif"
+      ],
+      "fontWeight": [
+        "normal",
+        "bold",
+        "100",
+        "200",
+        "300",
+        "400",
+        "500",
+        "600",
+        "700",
+        "800",
+        "900"
+      ],
+      "fontStyle": [
+        "normal",
+        "italic",
+        "oblique"
+      ],
+      "textDecoration": [
+        "none",
+        "underline",
+        "overline",
+        "line-through"
+      ],
+      "textTransform": [
+        "none",
+        "uppercase",
+        "lowercase",
+        "capitalize"
+      ],
+      "textJustify": [
+        "left",
+        "center",
+        "right",
+        "full"
+      ],
+      "textVerticalPosition": [
+        "top",
+        "middle",
+        "bottom"
+      ],
+      "textPositionShapes": [
+        "above",
+        "center",
+        "under"
+      ],
+      "richLabel": "Array of { text, bold?, italic?, underline?, listType bullet|numbered, lineJustify, lineFontSize, lineFontWeight, lineFontFamily }."
+    },
+    "iconChrome": {
+      "nodeSize": [
+        "normal",
+        "half",
+        "quarter",
+        "double"
+      ],
+      "noIconBackground": "true removes the white tile behind the glyph",
+      "iconColor": "hex for Lucide; set iconColorEnabled true to apply",
+      "iconOpacity": "0–1",
+      "iconGreyscale": "boolean"
+    },
+    "themes": "Built-in theme ids/colours are in catalogs.themes after generate. Copy a theme's border/background/text/line colours onto nodes rather than inventing a parallel palette."
+  },
+  "connections": {
+    "required": [
+      "from",
+      "to"
+    ],
+    "routing": {
+      "style": [
+        "bezier",
+        "orthogonal"
+      ],
+      "bezier": "curvature 0.1–1",
+      "orthogonal": "smoothCorners true for rounded bends. fromPreferredExit/toPreferredEntry: top|bottom|left|right|center. Left-to-right flow: right exit, left entry.",
+      "waypoints": "[{ x, y, id? }] absolute canvas. Advanced; omit unless routing around shapes.",
+      "orthogonalCustomRoute": "true + waypoints = manual polyline (no auto obstacles)."
+    },
+    "stroke": {
+      "color": "hex",
+      "lineWidth": "2–3 primary, omit for default ~2.5",
+      "lineType": [
+        "solid",
+        "dashed",
+        "dotted"
+      ],
+      "taper": "lineWidthLock false + lineWidthEnd",
+      "gradientStroke": "colorLock false + colorEnd",
+      "shadow": "boolean"
+    },
+    "markers": {
+      "toArrow": "true for directed flow",
+      "fromArrow": "optional reverse marker",
+      "text": "optional label",
+      "textPosition": "0–100 along path (default 50)"
+    },
+    "animation": {
+      "use": "At most one primary link unless asked.",
+      "fields": {
+        "enabled": true,
+        "shape": [
+          "dot",
+          "square",
+          "arrow",
+          "triangle",
+          "hexagon"
+        ],
+        "speed": -100,
+        "size": 0,
+        "spacing": 0,
+        "color": "hex",
+        "autoCount": true,
+        "shapeCount": 0
+      }
+    }
+  },
+  "nodeFamilies": {
+    "resource": {
+      "when": "Cloud/tech icons: aws.*, azure.*, gcp.*, k8s.*, programming.*, onprem.*, generic.user|device|os|office|status.*",
+      "fields": [
+        "id",
+        "type",
+        "label",
+        "x",
+        "y",
+        "nodeSize",
+        "noIconBackground",
+        "info"
+      ],
+      "notes": "Do not set file/provider unless you copied them from the catalog entry. ResourceIcon resolves the SVG from type."
+    },
+    "icon": {
+      "when": "generic.icon.* Lucide or generic.emoji.*",
+      "lucide": {
+        "type": "generic.icon.mappin",
+        "iconType": "lucide",
+        "iconName": "MapPin",
+        "iconColor": "#0d7b96",
+        "iconColorEnabled": true,
+        "noIconBackground": true
+      },
+      "emoji": {
+        "type": "generic.emoji.rocket",
+        "iconType": "emoji",
+        "emoji": "🚀",
+        "noIconBackground": true
+      },
+      "custom": {
+        "type": "generic.icon.custom",
+        "imageUrl": "https://example.com/logo.png"
+      }
+    },
+    "shape": {
+      "when": "generic.object.* closed shapes (rectangle, circle, hexagon, …)",
+      "fields": [
+        "width",
+        "height",
+        "sizeMode",
+        "backgroundColor",
+        "backgroundStyle",
+        "borderColor",
+        "borderStyle",
+        "textColor",
+        "textPosition",
+        "label",
+        "cornerRadius",
+        "shadow"
+      ],
+      "sizeMode": "custom",
+      "swapable": [
+        "rounded-rectangle",
+        "rectangle",
+        "square",
+        "circle",
+        "triangle",
+        "hexagon",
+        "pentagon",
+        "octagon",
+        "star",
+        "cloud",
+        "parallelogram",
+        "trapezoid",
+        "kite"
+      ]
+    },
+    "text": {
+      "generic.text.text": "Plain label. width/height + sizeMode custom.",
+      "generic.text.textbox": "Multi-line box. Prefer richLabel for formatting."
+    },
+    "chart": {
+      "required": "chart object whose kind matches the type suffix (pie|bar|line|ring|grid).",
+      "kinds": {
+        "pie": {
+          "type": "generic.chart.pie",
+          "chart": {
+            "kind": "pie",
+            "series": [
+              {
+                "id": "s1",
+                "name": "A",
+                "value": 60,
+                "color": "#3b82f6"
+              }
+            ],
+            "segmentGapDeg": 1,
+            "showSegmentLabels": true
+          }
+        },
+        "ring": {
+          "type": "generic.chart.ring",
+          "chart": {
+            "kind": "ring",
+            "innerRadius": 14,
+            "segmentAngularGapDeg": 2,
+            "series": [
+              {
+                "id": "s1",
+                "name": "A",
+                "value": 45,
+                "ringThickness": 10
+              }
+            ]
+          }
+        },
+        "bar": {
+          "type": "generic.chart.bar",
+          "chart": {
+            "kind": "bar",
+            "vertical": true,
+            "categoryLabels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "series": [
+              {
+                "id": "s1",
+                "name": "Revenue",
+                "values": [
+                  10,
+                  20,
+                  14,
+                  22
+                ],
+                "color": "#3b82f6"
+              }
+            ],
+            "showGridX": true,
+            "showGridY": true,
+            "showLegend": true
+          }
+        },
+        "line": {
+          "type": "generic.chart.line",
+          "chart": {
+            "kind": "line",
+            "smooth": true,
+            "showAreaFill": true,
+            "categoryLabels": [
+              "Mon",
+              "Tue",
+              "Wed",
+              "Thu",
+              "Fri"
+            ],
+            "series": [
+              {
+                "id": "s1",
+                "name": "Traffic",
+                "values": [
+                  4,
+                  8,
+                  6,
+                  12,
+                  9
+                ],
+                "color": "#0d7b96"
+              }
+            ]
+          }
+        },
+        "grid": {
+          "type": "generic.chart.grid",
+          "role": "This is the table/matrix/heatmap. There is no generic.table type.",
+          "chart": {
+            "kind": "grid",
+            "cols": 4,
+            "rows": 3,
+            "title": "Capacity",
+            "columnTitles": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "rowTitles": [
+              "P1",
+              "P2",
+              "P3"
+            ],
+            "cellGap": 4,
+            "showGridLines": true,
+            "cells": [
+              {
+                "id": "c00",
+                "filled": true,
+                "fillStyle": "solid",
+                "color": "#86efac",
+                "text": "OK"
+              }
+            ]
+          },
+          "cells": "Row-major, length should be cols*rows. Unfilled cells: filled false or fillStyle none. fillStyle: none|solid|gradient|hue-step|theme-hue|default."
+        }
+      },
+      "seriesFill": "fillStyle none|solid|gradient; gradientColors [start,end]; labelColor on slices."
+    },
+    "card": {
+      "required": "type generic.card.{templateId}, card.templateId same suffix, card.elements tree, width/height/sizeMode custom.",
+      "how": "Copy defaultElements for that template from catalogs.cardTemplates. Change only text, tag, iconRef, and colours. Keep element ids — the renderer keys off them.",
+      "elementKinds": [
+        "section",
+        "text",
+        "icon-slot",
+        "tag",
+        "decor"
+      ],
+      "iconRef": "Same as a canvas icon: type + optional iconType/iconName/emoji/file."
+    },
+    "border": {
+      "when": "Slide frames generic.border.*",
+      "fields": {
+        "type": "generic.border.corner-diagonal-accent",
+        "border": {
+          "templateId": "corner-diagonal-accent"
+        },
+        "width": 960,
+        "height": 540,
+        "sizeMode": "custom",
+        "borderStyle": "none",
+        "backgroundStyle": "none"
+      }
+    },
+    "line": {
+      "type": "generic.object.line",
+      "fields": [
+        "startPos",
+        "endPos",
+        "startCap",
+        "endCap",
+        "lineThickness",
+        "lineType",
+        "linePathStyle"
+      ],
+      "caps": [
+        "none",
+        "arrow",
+        "dot",
+        "square"
+      ],
+      "linePathStyle": [
+        "straight",
+        "curved"
+      ]
+    },
+    "progress-bar": {
+      "type": "generic.object.progress-bar",
+      "fields": [
+        "progressPercent",
+        "progressShowPercent",
+        "progressFillStyle",
+        "progressFillColors",
+        "progressTrackStyle",
+        "progressTrackColors"
+      ]
+    },
+    "timeline-bar": {
+      "type": "generic.object.timeline-bar",
+      "fields": [
+        "timelineBarSections",
+        "timelineBarSizing",
+        "timelineBarOrientation"
+      ],
+      "section": {
+        "id": "seg-1",
+        "label": "Phase 1",
+        "fill": "#3b82f6",
+        "fillStyle": "solid",
+        "weight": 1
+      }
+    },
+    "segmented-rectangle": {
+      "type": "generic.object.segmented-rectangle",
+      "fields": [
+        "segmentedRectangleSections",
+        "segmentedRectangleSizing",
+        "segmentedRectanglePlacementOrder"
+      ]
+    },
+    "pyramid": {
+      "type": "generic.object.pyramid",
+      "fields": [
+        "pyramidSections",
+        "pyramidSizing",
+        "pyramidDirection"
+      ]
+    },
+    "timeline": {
+      "type": "generic.object.timeline",
+      "fields": [
+        "timelineEntries",
+        "timelineDistribution",
+        "timelineCardSide"
+      ],
+      "entry": {
+        "id": "e1",
+        "label": "Kickoff",
+        "t": 0.2
+      }
+    },
+    "mindmap": {
+      "type": "generic.object.mind-map-node",
+      "fields": [
+        "label",
+        "mindmapParentId",
+        "mindmapChildIds",
+        "mindmapFillMode"
+      ],
+      "connections": "Tree edges may set mindmapRole tree and mindmapPrimary true."
+    },
+    "uml": {
+      "type": "generic.object.uml-class",
+      "umlClass": {
+        "name": "Order",
+        "attributes": [
+          "+ id: string",
+          "- total: number"
+        ],
+        "methods": [
+          "+ submit()"
+        ]
+      }
+    },
+    "text-box-heading": {
+      "type": "generic.object.text-box-heading",
+      "fields": [
+        "headingLabel",
+        "headingEdge",
+        "headingBackgroundColor",
+        "headingTextColor",
+        "label"
+      ]
+    }
+  },
+  "antiPatterns": [
+    "type strings that are not in the catalog (use generic.object.rectangle + label instead).",
+    "All nodes at x:0 y:0.",
+    "Omitting chart on generic.chart.* or card.elements on generic.card.*.",
+    "card.templateId that does not match the type suffix.",
+    "Connections to missing node ids.",
+    "Every connection animated and shadowed.",
+    "Low-contrast grey-on-grey body text.",
+    "Deprecated groups / rootGroupId keys."
+  ],
+  "generatedAt": "2026-08-17",
+  "catalogs": {
+    "typeCount": 2430,
+    "enabledTypeCount": 2133,
+    "providers": [
+      {
+        "id": "alibabacloud",
+        "name": "Alibaba Cloud",
+        "enabled": false,
+        "typeCount": 36,
+        "categories": [
+          {
+            "id": "analytics",
+            "name": "Analytics",
+            "count": 5
+          },
+          {
+            "id": "application",
+            "name": "Application",
+            "count": 5
+          },
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 5
+          },
+          {
+            "id": "database",
+            "name": "Database",
+            "count": 5
+          },
+          {
+            "id": "network",
+            "name": "Network",
+            "count": 5
+          },
+          {
+            "id": "security",
+            "name": "Security",
+            "count": 5
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 4
+          },
+          {
+            "id": "iot",
+            "name": "IoT",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "aws",
+        "name": "Amazon Web Services",
+        "enabled": true,
+        "typeCount": 723,
+        "categories": [
+          {
+            "id": "analytics",
+            "name": "Analytics",
+            "count": 51
+          },
+          {
+            "id": "applicationintegration",
+            "name": "Application Integration",
+            "count": 25
+          },
+          {
+            "id": "artificialintelligence",
+            "name": "Artificial Intelligence",
+            "count": 50
+          },
+          {
+            "id": "blockchain",
+            "name": "Blockchain",
+            "count": 2
+          },
+          {
+            "id": "businessapplications",
+            "name": "Business Applications",
+            "count": 16
+          },
+          {
+            "id": "cloudfinancialmanagement",
+            "name": "Cloud Financial Management",
+            "count": 6
+          },
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 37
+          },
+          {
+            "id": "containers",
+            "name": "Containers",
+            "count": 18
+          },
+          {
+            "id": "customerenablement",
+            "name": "Customer Enablement",
+            "count": 8
+          },
+          {
+            "id": "databases",
+            "name": "Databases",
+            "count": 50
+          },
+          {
+            "id": "developertools",
+            "name": "Developer Tools",
+            "count": 17
+          },
+          {
+            "id": "endusercomputing",
+            "name": "End User Computing",
+            "count": 1
+          },
+          {
+            "id": "frontendwebmobile",
+            "name": "Front End Web Mobile",
+            "count": 9
+          },
+          {
+            "id": "games",
+            "name": "Games",
+            "count": 3
+          },
+          {
+            "id": "generalicons",
+            "name": "General Icons",
+            "count": 2
+          },
+          {
+            "id": "internetofthings",
+            "name": "Internet Of Things",
+            "count": 85
+          },
+          {
+            "id": "managementgovernance",
+            "name": "Management Governance",
+            "count": 41
+          },
+          {
+            "id": "managementtools",
+            "name": "Management Tools",
+            "count": 32
+          },
+          {
+            "id": "mediaservices",
+            "name": "Media Services",
+            "count": 22
+          },
+          {
+            "id": "migrationmodernization",
+            "name": "Migration Modernization",
+            "count": 26
+          },
+          {
+            "id": "networkingcontentdelivery",
+            "name": "Networking Content Delivery",
+            "count": 64
+          },
+          {
+            "id": "quantumtechnologies",
+            "name": "Quantum Technologies",
+            "count": 14
+          },
+          {
+            "id": "satellite",
+            "name": "Satellite",
+            "count": 1
+          },
+          {
+            "id": "securityidentity",
+            "name": "Security Identity",
+            "count": 56
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 87
+          }
+        ]
+      },
+      {
+        "id": "azure",
+        "name": "Microsoft Azure",
+        "enabled": true,
+        "typeCount": 704,
+        "categories": [
+          {
+            "id": "aimachinelearning",
+            "name": "Ai + Machine Learning",
+            "count": 33
+          },
+          {
+            "id": "analytics",
+            "name": "Analytics",
+            "count": 17
+          },
+          {
+            "id": "appservices",
+            "name": "App Services",
+            "count": 8
+          },
+          {
+            "id": "azureecosystem",
+            "name": "Azure Ecosystem",
+            "count": 3
+          },
+          {
+            "id": "azurestack",
+            "name": "Azure Stack",
+            "count": 7
+          },
+          {
+            "id": "blockchain",
+            "name": "Blockchain",
+            "count": 6
+          },
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 40
+          },
+          {
+            "id": "containers",
+            "name": "Containers",
+            "count": 7
+          },
+          {
+            "id": "databases",
+            "name": "Databases",
+            "count": 26
+          },
+          {
+            "id": "devops",
+            "name": "Devops",
+            "count": 14
+          },
+          {
+            "id": "general",
+            "name": "General",
+            "count": 96
+          },
+          {
+            "id": "hybridmulticloud",
+            "name": "Hybrid + Multicloud",
+            "count": 6
+          },
+          {
+            "id": "identity",
+            "name": "Identity",
+            "count": 32
+          },
+          {
+            "id": "integration",
+            "name": "Integration",
+            "count": 29
+          },
+          {
+            "id": "intune",
+            "name": "Intune",
+            "count": 18
+          },
+          {
+            "id": "iot",
+            "name": "Iot",
+            "count": 29
+          },
+          {
+            "id": "managementgovernance",
+            "name": "Management + Governance",
+            "count": 33
+          },
+          {
+            "id": "menu",
+            "name": "Menu",
+            "count": 1
+          },
+          {
+            "id": "migrate",
+            "name": "Migrate",
+            "count": 6
+          },
+          {
+            "id": "migration",
+            "name": "Migration",
+            "count": 1
+          },
+          {
+            "id": "mixedreality",
+            "name": "Mixed Reality",
+            "count": 2
+          },
+          {
+            "id": "mobile",
+            "name": "Mobile",
+            "count": 3
+          },
+          {
+            "id": "monitor",
+            "name": "Monitor",
+            "count": 11
+          },
+          {
+            "id": "networking",
+            "name": "Networking",
+            "count": 51
+          },
+          {
+            "id": "newicons",
+            "name": "New Icons",
+            "count": 39
+          },
+          {
+            "id": "other",
+            "name": "Other",
+            "count": 134
+          },
+          {
+            "id": "security",
+            "name": "Security",
+            "count": 15
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 19
+          },
+          {
+            "id": "web",
+            "name": "Web",
+            "count": 19
+          }
+        ]
+      },
+      {
+        "id": "gcp",
+        "name": "Google Cloud Platform",
+        "enabled": true,
+        "typeCount": 230,
+        "categories": [
+          {
+            "id": "aimachinelearning",
+            "name": "AI + Machine Learning",
+            "count": 26
+          },
+          {
+            "id": "analytics",
+            "name": "Analytics",
+            "count": 10
+          },
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 24
+          },
+          {
+            "id": "containers",
+            "name": "Containers",
+            "count": 4
+          },
+          {
+            "id": "data",
+            "name": "Data",
+            "count": 1
+          },
+          {
+            "id": "database",
+            "name": "Database",
+            "count": 10
+          },
+          {
+            "id": "developertools",
+            "name": "Developer Tools",
+            "count": 17
+          },
+          {
+            "id": "hybrid",
+            "name": "Hybrid & Multi-Cloud",
+            "count": 1
+          },
+          {
+            "id": "management",
+            "name": "Management",
+            "count": 14
+          },
+          {
+            "id": "migration",
+            "name": "Migration",
+            "count": 2
+          },
+          {
+            "id": "network",
+            "name": "Networking",
+            "count": 25
+          },
+          {
+            "id": "other",
+            "name": "Other",
+            "count": 68
+          },
+          {
+            "id": "security",
+            "name": "Security",
+            "count": 22
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 6
+          }
+        ]
+      },
+      {
+        "id": "oci",
+        "name": "Oracle Cloud Infrastructure",
+        "enabled": false,
+        "typeCount": 44,
+        "categories": [
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 8
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 9
+          },
+          {
+            "id": "network",
+            "name": "Networking",
+            "count": 5
+          },
+          {
+            "id": "database",
+            "name": "Database",
+            "count": 6
+          },
+          {
+            "id": "monitoring",
+            "name": "Monitoring",
+            "count": 9
+          },
+          {
+            "id": "governance",
+            "name": "Governance",
+            "count": 7
+          }
+        ]
+      },
+      {
+        "id": "k8s",
+        "name": "Kubernetes",
+        "enabled": true,
+        "typeCount": 39,
+        "categories": [
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 7
+          },
+          {
+            "id": "config",
+            "name": "Configuration",
+            "count": 4
+          },
+          {
+            "id": "controlplane",
+            "name": "Control Plane",
+            "count": 6
+          },
+          {
+            "id": "extensions",
+            "name": "Extensions",
+            "count": 5
+          },
+          {
+            "id": "infrastructure",
+            "name": "Infrastructure",
+            "count": 3
+          },
+          {
+            "id": "network",
+            "name": "Networking",
+            "count": 4
+          },
+          {
+            "id": "rbac",
+            "name": "RBAC",
+            "count": 6
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 4
+          }
+        ]
+      },
+      {
+        "id": "generic",
+        "name": "Generic",
+        "enabled": true,
+        "typeCount": 84,
+        "categories": [
+          {
+            "id": "text",
+            "name": "Text",
+            "count": 3
+          },
+          {
+            "id": "object",
+            "name": "Object",
+            "count": 30
+          },
+          {
+            "id": "cards",
+            "name": "Cards",
+            "count": 16
+          },
+          {
+            "id": "borders",
+            "name": "Borders",
+            "count": 10
+          },
+          {
+            "id": "status",
+            "name": "Status",
+            "count": 4
+          },
+          {
+            "id": "user",
+            "name": "User",
+            "count": 2
+          },
+          {
+            "id": "device",
+            "name": "Device",
+            "count": 4
+          },
+          {
+            "id": "os",
+            "name": "Operating System",
+            "count": 8
+          },
+          {
+            "id": "office",
+            "name": "Office",
+            "count": 7
+          }
+        ]
+      },
+      {
+        "id": "programming",
+        "name": "Programming",
+        "enabled": true,
+        "typeCount": 73,
+        "categories": [
+          {
+            "id": "flowchart",
+            "name": "Flowchart",
+            "count": 24
+          },
+          {
+            "id": "framework",
+            "name": "Frameworks",
+            "count": 25
+          },
+          {
+            "id": "language",
+            "name": "Programming Languages",
+            "count": 23
+          },
+          {
+            "id": "runtime",
+            "name": "Runtime",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "onprem",
+        "name": "On-Premise",
+        "enabled": true,
+        "typeCount": 172,
+        "categories": [
+          {
+            "id": "aggregator",
+            "name": "Aggregator",
+            "count": 2
+          },
+          {
+            "id": "analytics",
+            "name": "Analytics",
+            "count": 17
+          },
+          {
+            "id": "auth",
+            "name": "Authentication",
+            "count": 3
+          },
+          {
+            "id": "cd",
+            "name": "Continuous Deployment",
+            "count": 3
+          },
+          {
+            "id": "certificates",
+            "name": "Certificates",
+            "count": 2
+          },
+          {
+            "id": "ci",
+            "name": "CI/CD",
+            "count": 9
+          },
+          {
+            "id": "client",
+            "name": "Client",
+            "count": 3
+          },
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 2
+          },
+          {
+            "id": "container",
+            "name": "Container",
+            "count": 8
+          },
+          {
+            "id": "database",
+            "name": "Database",
+            "count": 20
+          },
+          {
+            "id": "dns",
+            "name": "DNS",
+            "count": 2
+          },
+          {
+            "id": "etl",
+            "name": "ETL",
+            "count": 1
+          },
+          {
+            "id": "gitops",
+            "name": "GitOps",
+            "count": 3
+          },
+          {
+            "id": "groupware",
+            "name": "Groupware",
+            "count": 1
+          },
+          {
+            "id": "iac",
+            "name": "Infrastructure as Code",
+            "count": 6
+          },
+          {
+            "id": "identity",
+            "name": "Identity",
+            "count": 1
+          },
+          {
+            "id": "inmemory",
+            "name": "In-Memory",
+            "count": 4
+          },
+          {
+            "id": "logging",
+            "name": "Logging",
+            "count": 5
+          },
+          {
+            "id": "messaging",
+            "name": "Messaging",
+            "count": 1
+          },
+          {
+            "id": "mlops",
+            "name": "MLOps",
+            "count": 2
+          },
+          {
+            "id": "monitoring",
+            "name": "Monitoring",
+            "count": 14
+          },
+          {
+            "id": "network",
+            "name": "Network",
+            "count": 34
+          },
+          {
+            "id": "proxmox",
+            "name": "Proxmox",
+            "count": 1
+          },
+          {
+            "id": "queue",
+            "name": "Message Queue",
+            "count": 7
+          },
+          {
+            "id": "registry",
+            "name": "Container Registry",
+            "count": 2
+          },
+          {
+            "id": "search",
+            "name": "Search",
+            "count": 1
+          },
+          {
+            "id": "security",
+            "name": "Security",
+            "count": 3
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 4
+          },
+          {
+            "id": "tracing",
+            "name": "Tracing",
+            "count": 2
+          },
+          {
+            "id": "vcs",
+            "name": "Version Control",
+            "count": 5
+          },
+          {
+            "id": "workflow",
+            "name": "Workflow",
+            "count": 4
+          }
+        ]
+      },
+      {
+        "id": "saas",
+        "name": "SaaS",
+        "enabled": false,
+        "typeCount": 37,
+        "categories": [
+          {
+            "id": "analytics",
+            "name": "Analytics",
+            "count": 3
+          },
+          {
+            "id": "automation",
+            "name": "Automation",
+            "count": 1
+          },
+          {
+            "id": "cdn",
+            "name": "CDN",
+            "count": 4
+          },
+          {
+            "id": "chat",
+            "name": "Chat",
+            "count": 8
+          },
+          {
+            "id": "collaboration",
+            "name": "Collaboration",
+            "count": 8
+          },
+          {
+            "id": "crm",
+            "name": "CRM",
+            "count": 4
+          },
+          {
+            "id": "email",
+            "name": "Email",
+            "count": 4
+          },
+          {
+            "id": "alerting",
+            "name": "Alerting",
+            "count": 5
+          }
+        ]
+      },
+      {
+        "id": "elastic",
+        "name": "Elastic",
+        "enabled": false,
+        "typeCount": 31,
+        "categories": [
+          {
+            "id": "elasticsearch",
+            "name": "Elasticsearch",
+            "count": 14
+          },
+          {
+            "id": "beats",
+            "name": "Beats",
+            "count": 8
+          },
+          {
+            "id": "enterprisesearch",
+            "name": "Enterprise Search",
+            "count": 5
+          },
+          {
+            "id": "orchestration",
+            "name": "Orchestration",
+            "count": 2
+          },
+          {
+            "id": "saas",
+            "name": "Cloud",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "firebase",
+        "name": "Firebase",
+        "enabled": false,
+        "typeCount": 19,
+        "categories": [
+          {
+            "id": "base",
+            "name": "Core",
+            "count": 1
+          },
+          {
+            "id": "develop",
+            "name": "Develop",
+            "count": 7
+          },
+          {
+            "id": "quality",
+            "name": "Quality",
+            "count": 4
+          },
+          {
+            "id": "grow",
+            "name": "Grow",
+            "count": 7
+          }
+        ]
+      },
+      {
+        "id": "digitalocean",
+        "name": "DigitalOcean",
+        "enabled": false,
+        "typeCount": 15,
+        "categories": [
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 6
+          },
+          {
+            "id": "database",
+            "name": "Database",
+            "count": 4
+          },
+          {
+            "id": "network",
+            "name": "Networking",
+            "count": 3
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "ibm",
+        "name": "IBM Cloud",
+        "enabled": false,
+        "typeCount": 25,
+        "categories": [
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 5
+          },
+          {
+            "id": "database",
+            "name": "Database",
+            "count": 7
+          },
+          {
+            "id": "ai",
+            "name": "AI & Machine Learning",
+            "count": 8
+          },
+          {
+            "id": "analytics",
+            "name": "Analytics",
+            "count": 5
+          }
+        ]
+      },
+      {
+        "id": "openstack",
+        "name": "OpenStack",
+        "enabled": false,
+        "typeCount": 11,
+        "categories": [
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 3
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 3
+          },
+          {
+            "id": "network",
+            "name": "Network",
+            "count": 5
+          }
+        ]
+      },
+      {
+        "id": "outscale",
+        "name": "Outscale",
+        "enabled": false,
+        "typeCount": 12,
+        "categories": [
+          {
+            "id": "compute",
+            "name": "Compute",
+            "count": 2
+          },
+          {
+            "id": "network",
+            "name": "Network",
+            "count": 6
+          },
+          {
+            "id": "storage",
+            "name": "Storage",
+            "count": 2
+          },
+          {
+            "id": "security",
+            "name": "Security",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "gis",
+        "name": "GIS",
+        "enabled": false,
+        "typeCount": 67,
+        "categories": [
+          {
+            "id": "server",
+            "name": "Server",
+            "count": 24
+          },
+          {
+            "id": "database",
+            "name": "Database",
+            "count": 1
+          },
+          {
+            "id": "desktop",
+            "name": "Desktop",
+            "count": 2
+          },
+          {
+            "id": "javascript",
+            "name": "JavaScript",
+            "count": 8
+          },
+          {
+            "id": "data",
+            "name": "Data",
+            "count": 5
+          },
+          {
+            "id": "format",
+            "name": "Format",
+            "count": 2
+          },
+          {
+            "id": "ogc",
+            "name": "OGC Standards",
+            "count": 3
+          },
+          {
+            "id": "cli",
+            "name": "CLI Tools",
+            "count": 6
+          },
+          {
+            "id": "mobile",
+            "name": "Mobile",
+            "count": 3
+          },
+          {
+            "id": "routing",
+            "name": "Routing",
+            "count": 4
+          },
+          {
+            "id": "geocoding",
+            "name": "Geocoding",
+            "count": 4
+          },
+          {
+            "id": "organization",
+            "name": "Organization",
+            "count": 1
+          },
+          {
+            "id": "java",
+            "name": "Java",
+            "count": 1
+          },
+          {
+            "id": "georchestra",
+            "name": "GeoOrchestra",
+            "count": 3
+          }
+        ]
+      }
+    ],
+    "genericTypes": [
+      {
+        "type": "generic.text.text",
+        "name": "Text",
+        "family": "text",
+        "category": "text"
+      },
+      {
+        "type": "generic.text.textbox",
+        "name": "Textbox",
+        "family": "text",
+        "category": "text"
+      },
+      {
+        "type": "generic.object.text-box-heading",
+        "name": "Text Box Heading",
+        "family": "text-box-heading",
+        "category": "text"
+      },
+      {
+        "type": "generic.chart.pie",
+        "name": "Pie chart",
+        "family": "chart",
+        "category": "object"
+      },
+      {
+        "type": "generic.chart.ring",
+        "name": "Ring chart",
+        "family": "chart",
+        "category": "object"
+      },
+      {
+        "type": "generic.chart.bar",
+        "name": "Bar chart",
+        "family": "chart",
+        "category": "object"
+      },
+      {
+        "type": "generic.chart.line",
+        "name": "Line chart",
+        "family": "chart",
+        "category": "object"
+      },
+      {
+        "type": "generic.chart.grid",
+        "name": "Grid chart",
+        "family": "chart",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.line",
+        "name": "Line",
+        "family": "line",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.timeline",
+        "name": "Timeline",
+        "family": "timeline",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.timeline-bar",
+        "name": "Timeline bar",
+        "family": "timeline-bar",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.segmented-rectangle",
+        "name": "Segmented rectangle",
+        "family": "segmented-rectangle",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.pyramid",
+        "name": "Pyramid",
+        "family": "pyramid",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.mind-map-node",
+        "name": "Mind map node",
+        "family": "mindmap",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.square",
+        "name": "Square",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.circle",
+        "name": "Circle",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.point",
+        "name": "Point",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.rectangle",
+        "name": "Rectangle",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.rounded-rectangle",
+        "name": "Rounded Rectangle",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.progress-bar",
+        "name": "Progress bar",
+        "family": "progress-bar",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.triangle",
+        "name": "Triangle",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.star",
+        "name": "Star",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.cloud",
+        "name": "Cloud",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.parallelogram",
+        "name": "Parallelogram",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.trapezoid",
+        "name": "Trapezoid",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.kite",
+        "name": "Kite",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.hexagon",
+        "name": "Hexagon",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.pentagon",
+        "name": "Pentagon",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.octagon",
+        "name": "Octagon",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.jigsaw",
+        "name": "Jigsaw",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.arrowhead",
+        "name": "Arrowhead",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.chevron",
+        "name": "Chevron",
+        "family": "shape",
+        "category": "object"
+      },
+      {
+        "type": "generic.object.uml-class",
+        "name": "UML Class",
+        "family": "uml",
+        "category": "object"
+      },
+      {
+        "type": "generic.card.profile-feature",
+        "name": "Profile Feature",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.profile-diagonal-split",
+        "name": "Profile Diagonal Split",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.profile-social",
+        "name": "Profile Social",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.compact-horizontal",
+        "name": "Compact Horizontal",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.list-item-row",
+        "name": "List Item Row",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.sidebar-accent",
+        "name": "Sidebar Accent",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.framed-heading",
+        "name": "Framed Heading",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.icon-border",
+        "name": "Icon Border",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.element-feature",
+        "name": "Element Feature",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.detail-post",
+        "name": "Detail Post",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.agenda",
+        "name": "Agenda",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.bullet-list",
+        "name": "Bullet List",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.dashboard-score",
+        "name": "Dashboard Score",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.dashboard-ranking",
+        "name": "Dashboard Ranking",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.dashboard-incentives",
+        "name": "Dashboard Incentives",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.card.dashboard-defaults",
+        "name": "Dashboard Defaults",
+        "family": "card",
+        "category": "cards"
+      },
+      {
+        "type": "generic.border.corner-diagonal-accent",
+        "name": "Corner Diagonal Accent",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.border.corner-blue-layers",
+        "name": "Corner Blue Layers",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.border.bar-chamfer-accent",
+        "name": "Bar Chamfer Accent",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.border.wave-teal",
+        "name": "Wave Teal",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.border.circle-warm",
+        "name": "Circle Warm",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.border.frame-triangle",
+        "name": "Frame Triangle",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.border.curve-gold-frame",
+        "name": "Curve Gold Frame",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.border.crystal-poly",
+        "name": "Crystal Poly",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.border.rounded-arrow-stack",
+        "name": "Rounded Arrow Stack",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.border.swoop-blue-layers",
+        "name": "Swoop Blue Layers",
+        "family": "border",
+        "category": "borders"
+      },
+      {
+        "type": "generic.status.circle-tick-yes",
+        "name": "Circle Tick Yes",
+        "family": "resource",
+        "category": "status"
+      },
+      {
+        "type": "generic.status.circle-cross-no",
+        "name": "Circle Cross No",
+        "family": "resource",
+        "category": "status"
+      },
+      {
+        "type": "generic.status.circle-question",
+        "name": "Circle Question",
+        "family": "resource",
+        "category": "status"
+      },
+      {
+        "type": "generic.status.circle-alert",
+        "name": "Circle Alert",
+        "family": "resource",
+        "category": "status"
+      },
+      {
+        "type": "generic.user.user",
+        "name": "User",
+        "family": "resource",
+        "category": "user"
+      },
+      {
+        "type": "generic.user.users",
+        "name": "Users",
+        "family": "resource",
+        "category": "user"
+      },
+      {
+        "type": "generic.device.mobile",
+        "name": "Mobile",
+        "family": "resource",
+        "category": "device"
+      },
+      {
+        "type": "generic.device.tablet",
+        "name": "Tablet",
+        "family": "resource",
+        "category": "device"
+      },
+      {
+        "type": "generic.device.laptop",
+        "name": "Laptop",
+        "family": "resource",
+        "category": "device"
+      },
+      {
+        "type": "generic.device.desktop",
+        "name": "Desktop",
+        "family": "resource",
+        "category": "device"
+      },
+      {
+        "type": "generic.os.linux",
+        "name": "Linux",
+        "family": "resource",
+        "category": "os"
+      },
+      {
+        "type": "generic.os.windows",
+        "name": "Windows",
+        "family": "resource",
+        "category": "os"
+      },
+      {
+        "type": "generic.os.ubuntu",
+        "name": "Ubuntu",
+        "family": "resource",
+        "category": "os"
+      },
+      {
+        "type": "generic.os.centos",
+        "name": "CentOS",
+        "family": "resource",
+        "category": "os"
+      },
+      {
+        "type": "generic.os.debian",
+        "name": "Debian",
+        "family": "resource",
+        "category": "os"
+      },
+      {
+        "type": "generic.os.red-hat",
+        "name": "Red Hat",
+        "family": "resource",
+        "category": "os"
+      },
+      {
+        "type": "generic.os.suse",
+        "name": "SUSE",
+        "family": "resource",
+        "category": "os"
+      },
+      {
+        "type": "generic.os.apple",
+        "name": "Apple",
+        "family": "resource",
+        "category": "os"
+      },
+      {
+        "type": "generic.office.word",
+        "name": "Word",
+        "family": "resource",
+        "category": "office"
+      },
+      {
+        "type": "generic.office.excel",
+        "name": "Excel",
+        "family": "resource",
+        "category": "office"
+      },
+      {
+        "type": "generic.office.spreadsheet",
+        "name": "Spreadsheet",
+        "family": "resource",
+        "category": "office"
+      },
+      {
+        "type": "generic.office.powerpoint",
+        "name": "PowerPoint",
+        "family": "resource",
+        "category": "office"
+      },
+      {
+        "type": "generic.office.presentation",
+        "name": "Presentation",
+        "family": "resource",
+        "category": "office"
+      },
+      {
+        "type": "generic.office.outlook",
+        "name": "Outlook",
+        "family": "resource",
+        "category": "office"
+      },
+      {
+        "type": "generic.office.email",
+        "name": "Email",
+        "family": "resource",
+        "category": "office"
+      },
+      {
+        "type": "generic.icon.user",
+        "name": "Person",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.users",
+        "name": "Users",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.usercircle",
+        "name": "User Circle",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.userplus",
+        "name": "User Plus",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.eye",
+        "name": "Eye",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.eyeoff",
+        "name": "Eye Off",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.home",
+        "name": "Home",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.building2",
+        "name": "Building",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.landmark",
+        "name": "Landmark",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.mappin",
+        "name": "Map Pin",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.globe",
+        "name": "Globe",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.mail",
+        "name": "Mail",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.phone",
+        "name": "Phone",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.atsign",
+        "name": "At Sign",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.messagecircle",
+        "name": "Message",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.messagesquare",
+        "name": "Message Square",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.send",
+        "name": "Send",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.link",
+        "name": "Link",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.share2",
+        "name": "Share",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.shield",
+        "name": "Shield",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.shieldcheck",
+        "name": "Shield Check",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.lock",
+        "name": "Lock",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.unlock",
+        "name": "Unlock",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.key",
+        "name": "Key",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.checkcircle",
+        "name": "Check Circle",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.xcircle",
+        "name": "X Circle",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.alerttriangle",
+        "name": "Alert",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.info",
+        "name": "Info",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.helpcircle",
+        "name": "Help",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.thumbsup",
+        "name": "Thumbs Up",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.thumbsdown",
+        "name": "Thumbs Down",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.server",
+        "name": "Server",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.database",
+        "name": "Database",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.cloud",
+        "name": "Cloud",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.wifi",
+        "name": "Wifi",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.smartphone",
+        "name": "Smartphone",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.box",
+        "name": "Box",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.router",
+        "name": "Router",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.cpu",
+        "name": "CPU",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.harddrive",
+        "name": "Hard Drive",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.monitor",
+        "name": "Monitor",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.terminal",
+        "name": "Terminal",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.file",
+        "name": "File",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.filetext",
+        "name": "File Text",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.folder",
+        "name": "Folder",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.folderopen",
+        "name": "Folder Open",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.clipboard",
+        "name": "Clipboard",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.image",
+        "name": "Image",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.code",
+        "name": "Code",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.bug",
+        "name": "Bug",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.gitbranch",
+        "name": "Git Branch",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.layers",
+        "name": "Layers",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.settings",
+        "name": "Settings",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.bell",
+        "name": "Bell",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.bookmark",
+        "name": "Bookmark",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.camera",
+        "name": "Camera",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.gift",
+        "name": "Gift",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.zap",
+        "name": "Zap",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.power",
+        "name": "Power",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.refreshcw",
+        "name": "Refresh",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.search",
+        "name": "Search",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.filter",
+        "name": "Filter",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.pencil",
+        "name": "Pencil",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.copy",
+        "name": "Copy",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.trash2",
+        "name": "Trash",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.download",
+        "name": "Download",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.upload",
+        "name": "Upload",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.wrench",
+        "name": "Wrench",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.rotatecw",
+        "name": "Rotate",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.plus",
+        "name": "Plus",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.minus",
+        "name": "Minus",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.morehorizontal",
+        "name": "More",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.calendar",
+        "name": "Calendar",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.clock",
+        "name": "Clock",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.timer",
+        "name": "Timer",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.history",
+        "name": "History",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.star",
+        "name": "Star",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.icon.heart",
+        "name": "Heart",
+        "family": "icon",
+        "category": "icon"
+      },
+      {
+        "type": "generic.emoji.house",
+        "name": "House",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.shield",
+        "name": "Shield",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.person",
+        "name": "Person",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.office",
+        "name": "Office",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.heart",
+        "name": "Heart",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.star",
+        "name": "Star",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.lock",
+        "name": "Lock",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.key",
+        "name": "Key",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.email",
+        "name": "Email",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.phone",
+        "name": "Phone",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.globe",
+        "name": "Globe",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.gear",
+        "name": "Gear",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.people",
+        "name": "People",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.warning",
+        "name": "Warning",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.check",
+        "name": "Check",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.info",
+        "name": "Info",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.x",
+        "name": "X",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.lightning",
+        "name": "Lightning",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.cloud",
+        "name": "Cloud",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.database",
+        "name": "Database",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.computer",
+        "name": "Computer",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.rocket",
+        "name": "Rocket",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.bell",
+        "name": "Bell",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.bookmark",
+        "name": "Bookmark",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.camera",
+        "name": "Camera",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.document",
+        "name": "Document",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.folder",
+        "name": "Folder",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.gift",
+        "name": "Gift",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.emoji.location",
+        "name": "Location",
+        "family": "icon",
+        "category": "emoji"
+      },
+      {
+        "type": "generic.icon.custom",
+        "name": "Custom image",
+        "family": "icon",
+        "category": "icon"
+      }
+    ],
+    "lucideIcons": [
+      {
+        "name": "Person",
+        "iconName": "User",
+        "type": "generic.icon.user",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Users",
+        "iconName": "Users",
+        "type": "generic.icon.users",
+        "iconType": "lucide"
+      },
+      {
+        "name": "User Circle",
+        "iconName": "UserCircle",
+        "type": "generic.icon.usercircle",
+        "iconType": "lucide"
+      },
+      {
+        "name": "User Plus",
+        "iconName": "UserPlus",
+        "type": "generic.icon.userplus",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Eye",
+        "iconName": "Eye",
+        "type": "generic.icon.eye",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Eye Off",
+        "iconName": "EyeOff",
+        "type": "generic.icon.eyeoff",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Home",
+        "iconName": "Home",
+        "type": "generic.icon.home",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Building",
+        "iconName": "Building2",
+        "type": "generic.icon.building2",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Landmark",
+        "iconName": "Landmark",
+        "type": "generic.icon.landmark",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Map Pin",
+        "iconName": "MapPin",
+        "type": "generic.icon.mappin",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Globe",
+        "iconName": "Globe",
+        "type": "generic.icon.globe",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Mail",
+        "iconName": "Mail",
+        "type": "generic.icon.mail",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Phone",
+        "iconName": "Phone",
+        "type": "generic.icon.phone",
+        "iconType": "lucide"
+      },
+      {
+        "name": "At Sign",
+        "iconName": "AtSign",
+        "type": "generic.icon.atsign",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Message",
+        "iconName": "MessageCircle",
+        "type": "generic.icon.messagecircle",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Message Square",
+        "iconName": "MessageSquare",
+        "type": "generic.icon.messagesquare",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Send",
+        "iconName": "Send",
+        "type": "generic.icon.send",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Link",
+        "iconName": "Link",
+        "type": "generic.icon.link",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Share",
+        "iconName": "Share2",
+        "type": "generic.icon.share2",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Shield",
+        "iconName": "Shield",
+        "type": "generic.icon.shield",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Shield Check",
+        "iconName": "ShieldCheck",
+        "type": "generic.icon.shieldcheck",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Lock",
+        "iconName": "Lock",
+        "type": "generic.icon.lock",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Unlock",
+        "iconName": "Unlock",
+        "type": "generic.icon.unlock",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Key",
+        "iconName": "Key",
+        "type": "generic.icon.key",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Check Circle",
+        "iconName": "CheckCircle",
+        "type": "generic.icon.checkcircle",
+        "iconType": "lucide"
+      },
+      {
+        "name": "X Circle",
+        "iconName": "XCircle",
+        "type": "generic.icon.xcircle",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Alert",
+        "iconName": "AlertTriangle",
+        "type": "generic.icon.alerttriangle",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Info",
+        "iconName": "Info",
+        "type": "generic.icon.info",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Help",
+        "iconName": "HelpCircle",
+        "type": "generic.icon.helpcircle",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Thumbs Up",
+        "iconName": "ThumbsUp",
+        "type": "generic.icon.thumbsup",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Thumbs Down",
+        "iconName": "ThumbsDown",
+        "type": "generic.icon.thumbsdown",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Server",
+        "iconName": "Server",
+        "type": "generic.icon.server",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Database",
+        "iconName": "Database",
+        "type": "generic.icon.database",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Cloud",
+        "iconName": "Cloud",
+        "type": "generic.icon.cloud",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Wifi",
+        "iconName": "Wifi",
+        "type": "generic.icon.wifi",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Smartphone",
+        "iconName": "Smartphone",
+        "type": "generic.icon.smartphone",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Box",
+        "iconName": "Box",
+        "type": "generic.icon.box",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Router",
+        "iconName": "Router",
+        "type": "generic.icon.router",
+        "iconType": "lucide"
+      },
+      {
+        "name": "CPU",
+        "iconName": "Cpu",
+        "type": "generic.icon.cpu",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Hard Drive",
+        "iconName": "HardDrive",
+        "type": "generic.icon.harddrive",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Monitor",
+        "iconName": "Monitor",
+        "type": "generic.icon.monitor",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Terminal",
+        "iconName": "Terminal",
+        "type": "generic.icon.terminal",
+        "iconType": "lucide"
+      },
+      {
+        "name": "File",
+        "iconName": "File",
+        "type": "generic.icon.file",
+        "iconType": "lucide"
+      },
+      {
+        "name": "File Text",
+        "iconName": "FileText",
+        "type": "generic.icon.filetext",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Folder",
+        "iconName": "Folder",
+        "type": "generic.icon.folder",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Folder Open",
+        "iconName": "FolderOpen",
+        "type": "generic.icon.folderopen",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Clipboard",
+        "iconName": "Clipboard",
+        "type": "generic.icon.clipboard",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Image",
+        "iconName": "Image",
+        "type": "generic.icon.image",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Code",
+        "iconName": "Code",
+        "type": "generic.icon.code",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Bug",
+        "iconName": "Bug",
+        "type": "generic.icon.bug",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Git Branch",
+        "iconName": "GitBranch",
+        "type": "generic.icon.gitbranch",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Layers",
+        "iconName": "Layers",
+        "type": "generic.icon.layers",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Settings",
+        "iconName": "Settings",
+        "type": "generic.icon.settings",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Bell",
+        "iconName": "Bell",
+        "type": "generic.icon.bell",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Bookmark",
+        "iconName": "Bookmark",
+        "type": "generic.icon.bookmark",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Camera",
+        "iconName": "Camera",
+        "type": "generic.icon.camera",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Gift",
+        "iconName": "Gift",
+        "type": "generic.icon.gift",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Zap",
+        "iconName": "Zap",
+        "type": "generic.icon.zap",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Power",
+        "iconName": "Power",
+        "type": "generic.icon.power",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Refresh",
+        "iconName": "RefreshCw",
+        "type": "generic.icon.refreshcw",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Search",
+        "iconName": "Search",
+        "type": "generic.icon.search",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Filter",
+        "iconName": "Filter",
+        "type": "generic.icon.filter",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Pencil",
+        "iconName": "Pencil",
+        "type": "generic.icon.pencil",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Copy",
+        "iconName": "Copy",
+        "type": "generic.icon.copy",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Trash",
+        "iconName": "Trash2",
+        "type": "generic.icon.trash2",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Download",
+        "iconName": "Download",
+        "type": "generic.icon.download",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Upload",
+        "iconName": "Upload",
+        "type": "generic.icon.upload",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Wrench",
+        "iconName": "Wrench",
+        "type": "generic.icon.wrench",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Rotate",
+        "iconName": "RotateCw",
+        "type": "generic.icon.rotatecw",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Plus",
+        "iconName": "Plus",
+        "type": "generic.icon.plus",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Minus",
+        "iconName": "Minus",
+        "type": "generic.icon.minus",
+        "iconType": "lucide"
+      },
+      {
+        "name": "More",
+        "iconName": "MoreHorizontal",
+        "type": "generic.icon.morehorizontal",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Calendar",
+        "iconName": "Calendar",
+        "type": "generic.icon.calendar",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Clock",
+        "iconName": "Clock",
+        "type": "generic.icon.clock",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Timer",
+        "iconName": "Timer",
+        "type": "generic.icon.timer",
+        "iconType": "lucide"
+      },
+      {
+        "name": "History",
+        "iconName": "History",
+        "type": "generic.icon.history",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Star",
+        "iconName": "Star",
+        "type": "generic.icon.star",
+        "iconType": "lucide"
+      },
+      {
+        "name": "Heart",
+        "iconName": "Heart",
+        "type": "generic.icon.heart",
+        "iconType": "lucide"
+      }
+    ],
+    "emojiIcons": [
+      {
+        "name": "House",
+        "emoji": "🏠",
+        "type": "generic.emoji.house",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Shield",
+        "emoji": "🛡️",
+        "type": "generic.emoji.shield",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Person",
+        "emoji": "👤",
+        "type": "generic.emoji.person",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Office",
+        "emoji": "🏢",
+        "type": "generic.emoji.office",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Heart",
+        "emoji": "❤️",
+        "type": "generic.emoji.heart",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Star",
+        "emoji": "⭐",
+        "type": "generic.emoji.star",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Lock",
+        "emoji": "🔒",
+        "type": "generic.emoji.lock",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Key",
+        "emoji": "🔑",
+        "type": "generic.emoji.key",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Email",
+        "emoji": "📧",
+        "type": "generic.emoji.email",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Phone",
+        "emoji": "📱",
+        "type": "generic.emoji.phone",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Globe",
+        "emoji": "🌐",
+        "type": "generic.emoji.globe",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Gear",
+        "emoji": "⚙️",
+        "type": "generic.emoji.gear",
+        "iconType": "emoji"
+      },
+      {
+        "name": "People",
+        "emoji": "👥",
+        "type": "generic.emoji.people",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Warning",
+        "emoji": "⚠️",
+        "type": "generic.emoji.warning",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Check",
+        "emoji": "✅",
+        "type": "generic.emoji.check",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Info",
+        "emoji": "ℹ️",
+        "type": "generic.emoji.info",
+        "iconType": "emoji"
+      },
+      {
+        "name": "X",
+        "emoji": "❌",
+        "type": "generic.emoji.x",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Lightning",
+        "emoji": "⚡",
+        "type": "generic.emoji.lightning",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Cloud",
+        "emoji": "☁️",
+        "type": "generic.emoji.cloud",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Database",
+        "emoji": "🗄️",
+        "type": "generic.emoji.database",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Computer",
+        "emoji": "💻",
+        "type": "generic.emoji.computer",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Rocket",
+        "emoji": "🚀",
+        "type": "generic.emoji.rocket",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Bell",
+        "emoji": "🔔",
+        "type": "generic.emoji.bell",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Bookmark",
+        "emoji": "🔖",
+        "type": "generic.emoji.bookmark",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Camera",
+        "emoji": "📷",
+        "type": "generic.emoji.camera",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Document",
+        "emoji": "📄",
+        "type": "generic.emoji.document",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Folder",
+        "emoji": "📁",
+        "type": "generic.emoji.folder",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Gift",
+        "emoji": "🎁",
+        "type": "generic.emoji.gift",
+        "iconType": "emoji"
+      },
+      {
+        "name": "Location",
+        "emoji": "📍",
+        "type": "generic.emoji.location",
+        "iconType": "emoji"
+      }
+    ],
+    "themes": [
+      {
+        "id": "default-blue",
+        "name": "Ocean Blue",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#3b82f6",
+        "backgroundStyle": "solid",
+        "backgroundColor": "#eff6ff",
+        "textColor": "#1e40af",
+        "lineColor": "#3b82f6",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "sunset-orange",
+        "name": "Sunset Orange",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#f97316",
+          "#ea580c"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fed7aa",
+          "#ffedd5"
+        ],
+        "textColor": "#9a3412",
+        "lineColor": "#f97316",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "forest-green",
+        "name": "Forest Green",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#16a34a",
+        "backgroundStyle": "solid",
+        "backgroundColor": "#f0fdf4",
+        "textColor": "#14532d",
+        "lineColor": "#16a34a",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "royal-purple",
+        "name": "Royal Purple",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#9333ea",
+          "#7c3aed"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#f3e8ff",
+          "#ede9fe"
+        ],
+        "textColor": "#581c87",
+        "lineColor": "#9333ea",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "minimal-gray",
+        "name": "Grey · Light Minimal",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#6b7280",
+        "backgroundStyle": "solid",
+        "backgroundColor": "#f9fafb",
+        "textColor": "#374151",
+        "lineColor": "#6b7280",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "grey-ash-mist",
+        "name": "Grey · Ash Mist",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#a3a3a3",
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fafafa",
+          "#f4f4f5"
+        ],
+        "textColor": "#404040",
+        "lineColor": "#737373",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "grey-charcoal-smoke",
+        "name": "Grey · Charcoal Smoke",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#52525b",
+          "#3f3f46"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fafafa",
+          "#e7e5e4"
+        ],
+        "textColor": "#18181b",
+        "lineColor": "#3f3f46",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "grey-cool-steel",
+        "name": "Grey · Cool Steel",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#64748b",
+          "#475569"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#f8fafc",
+          "#e2e8f0"
+        ],
+        "textColor": "#1e293b",
+        "lineColor": "#334155",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "grey-pewter-plate",
+        "name": "Grey · Pewter Plate",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#71717a",
+          "#52525b"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#f4f4f5",
+          "#e4e4e7"
+        ],
+        "textColor": "#27272a",
+        "lineColor": "#52525b",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "grey-warm-concrete",
+        "name": "Grey · Warm Concrete",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#78716c",
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fafaf9",
+          "#e7e5e4"
+        ],
+        "textColor": "#292524",
+        "lineColor": "#57534e",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "slate-indigo",
+        "name": "Grey · Slate Indigo",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#475569",
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#e2e8f0",
+          "#cbd5f5"
+        ],
+        "textColor": "#1e1b4b",
+        "lineColor": "#4338ca",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "coral-red",
+        "name": "Coral Red",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#f43f5e",
+        "backgroundStyle": "solid",
+        "backgroundColor": "#fff1f2",
+        "textColor": "#881337",
+        "lineColor": "#f43f5e",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "sky-cyan",
+        "name": "Sky Cyan",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "dotted",
+        "borderColor": "#06b6d4",
+        "backgroundStyle": "solid",
+        "backgroundColor": "#ecfeff",
+        "textColor": "#164e63",
+        "lineColor": "#06b6d4",
+        "lineStyle": "dotted"
+      },
+      {
+        "id": "golden-yellow",
+        "name": "Golden Yellow",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#facc15",
+          "#f59e0b"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fefce8",
+          "#fef3c7"
+        ],
+        "textColor": "#713f12",
+        "lineColor": "#f59e0b",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "midnight-dark",
+        "name": "Midnight Dark",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#1f2937",
+        "backgroundStyle": "solid",
+        "backgroundColor": "#111827",
+        "textColor": "#f9fafb",
+        "lineColor": "#4b5563",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "rose-pink",
+        "name": "Rose Pink",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#f472b6",
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fdf2f8",
+          "#fce7f3"
+        ],
+        "textColor": "#831843",
+        "lineColor": "#f472b6",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "aurora-teal",
+        "name": "Aurora Teal",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0d9488",
+          "#14b8a6"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ccfbf1",
+          "#a7f3d0"
+        ],
+        "textColor": "#134e4a",
+        "lineColor": "#0f766e",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "lavender-mist",
+        "name": "Lavender Mist",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#a78bfa",
+          "#818cf8"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ede9fe",
+          "#e0e7ff"
+        ],
+        "textColor": "#4c1d95",
+        "lineColor": "#7c3aed",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "ember-clay",
+        "name": "Ember Clay",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#c2410c",
+          "#ea580c"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ffedd5",
+          "#fed7aa"
+        ],
+        "textColor": "#7c2d12",
+        "lineColor": "#c2410c",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "orange-ember-molasses",
+        "name": "Ember Molasses",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#78350f",
+          "#92400e"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fffbeb",
+          "#fef3c7"
+        ],
+        "textColor": "#451a03",
+        "lineColor": "#b45309",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "orange-burnt-umber",
+        "name": "Burnt Umber",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#9a3412",
+          "#b45309"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fef3c7",
+          "#fed7aa"
+        ],
+        "textColor": "#7c2d12",
+        "lineColor": "#c2410c",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "orange-copper-forge",
+        "name": "Copper Forge",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#c2410c",
+          "#ea580c"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fff7ed",
+          "#ffedd5"
+        ],
+        "textColor": "#431407",
+        "lineColor": "#9a3412",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "orange-molten-caramel",
+        "name": "Molten Caramel",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#92400e",
+          "#b45309"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ffedd5",
+          "#fdba74"
+        ],
+        "textColor": "#431407",
+        "lineColor": "#9a3412",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "orange-rust-canyon",
+        "name": "Rust Canyon",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#ea580c",
+          "#c2410c"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fff7ed",
+          "#fed7aa"
+        ],
+        "textColor": "#9a3412",
+        "lineColor": "#f97316",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "mint-mocha",
+        "name": "Mint Mocha",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#57534e",
+          "#78716c"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ecfccb",
+          "#d9f99d"
+        ],
+        "textColor": "#292524",
+        "lineColor": "#4d7c0f",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "sakura-blush",
+        "name": "Sakura Blush",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#e11d48",
+          "#fb7185"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ffe4e6",
+          "#fecdd3"
+        ],
+        "textColor": "#881337",
+        "lineColor": "#e11d48",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "deep-current",
+        "name": "Deep Current",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#06b6d4",
+          "#0891b2"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#0f172a",
+          "#164e63"
+        ],
+        "textColor": "#ecfeff",
+        "lineColor": "#22d3ee",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "olive-grove",
+        "name": "Olive Grove",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#65a30d",
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#f7fee7",
+          "#ecfccb"
+        ],
+        "textColor": "#365314",
+        "lineColor": "#4d7c0f",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "citron-pop",
+        "name": "Citron Pop",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#ca8a04",
+          "#a3e635"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#facc15",
+          "#bef264"
+        ],
+        "textColor": "#422006",
+        "lineColor": "#713f12",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "merlot-rose",
+        "name": "Merlot Rose",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#881337",
+          "#be123c"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fce7f3",
+          "#fbcfe8"
+        ],
+        "textColor": "#4c0519",
+        "lineColor": "#9f1239",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "red-burgundy-velvet",
+        "name": "Burgundy Velvet",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#881337",
+          "#9f1239"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fef2f2",
+          "#fecdd3"
+        ],
+        "textColor": "#4c0519",
+        "lineColor": "#881337",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "red-oxblood-silk",
+        "name": "Oxblood Silk",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#b91c1c",
+          "#dc2626"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ffe4e6",
+          "#fca5a5"
+        ],
+        "textColor": "#991b1b",
+        "lineColor": "#dc2626",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "red-scarlet-forge",
+        "name": "Scarlet Forge",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#b91c1c",
+          "#dc2626"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fef2f2",
+          "#fee2e2"
+        ],
+        "textColor": "#450a0a",
+        "lineColor": "#7f1d1d",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "red-garnet-shadow",
+        "name": "Garnet Shadow",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#991b1b",
+          "#b91c1c"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#4a252c",
+          "#5c3340"
+        ],
+        "textColor": "#fecaca",
+        "lineColor": "#f87171",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "red-crimson-nocturne",
+        "name": "Crimson Nocturne",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#be123c",
+          "#e11d48"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#4c0519",
+          "#881337"
+        ],
+        "textColor": "#fecdd3",
+        "lineColor": "#fb7185",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-midnight-sapphire",
+        "name": "Midnight Sapphire",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#1e3a8a",
+          "#312e81"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#0f172a",
+          "#172554"
+        ],
+        "textColor": "#dbeafe",
+        "lineColor": "#3b82f6",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-cobalt-depth",
+        "name": "Cobalt Depth",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#1d4ed8",
+          "#1e40af"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#172554",
+          "#1e3a8a"
+        ],
+        "textColor": "#eff6ff",
+        "lineColor": "#60a5fa",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-prussian-ink",
+        "name": "Prussian Ink",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#1e40af",
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#020617",
+          "#0f172a"
+        ],
+        "textColor": "#bfdbfe",
+        "lineColor": "#2563eb",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-indigo-mirage",
+        "name": "Indigo Mirage",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#6366f1",
+          "#818cf8"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#3730a3",
+          "#4f46e5"
+        ],
+        "textColor": "#eef2ff",
+        "lineColor": "#c7d2fe",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-denim-storm",
+        "name": "Denim Storm",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#3b82f6",
+          "#2563eb"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#1e40af",
+          "#2563eb"
+        ],
+        "textColor": "#eff6ff",
+        "lineColor": "#bfdbfe",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-harbor-fog",
+        "name": "Harbor Fog",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0284c7",
+          "#0ea5e9"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#0369a1",
+          "#0284c7"
+        ],
+        "textColor": "#f0f9ff",
+        "lineColor": "#e0f2fe",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-glacier-deep",
+        "name": "Glacier Deep",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0ea5e9",
+          "#38bdf8"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#0284c7",
+          "#0369a1"
+        ],
+        "textColor": "#f0f9ff",
+        "lineColor": "#f0f9ff",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-cerulean-deep",
+        "name": "Cerulean Deep",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#06b6d4",
+          "#22d3ee"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#0e7490",
+          "#0891b2"
+        ],
+        "textColor": "#cffafe",
+        "lineColor": "#ecfeff",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-sapphire-pop",
+        "name": "Sapphire Pop",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#2563eb",
+          "#3b82f6"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#eff6ff",
+          "#dbeafe"
+        ],
+        "textColor": "#1e3a8a",
+        "lineColor": "#1d4ed8",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-electric-azure",
+        "name": "Electric Azure",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#1d4ed8",
+          "#2563eb"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#dbeafe",
+          "#bfdbfe"
+        ],
+        "textColor": "#1e3a8a",
+        "lineColor": "#1e40af",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-royal-tide",
+        "name": "Royal Tide",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0284c7",
+          "#0369a1"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#e0f2fe",
+          "#bae6fd"
+        ],
+        "textColor": "#0c4a6e",
+        "lineColor": "#075985",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-skydive",
+        "name": "Skydive",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0ea5e9",
+          "#38bdf8"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#f0f9ff",
+          "#e0f2fe"
+        ],
+        "textColor": "#075985",
+        "lineColor": "#0284c7",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "blue-lagoon-splash",
+        "name": "Lagoon Splash",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0891b2",
+          "#06b6d4"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#cffafe",
+          "#a5f3fc"
+        ],
+        "textColor": "#155e75",
+        "lineColor": "#0e7490",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-moss-bark",
+        "name": "Moss & Bark",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#3f6212",
+          "#422006"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ecfccb",
+          "#d9f99d"
+        ],
+        "textColor": "#1c1917",
+        "lineColor": "#365314",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-sea-glass",
+        "name": "Sea Glass",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#14b8a6",
+          "#2dd4bf"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ecfdf9",
+          "#ccfbf1"
+        ],
+        "textColor": "#115e59",
+        "lineColor": "#0f766e",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-wheat-straw",
+        "name": "Wheat Straw",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "solid",
+        "borderColor": "#ca8a04",
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fffbeb",
+          "#fef3c7"
+        ],
+        "textColor": "#713f12",
+        "lineColor": "#a16207",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-redwood",
+        "name": "Redwood Grove",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#9a3412",
+          "#7c2d12"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ffedd5",
+          "#fed7aa"
+        ],
+        "textColor": "#431407",
+        "lineColor": "#7c2d12",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-lichen-stone",
+        "name": "Lichen Stone",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#57534e",
+          "#65a30d"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#f5f5f4",
+          "#e7e5e4"
+        ],
+        "textColor": "#292524",
+        "lineColor": "#4d7c0f",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-desert-sand",
+        "name": "Desert Sand",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#d97706",
+          "#b45309"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fffbeb",
+          "#fef9c3"
+        ],
+        "textColor": "#78350f",
+        "lineColor": "#b45309",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-mountain-sky",
+        "name": "Mountain Sky",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0284c7",
+          "#0ea5e9"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#f0f9ff",
+          "#e0f2fe"
+        ],
+        "textColor": "#0c4a6e",
+        "lineColor": "#0369a1",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-peat-earth",
+        "name": "Peat Earth",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#78350f",
+          "#92400e"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fef3c7",
+          "#fde68a"
+        ],
+        "textColor": "#431407",
+        "lineColor": "#78350f",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-tide-pool",
+        "name": "Tide Pool",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0e7490",
+          "#155e75"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#ecfeff",
+          "#cffafe"
+        ],
+        "textColor": "#164e63",
+        "lineColor": "#155e75",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "nat-autumn-leaf",
+        "name": "Autumn Leaf",
+        "source": "src/lib/theme-manager.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#c2410c",
+          "#b45309"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#fff7ed",
+          "#ffedd5"
+        ],
+        "textColor": "#7c2d12",
+        "lineColor": "#9a3412",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-crimson-eclipse",
+        "name": "Crimson Eclipse",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#991b1b",
+          "#dc2626"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#0a0404",
+        "textColor": "#fecaca",
+        "lineColor": "#f87171",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-magma-core",
+        "name": "Magma Core",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#c2410c",
+          "#ea580c"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#1a0a04",
+        "textColor": "#ffedd5",
+        "lineColor": "#fb923c",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-obsidian-ember",
+        "name": "Obsidian Ember",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#92400e",
+          "#b45309"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#171412",
+        "textColor": "#fef3c7",
+        "lineColor": "#fbbf24",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-copper-nebula",
+        "name": "Copper Nebula",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#a16207",
+          "#ca8a04"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#1c1410",
+          "#292018"
+        ],
+        "textColor": "#fde68a",
+        "lineColor": "#d97706",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-solar-flare",
+        "name": "Solar Flare Dark",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#ca8a04",
+          "#eab308"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#141008",
+        "textColor": "#fef9c3",
+        "lineColor": "#fde047",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-phosphor-lime",
+        "name": "Phosphor Lime",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#4d7c0f",
+          "#65a30d"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#0a0f04",
+        "textColor": "#ecfccb",
+        "lineColor": "#a3e635",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-neon-verdant",
+        "name": "Neon Verdant",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#15803d",
+          "#16a34a"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#041208",
+        "textColor": "#dcfce7",
+        "lineColor": "#4ade80",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-forest-moonlight",
+        "name": "Forest Moonlight",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "solid",
+        "borderColor": "#3f6212",
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#0f1a0a",
+          "#1a2e05"
+        ],
+        "textColor": "#d9f99d",
+        "lineColor": "#84cc16",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-charcoal-aurora",
+        "name": "Charcoal Aurora",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0f766e",
+          "#0d9488"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#0c1210",
+        "textColor": "#ccfbf1",
+        "lineColor": "#2dd4bf",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-abyssal-teal",
+        "name": "Abyssal Teal",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0f766e",
+          "#14b8a6"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#041210",
+        "textColor": "#ccfbf1",
+        "lineColor": "#2dd4bf",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-deep-lagoon",
+        "name": "Deep Lagoon",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0e7490",
+          "#0891b2"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#042028",
+          "#083344"
+        ],
+        "textColor": "#cffafe",
+        "lineColor": "#22d3ee",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-arctic-void",
+        "name": "Arctic Void",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0369a1",
+          "#0284c7"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#040810",
+        "textColor": "#e0f2fe",
+        "lineColor": "#38bdf8",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-storm-slate",
+        "name": "Storm Slate",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#475569",
+          "#64748b"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#0f172a",
+          "#1e293b"
+        ],
+        "textColor": "#e2e8f0",
+        "lineColor": "#94a3b8",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-sapphire-ember",
+        "name": "Sapphire Ember",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#1d4ed8",
+          "#2563eb"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#060a14",
+        "textColor": "#dbeafe",
+        "lineColor": "#60a5fa",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-electric-indigo",
+        "name": "Electric Indigo",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#4338ca",
+          "#6366f1"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#08061a",
+        "textColor": "#e0e7ff",
+        "lineColor": "#818cf8",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-ultraviolet-dream",
+        "name": "Ultraviolet Dream",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#6d28d9",
+          "#7c3aed"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#0a0614",
+        "textColor": "#ede9fe",
+        "lineColor": "#a78bfa",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-velvet-plum",
+        "name": "Velvet Plum Night",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#7e22ce",
+          "#9333ea"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#0c0610",
+        "textColor": "#f3e8ff",
+        "lineColor": "#c084fc",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-midnight-orchid",
+        "name": "Midnight Orchid",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#a21caf",
+          "#c026d3"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#1a0518",
+          "#3b0764"
+        ],
+        "textColor": "#fae8ff",
+        "lineColor": "#e879f9",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-cosmic-rose",
+        "name": "Cosmic Rose",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#be185d",
+          "#db2777"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#100408",
+        "textColor": "#fce7f3",
+        "lineColor": "#f472b6",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-wine-cellar",
+        "name": "Wine Cellar",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#881337",
+          "#9f1239"
+        ],
+        "backgroundStyle": "gradient",
+        "backgroundColors": [
+          "#1a0510",
+          "#4c0519"
+        ],
+        "textColor": "#fecdd3",
+        "lineColor": "#fb7185",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-void-garden",
+        "name": "Void Garden",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "none",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#050805",
+        "textColor": "#bbf7d0",
+        "lineColor": "#4ade80",
+        "lineStyle": "dotted"
+      },
+      {
+        "id": "dark-raven-wing",
+        "name": "Raven Wing",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "solid",
+        "borderColor": "#334155",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#0c0e12",
+        "textColor": "#cbd5e1",
+        "lineColor": "#64748b",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-neon-tokyo",
+        "name": "Neon Tokyo",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "dotted",
+        "borderColor": "#f472b6",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#0a0614",
+        "textColor": "#fae8ff",
+        "lineColor": "#e879f9",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-tungsten-glow",
+        "name": "Tungsten Glow",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#57534e",
+          "#d97706"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#141210",
+        "textColor": "#fef3c7",
+        "lineColor": "#fbbf24",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-space-candy",
+        "name": "Deep Space Candy",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "none",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#06040f",
+        "textColor": "#ede9fe",
+        "lineColor": "#c084fc",
+        "lineStyle": "dotted"
+      },
+      {
+        "id": "dark-black-sand",
+        "name": "Black Sand Beach",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "solid",
+        "borderColor": "#0f766e",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#0a0c0c",
+        "textColor": "#ccfbf1",
+        "lineColor": "#2dd4bf",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-witching-hour",
+        "name": "Witching Hour",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "dotted",
+        "borderColor": "#a855f7",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#080a06",
+        "textColor": "#e9d5ff",
+        "lineColor": "#c084fc",
+        "lineStyle": "dotted"
+      },
+      {
+        "id": "dark-oil-slick",
+        "name": "Oil Slick",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#6366f1",
+          "#14b8a6"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#080810",
+        "textColor": "#e0e7ff",
+        "lineColor": "#818cf8",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-smoked-quartz",
+        "name": "Smoked Quartz",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "none",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#121010",
+        "textColor": "#fecdd3",
+        "lineColor": "#fda4af",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "dark-phantom-circuit",
+        "name": "Phantom Circuit",
+        "source": "src/lib/builtin-dark-themes.ts",
+        "borderStyle": "solid",
+        "borderColor": "#06b6d4",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#030508",
+        "textColor": "#cffafe",
+        "lineColor": "#22d3ee",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "bright-paper-lantern",
+        "name": "Paper Lantern",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "none",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#fff8f0",
+        "textColor": "#9a3412",
+        "lineColor": "#ea580c",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "bright-sunrise-sherbet",
+        "name": "Sunrise Sherbet",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "dotted",
+        "borderColor": "#fb7185",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#fff7ed",
+        "textColor": "#c2410c",
+        "lineColor": "#f97316",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "bright-limoncello-frost",
+        "name": "Limoncello Frost",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "dotted",
+        "borderColor": "#ca8a04",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#fffef5",
+        "textColor": "#713f12",
+        "lineColor": "#a16207",
+        "lineStyle": "dotted"
+      },
+      {
+        "id": "bright-key-lime-soda",
+        "name": "Key Lime Soda",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "solid",
+        "borderColor": "#84cc16",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#f7fee7",
+        "textColor": "#365314",
+        "lineColor": "#65a30d",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "bright-arctic-mint",
+        "name": "Arctic Mint",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "solid",
+        "borderColor": "#6ee7b7",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#f0fdf9",
+        "textColor": "#115e59",
+        "lineColor": "#14b8a6",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "bright-peacock-prism",
+        "name": "Peacock Prism",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#0d9488",
+          "#7c3aed"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#ecfeff",
+        "textColor": "#134e4a",
+        "lineColor": "#0f766e",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "bright-daybreak-mirage",
+        "name": "Daybreak Mirage",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#fbbf24",
+          "#38bdf8"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#f0f9ff",
+        "textColor": "#0c4a6e",
+        "lineColor": "#0284c7",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "bright-lilac-daydream",
+        "name": "Lilac Daydream",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "none",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#faf5ff",
+        "textColor": "#5b21b6",
+        "lineColor": "#8b5cf6",
+        "lineStyle": "dotted"
+      },
+      {
+        "id": "bright-bubblegum-arcade",
+        "name": "Bubblegum Arcade",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "gradient",
+        "borderColors": [
+          "#ec4899",
+          "#06b6d4"
+        ],
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#fdf2f8",
+        "textColor": "#9d174d",
+        "lineColor": "#db2777",
+        "lineStyle": "solid"
+      },
+      {
+        "id": "bright-cotton-candy",
+        "name": "Cotton Candy Cloud",
+        "source": "src/lib/builtin-bright-themes.ts",
+        "borderStyle": "none",
+        "backgroundStyle": "mesh_gradient",
+        "backgroundColor": "#ffffff",
+        "textColor": "#be185d",
+        "lineColor": "#f472b6",
+        "lineStyle": "dotted"
+      }
+    ],
+    "borderTemplates": [
+      {
+        "templateId": "corner-diagonal-accent",
+        "nodeType": "generic.border.corner-diagonal-accent",
+        "name": "Corner Diagonal Accent",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      },
+      {
+        "templateId": "corner-blue-layers",
+        "nodeType": "generic.border.corner-blue-layers",
+        "name": "Corner Blue Layers",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      },
+      {
+        "templateId": "bar-chamfer-accent",
+        "nodeType": "generic.border.bar-chamfer-accent",
+        "name": "Bar Chamfer Accent",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      },
+      {
+        "templateId": "wave-teal",
+        "nodeType": "generic.border.wave-teal",
+        "name": "Wave Teal",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      },
+      {
+        "templateId": "circle-warm",
+        "nodeType": "generic.border.circle-warm",
+        "name": "Circle Warm",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      },
+      {
+        "templateId": "frame-triangle",
+        "nodeType": "generic.border.frame-triangle",
+        "name": "Frame Triangle",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      },
+      {
+        "templateId": "curve-gold-frame",
+        "nodeType": "generic.border.curve-gold-frame",
+        "name": "Curve Gold Frame",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      },
+      {
+        "templateId": "crystal-poly",
+        "nodeType": "generic.border.crystal-poly",
+        "name": "Crystal Poly",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      },
+      {
+        "templateId": "rounded-arrow-stack",
+        "nodeType": "generic.border.rounded-arrow-stack",
+        "name": "Rounded Arrow Stack",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      },
+      {
+        "templateId": "swoop-blue-layers",
+        "nodeType": "generic.border.swoop-blue-layers",
+        "name": "Swoop Blue Layers",
+        "defaultWidth": 960,
+        "defaultHeight": 540
+      }
+    ],
+    "cardTemplates": [
+      {
+        "templateId": "profile-feature",
+        "nodeType": "generic.card.profile-feature",
+        "defaultWidth": 260,
+        "defaultHeight": 290,
+        "editable": [
+          "hero (icon-slot)",
+          "title",
+          "subtitle"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "overflow": "hidden"
+          },
+          "children": [
+            {
+              "id": "hero",
+              "kind": "icon-slot",
+              "placeholder": "rect",
+              "layout": {
+                "flex": 55,
+                "width": "100%"
+              },
+              "style": {
+                "backgroundColor": "#fef3c7",
+                "backgroundStyle": "solid"
+              },
+              "iconRef": {
+                "type": "generic.icon.mappin",
+                "iconType": "lucide",
+                "iconName": "MapPin",
+                "iconColor": "#0d7b96",
+                "noIconBackground": true
+              }
+            },
+            {
+              "id": "body",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "flex": 45,
+                "width": "100%"
+              },
+              "style": {
+                "backgroundColor": "#fffbeb",
+                "backgroundStyle": "solid"
+              },
+              "children": [
+                {
+                  "id": "title",
+                  "kind": "text",
+                  "text": "Card title",
+                  "editable": true,
+                  "fontSize": 14,
+                  "fontWeight": "600",
+                  "textColor": "#713f12"
+                },
+                {
+                  "id": "subtitle",
+                  "kind": "text",
+                  "text": "Subtitle",
+                  "editable": true,
+                  "fontSize": 11,
+                  "textColor": "#713f12"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "profile-diagonal-split",
+        "nodeType": "generic.card.profile-diagonal-split",
+        "defaultWidth": 250,
+        "defaultHeight": 250,
+        "editable": [
+          "title",
+          "subtitle",
+          "avatar (icon-slot)"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "width": "100%",
+            "height": "100%",
+            "overflow": "hidden"
+          },
+          "children": [
+            {
+              "id": "body",
+              "kind": "section",
+              "style": {
+                "backgroundStyle": "gradient",
+                "backgroundColors": [
+                  "#ffe4e6",
+                  "#fca5a5"
+                ],
+                "gradientAngle": 145
+              }
+            },
+            {
+              "id": "hero",
+              "kind": "section"
+            },
+            {
+              "id": "content",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "width": "100%",
+                "height": "100%"
+              },
+              "children": [
+                {
+                  "id": "title",
+                  "kind": "text",
+                  "text": "Title",
+                  "editable": true,
+                  "fontSize": 14,
+                  "fontWeight": "600",
+                  "textColor": "#991b1b"
+                },
+                {
+                  "id": "subtitle",
+                  "kind": "text",
+                  "text": "small text",
+                  "editable": true,
+                  "fontSize": 11,
+                  "textColor": "#991b1b"
+                }
+              ]
+            },
+            {
+              "id": "avatar",
+              "kind": "icon-slot",
+              "placeholder": "circle",
+              "iconFillSlot": true,
+              "iconRef": {
+                "type": "generic.icon.globe",
+                "iconType": "lucide",
+                "iconName": "Globe",
+                "noIconBackground": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "profile-social",
+        "nodeType": "generic.card.profile-social",
+        "defaultWidth": 180,
+        "defaultHeight": 280,
+        "editable": [
+          "avatar",
+          "name",
+          "age",
+          "location",
+          "description",
+          "stat-1-value",
+          "stat-1-label",
+          "stat-2-value",
+          "stat-2-label",
+          "stat-3-value",
+          "stat-3-label"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "overflow": "hidden"
+          },
+          "style": {
+            "backgroundColor": "#ffffff",
+            "backgroundStyle": "solid"
+          },
+          "children": [
+            {
+              "id": "hero",
+              "kind": "section",
+              "layout": {
+                "flex": 38,
+                "width": "100%"
+              },
+              "style": {
+                "backgroundColor": "#2ab7bc",
+                "backgroundStyle": "solid"
+              }
+            },
+            {
+              "id": "body",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "flex": 62,
+                "alignItems": "center",
+                "width": "100%"
+              },
+              "children": [
+                {
+                  "id": "avatar",
+                  "kind": "icon-slot",
+                  "placeholder": "circle",
+                  "iconFillSlot": true,
+                  "iconRef": {
+                    "type": "generic.user.user",
+                    "provider": "generic",
+                    "category": "user",
+                    "file": "user.png",
+                    "noIconBackground": true
+                  }
+                },
+                {
+                  "id": "info",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "column",
+                    "alignItems": "center"
+                  },
+                  "children": [
+                    {
+                      "id": "name-row",
+                      "kind": "section",
+                      "layout": {
+                        "flexDirection": "row",
+                        "justifyContent": "center"
+                      },
+                      "children": [
+                        {
+                          "id": "name",
+                          "kind": "text",
+                          "text": "Name",
+                          "editable": true,
+                          "fontSize": 14,
+                          "fontWeight": "700",
+                          "textColor": "#2d3748"
+                        },
+                        {
+                          "id": "age",
+                          "kind": "text",
+                          "text": "26",
+                          "editable": true,
+                          "fontSize": 12,
+                          "textColor": "#718096"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "location",
+                      "kind": "text",
+                      "text": "City",
+                      "editable": true,
+                      "fontSize": 11,
+                      "textColor": "#718096"
+                    }
+                  ]
+                },
+                {
+                  "id": "description",
+                  "kind": "text",
+                  "text": "Short bio",
+                  "editable": true,
+                  "fontSize": 10,
+                  "textColor": "#718096"
+                },
+                {
+                  "id": "footer",
+                  "kind": "section",
+                  "children": [
+                    {
+                      "id": "divider",
+                      "kind": "section",
+                      "layout": {
+                        "width": "100%",
+                        "height": 1
+                      },
+                      "style": {
+                        "backgroundColor": "#e2e8f0",
+                        "backgroundStyle": "solid"
+                      }
+                    },
+                    {
+                      "id": "stats",
+                      "kind": "section",
+                      "layout": {
+                        "flexDirection": "row",
+                        "justifyContent": "space-between",
+                        "width": "100%"
+                      },
+                      "children": [
+                        {
+                          "id": "stat-1",
+                          "kind": "section",
+                          "layout": {
+                            "flexDirection": "column",
+                            "alignItems": "center"
+                          },
+                          "children": [
+                            {
+                              "id": "stat-1-value",
+                              "kind": "text",
+                              "text": "80K",
+                              "editable": true,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "id": "stat-1-label",
+                              "kind": "text",
+                              "text": "Followers",
+                              "editable": true
+                            }
+                          ]
+                        },
+                        {
+                          "id": "stat-2",
+                          "kind": "section",
+                          "layout": {
+                            "flexDirection": "column",
+                            "alignItems": "center"
+                          },
+                          "children": [
+                            {
+                              "id": "stat-2-value",
+                              "kind": "text",
+                              "text": "803K",
+                              "editable": true,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "id": "stat-2-label",
+                              "kind": "text",
+                              "text": "Likes",
+                              "editable": true
+                            }
+                          ]
+                        },
+                        {
+                          "id": "stat-3",
+                          "kind": "section",
+                          "layout": {
+                            "flexDirection": "column",
+                            "alignItems": "center"
+                          },
+                          "children": [
+                            {
+                              "id": "stat-3-value",
+                              "kind": "text",
+                              "text": "1.4K",
+                              "editable": true,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "id": "stat-3-label",
+                              "kind": "text",
+                              "text": "Photos",
+                              "editable": true
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "compact-horizontal",
+        "nodeType": "generic.card.compact-horizontal",
+        "defaultWidth": 220,
+        "defaultHeight": 80,
+        "editable": [
+          "avatar",
+          "name",
+          "status"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "row",
+            "width": "100%",
+            "height": "100%",
+            "alignItems": "center",
+            "gap": 12,
+            "padding": [
+              10,
+              12
+            ]
+          },
+          "style": {
+            "backgroundStyle": "gradient",
+            "backgroundColors": [
+              "#0369a1",
+              "#0284c7"
+            ],
+            "gradientAngle": 165
+          },
+          "children": [
+            {
+              "id": "avatar",
+              "kind": "icon-slot",
+              "placeholder": "circle",
+              "iconFillSlot": true,
+              "layout": {
+                "width": 44,
+                "height": 44
+              },
+              "iconRef": {
+                "type": "generic.emoji.star",
+                "iconType": "emoji",
+                "emoji": "⭐",
+                "noIconBackground": true
+              }
+            },
+            {
+              "id": "text-col",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "flex": 1,
+                "gap": 5
+              },
+              "children": [
+                {
+                  "id": "name",
+                  "kind": "text",
+                  "text": "Name or label",
+                  "editable": true,
+                  "fontSize": 13,
+                  "fontWeight": "600",
+                  "textColor": "#f0f9ff"
+                },
+                {
+                  "id": "status",
+                  "kind": "text",
+                  "text": "Status or role",
+                  "editable": true,
+                  "fontSize": 10,
+                  "textColor": "#f0f9ff"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "list-item-row",
+        "nodeType": "generic.card.list-item-row",
+        "defaultWidth": 250,
+        "defaultHeight": 40,
+        "editable": [
+          "indicator (icon-slot)",
+          "label"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "row",
+            "width": "100%",
+            "height": "100%",
+            "alignItems": "center",
+            "gap": 10,
+            "padding": [
+              8,
+              10
+            ]
+          },
+          "style": {
+            "backgroundStyle": "gradient",
+            "backgroundColors": [
+              "#ede9fe",
+              "#e0e7ff"
+            ],
+            "gradientAngle": 135
+          },
+          "children": [
+            {
+              "id": "indicator",
+              "kind": "icon-slot",
+              "placeholder": "rect",
+              "iconRef": {
+                "type": "generic.icon.shield",
+                "iconType": "lucide",
+                "iconName": "Shield",
+                "noIconBackground": true
+              }
+            },
+            {
+              "id": "label",
+              "kind": "text",
+              "text": "List item label",
+              "editable": true,
+              "fontSize": 12,
+              "textColor": "#4c1d95"
+            },
+            {
+              "id": "drag-handle",
+              "kind": "decor",
+              "placeholder": "dots",
+              "layout": {
+                "width": 16,
+                "height": 24
+              }
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "framed-heading",
+        "nodeType": "generic.card.framed-heading",
+        "defaultWidth": 260,
+        "defaultHeight": 280,
+        "editable": [
+          "heading",
+          "frame-fill (background)",
+          "heading-tab framedHeadingEdge/Align/TabWidthPct"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "overflow": "visible"
+          },
+          "style": {
+            "backgroundStyle": "none"
+          },
+          "children": [
+            {
+              "id": "frame-fill",
+              "kind": "section",
+              "style": {
+                "backgroundStyle": "none"
+              }
+            },
+            {
+              "id": "heading-tab",
+              "kind": "section",
+              "framedHeadingEdge": "top",
+              "framedHeadingAlign": "center",
+              "framedHeadingTabWidthPct": 50,
+              "style": {
+                "backgroundStyle": "gradient",
+                "backgroundColors": [
+                  "#2b6ca1",
+                  "#193661"
+                ],
+                "gradientAngle": 315
+              },
+              "children": [
+                {
+                  "id": "heading",
+                  "kind": "text",
+                  "text": "HEADING",
+                  "editable": true,
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "textTransform": "uppercase",
+                  "textColor": "#ced7e3",
+                  "textJustify": "center"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "icon-border",
+        "nodeType": "generic.card.icon-border",
+        "defaultWidth": 680,
+        "defaultHeight": 440,
+        "editable": [
+          "icon (icon-slot)",
+          "title"
+        ],
+        "notes": "Shell uses node borderColor (default #ed7100). Corner icon defaults to aws.compute.compute-optimizer, nodeSize half, noIconBackground true.",
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "overflow": "hidden"
+          },
+          "style": {
+            "backgroundStyle": "solid",
+            "backgroundColor": "#ffffff"
+          },
+          "children": [
+            {
+              "id": "header",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "row",
+                "width": "100%",
+                "gap": 10,
+                "alignItems": "stretch"
+              },
+              "children": [
+                {
+                  "id": "icon",
+                  "kind": "icon-slot",
+                  "placeholder": "rect",
+                  "iconRef": {
+                    "type": "aws.compute.compute-optimizer",
+                    "provider": "aws",
+                    "category": "compute",
+                    "noIconBackground": true,
+                    "nodeSize": "half",
+                    "iconSizeMode": "fixed"
+                  }
+                },
+                {
+                  "id": "title",
+                  "kind": "text",
+                  "text": "TITLE",
+                  "editable": true,
+                  "fontSize": 32,
+                  "fontWeight": "400",
+                  "textColor": "#374151"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "sidebar-accent",
+        "nodeType": "generic.card.sidebar-accent",
+        "defaultWidth": 240,
+        "defaultHeight": 96,
+        "editable": [
+          "heading",
+          "body",
+          "accent-bar"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "row",
+            "width": "100%",
+            "height": "100%",
+            "padding": [
+              12,
+              14
+            ],
+            "gap": 12
+          },
+          "style": {
+            "backgroundStyle": "gradient",
+            "backgroundColors": [
+              "#051923",
+              "#004e64"
+            ],
+            "gradientAngle": 135
+          },
+          "children": [
+            {
+              "id": "accent-bar",
+              "kind": "decor",
+              "placeholder": "rect",
+              "layout": {
+                "width": 6
+              }
+            },
+            {
+              "id": "content-col",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "flex": 1,
+                "justifyContent": "center",
+                "gap": 6
+              },
+              "children": [
+                {
+                  "id": "heading",
+                  "kind": "text",
+                  "text": "HEADING TEXT TITLE",
+                  "editable": true,
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "textTransform": "uppercase",
+                  "textColor": "#45d1af"
+                },
+                {
+                  "id": "body",
+                  "kind": "text",
+                  "text": "Body text section",
+                  "editable": true,
+                  "fontSize": 10,
+                  "textColor": "#ffffff"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "element-feature",
+        "nodeType": "generic.card.element-feature",
+        "defaultWidth": 300,
+        "defaultHeight": 170,
+        "editable": [
+          "label",
+          "title",
+          "watermark-number",
+          "accent-line"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "width": "100%",
+            "height": "100%",
+            "overflow": "hidden"
+          },
+          "children": [
+            {
+              "id": "watermark-number",
+              "kind": "text",
+              "text": "01",
+              "editable": true,
+              "fontSize": 130,
+              "fontWeight": "700"
+            },
+            {
+              "id": "content-col",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "width": "100%",
+                "height": "100%"
+              },
+              "children": [
+                {
+                  "id": "label",
+                  "kind": "text",
+                  "text": "CATEGORY",
+                  "editable": true,
+                  "fontSize": 11,
+                  "textTransform": "uppercase"
+                },
+                {
+                  "id": "accent-line",
+                  "kind": "decor",
+                  "placeholder": "rect"
+                },
+                {
+                  "id": "title",
+                  "kind": "text",
+                  "text": "Feature title",
+                  "editable": true,
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "textColor": "#ffffff"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "detail-post",
+        "nodeType": "generic.card.detail-post",
+        "defaultWidth": 180,
+        "defaultHeight": 260,
+        "editable": [
+          "header-icon",
+          "header-tag",
+          "headline",
+          "body-line-1",
+          "body-line-2",
+          "cta"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "padding": 12,
+            "gap": 10
+          },
+          "style": {
+            "backgroundStyle": "gradient",
+            "backgroundColors": [
+              "#ffedd5",
+              "#fdba74"
+            ],
+            "gradientAngle": 95
+          },
+          "children": [
+            {
+              "id": "header",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "row",
+                "justifyContent": "space-between",
+                "width": "100%"
+              },
+              "children": [
+                {
+                  "id": "header-icon",
+                  "kind": "icon-slot",
+                  "placeholder": "rect",
+                  "iconFillSlot": true,
+                  "iconRef": {
+                    "type": "generic.icon.cpu",
+                    "iconType": "lucide",
+                    "iconName": "Cpu",
+                    "noIconBackground": true
+                  }
+                },
+                {
+                  "id": "header-tag",
+                  "kind": "tag",
+                  "tag": "Tag",
+                  "editable": true,
+                  "fontSize": 9,
+                  "textColor": "#431407"
+                }
+              ]
+            },
+            {
+              "id": "body",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "flex": 1,
+                "gap": 8,
+                "width": "100%"
+              },
+              "children": [
+                {
+                  "id": "headline",
+                  "kind": "text",
+                  "text": "Headline",
+                  "editable": true,
+                  "fontSize": 14,
+                  "fontWeight": "700",
+                  "textColor": "#431407"
+                },
+                {
+                  "id": "body-line-1",
+                  "kind": "text",
+                  "text": "Body text line one",
+                  "editable": true,
+                  "fontSize": 10,
+                  "textColor": "#431407"
+                },
+                {
+                  "id": "body-line-2",
+                  "kind": "text",
+                  "text": "Body text line two",
+                  "editable": true,
+                  "fontSize": 10,
+                  "textColor": "#431407"
+                }
+              ]
+            },
+            {
+              "id": "footer",
+              "kind": "section",
+              "children": [
+                {
+                  "id": "cta",
+                  "kind": "text",
+                  "text": "Call to action",
+                  "editable": true,
+                  "fontSize": 10,
+                  "fontWeight": "600",
+                  "textColor": "#431407"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "dashboard-score",
+        "nodeType": "generic.card.dashboard-score",
+        "defaultWidth": 200,
+        "defaultHeight": 120,
+        "editable": [
+          "metric-title",
+          "metric-subtitle",
+          "metric-value",
+          "metric-decor",
+          "metric-action"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "padding": [
+              14,
+              16
+            ],
+            "overflow": "hidden"
+          },
+          "style": {
+            "backgroundStyle": "gradient",
+            "backgroundColors": [
+              "#ddd6fe",
+              "#7c3aed"
+            ],
+            "gradientAngle": 135
+          },
+          "children": [
+            {
+              "id": "header",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "row",
+                "width": "100%"
+              },
+              "children": [
+                {
+                  "id": "title-col",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "column",
+                    "flex": 1
+                  },
+                  "children": [
+                    {
+                      "id": "metric-title",
+                      "kind": "text",
+                      "text": "Overall Score",
+                      "editable": true,
+                      "fontSize": 11,
+                      "textColor": "#ffffff"
+                    },
+                    {
+                      "id": "metric-subtitle",
+                      "kind": "text",
+                      "text": "",
+                      "editable": true,
+                      "fontSize": 10,
+                      "textColor": "#ffffff"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "metric-body",
+              "kind": "section",
+              "children": [
+                {
+                  "id": "metric-value",
+                  "kind": "text",
+                  "text": "8 / 10",
+                  "editable": true,
+                  "fontSize": 28,
+                  "fontWeight": "700",
+                  "textColor": "#ffffff"
+                }
+              ]
+            },
+            {
+              "id": "metric-decor",
+              "kind": "icon-slot",
+              "iconRef": {
+                "type": "generic.icon.star",
+                "iconType": "lucide",
+                "iconName": "Star",
+                "iconColor": "#ffffff",
+                "noIconBackground": true
+              }
+            },
+            {
+              "id": "metric-action",
+              "kind": "icon-slot"
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "dashboard-ranking",
+        "nodeType": "generic.card.dashboard-ranking",
+        "defaultWidth": 200,
+        "defaultHeight": 120,
+        "editable": [
+          "metric-title",
+          "metric-value",
+          "metric-decor"
+        ],
+        "cloneFrom": "dashboard-score",
+        "notes": "Same element ids as dashboard-score. Default title Ranking, value 25, green gradient #bbf7d0→#16a34a, decor Globe.",
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "padding": [
+              14,
+              16
+            ],
+            "overflow": "hidden"
+          },
+          "style": {
+            "backgroundStyle": "gradient",
+            "backgroundColors": [
+              "#ddd6fe",
+              "#7c3aed"
+            ],
+            "gradientAngle": 135
+          },
+          "children": [
+            {
+              "id": "header",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "row",
+                "width": "100%"
+              },
+              "children": [
+                {
+                  "id": "title-col",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "column",
+                    "flex": 1
+                  },
+                  "children": [
+                    {
+                      "id": "metric-title",
+                      "kind": "text",
+                      "text": "Overall Score",
+                      "editable": true,
+                      "fontSize": 11,
+                      "textColor": "#ffffff"
+                    },
+                    {
+                      "id": "metric-subtitle",
+                      "kind": "text",
+                      "text": "",
+                      "editable": true,
+                      "fontSize": 10,
+                      "textColor": "#ffffff"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "metric-body",
+              "kind": "section",
+              "children": [
+                {
+                  "id": "metric-value",
+                  "kind": "text",
+                  "text": "8 / 10",
+                  "editable": true,
+                  "fontSize": 28,
+                  "fontWeight": "700",
+                  "textColor": "#ffffff"
+                }
+              ]
+            },
+            {
+              "id": "metric-decor",
+              "kind": "icon-slot",
+              "iconRef": {
+                "type": "generic.icon.star",
+                "iconType": "lucide",
+                "iconName": "Star",
+                "iconColor": "#ffffff",
+                "noIconBackground": true
+              }
+            },
+            {
+              "id": "metric-action",
+              "kind": "icon-slot"
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "dashboard-incentives",
+        "nodeType": "generic.card.dashboard-incentives",
+        "defaultWidth": 200,
+        "defaultHeight": 160,
+        "editable": [
+          "metric-title",
+          "metric-subtitle",
+          "metric-value",
+          "metric-decor"
+        ],
+        "cloneFrom": "dashboard-score",
+        "notes": "Same ids. Title Incentives, subtitle worth of, value $ 15, blue gradient, decor MapPin.",
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "padding": [
+              14,
+              16
+            ],
+            "overflow": "hidden"
+          },
+          "style": {
+            "backgroundStyle": "gradient",
+            "backgroundColors": [
+              "#ddd6fe",
+              "#7c3aed"
+            ],
+            "gradientAngle": 135
+          },
+          "children": [
+            {
+              "id": "header",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "row",
+                "width": "100%"
+              },
+              "children": [
+                {
+                  "id": "title-col",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "column",
+                    "flex": 1
+                  },
+                  "children": [
+                    {
+                      "id": "metric-title",
+                      "kind": "text",
+                      "text": "Overall Score",
+                      "editable": true,
+                      "fontSize": 11,
+                      "textColor": "#ffffff"
+                    },
+                    {
+                      "id": "metric-subtitle",
+                      "kind": "text",
+                      "text": "",
+                      "editable": true,
+                      "fontSize": 10,
+                      "textColor": "#ffffff"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "metric-body",
+              "kind": "section",
+              "children": [
+                {
+                  "id": "metric-value",
+                  "kind": "text",
+                  "text": "8 / 10",
+                  "editable": true,
+                  "fontSize": 28,
+                  "fontWeight": "700",
+                  "textColor": "#ffffff"
+                }
+              ]
+            },
+            {
+              "id": "metric-decor",
+              "kind": "icon-slot",
+              "iconRef": {
+                "type": "generic.icon.star",
+                "iconType": "lucide",
+                "iconName": "Star",
+                "iconColor": "#ffffff",
+                "noIconBackground": true
+              }
+            },
+            {
+              "id": "metric-action",
+              "kind": "icon-slot"
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "dashboard-defaults",
+        "nodeType": "generic.card.dashboard-defaults",
+        "defaultWidth": 200,
+        "defaultHeight": 120,
+        "editable": [
+          "metric-title",
+          "metric-value",
+          "metric-decor"
+        ],
+        "cloneFrom": "dashboard-score",
+        "notes": "Same ids as other dashboard-* cards.",
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "padding": [
+              14,
+              16
+            ],
+            "overflow": "hidden"
+          },
+          "style": {
+            "backgroundStyle": "gradient",
+            "backgroundColors": [
+              "#ddd6fe",
+              "#7c3aed"
+            ],
+            "gradientAngle": 135
+          },
+          "children": [
+            {
+              "id": "header",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "row",
+                "width": "100%"
+              },
+              "children": [
+                {
+                  "id": "title-col",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "column",
+                    "flex": 1
+                  },
+                  "children": [
+                    {
+                      "id": "metric-title",
+                      "kind": "text",
+                      "text": "Overall Score",
+                      "editable": true,
+                      "fontSize": 11,
+                      "textColor": "#ffffff"
+                    },
+                    {
+                      "id": "metric-subtitle",
+                      "kind": "text",
+                      "text": "",
+                      "editable": true,
+                      "fontSize": 10,
+                      "textColor": "#ffffff"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "metric-body",
+              "kind": "section",
+              "children": [
+                {
+                  "id": "metric-value",
+                  "kind": "text",
+                  "text": "8 / 10",
+                  "editable": true,
+                  "fontSize": 28,
+                  "fontWeight": "700",
+                  "textColor": "#ffffff"
+                }
+              ]
+            },
+            {
+              "id": "metric-decor",
+              "kind": "icon-slot",
+              "iconRef": {
+                "type": "generic.icon.star",
+                "iconType": "lucide",
+                "iconName": "Star",
+                "iconColor": "#ffffff",
+                "noIconBackground": true
+              }
+            },
+            {
+              "id": "metric-action",
+              "kind": "icon-slot"
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "agenda",
+        "nodeType": "generic.card.agenda",
+        "defaultWidth": 320,
+        "defaultHeight": 280,
+        "editable": [
+          "date",
+          "entries rows: row-N with time + session text"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "overflow": "hidden"
+          },
+          "style": {
+            "backgroundColor": "#ffffff",
+            "backgroundStyle": "solid"
+          },
+          "children": [
+            {
+              "id": "date-header",
+              "kind": "section",
+              "children": [
+                {
+                  "id": "date",
+                  "kind": "text",
+                  "text": "Monday 17 August",
+                  "editable": true,
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                  "textColor": "#1e293b"
+                }
+              ]
+            },
+            {
+              "id": "table-header",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "row",
+                "width": "100%"
+              },
+              "style": {
+                "backgroundColor": "#0f172a",
+                "backgroundStyle": "solid"
+              },
+              "children": [
+                {
+                  "id": "time-header",
+                  "kind": "text",
+                  "text": "Time",
+                  "fontSize": 10,
+                  "textColor": "#f8fafc"
+                },
+                {
+                  "id": "session-header",
+                  "kind": "text",
+                  "text": "Session",
+                  "fontSize": 10,
+                  "textColor": "#f8fafc"
+                }
+              ]
+            },
+            {
+              "id": "entries",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "flex": 1,
+                "width": "100%"
+              },
+              "children": [
+                {
+                  "id": "row-1",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "row",
+                    "width": "100%"
+                  },
+                  "children": [
+                    {
+                      "id": "row-1-time",
+                      "kind": "text",
+                      "text": "09:00",
+                      "editable": true,
+                      "fontSize": 11
+                    },
+                    {
+                      "id": "row-1-session",
+                      "kind": "text",
+                      "text": "Kickoff",
+                      "editable": true,
+                      "fontSize": 11
+                    }
+                  ]
+                },
+                {
+                  "id": "row-2",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "row",
+                    "width": "100%"
+                  },
+                  "children": [
+                    {
+                      "id": "row-2-time",
+                      "kind": "text",
+                      "text": "10:30",
+                      "editable": true,
+                      "fontSize": 11
+                    },
+                    {
+                      "id": "row-2-session",
+                      "kind": "text",
+                      "text": "Workshop",
+                      "editable": true,
+                      "fontSize": 11
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "templateId": "bullet-list",
+        "nodeType": "generic.card.bullet-list",
+        "defaultWidth": 320,
+        "defaultHeight": 160,
+        "editable": [
+          "title",
+          "row-N-text (and optional row-N-cube)"
+        ],
+        "defaultElements": {
+          "id": "root",
+          "kind": "section",
+          "layout": {
+            "flexDirection": "column",
+            "width": "100%",
+            "height": "100%",
+            "overflow": "hidden",
+            "padding": [
+              12,
+              0,
+              8,
+              0
+            ]
+          },
+          "style": {
+            "backgroundColor": "#0f172a",
+            "backgroundStyle": "solid"
+          },
+          "children": [
+            {
+              "id": "title",
+              "kind": "text",
+              "text": "KEY POINTS",
+              "editable": true,
+              "fontSize": 14,
+              "fontWeight": "700",
+              "textTransform": "uppercase",
+              "textColor": "#84cc16",
+              "textJustify": "center"
+            },
+            {
+              "id": "entries",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "flex": 1,
+                "width": "100%"
+              },
+              "children": [
+                {
+                  "id": "row-1",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "row",
+                    "alignItems": "center",
+                    "gap": 8,
+                    "width": "100%"
+                  },
+                  "children": [
+                    {
+                      "id": "row-1-cube",
+                      "kind": "decor",
+                      "placeholder": "rect",
+                      "layout": {
+                        "width": 8,
+                        "height": 8
+                      },
+                      "style": {
+                        "backgroundColor": "#84cc16",
+                        "backgroundStyle": "solid"
+                      }
+                    },
+                    {
+                      "id": "row-1-text",
+                      "kind": "text",
+                      "text": "First item",
+                      "editable": true,
+                      "fontSize": 12,
+                      "textColor": "#ffffff"
+                    }
+                  ]
+                },
+                {
+                  "id": "row-2",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "row",
+                    "alignItems": "center",
+                    "gap": 8,
+                    "width": "100%"
+                  },
+                  "children": [
+                    {
+                      "id": "row-2-cube",
+                      "kind": "decor",
+                      "placeholder": "rect",
+                      "layout": {
+                        "width": 8,
+                        "height": 8
+                      },
+                      "style": {
+                        "backgroundColor": "#84cc16",
+                        "backgroundStyle": "solid"
+                      }
+                    },
+                    {
+                      "id": "row-2-text",
+                      "kind": "text",
+                      "text": "Second item",
+                      "editable": true,
+                      "fontSize": 12,
+                      "textColor": "#ffffff"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "resourceTypesFile": "resource-types.json"
+  },
+  "examples": {
+    "architecture": {
+      "nodes": [
+        {
+          "id": "user",
+          "type": "generic.user.user",
+          "label": "User",
+          "x": 80,
+          "y": 180,
+          "nodeSize": "normal"
+        },
+        {
+          "id": "api",
+          "type": "aws.compute.lambda",
+          "label": "API",
+          "x": 320,
+          "y": 180,
+          "info": "Request handler"
+        },
+        {
+          "id": "db",
+          "type": "aws.databases.aurora",
+          "label": "Aurora",
+          "x": 560,
+          "y": 180
+        }
+      ],
+      "connections": [
+        {
+          "id": "c-user-api",
+          "from": "user",
+          "to": "api",
+          "toArrow": true,
+          "style": "orthogonal",
+          "smoothCorners": true,
+          "fromPreferredExit": "right",
+          "toPreferredEntry": "left",
+          "color": "#6366f1",
+          "lineWidth": 2.5
+        },
+        {
+          "id": "c-api-db",
+          "from": "api",
+          "to": "db",
+          "toArrow": true,
+          "style": "orthogonal",
+          "smoothCorners": true,
+          "fromPreferredExit": "right",
+          "toPreferredEntry": "left",
+          "color": "#527fff"
+        }
+      ],
+      "recentColors": [
+        "#6366f1",
+        "#527fff"
+      ]
+    },
+    "cards-charts-table": {
+      "nodes": [
+        {
+          "id": "hero-card",
+          "type": "generic.card.icon-border",
+          "x": 60,
+          "y": 60,
+          "width": 680,
+          "height": 220,
+          "sizeMode": "custom",
+          "borderStyle": "solid",
+          "borderColor": "#ed7100",
+          "borderWidth": 3,
+          "backgroundStyle": "none",
+          "cornerRadius": 0.04,
+          "card": {
+            "templateId": "icon-border",
+            "elements": {
+              "id": "root",
+              "kind": "section",
+              "layout": {
+                "flexDirection": "column",
+                "width": "100%",
+                "height": "100%",
+                "overflow": "hidden"
+              },
+              "style": {
+                "backgroundStyle": "solid",
+                "backgroundColor": "#ffffff"
+              },
+              "children": [
+                {
+                  "id": "header",
+                  "kind": "section",
+                  "layout": {
+                    "flexDirection": "row",
+                    "width": "100%",
+                    "gap": 10
+                  },
+                  "children": [
+                    {
+                      "id": "icon",
+                      "kind": "icon-slot",
+                      "placeholder": "rect",
+                      "iconRef": {
+                        "type": "aws.compute.compute-optimizer",
+                        "provider": "aws",
+                        "category": "compute",
+                        "noIconBackground": true,
+                        "nodeSize": "half",
+                        "iconSizeMode": "fixed"
+                      }
+                    },
+                    {
+                      "id": "title",
+                      "kind": "text",
+                      "text": "Platform overview",
+                      "editable": true,
+                      "fontSize": 32,
+                      "fontWeight": "400",
+                      "textColor": "#374151"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "mix",
+          "type": "generic.chart.pie",
+          "label": "Traffic mix",
+          "x": 60,
+          "y": 320,
+          "width": 190,
+          "height": 190,
+          "sizeMode": "custom",
+          "chart": {
+            "kind": "pie",
+            "segmentGapDeg": 1,
+            "showSegmentLabels": true,
+            "series": [
+              {
+                "id": "web",
+                "name": "Web",
+                "value": 55,
+                "color": "#3b82f6"
+              },
+              {
+                "id": "api",
+                "name": "API",
+                "value": 30,
+                "color": "#22c55e"
+              },
+              {
+                "id": "batch",
+                "name": "Batch",
+                "value": 15,
+                "color": "#eab308"
+              }
+            ]
+          }
+        },
+        {
+          "id": "capacity",
+          "type": "generic.chart.grid",
+          "label": "Capacity",
+          "x": 300,
+          "y": 320,
+          "width": 500,
+          "height": 280,
+          "sizeMode": "custom",
+          "borderStyle": "solid",
+          "borderColor": "#0d7b96",
+          "chart": {
+            "kind": "grid",
+            "cols": 3,
+            "rows": 2,
+            "title": "Regions",
+            "columnTitles": [
+              "US",
+              "EU",
+              "APAC"
+            ],
+            "rowTitles": [
+              "Prod",
+              "Stage"
+            ],
+            "cellGap": 4,
+            "showGridLines": true,
+            "cells": [
+              {
+                "id": "r0c0",
+                "filled": true,
+                "fillStyle": "solid",
+                "color": "#86efac",
+                "text": "OK"
+              },
+              {
+                "id": "r0c1",
+                "filled": true,
+                "fillStyle": "solid",
+                "color": "#86efac",
+                "text": "OK"
+              },
+              {
+                "id": "r0c2",
+                "filled": true,
+                "fillStyle": "solid",
+                "color": "#fde047",
+                "text": "Watch"
+              },
+              {
+                "id": "r1c0",
+                "filled": true,
+                "fillStyle": "solid",
+                "color": "#86efac",
+                "text": "OK"
+              },
+              {
+                "id": "r1c1",
+                "filled": false,
+                "fillStyle": "none",
+                "text": "—"
+              },
+              {
+                "id": "r1c2",
+                "filled": true,
+                "fillStyle": "solid",
+                "color": "#86efac",
+                "text": "OK"
+              }
+            ]
+          }
+        }
+      ],
+      "connections": []
+    },
+    "edit-add-cache": {
+      "nodes": [
+        {
+          "id": "web",
+          "type": "generic.object.rounded-rectangle",
+          "label": "Web",
+          "x": 80,
+          "y": 120,
+          "width": 140,
+          "height": 64,
+          "sizeMode": "custom",
+          "backgroundStyle": "gradient",
+          "backgroundColors": [
+            "#667eea",
+            "#764ba2"
+          ],
+          "gradientAngle": 135,
+          "textColor": "#f8fafc",
+          "textPosition": "center",
+          "cornerRadius": 0.25
+        },
+        {
+          "id": "cache",
+          "type": "aws.databases.elasticache",
+          "label": "Cache",
+          "x": 320,
+          "y": 120
+        },
+        {
+          "id": "store",
+          "type": "aws.storage.simple-storage-service",
+          "label": "S3",
+          "x": 560,
+          "y": 120
+        }
+      ],
+      "connections": [
+        {
+          "id": "c1",
+          "from": "web",
+          "to": "cache",
+          "toArrow": true,
+          "style": "bezier",
+          "color": "#667eea"
+        },
+        {
+          "id": "c2",
+          "from": "web",
+          "to": "store",
+          "toArrow": true,
+          "style": "orthogonal",
+          "smoothCorners": true,
+          "color": "#64748b",
+          "lineType": "dashed"
+        }
+      ],
+      "groupings": [
+        {
+          "id": "app-pair",
+          "type": "grouping",
+          "memberIds": [
+            "web",
+            "cache"
+          ],
+          "label": "Hot path"
+        }
+      ]
+    },
+    "shapes-uml-icons": {
+      "nodes": [
+        {
+          "id": "box",
+          "type": "generic.object.rectangle",
+          "label": "Service",
+          "x": 80,
+          "y": 80,
+          "width": 160,
+          "height": 72,
+          "sizeMode": "custom",
+          "backgroundColor": "#f1f5f9",
+          "backgroundStyle": "solid",
+          "borderColor": "#334155",
+          "borderStyle": "solid",
+          "textColor": "#0f172a",
+          "textPosition": "center",
+          "shadow": true
+        },
+        {
+          "id": "cls",
+          "type": "generic.object.uml-class",
+          "x": 320,
+          "y": 80,
+          "width": 160,
+          "height": 120,
+          "sizeMode": "custom",
+          "umlClass": {
+            "name": "Order",
+            "attributes": [
+              "+ id: string",
+              "- total: number"
+            ],
+            "methods": [
+              "+ submit()"
+            ]
+          }
+        },
+        {
+          "id": "pin",
+          "type": "generic.icon.mappin",
+          "label": "Location",
+          "x": 560,
+          "y": 80,
+          "iconType": "lucide",
+          "iconName": "MapPin",
+          "iconColor": "#0d7b96",
+          "iconColorEnabled": true,
+          "noIconBackground": true
+        },
+        {
+          "id": "note",
+          "type": "generic.text.textbox",
+          "label": "Notes",
+          "x": 80,
+          "y": 220,
+          "width": 240,
+          "height": 80,
+          "sizeMode": "custom",
+          "richLabel": [
+            {
+              "text": "Follow-up in Q3",
+              "italic": true
+            }
+          ],
+          "backgroundColor": "#fffbeb",
+          "textColor": "#713f12"
+        }
+      ],
+      "connections": [
+        {
+          "id": "c-box-cls",
+          "from": "box",
+          "to": "cls",
+          "toArrow": true,
+          "text": "uses",
+          "color": "#334155"
+        }
+      ]
+    }
+  }
+}

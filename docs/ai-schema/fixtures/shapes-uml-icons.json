@@ -1,0 +1,70 @@
+{
+  "nodes": [
+    {
+      "id": "box",
+      "type": "generic.object.rectangle",
+      "label": "Service",
+      "x": 80,
+      "y": 80,
+      "width": 160,
+      "height": 72,
+      "sizeMode": "custom",
+      "backgroundColor": "#f1f5f9",
+      "backgroundStyle": "solid",
+      "borderColor": "#334155",
+      "borderStyle": "solid",
+      "textColor": "#0f172a",
+      "textPosition": "center",
+      "shadow": true
+    },
+    {
+      "id": "cls",
+      "type": "generic.object.uml-class",
+      "x": 320,
+      "y": 80,
+      "width": 160,
+      "height": 120,
+      "sizeMode": "custom",
+      "umlClass": {
+        "name": "Order",
+        "attributes": ["+ id: string", "- total: number"],
+        "methods": ["+ submit()"]
+      }
+    },
+    {
+      "id": "pin",
+      "type": "generic.icon.mappin",
+      "label": "Location",
+      "x": 560,
+      "y": 80,
+      "iconType": "lucide",
+      "iconName": "MapPin",
+      "iconColor": "#0d7b96",
+      "iconColorEnabled": true,
+      "noIconBackground": true
+    },
+    {
+      "id": "note",
+      "type": "generic.text.textbox",
+      "label": "Notes",
+      "x": 80,
+      "y": 220,
+      "width": 240,
+      "height": 80,
+      "sizeMode": "custom",
+      "richLabel": [{ "text": "Follow-up in Q3", "italic": true }],
+      "backgroundColor": "#fffbeb",
+      "textColor": "#713f12"
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-box-cls",
+      "from": "box",
+      "to": "cls",
+      "toArrow": true,
+      "text": "uses",
+      "color": "#334155"
+    }
+  ]
+}
