@@ -58,8 +58,9 @@ function stripEditorSelectionChromeFromExportClone(clonedRoot: HTMLElement): voi
     el.classList.remove('ring-2', 'ring-primary', 'ring-inset');
   });
 
-  // Strip selected-connection glow (Tailwind arbitrary drop-shadow class).
-  clonedRoot.querySelectorAll<Element>('[class*="drop-shadow-[0_0_6px_rgba(0,200,150"]').forEach(el => {
+  // Strip selected-connection glow (legacy Tailwind class or semantic highlight class).
+  clonedRoot.querySelectorAll<Element>('[class*="drop-shadow-[0_0_6px_rgba(0,200,150"], .connection-highlight-selected').forEach(el => {
+    el.classList.remove('connection-highlight-selected');
     el.classList.forEach((cls) => {
       if (cls.startsWith('drop-shadow-[0_0_6px_rgba(0,200,150')) {
         el.classList.remove(cls);
@@ -71,6 +72,14 @@ function stripEditorSelectionChromeFromExportClone(clonedRoot: HTMLElement): voi
         el.style.removeProperty('filter');
       }
     }
+  });
+
+  clonedRoot.querySelectorAll<Element>('.connection-solid-outline').forEach((el) => {
+    el.setAttribute('display', 'none');
+  });
+  clonedRoot.querySelectorAll<HTMLElement>('[data-dw-canvas-selected="true"]').forEach((el) => {
+    el.style.outline = 'none';
+    el.removeAttribute('data-dw-canvas-selected');
   });
 
   // Hide dashed group selection outline.

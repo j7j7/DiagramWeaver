@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, History, Copy, Clipboard, ClipboardPaste, CopyPlus, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save, Ruler, Images } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, History, Copy, Clipboard, ClipboardPaste, CopyPlus, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, PanelLeft, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, PaintBucket, Wrench, MonitorDown, Grid3x3, Shapes, List, Save, Ruler, Images, Highlighter } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -37,6 +37,10 @@ import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { cn } from '@/lib/utils';
 import type { ViewportCullDebugStats } from '@/lib/viewport-culling';
 import type { LeftSidebarMode } from '@/lib/left-sidebar-mode';
+import {
+  DEFAULT_SELECTION_HIGHLIGHT_STYLE,
+  type SelectionHighlightStyle,
+} from '@/lib/selection-highlight-style';
 import { ViewportCullDebugBadge } from './viewport-cull-debug-badge';
 import { PresentationThumbnailGeneratingIndicator } from './presentation-thumbnail-generating-indicator';
 
@@ -245,6 +249,8 @@ interface TopMenuBarProps {
   onToggleSimplifyFillsDuringCanvasDrag?: () => void;
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled?: boolean;
   onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag?: () => void;
+  selectionHighlightStyle?: SelectionHighlightStyle;
+  onSelectionHighlightStyleChange?: (style: SelectionHighlightStyle) => void;
   presentationThumbnailUpdatesEnabled?: boolean;
   onTogglePresentationThumbnailUpdates?: () => void;
   presentationThumbnailGenerating?: boolean;
@@ -395,6 +401,8 @@ export function TopMenuBar({
   onToggleSimplifyFillsDuringCanvasDrag,
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true,
   onToggleSuppressShadowsOnAllObjectsDuringCanvasDrag,
+  selectionHighlightStyle = DEFAULT_SELECTION_HIGHLIGHT_STYLE,
+  onSelectionHighlightStyleChange,
   presentationThumbnailUpdatesEnabled = true,
   onTogglePresentationThumbnailUpdates,
   presentationThumbnailGenerating = false,
@@ -1201,6 +1209,38 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onSelectionHighlightStyleChange && (
+              <>
+                {(onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems ||
+                  onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleDotGrid !== undefined ||
+                  onToggleDefaultTextLabels !== undefined ||
+                  onToggleIconBackground !== undefined ||
+                  onToggleConnectionsBehindNodes !== undefined ||
+                  onToggleAnimationConnections !== undefined ||
+                  onToggleAnimationToggleOnClick !== undefined) && <MenubarSeparator />}
+                <MenubarSub>
+                  <MenubarSubTrigger>
+                    <Highlighter className="mr-2 h-4 w-4" />
+                    Selection Highlight
+                  </MenubarSubTrigger>
+                  <MenubarSubContent>
+                    <MenubarItem onClick={() => onSelectionHighlightStyleChange("glow")}>
+                      Glow
+                      {selectionHighlightStyle === "glow" && <span className="ml-auto">✓</span>}
+                    </MenubarItem>
+                    <MenubarItem onClick={() => onSelectionHighlightStyleChange("outline")}>
+                      Solid outline
+                      {selectionHighlightStyle === "outline" && <span className="ml-auto">✓</span>}
+                    </MenubarItem>
+                  </MenubarSubContent>
+                </MenubarSub>
+              </>
+            )}
             <>
               {(onToggleJsonPanel ||
                 hasOptionsPanelMenuItems ||
@@ -1213,7 +1253,8 @@ export function TopMenuBar({
                 onToggleIconBackground !== undefined ||
                 onToggleConnectionsBehindNodes !== undefined ||
                 onToggleAnimationConnections !== undefined ||
-                onToggleAnimationToggleOnClick !== undefined) && <MenubarSeparator />}
+                onToggleAnimationToggleOnClick !== undefined ||
+                onSelectionHighlightStyleChange) && <MenubarSeparator />}
               <MenubarSub>
                 <MenubarSubTrigger data-tutorial-id="view-menu">View</MenubarSubTrigger>
                 <MenubarSubContent>

@@ -82,7 +82,7 @@ Grouping by concern (each file encapsulates **`use*`** logic used by **`diagram-
 | **Presentation** | **`use-presentation-thumbnails`**, **`use-presentation-slide-viewport-sync`**, **`use-presentation-tab-switch-sync`**, **`use-presentation-storage-hydration`**, **`use-presentation-slide-view`**, **`use-slide-transition`**. |
 | **Connection animation** | **`use-connection-animation-idle`**, **`use-sine-wave-animation`**. |
 | **Rules / scratch** | **`use-diagram-editor-rules-scratch-layer-effects`**. |
-| **Options & UI** | **`use-diagram-editor-option-persistence`**, **`use-toolbar-trigger-auto-reset`**, **`use-toast`**, **`use-mobile`**, **`use-resource-types`**, **`use-svg-gradient`**. |
+| **Options & UI** | **`use-diagram-editor-option-persistence`**, **`use-toolbar-trigger-auto-reset`**, **`use-toast`**, **`use-mobile`**, **`use-resource-types`**, **`use-svg-gradient`**. Options → **Selection Highlight** (`selection-highlight-style.ts`): **Glow** (default `filter: drop-shadow`) or **Solid outline** (`#canvas-container[data-selection-highlight=outline]`, `--primary` orange in both themes). |
 
 ---
 

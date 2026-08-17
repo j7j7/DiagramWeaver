@@ -7,6 +7,11 @@ import {
   type LeftSidebarMode,
 } from "@/lib/left-sidebar-mode";
 import { getItemSafe, setBooleanDebounced, setItemDebounced } from "@/lib/local-storage-debounce";
+import {
+  SELECTION_HIGHLIGHT_STYLE_STORAGE_KEY,
+  parseSelectionHighlightStyle,
+  type SelectionHighlightStyle,
+} from "@/lib/selection-highlight-style";
 
 export interface UseDiagramEditorOptionPersistenceParams {
   isClient: boolean;
@@ -21,6 +26,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   animationToggleOnClickEnabled: boolean;
   simplifyFillsDuringCanvasDragEnabled: boolean;
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled: boolean;
+  selectionHighlightStyle: SelectionHighlightStyle;
   presentationThumbnailUpdatesEnabled: boolean;
   leftSidebarMode: LeftSidebarMode;
   setRightPanelCollapsed: Dispatch<SetStateAction<boolean>>;
@@ -35,6 +41,7 @@ export interface UseDiagramEditorOptionPersistenceParams {
   setAnimationToggleOnClickEnabled: Dispatch<SetStateAction<boolean>>;
   setSimplifyFillsDuringCanvasDragEnabled: Dispatch<SetStateAction<boolean>>;
   setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled: Dispatch<SetStateAction<boolean>>;
+  setSelectionHighlightStyle: Dispatch<SetStateAction<SelectionHighlightStyle>>;
   setPresentationThumbnailUpdatesEnabled: Dispatch<SetStateAction<boolean>>;
 }
 
@@ -55,6 +62,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     animationToggleOnClickEnabled,
     simplifyFillsDuringCanvasDragEnabled,
     suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    selectionHighlightStyle,
     presentationThumbnailUpdatesEnabled,
     leftSidebarMode,
     setRightPanelCollapsed,
@@ -69,6 +77,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setAnimationToggleOnClickEnabled,
     setSimplifyFillsDuringCanvasDragEnabled,
     setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    setSelectionHighlightStyle,
     setPresentationThumbnailUpdatesEnabled,
   } = p;
 
@@ -138,6 +147,10 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     if (savedSuppressAllShadowsDrag !== null) {
       setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled(savedSuppressAllShadowsDrag !== "false");
     }
+    const savedSelectionHighlight = getItemSafe(SELECTION_HIGHLIGHT_STYLE_STORAGE_KEY);
+    if (savedSelectionHighlight !== null) {
+      setSelectionHighlightStyle(parseSelectionHighlightStyle(savedSelectionHighlight));
+    }
     const savedPresentationThumbnailUpdates = getItemSafe(
       "dw:presentationThumbnailUpdates:enabled",
     );
@@ -161,6 +174,7 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
     setAnimationToggleOnClickEnabled,
     setSimplifyFillsDuringCanvasDragEnabled,
     setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    setSelectionHighlightStyle,
     setPresentationThumbnailUpdatesEnabled,
   ]);
 
@@ -199,6 +213,12 @@ export function useDiagramEditorOptionPersistence(p: UseDiagramEditorOptionPersi
       );
     }
   }, [suppressShadowsOnAllObjectsDuringCanvasDragEnabled, isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      setItemDebounced(SELECTION_HIGHLIGHT_STYLE_STORAGE_KEY, selectionHighlightStyle);
+    }
+  }, [selectionHighlightStyle, isClient]);
 
   useEffect(() => {
     if (isClient) {

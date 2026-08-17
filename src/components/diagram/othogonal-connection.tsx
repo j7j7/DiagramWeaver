@@ -46,6 +46,7 @@ import {
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 import { useDwFingerTapSyntheticClick } from "@/hooks/use-dw-finger-tap-synthetic-click";
+import { ConnectionSolidOutlinePath } from "./connection-solid-outline-path";
 
 const EMPTY_OBSTACLES: Rect[] = [];
 
@@ -741,6 +742,11 @@ function OrthogonalConnectionInner({
           stroke="transparent"
           strokeWidth={Math.max(20, maxResolvedLineWidth(rw) * 4)}
           fill="none"
+        />
+        <ConnectionSolidOutlinePath
+          d={advancedLine && ribbonLayout.ribbonPathD ? ribbonLayout.ribbonPathD : route.pathData}
+          lineWidth={thickness}
+          followShape={Boolean(advancedLine && ribbonLayout.ribbonPathD)}
         />
 
         {/* Visible path */}

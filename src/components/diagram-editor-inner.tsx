@@ -224,6 +224,8 @@ export function DiagramEditorInner({
   setSimplifyFillsDuringCanvasDragEnabled,
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
   setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+  selectionHighlightStyle,
+  setSelectionHighlightStyle,
   presentationThumbnailUpdatesEnabled,
   setPresentationThumbnailUpdatesEnabled,
   presentationThumbnailGenerating,
@@ -622,6 +624,8 @@ export function DiagramEditorInner({
                         !suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
                       )
                     }
+                    selectionHighlightStyle={selectionHighlightStyle}
+                    onSelectionHighlightStyleChange={setSelectionHighlightStyle}
                     presentationThumbnailUpdatesEnabled={presentationThumbnailUpdatesEnabled}
                     onTogglePresentationThumbnailUpdates={() =>
                       setPresentationThumbnailUpdatesEnabled(!presentationThumbnailUpdatesEnabled)
@@ -914,6 +918,7 @@ export function DiagramEditorInner({
                     suppressShadowsOnAllObjectsDuringCanvasDragEnabled={
                       suppressShadowsOnAllObjectsDuringCanvasDragEnabled
                     }
+                    selectionHighlightStyle={selectionHighlightStyle}
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     animationConnectionsEnabled={animationConnectionsEnabled}
                     animationToggleOnClickEnabled={animationToggleOnClickEnabled}

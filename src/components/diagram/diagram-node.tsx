@@ -4002,6 +4002,9 @@ function DiagramNodeInner({
   return (
     <div
       data-node-id={node.id}
+      data-dw-canvas-selected={
+        isSelected || isMultiSelected || isHighlighted ? "true" : undefined
+      }
       data-perf-shadow-suppressed={suppressShadowsDuringCanvasDrag ? "true" : undefined}
       data-dw-card-node={isCardNode ? "true" : undefined}
       data-dw-highlight-anim={

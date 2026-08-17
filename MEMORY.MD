@@ -2,6 +2,12 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-17 – Solid selection outline uses primary orange
+Solid-outline highlight colour is **`--primary`** orange in both light and dark (`--dw-selection-outline: hsl(var(--primary))`), not white/grey. Patch bumped.
+
+### 2026-08-17 – Selection highlight: glow or solid outline
+Options → **Selection Highlight**: **Glow** (default, unchanged blue/teal `drop-shadow` filters) or **Solid outline**. Outline mode is CSS-driven via **`data-selection-highlight`** on `#canvas-container` so connections do not remount; nodes use `outline`, lines use a hidden-until-needed stroke (`.connection-solid-outline`). Persisted as **`dw:selectionHighlightStyle`**. Patch bumped.
+
 ### 2026-08-14 – Marquee multi-select drag moves all items
 Dragging one marquee-selected object now moves the whole set. Causes: drop re-checked live selection (could collapse before drop); useDrop closed over a stale set. Fix: snapshot selection at drag start, prefer hover multi-commit on drop, preserve-multi / batch select use live refs + one tab update. Patch bumped.
 

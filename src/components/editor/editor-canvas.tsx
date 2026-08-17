@@ -37,6 +37,10 @@ import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "./canvas-
 import { calculateLayout } from "./canvas-layout-utils";
 import { useCanvasTransform } from "@/hooks/use-canvas-transform";
 import { getCanvasElementSizeForImageCapture } from "@/lib/presentation-viewport-fit";
+import {
+  DEFAULT_SELECTION_HIGHLIGHT_STYLE,
+  type SelectionHighlightStyle,
+} from "@/lib/selection-highlight-style";
 import { useCanvasSelection } from "@/hooks/use-canvas-selection";
 import { useCanvasInteractions } from "@/hooks/use-canvas-interactions";
 import { useCanvasDragDrop } from "@/hooks/use-canvas-drag-drop";
@@ -479,6 +483,8 @@ interface EditorCanvasProps {
   simplifyFillsDuringCanvasDragEnabled?: boolean;
   /** Options → strip shadows on every object during pan/drag/resize (default on). */
   suppressShadowsOnAllObjectsDuringCanvasDragEnabled?: boolean;
+  /** Options → hover/select highlight: glow (default) or solid outline. */
+  selectionHighlightStyle?: SelectionHighlightStyle;
   onResourceActivateAtPosition?: (
     resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions },
     provider: string,
@@ -574,7 +580,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onCanvasGeometrySessionChange, onViewportCullStatsChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, simplifyFillsDuringCanvasDragEnabled = true, suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, showRulerGuides = true, globalVariableContext, leftSidebarInsetPx = 0 }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onCanvasGeometrySessionChange, onViewportCullStatsChange, onChartValueDragSessionChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = false, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onUniformSpacingAlign, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, visualStylingPanelOpen = false, alignmentGuidesEnabled = true, simplifyFillsDuringCanvasDragEnabled = true, suppressShadowsOnAllObjectsDuringCanvasDragEnabled = true, selectionHighlightStyle = DEFAULT_SELECTION_HIGHLIGHT_STYLE, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, setTimelineBarEditorModal, setPyramidEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, timelineEntrySelection = new Set(), timelineActiveEntryId = null, onTimelineEntrySelect, onTimelineCardRemoved, cardElementSelection = null, onCardElementSelect, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false, showDotGrid = true, showRulerGuides = true, globalVariableContext, leftSidebarInsetPx = 0 }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -3581,6 +3587,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           ref={canvasRef}
           id="canvas-container"
           data-testid="editor-canvas"
+          data-selection-highlight={selectionHighlightStyle}
           data-perf-interacting={
             suppressShadowsOnAllObjectsDuringCanvasDragEnabled &&
             (isCanvasItemDragging || isCanvasItemResizing || isPanning)

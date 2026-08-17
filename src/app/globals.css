@@ -84,6 +84,8 @@
     --shape-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
     --shape-shadow-preview: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
     --shape-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    /* Options → Selection Highlight → Solid outline (same orange as --primary, both themes) */
+    --dw-selection-outline: hsl(var(--primary));
     /* Native scrollbars (Firefox scrollbar-color + WebKit) */
     --scrollbar-track: 38 28% 92%;
     --scrollbar-thumb: 30 10% 68%;
@@ -153,9 +155,16 @@
   .gif-export-active .node-glow-pulse,
   .gif-export-active .node-glow-green-pulse,
   .gif-export-active .connection-glow-hover,
+  .gif-export-active .connection-highlight-selected,
   .gif-export-active [data-dw-highlight-anim="true"] {
     filter: none !important;
     animation: none !important;
+  }
+  .gif-export-active .connection-solid-outline {
+    display: none !important;
+  }
+  .gif-export-active [data-dw-canvas-selected="true"] {
+    outline: none !important;
   }
   /* Suppress expensive SVG filters/shadows during pan, zoom, drag, and resize (global),
      or on individual moving nodes when Options keeps shadows on other objects. */
@@ -187,6 +196,7 @@
   #canvas-container[data-perf-interacting="true"] .node-glow-pulse,
   #canvas-container[data-perf-interacting="true"] .node-glow-green-pulse,
   #canvas-container[data-perf-interacting="true"] .connection-glow-hover,
+  #canvas-container[data-perf-interacting="true"] .connection-highlight-selected,
   #canvas-container[data-perf-interacting="true"] [data-dw-highlight-anim="true"],
   #canvas-container[data-perf-interacting="true"] [data-dw-card-node="true"],
   #canvas-container[data-perf-interacting="true"] [data-dw-card-node="true"] [data-dw-card-shell],
@@ -205,6 +215,7 @@
   #canvas-container [data-perf-shadow-suppressed="true"] .node-glow-pulse,
   #canvas-container [data-perf-shadow-suppressed="true"] .node-glow-green-pulse,
   #canvas-container [data-perf-shadow-suppressed="true"] .connection-glow-hover,
+  #canvas-container [data-perf-shadow-suppressed="true"] .connection-highlight-selected,
   #canvas-container [data-perf-shadow-suppressed="true"] [data-dw-highlight-anim="true"],
   #canvas-container [data-perf-shadow-suppressed="true"][data-dw-card-node="true"],
   #canvas-container [data-perf-shadow-suppressed="true"] [data-dw-card-shell],
@@ -457,6 +468,49 @@
 .dark .group:hover .connection-glow-hover {
   filter: drop-shadow(0 0 14px rgba(59, 130, 246, 0.95))
           drop-shadow(0 0 28px rgba(59, 130, 246, 0.7));
+}
+
+/* Selected connection glow (replaces Tailwind arbitrary drop-shadow class) */
+.connection-highlight-selected {
+  filter: drop-shadow(0 0 6px rgba(0, 200, 150, 0.8));
+}
+
+/* Hidden in glow mode; shown on hover/select when Options uses Solid outline. */
+.connection-solid-outline {
+  display: none;
+}
+
+/*
+ * Solid outline mode: drop-shadow glow is the expensive part (blur + filter transition).
+ * Nodes use CSS outline (no filter). Connections use a second stroke (see .connection-solid-outline).
+ */
+#canvas-container[data-selection-highlight="outline"] .node-glow-hover:hover,
+#canvas-container[data-selection-highlight="outline"] .node-glow-subdiagram,
+#canvas-container[data-selection-highlight="outline"] .node-glow-subdiagram:hover,
+#canvas-container[data-selection-highlight="outline"] .group:hover .connection-glow-hover,
+#canvas-container[data-selection-highlight="outline"] .connection-highlight-selected {
+  filter: unset;
+}
+
+#canvas-container[data-selection-highlight="outline"] .node-glow-hover:hover,
+#canvas-container[data-selection-highlight="outline"] .node-glow-subdiagram,
+#canvas-container[data-selection-highlight="outline"] .node-glow-subdiagram:hover,
+#canvas-container[data-selection-highlight="outline"] [data-dw-canvas-selected="true"] {
+  outline: 2px solid var(--dw-selection-outline);
+  outline-offset: 2px;
+}
+
+#canvas-container[data-selection-highlight="outline"] [data-dw-canvas-selected="true"] .border-primary {
+  border-color: var(--dw-selection-outline);
+}
+
+#canvas-container[data-selection-highlight="outline"] [data-dw-canvas-selected="true"] .ring-primary {
+  --tw-ring-color: var(--dw-selection-outline);
+}
+
+#canvas-container[data-selection-highlight="outline"] .group:hover .connection-solid-outline,
+#canvas-container[data-selection-highlight="outline"] .connection-highlight-selected .connection-solid-outline {
+  display: inline;
 }
 
 /* Resize handles - visible rails and knobs */

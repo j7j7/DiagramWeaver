@@ -25,6 +25,7 @@ import {
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 import { useDwFingerTapSyntheticClick } from "@/hooks/use-dw-finger-tap-synthetic-click";
+import { ConnectionSolidOutlinePath } from "./connection-solid-outline-path";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
@@ -1469,6 +1470,11 @@ function BezierConnectionInner({
           stroke="transparent"
           strokeWidth={Math.max(20, maxResolvedLineWidth(rw) * 4)}
           fill="none"
+        />
+        <ConnectionSolidOutlinePath
+          d={advancedLine && ribbonLayout.ribbonPathD ? ribbonLayout.ribbonPathD : pathData}
+          lineWidth={advancedLine ? maxResolvedLineWidth(rw) : (connectionData?.lineWidth || 2.5)}
+          followShape={Boolean(advancedLine && ribbonLayout.ribbonPathD)}
         />
         {advancedLine ? (
           <>

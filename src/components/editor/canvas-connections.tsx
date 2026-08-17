@@ -1235,7 +1235,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         return (
           <g
             key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}-r${connectionRenderRevision ?? ''}`}
-            className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}
+            className={cn(isConnectionHighlighted && 'connection-highlight-selected')}
             style={{
               opacity: statusStyle?.opacity ?? stateStyle?.opacity ?? 1,
               ...(simulationFilter ? { filter: simulationFilter } : {}),

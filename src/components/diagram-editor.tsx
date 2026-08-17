@@ -5,6 +5,10 @@ import type { EditorCanvasHandle } from './editor/editor-canvas';
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta, LayersConfig, UserDefinedObject } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import type { LeftSidebarMode } from '@/lib/left-sidebar-mode';
+import {
+  DEFAULT_SELECTION_HIGHLIGHT_STYLE,
+  type SelectionHighlightStyle,
+} from '@/lib/selection-highlight-style';
 import { validateLayersConfig, ensureDiagramLayersPersisted } from '@/lib/layers-utils';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -374,6 +378,8 @@ export default function DiagramEditor() {
     suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
     setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
   ] = React.useState<boolean>(true);
+  const [selectionHighlightStyle, setSelectionHighlightStyle] =
+    React.useState<SelectionHighlightStyle>(DEFAULT_SELECTION_HIGHLIGHT_STYLE);
   const [presentationThumbnailUpdatesEnabled, setPresentationThumbnailUpdatesEnabled] =
     React.useState<boolean>(true);
   const [presentationThumbnailGenerating, setPresentationThumbnailGenerating] =
@@ -5826,6 +5832,7 @@ export default function DiagramEditor() {
     animationToggleOnClickEnabled,
     simplifyFillsDuringCanvasDragEnabled,
     suppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    selectionHighlightStyle,
     presentationThumbnailUpdatesEnabled,
     leftSidebarMode,
     setRightPanelCollapsed,
@@ -5840,6 +5847,7 @@ export default function DiagramEditor() {
     setAnimationToggleOnClickEnabled,
     setSimplifyFillsDuringCanvasDragEnabled,
     setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled,
+    setSelectionHighlightStyle,
     setPresentationThumbnailUpdatesEnabled,
   });
 
@@ -6019,6 +6027,8 @@ export default function DiagramEditor() {
         setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled={
           setSuppressShadowsOnAllObjectsDuringCanvasDragEnabled
         }
+        selectionHighlightStyle={selectionHighlightStyle}
+        setSelectionHighlightStyle={setSelectionHighlightStyle}
         presentationThumbnailUpdatesEnabled={presentationThumbnailUpdatesEnabled}
         setPresentationThumbnailUpdatesEnabled={setPresentationThumbnailUpdatesEnabled}
         presentationThumbnailGenerating={presentationThumbnailGenerating}
