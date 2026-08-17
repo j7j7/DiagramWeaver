@@ -64,6 +64,8 @@
       "to": "cls",
       "toArrow": true,
       "text": "uses",
+      "textFontSize": 12,
+      "textPosition": 50,
       "color": "#334155"
     }
   ]

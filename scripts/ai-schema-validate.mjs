@@ -156,6 +156,18 @@ export function validateLlmDiagram(diagram, options = {}) {
     if (conn.style && !["bezier", "orthogonal"].includes(conn.style)) {
       errors.push(`${prefix} style must be bezier or orthogonal`);
     }
+    if (conn.textFontSize !== undefined) {
+      const fs = conn.textFontSize;
+      if (typeof fs !== "number" || !Number.isFinite(fs) || fs < 8 || fs > 48) {
+        errors.push(`${prefix} textFontSize must be a number from 8 to 48`);
+      }
+    }
+    if (conn.textPosition !== undefined) {
+      const tp = conn.textPosition;
+      if (typeof tp !== "number" || !Number.isFinite(tp) || tp < 0 || tp > 100) {
+        errors.push(`${prefix} textPosition must be a number from 0 to 100`);
+      }
+    }
   }
 
   if (Array.isArray(diagram.groupings)) {

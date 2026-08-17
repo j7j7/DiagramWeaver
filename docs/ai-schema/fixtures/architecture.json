@@ -35,7 +35,10 @@
       "fromPreferredExit": "right",
       "toPreferredEntry": "left",
       "color": "#6366f1",
-      "lineWidth": 2.5
+      "lineWidth": 2.5,
+      "text": "request",
+      "textFontSize": 12,
+      "textPosition": 45
     },
     {
       "id": "c-api-db",
@@ -46,7 +49,10 @@
       "smoothCorners": true,
       "fromPreferredExit": "right",
       "toPreferredEntry": "left",
-      "color": "#527fff"
+      "color": "#527fff",
+      "text": "read/write",
+      "textFontSize": 11,
+      "textPosition": 55
     }
   ],
   "recentColors": ["#6366f1", "#527fff"]

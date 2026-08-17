@@ -276,7 +276,8 @@
     "markers": {
       "toArrow": "true for directed flow",
       "fromArrow": "optional reverse marker",
-      "text": "optional label",
+      "text": "optional label on the line; embed \\n for multi-line labels",
+      "textFontSize": "label font size in px, 8–48 (default 12 when omitted)",
       "textPosition": "0–100 along path (default 50)"
     },
     "animation": {
@@ -6716,7 +6717,10 @@
           "fromPreferredExit": "right",
           "toPreferredEntry": "left",
           "color": "#6366f1",
-          "lineWidth": 2.5
+          "lineWidth": 2.5,
+          "text": "request",
+          "textFontSize": 12,
+          "textPosition": 45
         },
         {
           "id": "c-api-db",
@@ -6727,7 +6731,10 @@
           "smoothCorners": true,
           "fromPreferredExit": "right",
           "toPreferredEntry": "left",
-          "color": "#527fff"
+          "color": "#527fff",
+          "text": "read/write",
+          "textFontSize": 11,
+          "textPosition": 55
         }
       ],
       "recentColors": [
@@ -7057,6 +7064,8 @@
           "to": "cls",
           "toArrow": true,
           "text": "uses",
+          "textFontSize": 12,
+          "textPosition": 50,
           "color": "#334155"
         }
       ]

@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-17 – AI schema: connection label fields
+**`docs/ai-schema/authoring-source.json`**: connection **`textFontSize`** (8–48 px, default 12) and multi-line **`text`** (`\\n`) documented under **`connections.markers`**. Fixtures **`architecture`**, **`shapes-uml-icons`** include examples; validator checks **`textFontSize`** / **`textPosition`** ranges. Regenerate with **`npm run generate-ai-schema`**.
+
 ### 2026-08-17 – Connection label click-to-edit
 Click a connection text label (bezier or orthogonal) to edit inline on the canvas; **Enter** inserts a line break, **⌘/Ctrl+Enter** or blur commits, **Escape** cancels. Wired through **`EditorCanvas`** → **`CanvasConnectionText`** / **`OrthogonalConnection`**. Patch bumped.
 

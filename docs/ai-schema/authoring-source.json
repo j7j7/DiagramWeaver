@@ -143,7 +143,8 @@
     "markers": {
       "toArrow": "true for directed flow",
       "fromArrow": "optional reverse marker",
-      "text": "optional label",
+      "text": "optional label on the line; embed \\n for multi-line labels",
+      "textFontSize": "label font size in px, 8–48 (default 12 when omitted)",
       "textPosition": "0–100 along path (default 50)"
     },
     "animation": {
