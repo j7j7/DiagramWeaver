@@ -10,7 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import type { DiagramConnectionData, DiagramData } from "@/lib/types";
-import { resolveBezierConnectionPaint, type ConnectionEndpointOutline } from "@/lib/connection-line-style";
+import { resolveBezierConnectionPaint, type ConnectionEndpointOutline, clampConnectionTextFontSize, DEFAULT_CONNECTION_TEXT_FONT_SIZE } from "@/lib/connection-line-style";
 import { ConnectionAnimationControls } from "@/components/editor/connection-animation-controls";
 import { ConnectionLineStyleFields } from "@/components/editor/connection-line-style-fields";
 import { getOptimalConnectionPoints } from "@/components/diagram/bezier-connection";
@@ -74,6 +74,7 @@ export function ConnectionContextModal({
   const strokePattern = liveConnection.lineType ?? "solid";
   const smoothCorners = lineStyle === "orthogonal" && liveConnection.smoothCorners === true;
   const textPosition = liveConnection.textPosition ?? 50;
+  const textFontSize = clampConnectionTextFontSize(liveConnection.textFontSize);
   const connectionText = liveConnection.text || "";
   const hasArrow = liveConnection.arrow === true || liveConnection.toArrow === true;
 
@@ -98,6 +99,15 @@ export function ConnectionContextModal({
 
   const handleTextPositionChange = (value: number) => {
     onConnectionUpdate(connection.from, connection.to, { textPosition: value }, connId);
+  };
+
+  const handleTextFontSizeChange = (value: number) => {
+    onConnectionUpdate(
+      connection.from,
+      connection.to,
+      { textFontSize: clampConnectionTextFontSize(value) },
+      connId,
+    );
   };
 
   const handleLineStyleChange = (style: "bezier" | "orthogonal") => {
@@ -495,6 +505,38 @@ export function ConnectionContextModal({
                   placeholder="Enter connection text..."
                   className="h-8 text-xs"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="connection-text-size" className="text-xs font-medium">
+                  Text size: {textFontSize}px
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <Slider
+                    id="connection-text-size"
+                    value={[textFontSize]}
+                    onValueChange={(values) => handleTextFontSizeChange(values[0])}
+                    min={8}
+                    max={48}
+                    step={1}
+                    className="flex-1"
+                    disabled={isReadOnly}
+                  />
+                  <Input
+                    type="number"
+                    value={textFontSize}
+                    onChange={(e) =>
+                      handleTextFontSizeChange(
+                        Math.max(8, Math.min(48, parseInt(e.target.value) || DEFAULT_CONNECTION_TEXT_FONT_SIZE))
+                      )
+                    }
+                    className="h-8 w-14 text-xs text-center shrink-0"
+                    min={8}
+                    max={48}
+                    disabled={isReadOnly}
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">px</span>
+                </div>
               </div>
 
               <div className="space-y-1.5">

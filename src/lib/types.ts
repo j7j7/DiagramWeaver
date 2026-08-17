@@ -796,6 +796,8 @@ export interface DiagramConnectionData {
   to: string;
   color?: string; // Line color for this specific connection
   text?: string; // Optional text to display on the connection
+  /** Label font size in px (default 12). */
+  textFontSize?: number;
   textPosition?: number; // Text position along the line (0-100%, default 50%)
   fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; // Preferred exit direction from source node
   /** Parametric position along the chosen from edge (0 = start, 1 = end). Omitted = automatic spread. */

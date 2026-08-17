@@ -1,7 +1,7 @@
 "use client";
 
 import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useTheme } from "@/components/theme-provider";
 import { useResolvedGlobalText } from "./global-properties-context";
 import { measureNodeDims, snapToHalfGrid } from "@/components/editor/canvas-constants";
@@ -18,6 +18,8 @@ import {
   lineWidthAtPathFraction,
   scaleValuesForAnimationKeyPoints,
   CONNECTION_ANIMATION_SPACING_REF_LINE_PX,
+  DEFAULT_CONNECTION_TEXT_FONT_SIZE,
+  clampConnectionTextFontSize,
   connectionAdvancedStyleRevisionKeyResolved,
   resolveBezierConnectionPaint,
   connectionGradientIdSuffix,
@@ -26,6 +28,10 @@ import {
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 import { useDwFingerTapSyntheticClick } from "@/hooks/use-dw-finger-tap-synthetic-click";
 import { ConnectionSolidOutlinePath } from "./connection-solid-outline-path";
+import {
+  chartInlineForeignObjectWidth,
+  svgForeignObjectInlineInputStyle,
+} from "./shapes/shape-utils";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
@@ -118,6 +124,178 @@ interface BezierConnectionTextProps {
   from?: Positionable & { lineColor?: string };
   to?: Positionable & { lineColor?: string };
   connectionColor?: string;
+  isTextEditing?: boolean;
+  textEditDraft?: string;
+  onTextEditDraftChange?: (value: string) => void;
+  onTextEditStart?: (e: React.MouseEvent) => void;
+  onTextEditCommit?: () => void;
+  onTextEditCancel?: () => void;
+  textEditDisabled?: boolean;
+}
+
+function estimateConnectionTextHitBox(lines: string[], fontSize: number, lineHeight: number) {
+  const maxChars = Math.max(1, ...lines.map((line) => line.length));
+  const width = chartInlineForeignObjectWidth({
+    charCount: maxChars,
+    fontSize,
+    minWidth: fontSize + 6,
+    extraPad: 8,
+  });
+  const height = lines.length * lineHeight + 6;
+  return { width, height };
+}
+
+export function ConnectionTextLabelEditor({
+  anchorX,
+  anchorY,
+  lines,
+  fontSize,
+  fill,
+  textShadow,
+  isEditing,
+  editValue,
+  onEditValueChange,
+  onEditCommit,
+  onEditCancel,
+  onLabelClick,
+  disabled,
+  backgroundFill,
+}: {
+  anchorX: number;
+  anchorY: number;
+  lines: string[];
+  fontSize: number;
+  fill: string;
+  textShadow: string;
+  isEditing: boolean;
+  editValue: string;
+  onEditValueChange?: (value: string) => void;
+  onEditCommit?: () => void;
+  onEditCancel?: () => void;
+  onLabelClick?: (e: React.MouseEvent) => void;
+  disabled?: boolean;
+  backgroundFill?: string;
+}) {
+  const lineHeight = fontSize * (14 / DEFAULT_CONNECTION_TEXT_FONT_SIZE);
+  const startY = anchorY - ((lines.length - 1) * lineHeight) / 2;
+  const { width: hitWidth, height: hitHeight } = estimateConnectionTextHitBox(lines, fontSize, lineHeight);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const editLineCount = Math.max(1, editValue.split("\n").length, lines.length);
+  const maxEditLineChars = Math.max(
+    1,
+    ...editValue.split("\n").map((line) => line.length),
+    ...lines.map((line) => line.length),
+  );
+  const foWidth = chartInlineForeignObjectWidth({
+    charCount: maxEditLineChars,
+    fontSize,
+    maxWidth: 280,
+  });
+  const foHeight = editLineCount * lineHeight + 8;
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const el = inputRef.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+  }, [isEditing]);
+
+  if (isEditing) {
+    return (
+      <g className="pointer-events-auto">
+        <foreignObject
+          x={anchorX - foWidth / 2}
+          y={anchorY - foHeight / 2}
+          width={foWidth}
+          height={foHeight}
+        >
+          <textarea
+            ref={inputRef}
+            value={editValue}
+            rows={editLineCount}
+            onChange={(e) => onEditValueChange?.(e.target.value)}
+            onBlur={() => onEditCommit?.()}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Escape") {
+                e.preventDefault();
+                onEditCancel?.();
+              } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                onEditCommit?.();
+              }
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              ...svgForeignObjectInlineInputStyle({
+                fontSize,
+                fontWeight: 500,
+                color: fill,
+                caretColor: fill,
+                textAlign: "center",
+                textShadow,
+              }),
+              height: foHeight,
+              minHeight: foHeight,
+              resize: "none",
+              overflow: "hidden",
+              whiteSpace: "pre-wrap",
+              background: backgroundFill ?? "transparent",
+            }}
+          />
+        </foreignObject>
+      </g>
+    );
+  }
+
+  return (
+    <g>
+      {backgroundFill ? (
+        <rect
+          x={anchorX - hitWidth / 2}
+          y={startY - lineHeight / 2 - 3}
+          width={hitWidth}
+          height={hitHeight}
+          rx={4}
+          ry={4}
+          fill={backgroundFill}
+          className="pointer-events-none"
+        />
+      ) : null}
+      {!disabled ? (
+        <rect
+          x={anchorX - hitWidth / 2}
+          y={startY - lineHeight / 2 - 3}
+          width={hitWidth}
+          height={hitHeight}
+          fill="transparent"
+          className="pointer-events-auto cursor-text"
+          onClick={(e) => {
+            e.stopPropagation();
+            onLabelClick?.(e);
+          }}
+        />
+      ) : null}
+      {lines.map((line, index) => (
+        <text
+          key={index}
+          x={anchorX}
+          y={startY + index * lineHeight}
+          fill={fill}
+          fontSize={fontSize}
+          fontWeight="500"
+          textAnchor="middle"
+          dominantBaseline="middle"
+          className="pointer-events-none select-none"
+          style={{ textShadow }}
+        >
+          {line}
+        </text>
+      ))}
+    </g>
+  );
 }
 
 const MAX_RENDERED_ANIMATION_SHAPES = 2000;
@@ -1683,7 +1861,19 @@ export function calculateBezierControlPoints(fromX: number, fromY: number, toX: 
 }
 
 // Helper function to render connection text separately
-export function BezierConnectionText({ connectionData, from, to, connectionColor }: BezierConnectionTextProps) {
+export function BezierConnectionText({
+  connectionData,
+  from,
+  to,
+  connectionColor,
+  isTextEditing = false,
+  textEditDraft = "",
+  onTextEditDraftChange,
+  onTextEditStart,
+  onTextEditCommit,
+  onTextEditCancel,
+  textEditDisabled = false,
+}: BezierConnectionTextProps) {
   const { resolvedTheme } = useTheme();
   const text = useResolvedGlobalText(connectionData?.text);
   if (!text) return null;
@@ -1773,6 +1963,9 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     to ?? { lineColor: undefined }
   ).cStart;
 
+  const fontSize = clampConnectionTextFontSize(connectionData?.textFontSize);
+  const lineHeight = fontSize * (14 / DEFAULT_CONNECTION_TEXT_FONT_SIZE);
+
   // Split text by explicit line breaks (\n) and also handle long text
   const explicitLines = text.split('\n');
   const lines: string[] = [];
@@ -1803,25 +1996,23 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     }
   });
   
-  const lineHeight = 14;
   const startY = textY - ((lines.length - 1) * lineHeight) / 2;
 
-  return lines.map((line, index) => (
-    <text
-      key={index}
-      x={textX}
-      y={startY + (index * lineHeight)}
+  return (
+    <ConnectionTextLabelEditor
+      anchorX={textX}
+      anchorY={startY + ((lines.length - 1) * lineHeight) / 2}
+      lines={lines}
+      fontSize={fontSize}
       fill={textColor}
-      fontSize="12"
-      fontWeight="500"
-      textAnchor="middle"
-      dominantBaseline="middle"
-      className="pointer-events-none select-none"
-      style={{
-        textShadow: connectionTextShadow
-      }}
-    >
-      {line}
-    </text>
-  ));
+      textShadow={connectionTextShadow}
+      isEditing={isTextEditing}
+      editValue={isTextEditing ? textEditDraft : text}
+      onEditValueChange={onTextEditDraftChange}
+      onEditCommit={onTextEditCommit}
+      onEditCancel={onTextEditCancel}
+      onLabelClick={onTextEditStart}
+      disabled={textEditDisabled}
+    />
+  );
 }

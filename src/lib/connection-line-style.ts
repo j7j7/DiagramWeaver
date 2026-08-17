@@ -11,6 +11,14 @@ const MAX_W = 50;
  */
 export const CONNECTION_ANIMATION_SPACING_REF_LINE_PX = 2.5;
 
+/** Default connection label font size (px) when `textFontSize` is omitted. */
+export const DEFAULT_CONNECTION_TEXT_FONT_SIZE = 12;
+
+export function clampConnectionTextFontSize(size: number | undefined): number {
+  if (size === undefined || !Number.isFinite(size)) return DEFAULT_CONNECTION_TEXT_FONT_SIZE;
+  return Math.max(8, Math.min(48, Math.round(size)));
+}
+
 function fmtAnimFloat(v: number): string {
   return Number.isFinite(v) ? v.toFixed(6).replace(/0+$/, '').replace(/\.$/, '') || '0' : '0';
 }

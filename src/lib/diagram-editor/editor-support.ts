@@ -459,6 +459,7 @@ export function stripConnectionDefaults(conn: DiagramData["connections"][number]
   result.from = conn.from;
   result.to = conn.to;
   if (conn.text !== undefined) result.text = conn.text;
+  if (conn.textFontSize !== undefined && conn.textFontSize !== 12) result.textFontSize = conn.textFontSize;
   if (conn.textPosition !== undefined) result.textPosition = conn.textPosition;
   if (conn.color !== undefined) result.color = conn.color;
   if (conn.lineWidth !== undefined) result.lineWidth = conn.lineWidth;

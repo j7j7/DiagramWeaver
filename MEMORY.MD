@@ -2,6 +2,15 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-17 – Connection label click-to-edit
+Click a connection text label (bezier or orthogonal) to edit inline on the canvas; **Enter** inserts a line break, **⌘/Ctrl+Enter** or blur commits, **Escape** cancels. Wired through **`EditorCanvas`** → **`CanvasConnectionText`** / **`OrthogonalConnection`**. Patch bumped.
+
+### 2026-08-17 – Orthogonal connection label pill sizing
+Orthogonal connection label background width now uses **`chartInlineForeignObjectWidth`** (character-based total width + padding) instead of applying the per-character factor to each half — pills were ~2× too wide. Height/vertical alignment tightened to line height + padding with **`dominantBaseline="middle"`**. Patch bumped.
+
+### 2026-08-17 – Connection label text size
+Connection **`textFontSize`** (8–48 px, default 12) on **`DiagramConnectionData`**; connection context modal and toolbar Connections panel expose **Text size** above **Text position %**. Bezier and orthogonal label renderers scale font and background from the value. Patch bumped.
+
 ### 2026-08-17 – LLM diagram authoring schema
 Added **`docs/ai-schema/`**: generated **`diagram-authoring.json`** (create/edit contract, card/chart/shape recipes, themes, Lucide/emoji, examples) and **`resource-types.json`** (full icon type index). Rebuild with **`npm run generate-ai-schema`**; **`npm run validate-ai-schema`** checks catalog drift, fixtures, and family rules. No app-code patch bump.
 

@@ -710,6 +710,7 @@ export const DiagramConnectionDataSchema = z.object({
   to: z.string(),
   color: z.string().optional(), // Line color for this specific connection
   text: z.string().optional(), // Optional text to display on the connection
+  textFontSize: z.number().min(8).max(48).optional(), // Label font size in px (default 12)
   textPosition: z.number().optional(), // Text position along the line (0-100%, default 50%)
   fromPreferredExit: z.enum(['top', 'bottom', 'left', 'right', 'center']).optional(), // Preferred exit direction from source node
   fromEdgePosition: z.number().min(0).max(1).optional(), // Custom position along from edge (0–1); omitted = auto spread

@@ -124,6 +124,13 @@ interface CanvasConnectionsProps {
    * that share an endpoint with a dragged id recompute as you drag.
    */
   unrelatedConnectionRoutingDragIdsKey?: string;
+  connectionTextEditKey?: string | null;
+  connectionTextEditDraft?: string;
+  onConnectionTextEditDraftChange?: (value: string) => void;
+  onConnectionTextEditStart?: (connection: DiagramConnectionData, connectionIndex: number, e: React.MouseEvent) => void;
+  onConnectionTextEditCommit?: () => void;
+  onConnectionTextEditCancel?: () => void;
+  connectionTextEditDisabled?: boolean;
 }
 
 type EdgeGroupEntry = { conn: DiagramConnectionData; connIndex: number; isFrom: boolean; sortCoord: number };
@@ -231,6 +238,13 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.onSimulationElementClick === next.onSimulationElementClick &&
     prev.simulationStatusStyleByItemId === next.simulationStatusStyleByItemId &&
     prev.simulationStateStyleByItemId === next.simulationStateStyleByItemId &&
+    prev.connectionTextEditKey === next.connectionTextEditKey &&
+    prev.connectionTextEditDraft === next.connectionTextEditDraft &&
+    prev.onConnectionTextEditDraftChange === next.onConnectionTextEditDraftChange &&
+    prev.onConnectionTextEditStart === next.onConnectionTextEditStart &&
+    prev.onConnectionTextEditCommit === next.onConnectionTextEditCommit &&
+    prev.onConnectionTextEditCancel === next.onConnectionTextEditCancel &&
+    prev.connectionTextEditDisabled === next.connectionTextEditDisabled &&
     setsEqual(prev.connectionIndices, next.connectionIndices);
 }
 
@@ -276,6 +290,13 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     viewportObstaclePadDiagramPx = DEFAULT_VIEWPORT_OBSTACLE_PAD,
     freezeConnectionRoutingWhileDrag = false,
     unrelatedConnectionRoutingDragIdsKey = "",
+    connectionTextEditKey,
+    connectionTextEditDraft = "",
+    onConnectionTextEditDraftChange,
+    onConnectionTextEditStart,
+    onConnectionTextEditCommit,
+    onConnectionTextEditCancel,
+    connectionTextEditDisabled = false,
   } = props;
 
   const activeUnrelatedConnectionDragIdSet = useMemo(() => {
@@ -1319,6 +1340,13 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                         )
                     : undefined
                 }
+                isConnectionTextEditing={connectionTextEditKey === edgeId}
+                connectionTextEditDraft={connectionTextEditDraft}
+                onConnectionTextEditDraftChange={onConnectionTextEditDraftChange}
+                onConnectionTextEditStart={(e) => onConnectionTextEditStart?.(connRow, index, e)}
+                onConnectionTextEditCommit={onConnectionTextEditCommit}
+                onConnectionTextEditCancel={onConnectionTextEditCancel}
+                connectionTextEditDisabled={connectionTextEditDisabled}
               />
             ) : (
               <BezierConnection

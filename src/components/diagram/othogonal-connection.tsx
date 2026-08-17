@@ -28,6 +28,7 @@ import {
   renderAnimatedShape,
   getLoopedAnimationPathConfig,
   colorWithHalfOpacity,
+  ConnectionTextLabelEditor,
   type Positionable,
 } from "./bezier-connection";
 import { clampConnectionAnimation } from "@/lib/connection-animation";
@@ -39,6 +40,7 @@ import {
   lineWidthAtPathFraction,
   scaleValuesForAnimationKeyPoints,
   CONNECTION_ANIMATION_SPACING_REF_LINE_PX,
+  clampConnectionTextFontSize,
   connectionAdvancedStyleRevisionKeyResolved,
   resolveOrthogonalConnectionPaint,
   connectionGradientIdSuffix,
@@ -105,6 +107,13 @@ interface OrthogonalConnectionProps {
   onOrthogonalCustomWaypointsChange?: (
     waypoints: Array<{ x: number; y: number; id?: string }>,
   ) => void;
+  isConnectionTextEditing?: boolean;
+  connectionTextEditDraft?: string;
+  onConnectionTextEditDraftChange?: (value: string) => void;
+  onConnectionTextEditStart?: (e: React.MouseEvent) => void;
+  onConnectionTextEditCommit?: () => void;
+  onConnectionTextEditCancel?: () => void;
+  connectionTextEditDisabled?: boolean;
 }
 
 // --- Memo Comparators ---
@@ -161,7 +170,7 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
   if (a.fromEdgePosition !== b.fromEdgePosition || a.toEdgePosition !== b.toEdgePosition) return false;
   if (a.edgeAttachmentConstraint !== b.edgeAttachmentConstraint) return false;
   if (a.smoothCorners !== b.smoothCorners) return false;
-  if (a.text !== b.text || a.textPosition !== b.textPosition || a.style !== b.style) return false;
+  if (a.text !== b.text || a.textPosition !== b.textPosition || a.textFontSize !== b.textFontSize || a.style !== b.style) return false;
   const wpA = a.waypoints?.map((w) => `${w.x},${w.y}`).join(";") ?? "";
   const wpB = b.waypoints?.map((w) => `${w.x},${w.y}`).join(";") ?? "";
   if (wpA !== wpB) return false;
@@ -212,7 +221,14 @@ function areOrthogonalPropsEqual(prev: OrthogonalConnectionProps, next: Orthogon
     prev.onOrthogonalCustomWaypointsChange === next.onOrthogonalCustomWaypointsChange &&
     prev.onClick === next.onClick &&
     prev.onDoubleClick === next.onDoubleClick &&
-    prev.onContextMenu === next.onContextMenu
+    prev.onContextMenu === next.onContextMenu &&
+    prev.isConnectionTextEditing === next.isConnectionTextEditing &&
+    prev.connectionTextEditDraft === next.connectionTextEditDraft &&
+    prev.onConnectionTextEditDraftChange === next.onConnectionTextEditDraftChange &&
+    prev.onConnectionTextEditStart === next.onConnectionTextEditStart &&
+    prev.onConnectionTextEditCommit === next.onConnectionTextEditCommit &&
+    prev.onConnectionTextEditCancel === next.onConnectionTextEditCancel &&
+    prev.connectionTextEditDisabled === next.connectionTextEditDisabled
   );
 }
 
@@ -244,6 +260,13 @@ function OrthogonalConnectionInner({
   onOrthogonalTrunkOffsetChange,
   onOrthogonalTrunkOffsetYChange,
   onOrthogonalCustomWaypointsChange,
+  isConnectionTextEditing = false,
+  connectionTextEditDraft = "",
+  onConnectionTextEditDraftChange,
+  onConnectionTextEditStart,
+  onConnectionTextEditCommit,
+  onConnectionTextEditCancel,
+  connectionTextEditDisabled = false,
 }: OrthogonalConnectionProps) {
   const { applyFingerTapMarkerToMouseEventIfNeeded, fingerTapTouchSvgProps } = useDwFingerTapSyntheticClick();
   const { resolvedTheme } = useTheme();
@@ -612,6 +635,10 @@ function OrthogonalConnectionInner({
     () => (textLabel ? getPointOnOrthogonalPath(textPosition, route.points, route.totalLength) : null),
     [textLabel, textPosition, route]
   );
+  const textFontSize = clampConnectionTextFontSize(connectionData?.textFontSize);
+  const textLines = textLabel ? textLabel.split("\n") : [];
+  const labelBackgroundFill =
+    resolvedTheme === "dark" ? "rgba(30,30,30,0.85)" : "rgba(255,255,255,0.85)";
 
   // Animation logic (mirror BezierConnection)
   const MAX_RENDERED_ANIMATION_SHAPES = 2000;
@@ -953,26 +980,22 @@ function OrthogonalConnectionInner({
 
         {/* Text label */}
         {textLabel && textPoint && (
-          <g>
-            <rect
-              x={textPoint.x - textLabel.length * 3.5}
-              y={textPoint.y - 10}
-              width={textLabel.length * 7}
-              height={20}
-              rx={4}
-              ry={4}
-              fill={resolvedTheme === "dark" ? "rgba(30,30,30,0.85)" : "rgba(255,255,255,0.85)"}
-            />
-            <text
-              x={textPoint.x}
-              y={textPoint.y + 4}
-              textAnchor="middle"
-              className="text-xs fill-current"
-              style={{ fontSize: "11px", pointerEvents: "none" }}
-            >
-              {textLabel}
-            </text>
-          </g>
+          <ConnectionTextLabelEditor
+            anchorX={textPoint.x}
+            anchorY={textPoint.y}
+            lines={textLines}
+            fontSize={textFontSize}
+            fill={rc.cStart}
+            textShadow=""
+            isEditing={isConnectionTextEditing}
+            editValue={isConnectionTextEditing ? connectionTextEditDraft : textLabel}
+            onEditValueChange={onConnectionTextEditDraftChange}
+            onEditCommit={onConnectionTextEditCommit}
+            onEditCancel={onConnectionTextEditCancel}
+            onLabelClick={onConnectionTextEditStart}
+            disabled={connectionTextEditDisabled}
+            backgroundFill={labelBackgroundFill}
+          />
         )}
       </g>
     </>

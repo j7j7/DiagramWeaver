@@ -46,7 +46,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Slider } from '@/components/ui/slider';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { Label } from '@/components/ui/label';
-import { resolveBezierConnectionPaint, type ConnectionEndpointOutline } from '@/lib/connection-line-style';
+import { resolveBezierConnectionPaint, type ConnectionEndpointOutline, clampConnectionTextFontSize, DEFAULT_CONNECTION_TEXT_FONT_SIZE } from '@/lib/connection-line-style';
 import { applyMindmapHueAnchorsAfterVisualChanges } from '@/lib/mindmap-layout';
 import { RECORDING_SURFACE_TEXT_STYLING, RECORDING_SURFACE_VISUAL_STYLING } from '@/lib/interaction-recording-surfaces';
 import { useInteractionRecordingPanelReplay } from '@/hooks/use-interaction-recording-panel-replay';
@@ -2401,6 +2401,7 @@ export function ContextToolbar({
                         ).cStart;
 
                         const textPosition = liveConnection.textPosition ?? 50;
+                        const textFontSize = clampConnectionTextFontSize(liveConnection.textFontSize);
                         const connectionText = liveConnection.text || '';
                         const handleConnectionArrowToggle = () => {
                           if (onConnectionUpdate) {
@@ -2419,6 +2420,17 @@ export function ContextToolbar({
                               connInfo.connection.from,
                               connInfo.connection.to,
                               { textPosition: value },
+                              connId
+                            );
+                          }
+                        };
+
+                        const handleTextFontSizeChange = (value: number) => {
+                          if (onConnectionUpdate) {
+                            onConnectionUpdate(
+                              connInfo.connection.from,
+                              connInfo.connection.to,
+                              { textFontSize: clampConnectionTextFontSize(value) },
                               connId
                             );
                           }
@@ -2721,6 +2733,37 @@ export function ContextToolbar({
                                     className="h-8 text-xs"
                                     title="Text displayed on connection line"
                                   />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <Label htmlFor={`toolbar-conn-tsize-${connectionRowKey}`} className="text-xs font-medium">
+                                    Text size: {textFontSize}px
+                                  </Label>
+                                  <div className="flex items-center gap-1.5">
+                                    <Slider
+                                      id={`toolbar-conn-tsize-${connectionRowKey}`}
+                                      value={[textFontSize]}
+                                      onValueChange={(values) => handleTextFontSizeChange(values[0])}
+                                      min={8}
+                                      max={48}
+                                      step={1}
+                                      className="flex-1"
+                                    />
+                                    <Input
+                                      type="number"
+                                      value={textFontSize}
+                                      onChange={(e) =>
+                                        handleTextFontSizeChange(
+                                          Math.max(8, Math.min(48, parseInt(e.target.value) || DEFAULT_CONNECTION_TEXT_FONT_SIZE))
+                                        )
+                                      }
+                                      className="h-8 w-14 text-xs text-center shrink-0"
+                                      min={8}
+                                      max={48}
+                                      title="Text label font size in pixels"
+                                    />
+                                    <span className="text-xs text-muted-foreground shrink-0">px</span>
+                                  </div>
                                 </div>
 
                                 <div className="space-y-1.5">

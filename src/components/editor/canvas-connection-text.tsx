@@ -2,6 +2,7 @@ import React from "react";
 import { BezierConnectionText } from "../diagram/bezier-connection";
 import { determineConnectionEdges } from "../diagram/bezier-connection";
 import type { DiagramConnectionData, DiagramData } from "@/lib/types";
+import { stableDiagramConnectionId } from "@/lib/connection-order-utils";
 import { measureNodeDims, type PositionedNode, type PositionedGroup } from "./canvas-constants";
 
 export interface CanvasConnectionTextProps {
@@ -23,6 +24,13 @@ export interface CanvasConnectionTextProps {
     slideWaypointOffsets?: Array<{ dx: number; dy: number }>;
   }>;
   connectionKey?: (conn: DiagramConnectionData) => string;
+  connectionTextEditKey?: string | null;
+  connectionTextEditDraft?: string;
+  onConnectionTextEditDraftChange?: (value: string) => void;
+  onConnectionTextEditStart?: (connection: DiagramConnectionData, connectionIndex: number, e: React.MouseEvent) => void;
+  onConnectionTextEditCommit?: () => void;
+  onConnectionTextEditCancel?: () => void;
+  connectionTextEditDisabled?: boolean;
 }
 
 function areCanvasConnectionTextPropsEqual(prev: CanvasConnectionTextProps, next: CanvasConnectionTextProps): boolean {
@@ -35,7 +43,14 @@ function areCanvasConnectionTextPropsEqual(prev: CanvasConnectionTextProps, next
     prev.connectionIndices === next.connectionIndices &&
     prev.stackZIndex === next.stackZIndex &&
     prev.connectionAnimationStyles === next.connectionAnimationStyles &&
-    prev.connectionKey === next.connectionKey;
+    prev.connectionKey === next.connectionKey &&
+    prev.connectionTextEditKey === next.connectionTextEditKey &&
+    prev.connectionTextEditDraft === next.connectionTextEditDraft &&
+    prev.onConnectionTextEditDraftChange === next.onConnectionTextEditDraftChange &&
+    prev.onConnectionTextEditStart === next.onConnectionTextEditStart &&
+    prev.onConnectionTextEditCommit === next.onConnectionTextEditCommit &&
+    prev.onConnectionTextEditCancel === next.onConnectionTextEditCancel &&
+    prev.connectionTextEditDisabled === next.connectionTextEditDisabled;
 }
 
 function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
@@ -49,6 +64,13 @@ function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
     stackZIndex,
     connectionAnimationStyles,
     connectionKey,
+    connectionTextEditKey,
+    connectionTextEditDraft = "",
+    onConnectionTextEditDraftChange,
+    onConnectionTextEditStart,
+    onConnectionTextEditCommit,
+    onConnectionTextEditCancel,
+    connectionTextEditDisabled = false,
   } = props;
 
   const connections = diagramData.connections || [];
@@ -140,6 +162,13 @@ function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
             from={geomFrom}
             to={geomTo}
             connectionColor={edge.color}
+            isTextEditing={connectionTextEditKey === stableDiagramConnectionId(edge, index)}
+            textEditDraft={connectionTextEditDraft}
+            onTextEditDraftChange={onConnectionTextEditDraftChange}
+            onTextEditStart={(e) => onConnectionTextEditStart?.(edge, index, e)}
+            onTextEditCommit={onConnectionTextEditCommit}
+            onTextEditCancel={onConnectionTextEditCancel}
+            textEditDisabled={connectionTextEditDisabled}
           />
         );
       })}

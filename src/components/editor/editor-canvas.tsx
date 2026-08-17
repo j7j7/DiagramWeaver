@@ -2326,6 +2326,78 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     [onConnectionContextMenu, suppressContextMenuIfRightClickPanned],
   );
 
+  const [connectionTextEditKey, setConnectionTextEditKey] = useState<string | null>(null);
+  const [connectionTextEditDraft, setConnectionTextEditDraft] = useState("");
+
+  const beginConnectionTextEdit = useCallback(
+    (connection: DiagramConnectionData, connectionIndex: number, e: React.MouseEvent) => {
+      if (isReadOnly || isConnectMode) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const key = stableDiagramConnectionId(connection, connectionIndex);
+      onItemSelect?.({
+        ...connection,
+        itemType: "edge",
+        id: connection.id ?? key,
+      });
+      setConnectionTextEditKey(key);
+      setConnectionTextEditDraft(connection.text ?? "");
+    },
+    [isReadOnly, isConnectMode, onItemSelect],
+  );
+
+  const commitConnectionTextEdit = useCallback(() => {
+    if (!connectionTextEditKey || !onConnectionUpdate) {
+      setConnectionTextEditKey(null);
+      return;
+    }
+    const connections = diagramData.connections ?? [];
+    for (let i = 0; i < connections.length; i++) {
+      const conn = connections[i];
+      if (stableDiagramConnectionId(conn, i) !== connectionTextEditKey) continue;
+      if (connectionTextEditDraft !== (conn.text ?? "")) {
+        onConnectionUpdate(conn.from, conn.to, { text: connectionTextEditDraft }, conn.id);
+      }
+      setConnectionTextEditKey(null);
+      return;
+    }
+    setConnectionTextEditKey(null);
+  }, [connectionTextEditKey, connectionTextEditDraft, diagramData.connections, onConnectionUpdate]);
+
+  const cancelConnectionTextEdit = useCallback(() => {
+    setConnectionTextEditKey(null);
+  }, []);
+
+  useEffect(() => {
+    if (!connectionTextEditKey) return;
+    const connections = diagramData.connections ?? [];
+    const stillExists = connections.some(
+      (conn, index) => stableDiagramConnectionId(conn, index) === connectionTextEditKey,
+    );
+    if (!stillExists) setConnectionTextEditKey(null);
+  }, [connectionTextEditKey, diagramData.connections]);
+
+  const connectionTextEditProps = useMemo(
+    () => ({
+      connectionTextEditKey,
+      connectionTextEditDraft,
+      onConnectionTextEditDraftChange: setConnectionTextEditDraft,
+      onConnectionTextEditStart: beginConnectionTextEdit,
+      onConnectionTextEditCommit: commitConnectionTextEdit,
+      onConnectionTextEditCancel: cancelConnectionTextEdit,
+      connectionTextEditDisabled: isReadOnly || isConnectMode,
+    }),
+    [
+      connectionTextEditKey,
+      connectionTextEditDraft,
+      beginConnectionTextEdit,
+      commitConnectionTextEdit,
+      cancelConnectionTextEdit,
+      isReadOnly,
+      isConnectMode,
+    ],
+  );
+
   const dismissOverlayMenusForCanvasPan = useCallback(() => {
     closeContextMenu();
     setSimulationMenuState(null);
@@ -3941,6 +4013,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
                   simulationStatusStyleByItemId={simulationStatusStyleByItemId}
                   simulationStateStyleByItemId={simulationStateStyleByItemId}
+                  {...connectionTextEditProps}
                 />
                 <CanvasConnectionText
                   key="conn-text-all"
@@ -3954,6 +4027,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   connectionIndices={culledConnectionIndices ?? undefined}
                   connectionAnimationStyles={connectionAnimationStyles}
                   connectionKey={connectionKey}
+                  {...connectionTextEditProps}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   if (!shouldRenderCanvasItem(itemId)) return null;
@@ -4243,6 +4317,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
                       simulationStatusStyleByItemId={simulationStatusStyleByItemId}
                       simulationStateStyleByItemId={simulationStateStyleByItemId}
+                      {...connectionTextEditProps}
                     />
                   ) : null,
                   connIndices ? (
@@ -4258,6 +4333,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       stackZIndex={connTextZIndex}
                       connectionAnimationStyles={connectionAnimationStyles}
                       connectionKey={connectionKey}
+                      {...connectionTextEditProps}
                     />
                   ) : null,
                   nodeEl,
@@ -4340,6 +4416,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
                     simulationStatusStyleByItemId={simulationStatusStyleByItemId}
                     simulationStateStyleByItemId={simulationStateStyleByItemId}
+                    {...connectionTextEditProps}
                   />
                   <CanvasConnectionText
                     key="conn-text-slot-last"
@@ -4353,6 +4430,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     stackZIndex={lastStack.connectionTextZIndex}
                     connectionAnimationStyles={connectionAnimationStyles}
                     connectionKey={connectionKey}
+                    {...connectionTextEditProps}
                   />
                 </>
               );
