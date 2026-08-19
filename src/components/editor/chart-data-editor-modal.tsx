@@ -23,6 +23,7 @@ import type {
   NodeChartSpecPie,
   NodeChartSpecRing,
   NodeChartSpecGrid,
+  NodeChartSpecGantt,
   ChartGridCell,
 } from "@/lib/types";
 import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
@@ -32,6 +33,7 @@ import {
   CHART_MAX_PER_SLICE_SEGMENT_PULL,
   defaultBarChartSpec,
   defaultGridChartSpec,
+  defaultGanttChartSpec,
   defaultLineChartSpec,
   defaultPieChartSpec,
   defaultRingChartSpec,
@@ -78,6 +80,7 @@ import {
   resolveGridCanvasPaintFill,
   resolveGridCellPadPx,
 } from "@/lib/grid-chart-layout";
+import { GanttChartDataFields } from "@/components/editor/gantt-chart-data-fields";
 
 type ChartModalSectionTint = "muted" | "amber" | "emerald" | "purple" | "sky" | "teal";
 
@@ -537,6 +540,7 @@ export function ChartDataEditorModal({
     if (visible && node) {
       const chart = (node as DiagramNodeData & { chart?: NodeChartSpec }).chart;
       const isGrid = node.type === "generic.chart.grid" || chart?.kind === "grid";
+      const isGantt = node.type === "generic.chart.gantt" || chart?.kind === "gantt";
       const isBar = node.type === "generic.chart.bar" || chart?.kind === "bar";
       const isLine = node.type === "generic.chart.line" || chart?.kind === "line";
       const isRing = node.type === "generic.chart.ring" || chart?.kind === "ring";
@@ -584,6 +588,10 @@ export function ChartDataEditorModal({
             };
           })
         );
+        return;
+      }
+
+      if (isGantt) {
         return;
       }
 
@@ -1049,6 +1057,7 @@ export function ChartDataEditorModal({
   const handleSave = () => {
     if (!node || isReadOnly) return;
     const isGrid = node.type === "generic.chart.grid" || node.chart?.kind === "grid";
+    const isGantt = node.type === "generic.chart.gantt" || node.chart?.kind === "gantt";
     const isBar = node.type === "generic.chart.bar" || node.chart?.kind === "bar";
     const isLine = node.type === "generic.chart.line" || node.chart?.kind === "line";
     const isRing = node.type === "generic.chart.ring" || node.chart?.kind === "ring";
@@ -1332,6 +1341,14 @@ export function ChartDataEditorModal({
       return;
     }
 
+    if (isGantt) {
+      const spec =
+        node.chart?.kind === "gantt" ? node.chart : defaultGanttChartSpec();
+      onSave(node.id, spec);
+      onClose();
+      return;
+    }
+
     if (isGrid) {
       const cols = Math.min(24, Math.max(1, Math.round(gridCols)));
       const rows = Math.min(24, Math.max(1, Math.round(gridRows)));
@@ -1607,6 +1624,8 @@ export function ChartDataEditorModal({
     !!node && (node.type === "generic.chart.ring" || node.chart?.kind === "ring");
   const isGridModal =
     !!node && (node.type === "generic.chart.grid" || node.chart?.kind === "grid");
+  const isGanttModal =
+    !!node && (node.type === "generic.chart.gantt" || node.chart?.kind === "gantt");
   const isCartesianModal = isBarModal || isLineModal;
 
   return (
@@ -2808,6 +2827,20 @@ export function ChartDataEditorModal({
                 </ChartModalSection>
               </>
             ) : null}
+            {isGanttModal ? (
+              <GanttChartDataFields
+                chart={
+                  node?.chart?.kind === "gantt"
+                    ? (node.chart as NodeChartSpecGantt)
+                    : defaultGanttChartSpec()
+                }
+                isReadOnly={isReadOnly}
+                onPatch={(next) => {
+                  if (!node?.id || !onPatchChart || isReadOnly) return;
+                  onPatchChart(node.id, next);
+                }}
+              />
+            ) : null}
             {isGridModal ? (
               <>
                 <ChartModalSection title="Grid layout" tint="sky">
@@ -3272,7 +3305,7 @@ export function ChartDataEditorModal({
                 </ChartModalSection>
               </>
             ) : null}
-            {!isCartesianModal && !isRingModal && !isGridModal ? (
+            {!isCartesianModal && !isRingModal && !isGridModal && !isGanttModal ? (
               <>
             <ChartModalSection title="Slice outline & options" tint="muted">
               <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>

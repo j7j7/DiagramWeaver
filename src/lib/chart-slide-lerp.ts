@@ -50,6 +50,9 @@ export function chartSlideLerpCompatible(prev: DiagramNodeData, curr: DiagramNod
   if (a.kind === "grid" && b.kind === "grid") {
     return gridChartSlideLerpCompatible(prev, curr);
   }
+  if (a.kind === "gantt" && b.kind === "gantt") {
+    return a.cols === b.cols && a.rows.length === b.rows.length && a.bars.length === b.bars.length;
+  }
   return false;
 }
 
@@ -109,6 +112,18 @@ export function lerpNodeChartForSlide(
       ...currSpec,
       series: lerpBarLikeSeries(prevSpec.series, currSpec.series, u),
     } as NodeChartSpecLine;
+  }
+  if (prevSpec.kind === "gantt" && currSpec.kind === "gantt") {
+    const bars = currSpec.bars.map((bar, i) => {
+      const p = prevSpec.bars[i];
+      if (!p) return bar;
+      return {
+        ...bar,
+        start: p.start + (bar.start - p.start) * u,
+        end: p.end + (bar.end - p.end) * u,
+      };
+    });
+    return { ...currSpec, bars };
   }
   return currSpec;
 }

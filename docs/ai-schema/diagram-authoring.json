@@ -38,7 +38,7 @@
     "slug": "resource display name, spaces to hyphens, lower-case (e.g. 'EC2 Instance' → ec2-instance)",
     "remaps": [
       "generic text 'Text Box Heading' → generic.object.text-box-heading",
-      "generic object pie/bar/line/ring/grid chart → generic.chart.{pie|bar|line|ring|grid}",
+      "generic object pie/bar/line/ring/grid/gantt chart → generic.chart.{pie|bar|line|ring|grid|gantt}",
       "generic cards → generic.card.{template-id}",
       "generic borders → generic.border.{template-id}",
       "Lucide palette → generic.icon.{iconName slug} plus iconType lucide and iconName PascalCase",
@@ -113,6 +113,10 @@
         "generic.chart.grid": [
           500,
           280
+        ],
+        "generic.chart.gantt": [
+          680,
+          400
         ],
         "generic.object.uml-class": [
           120,
@@ -374,7 +378,7 @@
       "generic.text.textbox": "Multi-line box. Prefer richLabel for formatting."
     },
     "chart": {
-      "required": "chart object whose kind matches the type suffix (pie|bar|line|ring|grid).",
+      "required": "chart object whose kind matches the type suffix (pie|bar|line|ring|grid|gantt).",
       "kinds": {
         "pie": {
           "type": "generic.chart.pie",
@@ -498,6 +502,43 @@
             ]
           },
           "cells": "Row-major, length should be cols*rows. Unfilled cells: filled false or fillStyle none. fillStyle: none|solid|gradient|hue-step|theme-hue|default."
+        },
+        "gantt": {
+          "type": "generic.chart.gantt",
+          "role": "Project timeline with phase/task rows and draggable bars. Timeline columns are months (or any units); bars use fractional column units in [0, cols].",
+          "chart": {
+            "kind": "gantt",
+            "cols": 3,
+            "columnTitles": [
+              "April",
+              "May",
+              "June"
+            ],
+            "subdivisions": 4,
+            "showLegend": true,
+            "rows": [
+              {
+                "id": "r0",
+                "kind": "phase",
+                "label": "DISCOVERY"
+              },
+              {
+                "id": "r1",
+                "kind": "task",
+                "label": "Market research"
+              }
+            ],
+            "bars": [
+              {
+                "id": "b1",
+                "rowId": "r1",
+                "start": 0.1,
+                "end": 1.2,
+                "variant": "task"
+              }
+            ]
+          },
+          "bars": "start/end are fractional column units (0=first column start, cols=last column end). variant task|gate. Phase rows are headers and do not take bars. Optional colours: row.chipFill / row.labelColor; bar.fill / bar.border / bar.labelColor; chart taskBarFill, gateBarFill, taskChipFill, taskLabelColor, phaseLabelColor, gateLabelColor."
         }
       },
       "seriesFill": "fillStyle none|solid|gradient; gradientColors [start,end]; labelColor on slices."
@@ -649,10 +690,10 @@
     "Low-contrast grey-on-grey body text.",
     "Deprecated groups / rootGroupId keys."
   ],
-  "generatedAt": "2026-08-17",
+  "generatedAt": "2026-08-19",
   "catalogs": {
-    "typeCount": 2430,
-    "enabledTypeCount": 2133,
+    "typeCount": 2431,
+    "enabledTypeCount": 2134,
     "providers": [
       {
         "id": "alibabacloud",
@@ -1156,7 +1197,7 @@
         "id": "generic",
         "name": "Generic",
         "enabled": true,
-        "typeCount": 84,
+        "typeCount": 85,
         "categories": [
           {
             "id": "text",
@@ -1166,7 +1207,7 @@
           {
             "id": "object",
             "name": "Object",
-            "count": 30
+            "count": 31
           },
           {
             "id": "cards",
@@ -1737,6 +1778,12 @@
       {
         "type": "generic.chart.grid",
         "name": "Grid chart",
+        "family": "chart",
+        "category": "object"
+      },
+      {
+        "type": "generic.chart.gantt",
+        "name": "Gantt chart",
         "family": "chart",
         "category": "object"
       },
@@ -6913,6 +6960,47 @@
                 "fillStyle": "solid",
                 "color": "#86efac",
                 "text": "OK"
+              }
+            ]
+          }
+        },
+        {
+          "id": "roadmap",
+          "type": "generic.chart.gantt",
+          "x": 820,
+          "y": 320,
+          "width": 680,
+          "height": 400,
+          "sizeMode": "custom",
+          "chart": {
+            "kind": "gantt",
+            "cols": 3,
+            "columnTitles": [
+              "April",
+              "May",
+              "June"
+            ],
+            "subdivisions": 4,
+            "showLegend": true,
+            "rows": [
+              {
+                "id": "disc",
+                "kind": "phase",
+                "label": "DISCOVERY"
+              },
+              {
+                "id": "mr",
+                "kind": "task",
+                "label": "Market research"
+              }
+            ],
+            "bars": [
+              {
+                "id": "b-mr",
+                "rowId": "mr",
+                "start": 0.1,
+                "end": 1.2,
+                "variant": "task"
               }
             ]
           }

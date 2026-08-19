@@ -60,8 +60,14 @@ function ChromeForeignAction({
   );
 }
 
+/** Layout fields required by row/column chrome (grid and Gantt). */
+export type StructureChromeLayout = Pick<
+  GridChartLayout,
+  "structure" | "rowEdges" | "columnEdges" | "rows" | "cols" | "plot"
+>;
+
 export interface GridChartStructureChromeProps {
-  layout: GridChartLayout;
+  layout: StructureChromeLayout;
   canInteract: boolean;
   onDeleteRow?: (rowIndex: number) => void;
   onDeleteColumn?: (colIndex: number) => void;

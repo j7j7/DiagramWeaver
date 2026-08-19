@@ -624,7 +624,9 @@ function ResourceBrowserInner({
                 ? 'generic.chart.ring'
                 : slug === 'grid-chart'
                   ? 'generic.chart.grid'
-                  : null;
+                  : slug === 'gantt-chart'
+                    ? 'generic.chart.gantt'
+                    : null;
       const type = chartType ?? `generic.object.${slug}`;
       return (
         <span className="text-muted-foreground inline-flex items-center justify-center">

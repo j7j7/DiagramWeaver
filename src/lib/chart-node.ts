@@ -9,7 +9,9 @@ import type {
   NodeChartSpecPie,
   NodeChartSpecRing,
   NodeChartSpecGrid,
+  NodeChartSpecGantt,
   ChartGridCell,
+  GanttChartRow,
   RichTextRun,
 } from "@/lib/types";
 import {
@@ -130,6 +132,10 @@ export function isChartNodeType(nodeType: string | undefined): boolean {
 
 export function isGridChartNodeType(nodeType: string | undefined): boolean {
   return nodeType === "generic.chart.grid" || !!nodeType?.endsWith(".chart.grid");
+}
+
+export function isGanttChartNodeType(nodeType: string | undefined): boolean {
+  return nodeType === "generic.chart.gantt" || !!nodeType?.endsWith(".chart.gantt");
 }
 
 /** Non-negative chart datum rounded to at most 2 decimal places. */
@@ -390,6 +396,92 @@ export function defaultGridChartSpec(): NodeChartSpecGrid {
   };
 }
 
+function ganttRow(kind: GanttChartRow["kind"], label: string, labelColor?: string): GanttChartRow {
+  return { id: newChartSliceId(), kind, label, ...(labelColor ? { labelColor } : {}) };
+}
+
+/** Sample Gantt matching the Generic → Object palette preview. */
+export function defaultGanttChartSpec(): NodeChartSpecGantt {
+  const discovery = ganttRow("phase", "DISCOVERY");
+  const market = ganttRow("task", "Market research");
+  const interviews = ganttRow("task", "User interviews");
+  const design = ganttRow("phase", "DESIGN");
+  const wireframes = ganttRow("task", "Wireframes");
+  const prototype = ganttRow("task", "Prototype");
+  const review = ganttRow("task", "Design review", "#e86a3d");
+  const launch = ganttRow("phase", "LAUNCH");
+  const development = ganttRow("task", "Development");
+  const beta = ganttRow("task", "Beta testing");
+  const rows = [
+    discovery,
+    market,
+    interviews,
+    design,
+    wireframes,
+    prototype,
+    review,
+    launch,
+    development,
+    beta,
+  ];
+  return {
+    kind: "gantt",
+    cols: 3,
+    columnTitles: ["April", "May", "June"],
+    rows,
+    bars: [
+      { id: newChartSliceId(), rowId: market.id, start: 0.08, end: 1.05, variant: "task" },
+      { id: newChartSliceId(), rowId: interviews.id, start: 0.72, end: 1.78, variant: "task" },
+      { id: newChartSliceId(), rowId: wireframes.id, start: 1.12, end: 2.02, variant: "task" },
+      { id: newChartSliceId(), rowId: prototype.id, start: 1.62, end: 2.32, variant: "task" },
+      {
+        id: newChartSliceId(),
+        rowId: review.id,
+        start: 2.12,
+        end: 2.68,
+        variant: "gate",
+        label: "GATE",
+      },
+      { id: newChartSliceId(), rowId: development.id, start: 2.18, end: 3, variant: "task" },
+      { id: newChartSliceId(), rowId: beta.id, start: 2.52, end: 3, variant: "task" },
+    ],
+    subdivisions: 4,
+    showGridLines: true,
+    showLegend: true,
+    legendGateLabel: "Design review - critical gate",
+    legendTaskLabel: "Task",
+    legendPhaseLabel: "Phase",
+    columnWeights: [1, 1, 1],
+    rowWeights: rows.map((r) => (r.kind === "phase" ? 0.55 : 1)),
+  };
+}
+
+/** Palette drop defaults for `generic.chart.gantt` (fixed styling, no random theme). */
+export function defaultPaletteGanttChartNodeProps(): Partial<DiagramNodeData> {
+  return {
+    borderStyle: "solid",
+    borderColor: "#e5e7eb",
+    borderWidth: 1,
+    backgroundStyle: "solid",
+    backgroundColor: "#f8f9fa",
+    backgroundColors: ["#f8f9fa", "#f1f3f5"],
+    lineStyle: "solid",
+    lineColor: "#9ca3af",
+    lineWidth: 1,
+    lineOpacity: 1,
+    shadow: true,
+    shadowColor: "#000000",
+    shadowOpacity: 0.08,
+    shadowBlur: 2,
+    textColor: "#2d333b",
+    textOpacity: 1,
+    fontFamily: "Inter, system-ui, sans-serif",
+    gradientAngle: 180,
+    textJustify: "left",
+    cornerRadius: 0.06,
+  } as Partial<DiagramNodeData>;
+}
+
 /** Palette drop defaults for `generic.chart.grid` (fixed styling, no random theme). */
 export function defaultPaletteGridChartNodeProps(): Partial<DiagramNodeData> {
   return {
@@ -421,6 +513,8 @@ export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeC
   if (nodeType === "generic.chart.line") return randomLineChartSpec();
   if (nodeType === "generic.chart.grid" || nodeType?.endsWith(".chart.grid"))
     return defaultGridChartSpec();
+  if (nodeType === "generic.chart.gantt" || nodeType?.endsWith(".chart.gantt"))
+    return defaultGanttChartSpec();
   if (nodeType === "generic.chart.ring" || nodeType?.endsWith(".chart.ring"))
     return defaultRingChartSpec();
   return defaultPieChartSpec();

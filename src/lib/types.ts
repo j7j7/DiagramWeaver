@@ -305,13 +305,77 @@ export interface NodeChartSpecGrid {
   titleColor?: string;
 }
 
+export type GanttRowKind = "phase" | "task";
+export type GanttBarVariant = "task" | "gate";
+
+/** Sidebar row in a Gantt chart (`generic.chart.gantt`): phase header or task. */
+export interface GanttChartRow {
+  id: string;
+  kind: GanttRowKind;
+  label: string;
+  richLabel?: RichTextRun[];
+  labelColor?: string;
+  /** Left chip / section fill. */
+  chipFill?: string;
+}
+
+/** Timeline bar on a Gantt task row. `start`/`end` are fractional column units in `[0, cols]`. */
+export interface GanttChartBar {
+  id: string;
+  rowId: string;
+  start: number;
+  end: number;
+  label?: string;
+  richLabel?: RichTextRun[];
+  variant?: GanttBarVariant;
+  fill?: string;
+  border?: string;
+  labelColor?: string;
+}
+
+/** Gantt / project timeline (`generic.chart.gantt`). Container uses node Visual styling. */
+export interface NodeChartSpecGantt {
+  kind: "gantt";
+  cols: number;
+  columnTitles?: string[];
+  richColumnTitles?: (RichTextRun[] | undefined)[];
+  rows: GanttChartRow[];
+  bars: GanttChartBar[];
+  title?: string;
+  richTitle?: RichTextRun[];
+  showGridLines?: boolean;
+  gridLineColor?: string;
+  columnWeights?: number[];
+  rowWeights?: number[];
+  axisColor?: string;
+  titleColor?: string;
+  /** Week-style ticks inside each timeline column (1–8). Default 4. */
+  subdivisions?: number;
+  showLegend?: boolean;
+  legendGateLabel?: string;
+  legendTaskLabel?: string;
+  legendPhaseLabel?: string;
+  richLegendGateLabel?: RichTextRun[];
+  richLegendTaskLabel?: RichTextRun[];
+  richLegendPhaseLabel?: RichTextRun[];
+  taskBarFill?: string;
+  taskBarBorder?: string;
+  gateBarFill?: string;
+  gateBarBorder?: string;
+  gateLabelColor?: string;
+  phaseLabelColor?: string;
+  taskLabelColor?: string;
+  taskChipFill?: string;
+}
+
 /** Chart configuration on a node (`generic.chart.*`). */
 export type NodeChartSpec =
   | NodeChartSpecPie
   | NodeChartSpecBar
   | NodeChartSpecLine
   | NodeChartSpecRing
-  | NodeChartSpecGrid;
+  | NodeChartSpecGrid
+  | NodeChartSpecGantt;
 
 /**
  * Card silhouette for `generic.object.timeline` / `generic.object.mind-map-node`; `type` stays timeline/mind-map.

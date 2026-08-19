@@ -2,6 +2,21 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-19 – Gantt row drag and wrapping pills
+Dragging a timeline **bar up/down** reorders the whole row (left/right still slides it on the timeline). Row/bar pills grow with wrapped or two-line text. Patch bumped.
+
+### 2026-08-19 – Gantt select, move, and row resize
+Gantt text/row hits no longer steal canvas clicks: an unselected chart can be selected and dragged. Row-height handles span the label column as well as the timeline (above reorder hits). Patch bumped.
+
+### 2026-08-19 – Gantt empty-bar edit and row reorder
+Double-click an empty timeline bar to type a label (blank editor). Click-and-hold a phase/task row (left labels) and drag up/down to reorder; drop target is highlighted. Patch bumped.
+
+### 2026-08-19 – Gantt: drag vs text, colours, modal dropdowns
+Removed the dotted fill overlay on Gantt objects. Timeline **bars with labels** drag/resize by passing pointer events through bar text (double-click still edits). Chart data modal **Task/Phase/Gate** dropdowns stack above the panel (`SelectContent` z-index). Per-row section/text colours, per-bar fill/border/text, plus default colour swatches. Patch bumped.
+
+### 2026-08-19 – Gantt chart object
+New **Gantt chart** in Generic → Object (`generic.chart.gantt`, `chart.kind: 'gantt'`), based on grid-chart chrome: add/delete/reorder/resize **timeline columns** and **phase/task rows**. Task **bars** drag left/right along the timeline (ends resize; snap to week ticks). Phase headers, task chips, month titles, bar labels, and legend text use the same inline rich-text edit as other objects. Palette **`gantt-chart.svg`**. Default drop **680×400**. Layout in **`gantt-chart-layout.ts`** / **`gantt-chart-ops.ts`**. Patch bumped.
+
 ### 2026-08-17 – AI schema: connection label fields
 **`docs/ai-schema/authoring-source.json`**: connection **`textFontSize`** (8–48 px, default 12) and multi-line **`text`** (`\\n`) documented under **`connections.markers`**. Fixtures **`architecture`**, **`shapes-uml-icons`** include examples; validator checks **`textFontSize`** / **`textPosition`** ranges. Regenerate with **`npm run generate-ai-schema`**.
 

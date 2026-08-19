@@ -65,6 +65,7 @@ import { getConnectorLikeSpinePlacementAnchor } from "@/lib/line-curve-path";
 import {
   defaultChartSpecForNodeType,
   defaultPaletteGridChartNodeProps,
+  defaultPaletteGanttChartNodeProps,
 } from "@/lib/chart-node";
 // Zones removed - no zone layout
 
@@ -214,6 +215,7 @@ export function useCanvasOperations({
           isShapeResource &&
           itemType !== "generic.object.point" &&
           itemType !== "generic.chart.grid" &&
+          itemType !== "generic.chart.gantt" &&
           !isFromScratchPad &&
           !borderTemplateId;
         const randomBuiltInTheme = shouldApplyShapeTheme ? pickRandomBuiltInTheme() : null;
@@ -265,6 +267,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.bar' ? 380 :
              itemType === 'generic.chart.ring' ? 410 :
              itemType === 'generic.chart.grid' ? snapDimensionToGrid(500, 40) :
+             itemType === 'generic.chart.gantt' ? snapDimensionToGrid(680, 40) :
              borderTemplate ? borderTemplate.defaultWidth :
              cardTemplate ? cardTemplate.defaultWidth :
              60
@@ -287,6 +290,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.bar' ? 280 :
              itemType === 'generic.chart.ring' ? 320 :
              itemType === 'generic.chart.grid' ? snapDimensionToGrid(180, 40) :
+             itemType === 'generic.chart.gantt' ? snapDimensionToGrid(400, 40) :
              borderTemplate ? borderTemplate.defaultHeight :
              cardTemplate ? cardTemplate.defaultHeight :
              60
@@ -394,6 +398,9 @@ export function useCanvasOperations({
           }),
           ...(itemType === "generic.chart.grid" && !isFromScratchPad && {
             ...defaultPaletteGridChartNodeProps(),
+          }),
+          ...(itemType === "generic.chart.gantt" && !isFromScratchPad && {
+            ...defaultPaletteGanttChartNodeProps(),
           }),
           ...(borderTemplateId && !isFromScratchPad && {
             ...defaultBorderPaletteNodeProps(borderTemplateId),

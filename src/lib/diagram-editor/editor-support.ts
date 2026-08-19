@@ -618,6 +618,8 @@ export function createPaletteItem(
     provider === "generic" && category === "object" && derivedSlug === "ring-chart";
   const isGridChartPalette =
     provider === "generic" && category === "object" && derivedSlug === "grid-chart";
+  const isGanttChartPalette =
+    provider === "generic" && category === "object" && derivedSlug === "gantt-chart";
   const isCardPalette = provider === "generic" && category === "cards";
   const isBorderPalette = provider === "generic" && category === "borders";
   return {
@@ -633,6 +635,8 @@ export function createPaletteItem(
               ? "generic.chart.ring"
               : isGridChartPalette
                 ? "generic.chart.grid"
+                : isGanttChartPalette
+                  ? "generic.chart.gantt"
                 : isBorderPalette
                 ? `generic.border.${derivedSlug}`
                 : isCardPalette

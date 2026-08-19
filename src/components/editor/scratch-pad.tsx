@@ -854,10 +854,12 @@ const renderIcon = (item: ScratchPadItem) => {
                                   editingItem.type === 'generic.object.text-box-heading' ||
                                   editingItem.type === 'generic.object.mind-map-node' ||
                                   editingItem.type === 'generic.chart.grid' ||
+                                  editingItem.type === 'generic.chart.gantt' ||
                                   editingItem.type?.endsWith?.('.rounded-rectangle') ||
                                   editingItem.type?.endsWith?.('.text-box-heading') ||
                                   editingItem.type?.endsWith?.('.mind-map-node') ||
-                                  editingItem.type?.endsWith?.('.chart.grid')
+                                  editingItem.type?.endsWith?.('.chart.grid') ||
+                                  editingItem.type?.endsWith?.('.chart.gantt')
                                 }
                                 isProgressBar={
                                   editingItem.type === 'generic.object.progress-bar' ||

@@ -93,6 +93,14 @@ export function validateLlmDiagram(diagram, options = {}) {
           errors.push(`${prefix} (${node.id}) grid chart needs integer cols and rows`);
         }
         if (!Array.isArray(node.chart.cells)) errors.push(`${prefix} (${node.id}) grid chart needs cells[]`);
+      } else if (kind === "gantt") {
+        if (!Number.isInteger(node.chart.cols)) {
+          errors.push(`${prefix} (${node.id}) gantt chart needs integer cols`);
+        }
+        if (!Array.isArray(node.chart.rows) || node.chart.rows.length === 0) {
+          errors.push(`${prefix} (${node.id}) gantt chart needs rows[]`);
+        }
+        if (!Array.isArray(node.chart.bars)) errors.push(`${prefix} (${node.id}) gantt chart needs bars[]`);
       } else if (!Array.isArray(node.chart.series) || node.chart.series.length === 0) {
         errors.push(`${prefix} (${node.id}) chart.series must be a non-empty array`);
       }
@@ -223,6 +231,7 @@ export function validateAuthoringPack({ pack, typesFile, fixtures, live }) {
     "generic.chart.line",
     "generic.chart.ring",
     "generic.chart.grid",
+    "generic.chart.gantt",
     "generic.card.icon-border",
     "generic.card.agenda",
     "generic.text.textbox",

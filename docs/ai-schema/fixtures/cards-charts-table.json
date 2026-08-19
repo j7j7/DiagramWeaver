@@ -103,6 +103,29 @@
           { "id": "r1c2", "filled": true, "fillStyle": "solid", "color": "#86efac", "text": "OK" }
         ]
       }
+    },
+    {
+      "id": "roadmap",
+      "type": "generic.chart.gantt",
+      "x": 820,
+      "y": 320,
+      "width": 680,
+      "height": 400,
+      "sizeMode": "custom",
+      "chart": {
+        "kind": "gantt",
+        "cols": 3,
+        "columnTitles": ["April", "May", "June"],
+        "subdivisions": 4,
+        "showLegend": true,
+        "rows": [
+          { "id": "disc", "kind": "phase", "label": "DISCOVERY" },
+          { "id": "mr", "kind": "task", "label": "Market research" }
+        ],
+        "bars": [
+          { "id": "b-mr", "rowId": "mr", "start": 0.1, "end": 1.2, "variant": "task" }
+        ]
+      }
     }
   ],
   "connections": []

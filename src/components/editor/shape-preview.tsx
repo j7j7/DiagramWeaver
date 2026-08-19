@@ -4,9 +4,10 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath, boundingBoxFromSvgPolygonPointsString } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss, getTextOutlineShadowCss } from '@/lib/text-styling';
-import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
-import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultLineChartSpec, defaultPaletteGridChartNodeProps, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
+import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecGantt, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
+import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultGanttChartSpec, defaultLineChartSpec, defaultPaletteGridChartNodeProps, defaultPaletteGanttChartNodeProps, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
 import { buildGridChartLayout } from '@/lib/grid-chart-layout';
+import { buildGanttChartLayout } from '@/lib/gantt-chart-layout';
 import {
   barChartWantsRoundedColumnEnds,
   barColumnAutoRoundRadius,
@@ -1137,6 +1138,51 @@ export function ShapePreview({
               {layout.title.text}
             </text>
           ) : null}
+        </svg>
+      );
+    }
+
+    if (type === 'generic.chart.gantt' || chart?.kind === 'gantt') {
+      const spec: NodeChartSpecGantt =
+        chart?.kind === 'gantt' ? chart : defaultGanttChartSpec();
+      const previewNode = {
+        id: "preview-gantt",
+        type: "generic.chart.gantt",
+        width: displayWidth,
+        height: displayHeight,
+        ...defaultPaletteGanttChartNodeProps(),
+      } as import("@/lib/types").DiagramNodeData;
+      const layout = buildGanttChartLayout(previewNode, spec);
+      const { body } = layout;
+      const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      return (
+        <svg {...commonSvgProps} viewBox={`0 0 ${layout.vbW} ${layout.vbH}`} preserveAspectRatio="xMidYMid meet">
+          <rect
+            x={body.x}
+            y={body.y}
+            width={body.w}
+            height={body.h}
+            rx={body.rx}
+            ry={body.ry}
+            fill={effectiveBackgroundColor}
+            stroke={effectiveBorderColor}
+            strokeWidth={sw}
+            vectorEffect="non-scaling-stroke"
+          />
+          {layout.weekLines.map((ln, i) => (
+            <line key={`sp-gantt-wk-${i}`} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} stroke={layout.gridLineColor} strokeWidth={0.5} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
+          ))}
+          {layout.monthLines.map((ln, i) => (
+            <line key={`sp-gantt-mo-${i}`} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} stroke={layout.gridLineColor} strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
+          ))}
+          {layout.layoutRows.map((row) =>
+            row.chip ? (
+              <rect key={`sp-gantt-chip-${row.id}`} x={row.chip.x} y={row.chip.y} width={row.chip.w} height={row.chip.h} rx={4} fill={row.chipFill} />
+            ) : null
+          )}
+          {layout.bars.map((bar) => (
+            <rect key={`sp-gantt-bar-${bar.id}`} x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx={Math.min(bar.h * 0.5, 6)} fill={bar.fill} stroke={bar.border} strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
+          ))}
         </svg>
       );
     }

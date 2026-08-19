@@ -357,12 +357,68 @@ const NodeChartLineSchema = z.object({
   valuesLocked: z.boolean().optional(),
 });
 
+const GanttChartRowSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["phase", "task"]),
+  label: z.string(),
+  richLabel: z.array(RichTextRunSchema).optional(),
+  labelColor: z.string().optional(),
+  chipFill: z.string().optional(),
+});
+
+const GanttChartBarSchema = z.object({
+  id: z.string(),
+  rowId: z.string(),
+  start: z.number(),
+  end: z.number(),
+  label: z.string().optional(),
+  richLabel: z.array(RichTextRunSchema).optional(),
+  variant: z.enum(["task", "gate"]).optional(),
+  fill: z.string().optional(),
+  border: z.string().optional(),
+  labelColor: z.string().optional(),
+});
+
+const NodeChartGanttSchema = z.object({
+  kind: z.literal("gantt"),
+  cols: z.number().int().min(1).max(24),
+  columnTitles: z.array(z.string()).optional(),
+  richColumnTitles: z.array(z.array(RichTextRunSchema).optional()).optional(),
+  rows: z.array(GanttChartRowSchema).min(1).max(24),
+  bars: z.array(GanttChartBarSchema),
+  title: z.string().optional(),
+  richTitle: z.array(RichTextRunSchema).optional(),
+  showGridLines: z.boolean().optional(),
+  gridLineColor: z.string().optional(),
+  columnWeights: z.array(z.number().positive()).optional(),
+  rowWeights: z.array(z.number().positive()).optional(),
+  axisColor: z.string().optional(),
+  titleColor: z.string().optional(),
+  subdivisions: z.number().int().min(1).max(8).optional(),
+  showLegend: z.boolean().optional(),
+  legendGateLabel: z.string().optional(),
+  legendTaskLabel: z.string().optional(),
+  legendPhaseLabel: z.string().optional(),
+  richLegendGateLabel: z.array(RichTextRunSchema).optional(),
+  richLegendTaskLabel: z.array(RichTextRunSchema).optional(),
+  richLegendPhaseLabel: z.array(RichTextRunSchema).optional(),
+  taskBarFill: z.string().optional(),
+  taskBarBorder: z.string().optional(),
+  gateBarFill: z.string().optional(),
+  gateBarBorder: z.string().optional(),
+  gateLabelColor: z.string().optional(),
+  phaseLabelColor: z.string().optional(),
+  taskLabelColor: z.string().optional(),
+  taskChipFill: z.string().optional(),
+});
+
 const NodeChartSpecSchema = z.discriminatedUnion("kind", [
   NodeChartPieSchema,
   NodeChartRingSchema,
   NodeChartBarSchema,
   NodeChartLineSchema,
   NodeChartGridSchema,
+  NodeChartGanttSchema,
 ]);
 
 function normalizeChartField(chart: unknown): unknown {
@@ -381,6 +437,7 @@ function normalizeChartField(chart: unknown): unknown {
   if (c.kind === "pie") return chart;
   if (c.kind === "ring") return chart;
   if (c.kind === "grid") return chart;
+  if (c.kind === "gantt") return chart;
   const series = c.series;
   if (
     Array.isArray(series) &&

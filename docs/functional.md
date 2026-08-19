@@ -184,7 +184,7 @@ Below, “**key exports**” are representative; open the file for the full surf
 
 ## How to extend safely
 
-1. **New node shape**: add resource or type string in catalog, implement component under **`components/diagram/shapes/`**, register in **`diagram-node`** / type switches, extend **`types.ts`** + **`schemas.ts`** if new fields are persisted.
+1. **New node shape**: add resource or type string in catalog, implement component under **`components/diagram/shapes/`**, register in **`diagram-node`** / type switches, extend **`types.ts`** + **`schemas.ts`** if new fields are persisted. Charts: pie/bar/line/ring/grid plus **Gantt** (`generic.chart.gantt`, **`gantt-chart-layout.ts`**).
 2. **New persisted field on connections/nodes**: **`types.ts`** → **`schemas.ts`** → migration/sanitise in **`import-sanitize`** or parse path if needed.
 3. **Presentation behaviour**: prefer **`presentation-delta`** + **`presentation-slide-chain`** over ad‑hoc diagram copies so slide deltas stay consistent.
 

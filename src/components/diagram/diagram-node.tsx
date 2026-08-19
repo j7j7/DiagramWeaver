@@ -94,6 +94,7 @@ import {
   BarChartShape,
   LineChartShape,
   GridChartShape,
+  GanttChartShape,
   ProgressBarShape,
   TimelineBarShape,
   SegmentedRectangleShape,
@@ -150,6 +151,17 @@ import {
   insertGridChartRowAt,
   insertGridChartColumnAt,
 } from "@/lib/grid-chart-layout";
+import {
+  deleteGanttColumnAt,
+  deleteGanttRowAt,
+  insertGanttColumnAt,
+  insertGanttRowAt,
+  moveGanttColumn,
+  moveGanttRow,
+  patchGanttBar,
+  patchGanttColumnTitle,
+  patchGanttRowLabel,
+} from "@/lib/gantt-chart-ops";
 import { gridChartCellRunsCentered } from "@/lib/grid-chart-rich-node";
 import { readThemeMenuHueStepDegFromStorage } from "@/lib/theme-menu-hue-step";
 
@@ -1648,6 +1660,190 @@ function DiagramNodeInner({
           }
         />
       );
+    } else if (nodeType === "generic.chart.gantt" || nodeType?.endsWith(".chart.gantt")) {
+      const ganttNode =
+        isDraggingCornerRadius && localCornerRadius !== null
+          ? { ...visualNode, cornerRadius: localCornerRadius }
+          : visualNode;
+      const ganttInteractive = isSelected && !isReadOnly && !isMultiSelected;
+      const ganttDragSession = !isReadOnly
+        ? (active: boolean) => {
+            chartValueDragInteractionRef.current = active;
+            onChartValueDragSessionChange?.(active);
+          }
+        : undefined;
+      const patchGantt = (next: import("@/lib/types").NodeChartSpecGantt) => {
+        if (!onUpdate) return;
+        onUpdate({ ...node, chart: next });
+      };
+      return (
+        <GanttChartShape
+          {...shapeProps}
+          node={ganttNode}
+          isReadOnly={isReadOnly}
+          ganttInteractive={ganttInteractive}
+          onGanttDragSessionChange={ganttDragSession}
+          onDeleteGanttRow={
+            onUpdate && ganttInteractive
+              ? (rowIndex) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(deleteGanttRowAt(c, rowIndex));
+                }
+              : undefined
+          }
+          onDeleteGanttColumn={
+            onUpdate && ganttInteractive
+              ? (colIndex) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(deleteGanttColumnAt(c, colIndex));
+                }
+              : undefined
+          }
+          onMoveGanttRow={
+            onUpdate && ganttInteractive
+              ? (fromRow, toRow) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(moveGanttRow(c, fromRow, toRow));
+                }
+              : undefined
+          }
+          onMoveGanttColumn={
+            onUpdate && ganttInteractive
+              ? (fromCol, toCol) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(moveGanttColumn(c, fromCol, toCol));
+                }
+              : undefined
+          }
+          onInsertGanttRow={
+            onUpdate && ganttInteractive
+              ? (atRow) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(insertGanttRowAt(c, atRow, "task"));
+                }
+              : undefined
+          }
+          onInsertGanttColumn={
+            onUpdate && ganttInteractive
+              ? (atCol) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(insertGanttColumnAt(c, atCol));
+                }
+              : undefined
+          }
+          onColumnTrackResize={
+            onUpdate && ganttInteractive
+              ? ({ columnWeights, width }) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  onUpdate({ ...node, width, chart: { ...c, columnWeights } });
+                }
+              : undefined
+          }
+          onRowTrackResize={
+            onUpdate && ganttInteractive
+              ? ({ rowWeights, height }) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  onUpdate({ ...node, height, chart: { ...c, rowWeights } });
+                }
+              : undefined
+          }
+          onGanttFitHeight={
+            onUpdate && !isReadOnly
+              ? (height) => {
+                  if (Math.abs((node.height ?? 0) - height) < 1) return;
+                  onUpdate({ ...node, height });
+                }
+              : undefined
+          }
+          onGanttBarChange={
+            onUpdate && ganttInteractive
+              ? (barId, start, end) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(patchGanttBar(c, barId, { start, end }));
+                }
+              : undefined
+          }
+          onGanttBarTextChange={
+            onUpdate && !isReadOnly
+              ? (barId, plainText, runs) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(patchGanttBar(c, barId, { label: plainText.trim(), richLabel: normalizeRuns(runs) }));
+                }
+              : undefined
+          }
+          onGanttTitleChange={
+            onUpdate && !isReadOnly
+              ? (plainText, runs) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  const norm = normalizeRuns(runs);
+                  patchGantt({
+                    ...c,
+                    title: plainText.trim() || undefined,
+                    richTitle: norm.length > 0 ? norm : undefined,
+                  });
+                }
+              : undefined
+          }
+          onGanttColumnTitleChange={
+            onUpdate && !isReadOnly
+              ? (colIndex, plainText, runs) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(patchGanttColumnTitle(c, colIndex, plainText.trim(), normalizeRuns(runs)));
+                }
+              : undefined
+          }
+          onGanttRowLabelChange={
+            onUpdate && !isReadOnly
+              ? (rowIndex, plainText, runs) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  patchGantt(patchGanttRowLabel(c, rowIndex, plainText.trim(), normalizeRuns(runs)));
+                }
+              : undefined
+          }
+          onGanttLegendChange={
+            onUpdate && !isReadOnly
+              ? (which, plainText, runs) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  const norm = normalizeRuns(runs);
+                  const trimmed = plainText.trim();
+                  if (which === "gate") {
+                    patchGantt({
+                      ...c,
+                      legendGateLabel: trimmed,
+                      richLegendGateLabel: norm.length > 0 ? norm : undefined,
+                    });
+                  } else if (which === "task") {
+                    patchGantt({
+                      ...c,
+                      legendTaskLabel: trimmed,
+                      richLegendTaskLabel: norm.length > 0 ? norm : undefined,
+                    });
+                  } else {
+                    patchGantt({
+                      ...c,
+                      legendPhaseLabel: trimmed,
+                      richLegendPhaseLabel: norm.length > 0 ? norm : undefined,
+                    });
+                  }
+                }
+              : undefined
+          }
+        />
+      );
     } else if (nodeType === 'generic.chart.line') {
       return (
         <LineChartShape
@@ -2336,6 +2532,8 @@ function DiagramNodeInner({
    const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
   const isGridChartNode =
     node.type === "generic.chart.grid" || node.type?.endsWith(".chart.grid");
+  const isGanttChartNode =
+    node.type === "generic.chart.gantt" || node.type?.endsWith(".chart.gantt");
   const isCardNode = isCardNodeType(node.type);
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
    const isMindmapCardNode = isMindmapNodeType(node.type);
@@ -2345,6 +2543,7 @@ function DiagramNodeInner({
    const showsCornerRadiusHandle =
      isRoundedRectangleNode ||
      isGridChartNode ||
+     isGanttChartNode ||
      isTextBoxHeadingNode ||
      mindmapBodyRounded ||
      isCardNode;
@@ -4008,7 +4207,7 @@ function DiagramNodeInner({
       data-perf-shadow-suppressed={suppressShadowsDuringCanvasDrag ? "true" : undefined}
       data-dw-card-node={isCardNode ? "true" : undefined}
       data-dw-highlight-anim={
-        highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode
+        highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode
           ? "true"
           : undefined
       }
@@ -4021,6 +4220,7 @@ function DiagramNodeInner({
         "absolute group duration-200 ease-in-out",
         spineLikeNode ||
           isGridChartNode ||
+          isGanttChartNode ||
           (isIconNode && Boolean((node as DiagramNodeData).iconBevel)) ||
           isCardNode
           ? "overflow-visible"
@@ -4029,7 +4229,7 @@ function DiagramNodeInner({
         node.highlightAnim &&
         !isDuplicateDragPreview &&
         !spineLikeNode &&
-        (highlightPulseUsesShapeSilhouette || isCardNode || isGridChartNode)
+        (highlightPulseUsesShapeSilhouette || isCardNode || isGridChartNode || isGanttChartNode)
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
@@ -4112,7 +4312,7 @@ function DiagramNodeInner({
         ...(spineLikeNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
-        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode
+        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode
           ? highlightAnimStyle
           : {}),
         // Layer show/hide animation (opacity, transition, transform)
