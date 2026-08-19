@@ -210,8 +210,16 @@ export function clampBarEdge(v: number | undefined, cols: number): number {
   return Math.max(0, Math.min(cols, n));
 }
 
-export function snapGanttColumnUnit(u: number, subdivisions: number, cols: number): number {
-  const step = 1 / Math.max(1, subdivisions);
+export function snapGanttColumnUnit(
+  u: number,
+  subdivisions: number,
+  cols: number,
+  stepOverride?: number
+): number {
+  const step =
+    typeof stepOverride === "number" && Number.isFinite(stepOverride) && stepOverride > 0
+      ? stepOverride
+      : 1 / Math.max(1, subdivisions);
   return Math.max(0, Math.min(cols, Math.round(u / step) * step));
 }
 

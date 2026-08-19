@@ -339,10 +339,12 @@ export function GanttChartShape(props: GanttChartShapeProps) {
     } else {
       end = Math.min(layout.cols, Math.max(drag.start + GANTT_MIN_BAR_SPAN, drag.end + delta));
     }
+    const snapStep =
+      drag.mode === "move" ? undefined : 1 / (Math.max(1, layout.subdivisions) * 2);
     onGanttBarChange(
       drag.id,
-      snapGanttColumnUnit(start, layout.subdivisions, layout.cols),
-      snapGanttColumnUnit(end, layout.subdivisions, layout.cols)
+      snapGanttColumnUnit(start, layout.subdivisions, layout.cols, snapStep),
+      snapGanttColumnUnit(end, layout.subdivisions, layout.cols, snapStep)
     );
   };
 
@@ -598,7 +600,7 @@ export function GanttChartShape(props: GanttChartShapeProps) {
                 y={row.chip.y}
                 width={row.chip.w}
                 height={row.chip.h}
-                rx={Math.min(row.chip.h * 0.5, 12)}
+                rx={Math.min(row.chip.h * 0.5, 6)}
                 fill={row.chipFill}
                 pointerEvents="none"
               />
@@ -625,7 +627,7 @@ export function GanttChartShape(props: GanttChartShapeProps) {
         );
       })}
       {layout.bars.map((bar) => {
-        const rx = bar.h * 0.5;
+        const rx = Math.min(bar.h * 0.5, 6);
         const handle = Math.max(6, Math.min(10, bar.w * 0.12));
         const barInteractive = canDragBars || canReorderRows;
         return (

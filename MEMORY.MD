@@ -2,6 +2,15 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-19 – Gantt bar resize snaps to half ticks
+Dragging a bar’s start/end snaps at **half the week-tick step** (twice as many points as the visible grid). Moving a bar still uses week ticks. Patch bumped.
+
+### 2026-08-19 – Gantt row chip corner radius
+Row heading pills use the same capped rounded-rect radius as timeline bars, so multi-line labels stay rectangular. Patch bumped.
+
+### 2026-08-19 – Gantt bar corner radius
+Tall Gantt bars keep a small rounded-rect radius (capped) instead of a full pill, so multi-line bars do not look circular. Patch bumped.
+
 ### 2026-08-19 – Gantt row drag and wrapping pills
 Dragging a timeline **bar up/down** reorders the whole row (left/right still slides it on the timeline). Row/bar pills grow with wrapped or two-line text. Patch bumped.
 
