@@ -95,6 +95,7 @@ import {
   LineChartShape,
   GridChartShape,
   GanttChartShape,
+  LoopChartShape,
   ProgressBarShape,
   TimelineBarShape,
   SegmentedRectangleShape,
@@ -162,6 +163,7 @@ import {
   patchGanttColumnTitle,
   patchGanttRowLabel,
 } from "@/lib/gantt-chart-ops";
+import { moveLoopItem, patchLoopHub, patchLoopItem } from "@/lib/loop-chart-ops";
 import { ganttGrowWidthForAddedColumns } from "@/lib/gantt-chart-layout";
 import { gridChartCellRunsCentered } from "@/lib/grid-chart-rich-node";
 import { readThemeMenuHueStepDegFromStorage } from "@/lib/theme-menu-hue-step";
@@ -1859,6 +1861,74 @@ function DiagramNodeInner({
           }
         />
       );
+    } else if (nodeType === "generic.chart.loop" || nodeType?.endsWith(".chart.loop")) {
+      const loopNode =
+        isDraggingCornerRadius && localCornerRadius !== null
+          ? { ...visualNode, cornerRadius: localCornerRadius }
+          : visualNode;
+      const loopInteractive = isSelected && !isReadOnly && !isMultiSelected;
+      const loopDragSession = !isReadOnly
+        ? (active: boolean) => {
+            chartValueDragInteractionRef.current = active;
+            onChartValueDragSessionChange?.(active);
+          }
+        : undefined;
+      const patchLoop = (next: import("@/lib/types").NodeChartSpecLoop) => {
+        if (!onUpdate) return;
+        onUpdate({ ...node, chart: next });
+      };
+      return (
+        <LoopChartShape
+          {...shapeProps}
+          node={loopNode}
+          isReadOnly={isReadOnly}
+          loopInteractive={loopInteractive}
+          onLoopDragSessionChange={loopDragSession}
+          onMoveLoopItem={
+            onUpdate && loopInteractive
+              ? (fromIndex, toIndex) => {
+                  const c = node.chart;
+                  if (c?.kind !== "loop") return;
+                  patchLoop(moveLoopItem(c, fromIndex, toIndex));
+                }
+              : undefined
+          }
+          onLoopHubChange={
+            onUpdate && !isReadOnly
+              ? (plainTitle, titleRuns, plainSubtitle, subtitleRuns) => {
+                  const c = node.chart;
+                  if (c?.kind !== "loop") return;
+                  const titleNorm = normalizeRuns(titleRuns);
+                  const subNorm = normalizeRuns(subtitleRuns);
+                  patchLoop(
+                    patchLoopHub(c, {
+                      title: plainTitle.trim() || undefined,
+                      subtitle: plainSubtitle.trim() || undefined,
+                      richTitle: titleNorm.length > 0 ? titleNorm : undefined,
+                      richSubtitle: subNorm.length > 0 ? subNorm : undefined,
+                    })
+                  );
+                }
+              : undefined
+          }
+          onLoopItemTextChange={
+            onUpdate && !isReadOnly
+              ? (itemId, field, plainText, runs) => {
+                  const c = node.chart;
+                  if (c?.kind !== "loop") return;
+                  const norm = normalizeRuns(runs);
+                  if (field === "title") {
+                    patchLoop(patchLoopItem(c, itemId, { title: plainText, richTitle: norm }));
+                  } else if (field === "subtitle") {
+                    patchLoop(patchLoopItem(c, itemId, { subtitle: plainText, richSubtitle: norm }));
+                  } else {
+                    patchLoop(patchLoopItem(c, itemId, { spokeLabel: plainText, richSpokeLabel: norm }));
+                  }
+                }
+              : undefined
+          }
+        />
+      );
     } else if (nodeType === 'generic.chart.line') {
       return (
         <LineChartShape
@@ -1978,7 +2048,9 @@ function DiagramNodeInner({
         node.chart?.kind !== "bar" &&
         node.chart?.kind !== "line" &&
         node.chart?.kind !== "ring" &&
-        node.chart?.kind !== "grid")
+        node.chart?.kind !== "grid" &&
+        node.chart?.kind !== "gantt" &&
+        node.chart?.kind !== "loop")
     ) {
       return (
         <PieChartShape
@@ -2096,7 +2168,7 @@ function DiagramNodeInner({
         ...(localControlPoints && { __localControlPoints: localControlPoints }),
       };
       return <LineShape {...shapeProps} node={lineNodeWithLocalPos} onClick={onClick} onContextMenu={onContextMenu} />;
-    } else if (nodeType === 'generic.object.loop' || nodeType?.endsWith('.loop')) {
+    } else if (nodeType === 'generic.object.loop' || nodeType?.endsWith('.object.loop')) {
       return <LoopShape {...shapeProps} node={visualNode} onClick={onClick} onContextMenu={onContextMenu} />;
     }
     return null;
@@ -2541,7 +2613,7 @@ function DiagramNodeInner({
   const spineLikeNode = isLineNode || isTimelineNode;
   /** Hover uses `filter: drop-shadow` on the frame, which makes a backdrop root and breaks frosted `backdrop-filter`. */
   const isFrostedBackground = (node as DiagramNodeData).backgroundStyle === "frosted";
-  const isLoopNode = node.type === 'generic.object.loop' || node.type?.endsWith('.loop');
+  const isLoopNode = node.type === 'generic.object.loop' || node.type?.endsWith('.object.loop');
   const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode || isTimelineNode);
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
    const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
@@ -2549,6 +2621,8 @@ function DiagramNodeInner({
     node.type === "generic.chart.grid" || node.type?.endsWith(".chart.grid");
   const isGanttChartNode =
     node.type === "generic.chart.gantt" || node.type?.endsWith(".chart.gantt");
+  const isLoopChartNode =
+    node.type === "generic.chart.loop" || node.type?.endsWith(".chart.loop");
   const isCardNode = isCardNodeType(node.type);
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
    const isMindmapCardNode = isMindmapNodeType(node.type);
@@ -2559,6 +2633,7 @@ function DiagramNodeInner({
      isRoundedRectangleNode ||
      isGridChartNode ||
      isGanttChartNode ||
+     isLoopChartNode ||
      isTextBoxHeadingNode ||
      mindmapBodyRounded ||
      isCardNode;
@@ -3014,6 +3089,7 @@ function DiagramNodeInner({
     const minWidth = isRichTextBoxLike ? 40 : isShapeNode ? 20 : 80;
     const minHeight = isRichTextBoxLike ? 40 : isShapeNode ? 20 : 40;
     const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
+    const isSquareLockedNode = isKiteNode || isLoopChartNode;
     
     let newX: number | undefined;
     let newY: number | undefined;
@@ -3022,11 +3098,11 @@ function DiagramNodeInner({
     switch (resizeHandle) {
       case 'right':
         newWidth = resizeStartPos.current.startWidth + deltaX;
-        if (isKiteNode) newHeight = newWidth;
+        if (isSquareLockedNode) newHeight = newWidth;
         break;
       case 'bottom':
         newHeight = resizeStartPos.current.startHeight + deltaY;
-        if (isKiteNode) newWidth = newHeight;
+        if (isSquareLockedNode) newWidth = newHeight;
         break;
       case 'bottom-right': {
         if (e.shiftKey) {
@@ -3043,7 +3119,7 @@ function DiagramNodeInner({
           newWidth = resizeStartPos.current.startWidth + deltaX;
           newHeight = resizeStartPos.current.startHeight + deltaY;
         }
-        if (isKiteNode) {
+        if (isSquareLockedNode) {
           const size = Math.max(newWidth, newHeight);
           newWidth = size;
           newHeight = size;
@@ -3053,13 +3129,13 @@ function DiagramNodeInner({
       case 'top':
         // Drag up = increase height (bottom stays fixed), drag down = decrease
         newHeight = Math.max(minHeight, resizeStartPos.current.startHeight - deltaY);
-        if (isKiteNode) newWidth = newHeight;
+        if (isSquareLockedNode) newWidth = newHeight;
         newY = startY + (resizeStartPos.current.startHeight - newHeight);
         break;
       case 'left':
         // Drag left = increase width (right stays fixed), drag right = decrease
         newWidth = Math.max(minWidth, resizeStartPos.current.startWidth - deltaX);
-        if (isKiteNode) newHeight = newWidth;
+        if (isSquareLockedNode) newHeight = newWidth;
         newX = startX + (resizeStartPos.current.startWidth - newWidth);
         break;
     }
@@ -3070,7 +3146,7 @@ function DiagramNodeInner({
       const iconTileSize = getIconTileAnchorSize(node as DiagramNodeData);
       newWidth = snapIconLabelWidthToGrid(newWidth, iconTileSize);
     }
-    if (isKiteNode) newHeight = newWidth; // ensure square after snap
+    if (isSquareLockedNode) newHeight = newWidth; // ensure square after snap
 
     // Recompute position for top/left after snapping (keep anchor edge fixed)
     if (resizeHandle === 'top' && newY !== undefined) {
@@ -4222,7 +4298,7 @@ function DiagramNodeInner({
       data-perf-shadow-suppressed={suppressShadowsDuringCanvasDrag ? "true" : undefined}
       data-dw-card-node={isCardNode ? "true" : undefined}
       data-dw-highlight-anim={
-        highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode
+        highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode && !isLoopChartNode
           ? "true"
           : undefined
       }
@@ -4236,6 +4312,7 @@ function DiagramNodeInner({
         spineLikeNode ||
           isGridChartNode ||
           isGanttChartNode ||
+          isLoopChartNode ||
           (isIconNode && Boolean((node as DiagramNodeData).iconBevel)) ||
           isCardNode
           ? "overflow-visible"
@@ -4244,7 +4321,7 @@ function DiagramNodeInner({
         node.highlightAnim &&
         !isDuplicateDragPreview &&
         !spineLikeNode &&
-        (highlightPulseUsesShapeSilhouette || isCardNode || isGridChartNode || isGanttChartNode)
+        (highlightPulseUsesShapeSilhouette || isCardNode || isGridChartNode || isGanttChartNode || isLoopChartNode)
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
@@ -4327,7 +4404,7 @@ function DiagramNodeInner({
         ...(spineLikeNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
-        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode
+        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode && !isLoopChartNode
           ? highlightAnimStyle
           : {}),
         // Layer show/hide animation (opacity, transition, transform)

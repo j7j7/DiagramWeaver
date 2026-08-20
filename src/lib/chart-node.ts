@@ -10,8 +10,10 @@ import type {
   NodeChartSpecRing,
   NodeChartSpecGrid,
   NodeChartSpecGantt,
+  NodeChartSpecLoop,
   ChartGridCell,
   GanttChartRow,
+  LoopChartItem,
   RichTextRun,
 } from "@/lib/types";
 import {
@@ -136,6 +138,10 @@ export function isGridChartNodeType(nodeType: string | undefined): boolean {
 
 export function isGanttChartNodeType(nodeType: string | undefined): boolean {
   return nodeType === "generic.chart.gantt" || !!nodeType?.endsWith(".chart.gantt");
+}
+
+export function isLoopChartNodeType(nodeType: string | undefined): boolean {
+  return nodeType === "generic.chart.loop" || !!nodeType?.endsWith(".chart.loop");
 }
 
 /** Non-negative chart datum rounded to at most 2 decimal places. */
@@ -507,6 +513,56 @@ export function defaultPaletteGridChartNodeProps(): Partial<DiagramNodeData> {
   } as Partial<DiagramNodeData>;
 }
 
+function loopItem(title: string, subtitle: string, spokeLabel?: string): LoopChartItem {
+  return {
+    id: newChartSliceId(),
+    title,
+    subtitle,
+    ...(spokeLabel ? { spokeLabel } : {}),
+  };
+}
+
+/** Sample loop matching the Generic → Object palette preview. */
+export function defaultLoopChartSpec(): NodeChartSpecLoop {
+  return {
+    kind: "loop",
+    title: "Shared memory",
+    subtitle: "one record, every loop",
+    items: [
+      loopItem("Capture", "signals in / intake", "SIGNALS"),
+      loopItem("Research", "evidence pulled"),
+      loopItem("Decide", "human approves"),
+      loopItem("Act", "work ships", "OUTCOMES"),
+      loopItem("Measure", "outcomes logged"),
+      loopItem("Learn", "playbook updated"),
+    ],
+    showInwardArrows: true,
+  };
+}
+
+/** Palette drop defaults for `generic.chart.loop` (fixed styling, no random theme). */
+export function defaultPaletteLoopChartNodeProps(): Partial<DiagramNodeData> {
+  return {
+    borderStyle: "none",
+    borderColor: "#e5e7eb",
+    borderWidth: 1,
+    backgroundStyle: "none",
+    backgroundColor: "#ffffff",
+    backgroundColors: ["#ffffff", "#f8fafc"],
+    lineStyle: "solid",
+    lineColor: "#4b5563",
+    lineWidth: 1.25,
+    lineOpacity: 1,
+    shadow: false,
+    textColor: "#374151",
+    textOpacity: 1,
+    fontFamily: "Inter, system-ui, sans-serif",
+    gradientAngle: 180,
+    textJustify: "center",
+    cornerRadius: 0.08,
+  } as Partial<DiagramNodeData>;
+}
+
 /** Palette / drop default chart payload from node `type`. */
 export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeChartSpec {
   if (nodeType === "generic.chart.bar") return randomBarChartSpec();
@@ -515,6 +571,8 @@ export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeC
     return defaultGridChartSpec();
   if (nodeType === "generic.chart.gantt" || nodeType?.endsWith(".chart.gantt"))
     return defaultGanttChartSpec();
+  if (nodeType === "generic.chart.loop" || nodeType?.endsWith(".chart.loop"))
+    return defaultLoopChartSpec();
   if (nodeType === "generic.chart.ring" || nodeType?.endsWith(".chart.ring"))
     return defaultRingChartSpec();
   return defaultPieChartSpec();

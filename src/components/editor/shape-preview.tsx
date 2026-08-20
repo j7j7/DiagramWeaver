@@ -4,10 +4,11 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath, boundingBoxFromSvgPolygonPointsString } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss, getTextOutlineShadowCss } from '@/lib/text-styling';
-import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecGantt, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
-import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultGanttChartSpec, defaultLineChartSpec, defaultPaletteGridChartNodeProps, defaultPaletteGanttChartNodeProps, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
+import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecGantt, NodeChartSpecLoop, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
+import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultGanttChartSpec, defaultLoopChartSpec, defaultLineChartSpec, defaultPaletteGridChartNodeProps, defaultPaletteGanttChartNodeProps, defaultPaletteLoopChartNodeProps, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
 import { buildGridChartLayout } from '@/lib/grid-chart-layout';
 import { buildGanttChartLayout } from '@/lib/gantt-chart-layout';
+import { buildLoopChartLayout, formatLoopArrowHeadPoints, loopItemRotateTransform } from '@/lib/loop-chart-layout';
 import {
   barChartWantsRoundedColumnEnds,
   barColumnAutoRoundRadius,
@@ -1190,6 +1191,69 @@ export function ShapePreview({
       );
     }
 
+    if (type === 'generic.chart.loop' || chart?.kind === 'loop') {
+      const spec: NodeChartSpecLoop =
+        chart?.kind === 'loop' ? chart : defaultLoopChartSpec();
+      const previewNode = {
+        id: "preview-loop",
+        type: "generic.chart.loop",
+        width: displayWidth,
+        height: displayHeight,
+        ...defaultPaletteLoopChartNodeProps(),
+      } as import("@/lib/types").DiagramNodeData;
+      const layout = buildLoopChartLayout(previewNode, spec);
+      const { body, hub } = layout;
+      const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      return (
+        <svg {...commonSvgProps} viewBox={`0 0 ${layout.vbW} ${layout.vbH}`} preserveAspectRatio="xMidYMid meet">
+          <rect
+            x={body.x}
+            y={body.y}
+            width={body.w}
+            height={body.h}
+            rx={body.rx}
+            ry={body.ry}
+            fill={effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={sw}
+            vectorEffect="non-scaling-stroke"
+          />
+          {layout.loopArrows.map((arrow, i) => (
+            <g key={`sp-loop-arc-${i}`}>
+              <path d={arrow.d} fill="none" stroke={layout.arrowColor} strokeWidth={layout.arrowWidth} strokeLinecap="butt" />
+              <polygon
+                points={formatLoopArrowHeadPoints(
+                  arrow.head.x,
+                  arrow.head.y,
+                  arrow.head.angle,
+                  layout.arrowHeadSize
+                )}
+                fill={layout.arrowColor}
+              />
+            </g>
+          ))}
+          {layout.spokes.map((spoke, i) => (
+            <line key={`sp-loop-sp-${i}`} x1={spoke.x1} y1={spoke.y1} x2={spoke.x2} y2={spoke.y2} stroke={layout.inwardArrowColor} strokeWidth={layout.arrowWidth * 0.9} strokeDasharray="3 2" />
+          ))}
+          <rect x={hub.x} y={hub.y} width={hub.w} height={hub.h} rx={hub.rx} fill={layout.hubFill} />
+          {layout.items.map((item) => (
+            <rect
+              key={`sp-loop-it-${item.id}`}
+              x={item.x}
+              y={item.y}
+              width={item.w}
+              height={item.h}
+              rx={item.rx}
+              fill={item.fill}
+              stroke={item.border}
+              strokeWidth={1}
+              transform={loopItemRotateTransform(item)}
+            />
+          ))}
+        </svg>
+      );
+    }
+
     if (type === 'generic.chart.ring' || chart?.kind === 'ring') {
       const spec: NodeChartSpecRing =
         chart?.kind === 'ring' ? chart : defaultRingChartSpec();
@@ -1796,7 +1860,7 @@ export function ShapePreview({
     }
 
     // Loop (sequence diagram self-loop - curved path)
-    if (type === 'generic.object.loop' || type?.endsWith('.loop')) {
+    if (type === 'generic.object.loop' || type?.endsWith('.object.loop')) {
       const lineColor = stroke || '#6b7280';
       const pathD = `M 0 0 C ${displayWidth} 0, ${displayWidth} ${displayHeight}, 0 ${displayHeight}`;
       return (

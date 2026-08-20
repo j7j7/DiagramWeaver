@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-19",
-  "count": 2431,
+  "generatedAt": "2026-08-20",
+  "count": 2432,
   "types": [
     [
       "alibabacloud.analytics.dataworks",
@@ -14277,6 +14277,14 @@
     [
       "generic.chart.gantt",
       "Gantt chart",
+      "generic",
+      "object",
+      "chart",
+      1
+    ],
+    [
+      "generic.chart.loop",
+      "Loop chart",
       "generic",
       "object",
       "chart",

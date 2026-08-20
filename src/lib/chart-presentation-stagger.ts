@@ -96,6 +96,10 @@ export function chartSegmentCountForStagger(node: DiagramNodeData): number {
   if (c.kind === "gantt") {
     return Array.isArray((c as { bars?: unknown[] }).bars) ? (c as { bars: unknown[] }).bars.length : 0;
   }
+  if (c.kind === "loop") {
+    const items = (c as { items?: unknown[] }).items;
+    return Array.isArray(items) ? items.length + 1 : 1;
+  }
   return 0;
 }
 

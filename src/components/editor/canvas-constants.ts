@@ -91,7 +91,7 @@ export const measureNodeDims = (n: PositionedNode) => {
   const isTextNode = n.type === 'generic.text.text';
   const isTextboxNode = n.type === 'generic.text.textbox';
   const isLineNode = isConnectorLineNodeType(n.type);
-  const isLoopNode = n.type === 'generic.object.loop' || n.type?.endsWith('.loop');
+  const isLoopNode = n.type === 'generic.object.loop' || n.type?.endsWith('.object.loop');
   const isShapeNode =
     !isIconOrEmojiType(n.type) &&
     !isLineNode &&

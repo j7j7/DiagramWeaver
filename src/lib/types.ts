@@ -370,6 +370,46 @@ export interface NodeChartSpecGantt {
   labelColWidth?: number;
 }
 
+/** Satellite step on a loop chart (`generic.chart.loop`). */
+export interface LoopChartItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  richTitle?: RichTextRun[];
+  richSubtitle?: RichTextRun[];
+  /** Optional label on the inward spoke (e.g. SIGNALS). */
+  spokeLabel?: string;
+  richSpokeLabel?: RichTextRun[];
+  fill?: string;
+  border?: string;
+  textColor?: string;
+}
+
+/** Circular process / cycle chart (`generic.chart.loop`). Hub in the centre, items around the ring. */
+export interface NodeChartSpecLoop {
+  kind: "loop";
+  title?: string;
+  subtitle?: string;
+  richTitle?: RichTextRun[];
+  richSubtitle?: RichTextRun[];
+  items: LoopChartItem[];
+  /** Dashed arrows from items toward the hub. Omitted = true. */
+  showInwardArrows?: boolean;
+  /** Rotate each box tangent to the ring (pie slices) with circular gap arcs. Omitted = false. */
+  rotateItems?: boolean;
+  hubFill?: string;
+  hubTextColor?: string;
+  hubBorder?: string;
+  itemFill?: string;
+  itemBorder?: string;
+  itemTextColor?: string;
+  arrowColor?: string;
+  inwardArrowColor?: string;
+  spokeLabelColor?: string;
+  /** Loop and inward arrow stroke width in SVG viewBox units (0.5–6; omitted scales with chart size). */
+  arrowWidth?: number;
+}
+
 /** Chart configuration on a node (`generic.chart.*`). */
 export type NodeChartSpec =
   | NodeChartSpecPie
@@ -377,7 +417,8 @@ export type NodeChartSpec =
   | NodeChartSpecLine
   | NodeChartSpecRing
   | NodeChartSpecGrid
-  | NodeChartSpecGantt;
+  | NodeChartSpecGantt
+  | NodeChartSpecLoop;
 
 /**
  * Card silhouette for `generic.object.timeline` / `generic.object.mind-map-node`; `type` stays timeline/mind-map.

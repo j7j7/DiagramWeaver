@@ -413,6 +413,40 @@ const NodeChartGanttSchema = z.object({
   labelColWidth: z.number().positive().optional(),
 });
 
+const LoopChartItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  subtitle: z.string().optional(),
+  richTitle: z.array(RichTextRunSchema).optional(),
+  richSubtitle: z.array(RichTextRunSchema).optional(),
+  spokeLabel: z.string().optional(),
+  richSpokeLabel: z.array(RichTextRunSchema).optional(),
+  fill: z.string().optional(),
+  border: z.string().optional(),
+  textColor: z.string().optional(),
+});
+
+const NodeChartLoopSchema = z.object({
+  kind: z.literal("loop"),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  richTitle: z.array(RichTextRunSchema).optional(),
+  richSubtitle: z.array(RichTextRunSchema).optional(),
+  items: z.array(LoopChartItemSchema).max(16),
+  showInwardArrows: z.boolean().optional(),
+  rotateItems: z.boolean().optional(),
+  hubFill: z.string().optional(),
+  hubTextColor: z.string().optional(),
+  hubBorder: z.string().optional(),
+  itemFill: z.string().optional(),
+  itemBorder: z.string().optional(),
+  itemTextColor: z.string().optional(),
+  arrowColor: z.string().optional(),
+  inwardArrowColor: z.string().optional(),
+  spokeLabelColor: z.string().optional(),
+  arrowWidth: z.number().min(0.5).max(6).optional(),
+});
+
 const NodeChartSpecSchema = z.discriminatedUnion("kind", [
   NodeChartPieSchema,
   NodeChartRingSchema,
@@ -420,6 +454,7 @@ const NodeChartSpecSchema = z.discriminatedUnion("kind", [
   NodeChartLineSchema,
   NodeChartGridSchema,
   NodeChartGanttSchema,
+  NodeChartLoopSchema,
 ]);
 
 function normalizeChartField(chart: unknown): unknown {
@@ -439,6 +474,7 @@ function normalizeChartField(chart: unknown): unknown {
   if (c.kind === "ring") return chart;
   if (c.kind === "grid") return chart;
   if (c.kind === "gantt") return chart;
+  if (c.kind === "loop") return chart;
   const series = c.series;
   if (
     Array.isArray(series) &&

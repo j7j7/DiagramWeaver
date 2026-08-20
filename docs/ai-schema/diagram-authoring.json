@@ -38,7 +38,7 @@
     "slug": "resource display name, spaces to hyphens, lower-case (e.g. 'EC2 Instance' → ec2-instance)",
     "remaps": [
       "generic text 'Text Box Heading' → generic.object.text-box-heading",
-      "generic object pie/bar/line/ring/grid/gantt chart → generic.chart.{pie|bar|line|ring|grid|gantt}",
+      "generic object pie/bar/line/ring/grid/gantt/loop chart → generic.chart.{pie|bar|line|ring|grid|gantt|loop}",
       "generic cards → generic.card.{template-id}",
       "generic borders → generic.border.{template-id}",
       "Lucide palette → generic.icon.{iconName slug} plus iconType lucide and iconName PascalCase",
@@ -117,6 +117,10 @@
         "generic.chart.gantt": [
           680,
           400
+        ],
+        "generic.chart.loop": [
+          520,
+          520
         ],
         "generic.object.uml-class": [
           120,
@@ -378,7 +382,7 @@
       "generic.text.textbox": "Multi-line box. Prefer richLabel for formatting."
     },
     "chart": {
-      "required": "chart object whose kind matches the type suffix (pie|bar|line|ring|grid|gantt).",
+      "required": "chart object whose kind matches the type suffix (pie|bar|line|ring|grid|gantt|loop).",
       "kinds": {
         "pie": {
           "type": "generic.chart.pie",
@@ -539,6 +543,32 @@
             ]
           },
           "bars": "start/end are fractional column units (0=first column start, cols=last column end). variant task|gate. Phase rows are headers and do not take bars. Optional colours: row.chipFill / row.labelColor; bar.fill / bar.border / bar.labelColor; chart taskBarFill, gateBarFill, taskChipFill, taskLabelColor, phaseLabelColor, gateLabelColor."
+        },
+        "loop": {
+          "type": "generic.chart.loop",
+          "role": "Circular process chart: square node, hub in the centre, items equally spaced around a ring, clockwise arrows between items. Optional dashed inward arrows from items to the hub.",
+          "chart": {
+            "kind": "loop",
+            "title": "Shared memory",
+            "subtitle": "one record, every loop",
+            "showInwardArrows": true,
+            "rotateItems": false,
+            "arrowWidth": 1.65,
+            "items": [
+              {
+                "id": "s1",
+                "title": "Capture",
+                "subtitle": "signals in / intake",
+                "spokeLabel": "SIGNALS"
+              },
+              {
+                "id": "s2",
+                "title": "Research",
+                "subtitle": "evidence pulled"
+              }
+            ]
+          },
+          "items": "Variable length (1–16). Layout places items evenly around the circle. spokeLabel is the optional inward-arrow caption. showInwardArrows false hides hub spokes. rotateItems true turns boxes tangent to the ring with circular pie-slice arrows. arrowWidth (0.5–6 SVG units) sets loop and inward arrow stroke thickness."
         }
       },
       "seriesFill": "fillStyle none|solid|gradient; gradientColors [start,end]; labelColor on slices."
@@ -690,10 +720,10 @@
     "Low-contrast grey-on-grey body text.",
     "Deprecated groups / rootGroupId keys."
   ],
-  "generatedAt": "2026-08-19",
+  "generatedAt": "2026-08-20",
   "catalogs": {
-    "typeCount": 2431,
-    "enabledTypeCount": 2134,
+    "typeCount": 2432,
+    "enabledTypeCount": 2135,
     "providers": [
       {
         "id": "alibabacloud",
@@ -1197,7 +1227,7 @@
         "id": "generic",
         "name": "Generic",
         "enabled": true,
-        "typeCount": 85,
+        "typeCount": 86,
         "categories": [
           {
             "id": "text",
@@ -1207,7 +1237,7 @@
           {
             "id": "object",
             "name": "Object",
-            "count": 31
+            "count": 32
           },
           {
             "id": "cards",
@@ -1784,6 +1814,12 @@
       {
         "type": "generic.chart.gantt",
         "name": "Gantt chart",
+        "family": "chart",
+        "category": "object"
+      },
+      {
+        "type": "generic.chart.loop",
+        "name": "Loop chart",
         "family": "chart",
         "category": "object"
       },
@@ -7001,6 +7037,40 @@
                 "start": 0.1,
                 "end": 1.2,
                 "variant": "task"
+              }
+            ]
+          }
+        },
+        {
+          "id": "cycle",
+          "type": "generic.chart.loop",
+          "x": 80,
+          "y": 760,
+          "width": 520,
+          "height": 520,
+          "sizeMode": "custom",
+          "chart": {
+            "kind": "loop",
+            "title": "Shared memory",
+            "subtitle": "one record, every loop",
+            "showInwardArrows": true,
+            "items": [
+              {
+                "id": "cap",
+                "title": "Capture",
+                "subtitle": "signals in / intake",
+                "spokeLabel": "SIGNALS"
+              },
+              {
+                "id": "res",
+                "title": "Research",
+                "subtitle": "evidence pulled"
+              },
+              {
+                "id": "act",
+                "title": "Act",
+                "subtitle": "work ships",
+                "spokeLabel": "OUTCOMES"
               }
             ]
           }

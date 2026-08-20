@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 63,
+  "totalResources": 64,
   "categories": {
     "text": {
       "name": "Text",
@@ -56,6 +56,11 @@
         {
           "name": "Gantt chart",
           "file": "gantt-chart.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Loop chart",
+          "file": "loop-chart.svg",
           "type": "shape"
         },
         {

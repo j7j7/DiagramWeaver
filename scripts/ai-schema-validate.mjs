@@ -101,6 +101,10 @@ export function validateLlmDiagram(diagram, options = {}) {
           errors.push(`${prefix} (${node.id}) gantt chart needs rows[]`);
         }
         if (!Array.isArray(node.chart.bars)) errors.push(`${prefix} (${node.id}) gantt chart needs bars[]`);
+      } else if (kind === "loop") {
+        if (!Array.isArray(node.chart.items)) {
+          errors.push(`${prefix} (${node.id}) loop chart needs items[]`);
+        }
       } else if (!Array.isArray(node.chart.series) || node.chart.series.length === 0) {
         errors.push(`${prefix} (${node.id}) chart.series must be a non-empty array`);
       }

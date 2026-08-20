@@ -31,6 +31,7 @@ export { BarChartShape } from './bar-chart-shape';
 export { LineChartShape } from './line-chart-shape';
 export { GridChartShape } from './grid-chart-shape';
 export { GanttChartShape } from './gantt-chart-shape';
+export { LoopChartShape } from './loop-chart-shape';
 export { CardShape } from './card-shape';
 export { BorderShape } from './border-shape';
 export { VectorPathShape } from './vector-path-shape';

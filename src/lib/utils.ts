@@ -40,7 +40,7 @@ export function isDiagramIconTileNodeType(
   if (iconType === "lucide" || iconType === "emoji") return true
   if (type === "generic.text.text" || type === "generic.text.textbox") return false
   if (isConnectorLineNodeType(type)) return false
-  const isLoopNode = type === "generic.object.loop" || type.endsWith(".loop")
+  const isLoopNode = type === "generic.object.loop" || type.endsWith(".object.loop")
   const isShapeNode =
     !isIconOrEmojiType(type) &&
     (isShapeNodeType(type) || isConnectorLineNodeType(type) || isLoopNode || isTimelineNodeType(type))

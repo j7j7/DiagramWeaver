@@ -60,6 +60,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
     const isRingChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'ring-chart';
     const isGridChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'grid-chart';
     const isGanttChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'gantt-chart';
+    const isLoopChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'loop-chart';
     const isCardPalette = provider === 'generic' && category === 'cards';
     const isBorderPalette = provider === 'generic' && category === 'borders';
     return {
@@ -77,6 +78,8 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                   ? 'generic.chart.grid'
                   : isGanttChartPalette
                     ? 'generic.chart.gantt'
+                    : isLoopChartPalette
+                      ? 'generic.chart.loop'
                   : isBorderPalette
                   ? `generic.border.${derivedSlug}`
                 : isCardPalette
@@ -106,6 +109,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   const isRingChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'ring-chart';
   const isGridChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'grid-chart';
   const isGanttChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'gantt-chart';
+  const isLoopChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'loop-chart';
   const isCloudPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'cloud';
   const isProgressBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'progress-bar';
   const isTimelineBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'timeline-bar';
@@ -151,6 +155,9 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
     }
     if (isGanttChartPalette) {
       return <ResourceIcon type="generic.chart.gantt" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
+    }
+    if (isLoopChartPalette) {
+      return <ResourceIcon type="generic.chart.loop" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;
     }
     if (isCloudPalette) {
       return <ResourceIcon type="generic.object.cloud" width={dim} height={dim} className={size === 'compact' ? 'max-h-[90%] max-w-[90%] shrink-0 object-contain' : 'shrink-0'} />;

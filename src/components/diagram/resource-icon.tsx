@@ -106,6 +106,21 @@ function ChartPaletteGridGlyph(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function ChartPaletteLoopGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <rect x="9.1" y="9.6" width="5.8" height="4.8" rx="1" fill="currentColor" opacity={0.92} />
+      <rect x="10.2" y="2.4" width="3.6" height="2.6" rx="0.55" fill="currentColor" opacity={0.45} />
+      <rect x="17.2" y="6.2" width="3.6" height="2.6" rx="0.55" fill="currentColor" opacity={0.45} />
+      <rect x="17.2" y="15.2" width="3.6" height="2.6" rx="0.55" fill="currentColor" opacity={0.7} />
+      <rect x="10.2" y="19" width="3.6" height="2.6" rx="0.55" fill="currentColor" opacity={0.45} />
+      <rect x="3.2" y="15.2" width="3.6" height="2.6" rx="0.55" fill="currentColor" opacity={0.45} />
+      <rect x="3.2" y="6.2" width="3.6" height="2.6" rx="0.55" fill="currentColor" opacity={0.45} />
+      <circle cx="12" cy="12" r="7.6" stroke="currentColor" strokeWidth={1.05} opacity={0.4} fill="none" />
+    </svg>
+  );
+}
+
 function ChartPaletteGanttGlyph(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
@@ -924,6 +939,9 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   }
   if (type === "generic.chart.gantt") {
     return <ChartPaletteGanttGlyph {...props} />;
+  }
+  if (type === "generic.chart.loop") {
+    return <ChartPaletteLoopGlyph {...props} />;
   }
 
   if (type?.startsWith("generic.border.")) {

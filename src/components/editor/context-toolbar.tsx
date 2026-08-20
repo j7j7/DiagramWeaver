@@ -122,6 +122,7 @@ import { extractLineStylingFromNode, applyLineStylingToNode, syncClosedConnector
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeExternalUrl, openExternalUrlInNewTab } from '@/lib/url-utils';
+import { isLoopChartNodeType } from '@/lib/chart-node';
 
 interface ContextToolbarProps {
   selectedItem: SelectedItem | null;
@@ -1531,6 +1532,9 @@ export function ContextToolbar({
       // Update nodes
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
         if (selectedItemIds.has(node.id)) {
+          if (isLoopChartNodeType(node.type)) {
+            return { ...node, width: value, height: value };
+          }
           return { ...node, width: value };
         }
         return node;
@@ -1549,7 +1553,11 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
-      onItemUpdate?.({ ...selectedItem, width: value } as SelectedItem);
+      if (isLoopChartNodeType((selectedItem as any)?.type)) {
+        onItemUpdate?.({ ...selectedItem, width: value, height: value } as SelectedItem);
+      } else {
+        onItemUpdate?.({ ...selectedItem, width: value } as SelectedItem);
+      }
     }
   };
 
@@ -1562,6 +1570,9 @@ export function ContextToolbar({
       // Update nodes
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
         if (selectedItemIds.has(node.id)) {
+          if (isLoopChartNodeType(node.type)) {
+            return { ...node, width: value, height: value };
+          }
           return { ...node, height: value };
         }
         return node;
@@ -1580,7 +1591,11 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
-      onItemUpdate?.({ ...selectedItem, height: value } as SelectedItem);
+      if (isLoopChartNodeType((selectedItem as any)?.type)) {
+        onItemUpdate?.({ ...selectedItem, width: value, height: value } as SelectedItem);
+      } else {
+        onItemUpdate?.({ ...selectedItem, height: value } as SelectedItem);
+      }
     }
   };
 
@@ -3088,10 +3103,12 @@ export function ContextToolbar({
                     (selectedItem as any)?.type === 'generic.object.mind-map-node' ||
                     (selectedItem as any)?.type === 'generic.chart.grid' ||
                     (selectedItem as any)?.type === 'generic.chart.gantt' ||
+                    (selectedItem as any)?.type === 'generic.chart.loop' ||
                     (selectedItem as any)?.type?.endsWith?.('.rounded-rectangle') ||
                     (selectedItem as any)?.type?.endsWith?.('.mind-map-node') ||
                     (selectedItem as any)?.type?.endsWith?.('.chart.grid') ||
-                    (selectedItem as any)?.type?.endsWith?.('.chart.gantt')
+                    (selectedItem as any)?.type?.endsWith?.('.chart.gantt') ||
+                    (selectedItem as any)?.type?.endsWith?.('.chart.loop')
                   }
                   isTextBoxHeading={
                     (selectedItem as any)?.type === 'generic.object.text-box-heading' ||

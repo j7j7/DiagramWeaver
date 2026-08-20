@@ -126,6 +126,26 @@
           { "id": "b-mr", "rowId": "mr", "start": 0.1, "end": 1.2, "variant": "task" }
         ]
       }
+    },
+    {
+      "id": "cycle",
+      "type": "generic.chart.loop",
+      "x": 80,
+      "y": 760,
+      "width": 520,
+      "height": 520,
+      "sizeMode": "custom",
+      "chart": {
+        "kind": "loop",
+        "title": "Shared memory",
+        "subtitle": "one record, every loop",
+        "showInwardArrows": true,
+        "items": [
+          { "id": "cap", "title": "Capture", "subtitle": "signals in / intake", "spokeLabel": "SIGNALS" },
+          { "id": "res", "title": "Research", "subtitle": "evidence pulled" },
+          { "id": "act", "title": "Act", "subtitle": "work ships", "spokeLabel": "OUTCOMES" }
+        ]
+      }
     }
   ],
   "connections": []

@@ -2,6 +2,30 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-20 – Loop chart thick arrowheads
+Loop arrow shafts end before the head (butt caps, shaft inset) and heads scale with `arrowWidth` so width 5 no longer shows a round cap through the tip. Patch bumped.
+
+### 2026-08-20 – Loop chart arrow thickness
+Loop chart data modal **Arrow thickness** slider (`chart.arrowWidth`, 0.5–6 SVG units) adjusts loop and inward arrow stroke width; arrowheads scale with it. Patch bumped.
+
+### 2026-08-20 – Loop pie-slice text upright
+With **Rotate items around the circle**, boxes on the lower half flip 180° so titles stay readable. Patch bumped.
+
+### 2026-08-20 – Loop pie-slice rotation
+Loop chart data modal **Rotate items around the circle** (`rotateItems`): boxes sit tangent on their pie slice and ring arrows are circular arcs. Off by default (upright boxes). Patch bumped.
+
+### 2026-08-20 – Loop chart stays square
+Loop chart node is always square (drop **520×520**, resize and width/height fields lock 1:1) so the satellite ring stays circular. Layout uses a square viewBox. Patch bumped.
+
+### 2026-08-20 – Loop arrows aim at box centres
+Ring arrows leave/enter at each satellite’s side-centre (clockwise tangent) and the head points at the box centre, so 4-item top/bottom boxes are no longer hit on the inner half. Patch bumped.
+
+### 2026-08-20 – Loop ring arrows through the gap
+Loop arrows start/end on the satellite box edges and curve through the midpoint of each gap (quadratic), so odd counts (e.g. 5) no longer leave a short leftover arc on the item-centre circle. Patch bumped.
+
+### 2026-08-20 – Loop chart
+New **Loop chart** in Generic → Object (`generic.chart.loop`, `chart.kind: 'loop'`): hub plus a variable ring of items, clockwise arrows, optional dashed inward spokes. Drag a satellite to reorder. Chart data modal edits hub/items and the inward-arrow toggle. Palette **`loop-chart.svg`**. Default drop **520×500**. Layout in **`loop-chart-layout.ts`** / **`loop-chart-ops.ts`**. Sequence-diagram `generic.object.loop` type checks now use `.object.loop` so they do not match the chart. Patch bumped.
+
 ### 2026-08-20 – Gantt modal bars inline colours
 Bars panel: row, start/end, variant, Fill/Border/Text swatches (tooltips only), and delete on one line. Patch bumped.
 

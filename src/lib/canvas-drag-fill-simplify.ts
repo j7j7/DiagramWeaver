@@ -146,6 +146,8 @@ function simplifyChart(chart: NodeChartSpec): NodeChartSpec {
     }
     case "gantt":
       return chart;
+    case "loop":
+      return chart;
     case "pie":
       return { ...chart, series: chart.series.map(simplifyChartSlice) };
     case "bar":

@@ -65,7 +65,7 @@ export function getClipboardTemplateNode(c: PasteSpecialClipboardLike | null): D
 }
 
 export type PastePropertyFamily =
-  | { kind: "chart"; chartKind: "pie" | "bar" | "line" | "ring" | "grid" | "gantt" }
+  | { kind: "chart"; chartKind: "pie" | "bar" | "line" | "ring" | "grid" | "gantt" | "loop" }
   | { kind: "card"; templateId: string }
   | { kind: "connectorLine" }
   | { kind: "timeline" }
@@ -75,13 +75,14 @@ export type PastePropertyFamily =
   | { kind: "icon" }
   | { kind: "resourceLabel" };
 
-function chartKindFromType(type: string): "pie" | "bar" | "line" | "ring" | "grid" | "gantt" | null {
+function chartKindFromType(type: string): "pie" | "bar" | "line" | "ring" | "grid" | "gantt" | "loop" | null {
   if (type === "generic.chart.pie" || type.endsWith(".chart.pie")) return "pie";
   if (type === "generic.chart.bar" || type.endsWith(".chart.bar")) return "bar";
   if (type === "generic.chart.line" || type.endsWith(".chart.line")) return "line";
   if (type === "generic.chart.ring" || type.endsWith(".chart.ring")) return "ring";
   if (type === "generic.chart.grid" || type.endsWith(".chart.grid")) return "grid";
   if (type === "generic.chart.gantt" || type.endsWith(".chart.gantt")) return "gantt";
+  if (type === "generic.chart.loop" || type.endsWith(".chart.loop")) return "loop";
   return null;
 }
 
@@ -312,6 +313,12 @@ function mergeChartProperties(target: NodeChartSpec, source: NodeChartSpec): Nod
     if (source.showAreaFill !== undefined) t.showAreaFill = source.showAreaFill;
     if (source.areaFillOpacity !== undefined) t.areaFillOpacity = source.areaFillOpacity;
     if (source.valuesLocked !== undefined) t.valuesLocked = source.valuesLocked;
+    return t;
+  }
+  if (t.kind === "loop" && source.kind === "loop") {
+    if (source.showInwardArrows !== undefined) t.showInwardArrows = source.showInwardArrows;
+    if (source.rotateItems !== undefined) t.rotateItems = source.rotateItems;
+    if (source.arrowWidth !== undefined) t.arrowWidth = source.arrowWidth;
     return t;
   }
   return t;
