@@ -3,6 +3,8 @@ import type {
   LoopChartItem,
   NodeChartSpecLoop,
 } from "@/lib/types";
+import { shiftHueOfColor } from "@/lib/color-shift";
+import { DIAGRAM_THEME_HUE_STEP_DEG } from "@/lib/theme-menu-hue-step";
 import { newChartSliceId } from "@/lib/grid-chart-layout";
 
 export const LOOP_MIN_ITEMS = 1;
@@ -46,8 +48,16 @@ export interface LoopLayoutItem {
 }
 
 export interface LoopLayoutArrow {
-  d: string;
   head: { x: number; y: number; angle: number };
+  color: string;
+  headSize: number;
+}
+
+export interface LoopLayoutRing {
+  cx: number;
+  cy: number;
+  r: number;
+  color: string;
 }
 
 export interface LoopLayoutSpoke {
@@ -79,6 +89,8 @@ export interface LoopChartLayout {
   titleFont: number;
   subtitleFont: number;
   items: LoopLayoutItem[];
+  /** Full circle stroke behind items (visible in gaps between boxes). */
+  loopRing: LoopLayoutRing | null;
   loopArrows: LoopLayoutArrow[];
   spokes: LoopLayoutSpoke[];
   showInwardArrows: boolean;
@@ -156,6 +168,31 @@ export function formatLoopArrowHeadPoints(
   return `${tipX},${tipY} ${ax},${ay} ${bx},${by}`;
 }
 
+/** Chevron marker centred on the ring — tip points clockwise along the tangent. */
+export function formatLoopRingChevronPoints(
+  centerX: number,
+  centerY: number,
+  angle: number,
+  size: number,
+  strokeWidth: number
+): string {
+  const back = size * 0.92;
+  const halfW = Math.max(strokeWidth * 1.35, size * 0.48);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const px = -sin;
+  const py = cos;
+  const tipX = centerX + back * (2 / 3) * cos;
+  const tipY = centerY + back * (2 / 3) * sin;
+  const baseCx = tipX - back * cos;
+  const baseCy = tipY - back * sin;
+  const lx = baseCx + halfW * px;
+  const ly = baseCy + halfW * py;
+  const rx = baseCx - halfW * px;
+  const ry = baseCy - halfW * py;
+  return `${tipX},${tipY} ${lx},${ly} ${rx},${ry}`;
+}
+
 function shortenSegment(
   x1: number,
   y1: number,
@@ -175,106 +212,86 @@ function shortenSegment(
   return { x1: x1 + ux * s, y1: y1 + uy * s, x2: x2 - ux * e, y2: y2 - uy * e };
 }
 
+/**
+ * Clockwise angular half-width blocked on a ring through item centres by an upright box.
+ * Uses tangential extent (not corner diagonal) so gap arcs stay long on the centre ring.
+ */
+function uprightBoxRingBlockedHalfWidth(
+  item: Pick<LoopLayoutItem, "angle" | "w" | "h">,
+  ringR: number
+): number {
+  const theta = item.angle;
+  const tx = -Math.sin(theta);
+  const ty = Math.cos(theta);
+  const hw = item.w / 2;
+  const hh = item.h / 2;
+  const tangentialReach = hw * Math.abs(tx) + hh * Math.abs(ty);
+  return Math.atan2(tangentialReach, Math.max(ringR, 1));
+}
+
+/** Ring radius: item-centre circle (upright) or tangent pie-slice ring (rotated). */
+function loopFlowRingRadius(rotateItems: boolean, itemCenterRadius: number, itemW: number): number {
+  if (rotateItems) {
+    return Math.hypot(itemCenterRadius, itemW / 2);
+  }
+  return itemCenterRadius;
+}
+
+/** Angular half-width blocked on the flow ring by one item. */
+function loopItemBlockedHalfWidth(
+  item: Pick<LoopLayoutItem, "angle" | "w" | "h">,
+  ringR: number,
+  rotateItems: boolean,
+  itemCenterRadius: number
+): number {
+  if (rotateItems) {
+    return Math.atan2(item.w / 2, Math.max(1, itemCenterRadius));
+  }
+  return uprightBoxRingBlockedHalfWidth(item, ringR);
+}
+
 function clockwiseMidAngle(from: number, to: number): number {
   let end = to;
   const twoPi = Math.PI * 2;
   while (end <= from) end += twoPi;
-  return from + (end - from) / 2;
+  return from + (end - from) * 0.5;
 }
 
-function offsetAtAngle(
-  x: number,
-  y: number,
-  angle: number,
-  dist: number
-): { x: number; y: number } {
-  return { x: x + dist * Math.cos(angle), y: y + dist * Math.sin(angle) };
-}
-
-/**
- * Ring arrow from box A to box B.
- * Attaches at the side-centres (clockwise tangent out of A, counter-clockwise into B)
- * so cardinal items hit mid-side; cubic handles keep the head aimed at B's centre.
- */
-function loopRingArrow(
+/** Chevron centred on the arc between two box centres (clockwise). */
+function loopSegmentArrowHead(
   a: LoopLayoutItem,
   b: LoopLayoutItem,
   cx: number,
   cy: number,
-  radius: number,
-  shaftInset: number
-): LoopLayoutArrow {
-  const outA = a.angle + Math.PI / 2;
-  const inB = b.angle - Math.PI / 2;
-  const rawStart = rayRectExit(a.cx, a.cy, a.w, a.h, outA);
-  const rawEnd = rayRectExit(b.cx, b.cy, b.w, b.h, inB);
-  const gap = Math.hypot(rawStart.x - rawEnd.x, rawStart.y - rawEnd.y);
-  const pad = Math.min(10, Math.max(5, gap * 0.08));
-  const start = offsetAtAngle(rawStart.x, rawStart.y, outA, pad);
-  const end = offsetAtAngle(rawEnd.x, rawEnd.y, inB, pad);
-  const mid = clockwiseMidAngle(a.angle, b.angle);
-  const ctrl = {
-    x: cx + radius * Math.cos(mid),
-    y: cy + radius * Math.sin(mid),
-  };
-  const handle = Math.min(
-    gap * 0.42,
-    radius * 0.42,
-    Math.hypot(ctrl.x - start.x, ctrl.y - start.y) * 0.7,
-    Math.hypot(ctrl.x - end.x, ctrl.y - end.y) * 0.7
-  );
-  const c1 = offsetAtAngle(start.x, start.y, outA, handle);
-  const headAngle = Math.atan2(b.cy - end.y, b.cx - end.x);
-  const shaftEnd = offsetAtAngle(end.x, end.y, headAngle + Math.PI, shaftInset);
-  const c2 = offsetAtAngle(shaftEnd.x, shaftEnd.y, inB, handle);
-  return {
-    d: `M ${start.x} ${start.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${shaftEnd.x} ${shaftEnd.y}`,
-    head: { x: end.x, y: end.y, angle: headAngle },
-  };
+  ringR: number,
+  rotateItems: boolean,
+  itemCenterRadius: number,
+  defaultHeadSize: number,
+  arrowWidth: number
+): { x: number; y: number; angle: number; headSize: number } {
+  const halfA = loopItemBlockedHalfWidth(a, ringR, rotateItems, itemCenterRadius);
+  const halfB = loopItemBlockedHalfWidth(b, ringR, rotateItems, itemCenterRadius);
+  let startA = a.angle + halfA;
+  let endA = b.angle - halfB;
+  const twoPi = Math.PI * 2;
+  while (endA <= startA) endA += twoPi;
+  const gapSpan = endA - startA;
+  const midAngle = clockwiseMidAngle(a.angle, b.angle);
+  const center = polar(cx, cy, ringR, midAngle);
+  const headAngle = midAngle + Math.PI / 2;
+  const gapChord = 2 * ringR * Math.sin(gapSpan / 2);
+  const headSize =
+    2 *
+    clamp(
+      Math.min(defaultHeadSize * 1.1, gapChord * 0.34, gapSpan * ringR * 0.38),
+      Math.max(arrowWidth * 2.5, 3.2),
+      defaultHeadSize * 1.25
+    );
+  return { x: center.x, y: center.y, angle: headAngle, headSize };
 }
 
 function polar(cx: number, cy: number, r: number, angle: number): { x: number; y: number } {
   return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
-}
-
-/**
- * Clockwise circular arc from the clockwise side of A to the counter-clockwise side of B
- * (pie-slice gap on the item ring).
- */
-function loopPieSliceArrow(
-  a: LoopLayoutItem,
-  b: LoopLayoutItem,
-  cx: number,
-  cy: number,
-  radius: number,
-  shaftInset: number
-): LoopLayoutArrow {
-  const hw = a.w / 2;
-  const half = Math.atan2(hw, Math.max(1, radius));
-  const r = Math.hypot(radius, hw);
-  let startA = a.angle + half;
-  let endA = b.angle - half;
-  const twoPi = Math.PI * 2;
-  while (endA <= startA) endA += twoPi;
-  const span = endA - startA;
-  const pad = Math.min(span * 0.12, 0.1);
-  startA += pad;
-  endA -= pad;
-  if (endA <= startA) {
-    const mid = (startA + endA + pad * 2) / 2;
-    startA = mid - 0.04;
-    endA = mid + 0.04;
-  }
-  const start = polar(cx, cy, r, startA);
-  const end = polar(cx, cy, r, endA);
-  const headAngle = endA + Math.PI / 2;
-  const shaftEndA = Math.max(startA + 0.02, endA - shaftInset / Math.max(r, 1));
-  const shaftEnd = polar(cx, cy, r, shaftEndA);
-  const large = shaftEndA - startA > Math.PI ? 1 : 0;
-  return {
-    d: `M ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${shaftEnd.x} ${shaftEnd.y}`,
-    head: { x: end.x, y: end.y, angle: headAngle },
-  };
 }
 
 export const LOOP_CHART_DEFAULT_SIDE = 520;
@@ -284,6 +301,48 @@ export function loopChartSquareSide(width?: number, height?: number): number {
   const w = typeof width === "number" && Number.isFinite(width) ? width : LOOP_CHART_DEFAULT_SIDE;
   const h = typeof height === "number" && Number.isFinite(height) ? height : w;
   return Math.max(160, Math.min(w, h));
+}
+
+export function resolveLoopItemHueStepDeg(chart: Pick<NodeChartSpecLoop, "itemHueStepDeg">): number {
+  if (typeof chart.itemHueStepDeg === "number" && Number.isFinite(chart.itemHueStepDeg)) {
+    return Math.min(360, Math.max(1, chart.itemHueStepDeg));
+  }
+  return DIAGRAM_THEME_HUE_STEP_DEG;
+}
+
+function loopItemFillBorder(
+  item: LoopChartItem,
+  index: number,
+  baseFill: string,
+  baseBorder: string,
+  itemColorMode: "same" | "hue-step",
+  hueStepDeg: number
+): { fill: string; border: string } {
+  const explicitFill = item.fill?.trim();
+  const explicitBorder = item.border?.trim();
+  if (itemColorMode === "hue-step") {
+    const delta = index * hueStepDeg;
+    return {
+      fill: explicitFill || shiftHueOfColor(baseFill, delta),
+      border: explicitBorder || shiftHueOfColor(baseBorder, delta),
+    };
+  }
+  return {
+    fill: explicitFill || baseFill,
+    border: explicitBorder || baseBorder,
+  };
+}
+
+function loopArrowColorForSegment(
+  segmentIndex: number,
+  baseArrowColor: string,
+  arrowColorMode: "fixed" | "hue-step",
+  hueStepDeg: number
+): string {
+  if (arrowColorMode === "hue-step") {
+    return shiftHueOfColor(baseArrowColor, segmentIndex * hueStepDeg);
+  }
+  return baseArrowColor;
 }
 
 export function buildLoopChartLayout(
@@ -342,11 +401,23 @@ export function buildLoopChartLayout(
   const itemFill = chart.itemFill?.trim() || LOOP_ITEM_FILL;
   const itemBorder = chart.itemBorder?.trim() || LOOP_ITEM_BORDER;
   const itemText = chart.itemTextColor?.trim() || LOOP_ITEM_TEXT;
+  const itemColorMode = chart.itemColorMode === "hue-step" ? "hue-step" : "same";
+  const arrowColorMode = chart.arrowColorMode === "hue-step" ? "hue-step" : "fixed";
+  const hueStepDeg = resolveLoopItemHueStepDeg(chart);
+  const baseArrowColor = chart.arrowColor?.trim() || LOOP_ARROW;
 
   const items: LoopLayoutItem[] = itemsIn.map((item, i) => {
     const angle = startAngle + i * step;
     const ix = cx + radius * Math.cos(angle);
     const iy = cy + radius * Math.sin(angle);
+    const { fill, border } = loopItemFillBorder(
+      item,
+      i,
+      itemFill,
+      itemBorder,
+      itemColorMode,
+      hueStepDeg
+    );
     return {
       index: i,
       id: item.id,
@@ -362,8 +433,8 @@ export function buildLoopChartLayout(
       title: item.title,
       subtitle: item.subtitle ?? "",
       spokeLabel: item.spokeLabel ?? "",
-      fill: item.fill?.trim() || itemFill,
-      border: item.border?.trim() || itemBorder,
+      fill,
+      border,
       textColor: item.textColor?.trim() || itemText,
       titleFont,
       subtitleFont,
@@ -380,16 +451,30 @@ export function buildLoopChartLayout(
   const loopShaftTrim = loopShaftInset(arrowHeadSize, arrowWidth);
   const inwardShaftTrim = loopShaftInset(inwardArrowHeadSize, arrowWidth * 0.9);
 
+  let loopRing: LoopLayoutRing | null = null;
   const loopArrows: LoopLayoutArrow[] = [];
   if (n >= 2) {
+    const ringR = loopFlowRingRadius(rotateItems, radius, itemW);
+    loopRing = { cx, cy, r: ringR, color: baseArrowColor };
     for (let i = 0; i < n; i++) {
       const a = items[i]!;
       const b = items[(i + 1) % n]!;
-      loopArrows.push(
-        rotateItems
-          ? loopPieSliceArrow(a, b, cx, cy, radius, loopShaftTrim)
-          : loopRingArrow(a, b, cx, cy, radius, loopShaftTrim)
+      const head = loopSegmentArrowHead(
+        a,
+        b,
+        cx,
+        cy,
+        ringR,
+        rotateItems,
+        radius,
+        arrowHeadSize,
+        arrowWidth
       );
+      loopArrows.push({
+        head: { x: head.x, y: head.y, angle: head.angle },
+        headSize: head.headSize,
+        color: loopArrowColorForSegment(i, baseArrowColor, arrowColorMode, hueStepDeg),
+      });
     }
   }
 
@@ -456,6 +541,7 @@ export function buildLoopChartLayout(
     titleFont: clamp(hubH * 0.28, 11, 18),
     subtitleFont: clamp(hubH * 0.18, 8, 12),
     items,
+    loopRing,
     loopArrows,
     spokes,
     showInwardArrows,

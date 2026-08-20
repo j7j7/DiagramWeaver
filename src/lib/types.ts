@@ -403,7 +403,13 @@ export interface NodeChartSpecLoop {
   itemFill?: string;
   itemBorder?: string;
   itemTextColor?: string;
+  /** `same` = every item uses itemFill/itemBorder; `hue-step` = shift per item around the ring. */
+  itemColorMode?: "same" | "hue-step";
+  /** Degrees added per item when `itemColorMode` is `hue-step` (1–360; default Themes menu step). */
+  itemHueStepDeg?: number;
   arrowColor?: string;
+  /** `fixed` = one arrow colour; `hue-step` = shift per segment using `itemHueStepDeg`. */
+  arrowColorMode?: "fixed" | "hue-step";
   inwardArrowColor?: string;
   spokeLabelColor?: string;
   /** Loop and inward arrow stroke width in SVG viewBox units (0.5–6; omitted scales with chart size). */

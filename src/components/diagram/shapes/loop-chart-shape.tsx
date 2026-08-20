@@ -12,6 +12,7 @@ import { svgUserPointFromClient } from "@/lib/chart-pointer-geometry";
 import {
   buildLoopChartLayout,
   formatLoopArrowHeadPoints,
+  formatLoopRingChevronPoints,
   loopItemRotateTransform,
   loopItemRotation,
   loopItemSlotIndexFromAngle,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/loop-chart-layout";
 import { defaultLoopChartSpec } from "@/lib/chart-node";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getShapeSvgFill } from "./shape-utils";
+import { getShapeStyles, getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 import { getHighlightAnimStyleForNode, mergeCardShellHighlightStyle } from "@/lib/highlight-anim";
 
@@ -135,7 +136,8 @@ export function LoopChartShape(props: LoopChartShapeProps) {
     }
   );
   const shellBorderRadius = `${Math.max(0, body.rx)}px`;
-  const preserveShellHalo = loopInteractive || !!shellHighlightStyle;
+  const hasVisualShadow = getShapeStyles(node).shadow;
+  const preserveShellHalo = loopInteractive || !!shellHighlightStyle || hasVisualShadow;
 
   const runsFor = (plain: string, rich?: RichTextRun[]) => {
     const resolved = rich?.length
@@ -348,27 +350,17 @@ export function LoopChartShape(props: LoopChartShapeProps) {
         strokeDasharray={strokeDasharray}
         vectorEffect="non-scaling-stroke"
       />
-      {layout.loopArrows.map((arrow, i) => (
-        <g key={`arc-${i}`}>
-          <path
-            d={arrow.d}
-            fill="none"
-            stroke={layout.arrowColor}
-            strokeWidth={layout.arrowWidth}
-            strokeLinecap="butt"
-            vectorEffect="non-scaling-stroke"
-          />
-          <polygon
-            points={formatLoopArrowHeadPoints(
-              arrow.head.x,
-              arrow.head.y,
-              arrow.head.angle,
-              layout.arrowHeadSize
-            )}
-            fill={layout.arrowColor}
-          />
-        </g>
-      ))}
+      {layout.loopRing ? (
+        <circle
+          cx={layout.loopRing.cx}
+          cy={layout.loopRing.cy}
+          r={layout.loopRing.r}
+          fill="none"
+          stroke={layout.loopRing.color}
+          strokeWidth={layout.arrowWidth}
+          vectorEffect="non-scaling-stroke"
+        />
+      ) : null}
       {layout.showInwardArrows
         ? layout.spokes.map((spoke) => {
             const item = layout.items[spoke.itemIndex];
@@ -536,6 +528,19 @@ export function LoopChartShape(props: LoopChartShapeProps) {
           </g>
         );
       })}
+      {layout.loopArrows.map((arrow, i) => (
+        <polygon
+          key={`loop-head-${i}`}
+          points={formatLoopRingChevronPoints(
+            arrow.head.x,
+            arrow.head.y,
+            arrow.head.angle,
+            arrow.headSize,
+            layout.arrowWidth
+          )}
+          fill={arrow.color}
+        />
+      ))}
     </>
   );
 
@@ -559,7 +564,7 @@ export function LoopChartShape(props: LoopChartShapeProps) {
         borderRadius={shellBorderRadius}
         frostedClipRectInViewBox={{ x: body.x, y: body.y, w: body.w, h: body.h, rx: body.rx, ry: body.ry }}
         slideColorTransition={slideColorTransition}
-        svgOverflowVisible={loopInteractive}
+        svgOverflowVisible={loopInteractive || hasVisualShadow}
         preserveShellHalo={preserveShellHalo}
         omitShapeText
         svgContent={svgContent}

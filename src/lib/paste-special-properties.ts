@@ -318,6 +318,9 @@ function mergeChartProperties(target: NodeChartSpec, source: NodeChartSpec): Nod
   if (t.kind === "loop" && source.kind === "loop") {
     if (source.showInwardArrows !== undefined) t.showInwardArrows = source.showInwardArrows;
     if (source.rotateItems !== undefined) t.rotateItems = source.rotateItems;
+    if (source.itemColorMode !== undefined) t.itemColorMode = source.itemColorMode;
+    if (source.itemHueStepDeg !== undefined) t.itemHueStepDeg = source.itemHueStepDeg;
+    if (source.arrowColorMode !== undefined) t.arrowColorMode = source.arrowColorMode;
     if (source.arrowWidth !== undefined) t.arrowWidth = source.arrowWidth;
     return t;
   }

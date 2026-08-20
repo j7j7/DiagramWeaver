@@ -8,6 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { ColorPicker } from "@/components/ui/color-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { LoopChartItem, NodeChartSpecLoop } from "@/lib/types";
 import { defaultLoopChartSpec } from "@/lib/chart-node";
 import {
@@ -23,6 +30,7 @@ import {
   LOOP_MAX_ITEMS,
   LOOP_MIN_ITEMS,
   normalizeLoopItems,
+  resolveLoopItemHueStepDeg,
 } from "@/lib/loop-chart-layout";
 import { deleteLoopItemAt, insertLoopItemAt } from "@/lib/loop-chart-ops";
 
@@ -49,6 +57,9 @@ export function LoopChartDataFields({ chart, isReadOnly, onPatch }: LoopChartDat
     typeof chart.arrowWidth === "number" && Number.isFinite(chart.arrowWidth)
       ? Math.min(LOOP_ARROW_WIDTH_MAX, Math.max(LOOP_ARROW_WIDTH_MIN, chart.arrowWidth))
       : LOOP_ARROW_WIDTH_DEFAULT;
+  const itemColorMode = chart.itemColorMode === "hue-step" ? "hue-step" : "same";
+  const arrowColorMode = chart.arrowColorMode === "hue-step" ? "hue-step" : "fixed";
+  const hueStepDeg = resolveLoopItemHueStepDeg(chart);
 
   return (
     <div className="space-y-4">
@@ -144,6 +155,77 @@ export function LoopChartDataFields({ chart, isReadOnly, onPatch }: LoopChartDat
             />
           </div>
         </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground">Item colours</Label>
+            <Select
+              value={itemColorMode}
+              disabled={isReadOnly}
+              onValueChange={(v) =>
+                onPatch({
+                  ...chart,
+                  kind: "loop",
+                  itemColorMode: v === "hue-step" ? "hue-step" : "same",
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="same">Same for all items</SelectItem>
+                <SelectItem value="hue-step">Hue step around ring</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground">Loop arrow colour</Label>
+            <Select
+              value={arrowColorMode}
+              disabled={isReadOnly}
+              onValueChange={(v) =>
+                onPatch({
+                  ...chart,
+                  kind: "loop",
+                  arrowColorMode: v === "hue-step" ? "hue-step" : "fixed",
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fixed">Fixed colour</SelectItem>
+                <SelectItem value="hue-step">Hue step per segment</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {itemColorMode === "hue-step" || arrowColorMode === "hue-step" ? (
+          <div className="space-y-2 pt-3">
+            <div className="flex justify-between gap-2">
+              <Label className="text-xs">Hue step (°)</Label>
+              <span className="text-xs tabular-nums text-muted-foreground">{hueStepDeg}°</span>
+            </div>
+            <Slider
+              value={[hueStepDeg]}
+              onValueChange={(v) =>
+                onPatch({
+                  ...chart,
+                  kind: "loop",
+                  itemHueStepDeg: Math.min(360, Math.max(1, Math.round(v[0] ?? hueStepDeg))),
+                })
+              }
+              min={1}
+              max={360}
+              step={1}
+              disabled={isReadOnly}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Shifts item fill and border per step; loop arrows use the same step when set to hue step.
+            </p>
+          </div>
+        ) : null}
         <div className="space-y-2 pt-3">
           <div className="flex justify-between gap-2">
             <Label className="text-xs">Arrow thickness</Label>

@@ -2,6 +2,27 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-20 – Loop ring chevron markers
+Gap arrowheads sit at arc midpoints, point clockwise along the ring tangent, and use a wider chevron matched to stroke width (segment-junction style). Patch bumped.
+
+### 2026-08-20 – Loop ring arrowhead aim
+Ring segment arrowheads sit ~82% along each gap toward the target box, aim at its centre, and scale to gap width. Patch bumped.
+
+### 2026-08-20 – Loop chart ring-behind flow
+Default loop flow: one full `<circle>` ring behind hub/items (centre radius), boxes mask the stroke, arrowheads on each gap segment rendered above items. Patch bumped.
+
+### 2026-08-20 – Loop upright ring arc length
+Default layout ring arrows use tangential (not corner) box half-width on the centre ring and minimal end padding so gap arcs match the green centre-circle reference. Patch bumped.
+
+### 2026-08-20 – Loop chart hue step + centre-ring arrows
+Default layout ring arrows use the item-centre radius (proper circle through satellite positions). Chart data modal: **Item colours** (same / hue step), **Loop arrow colour** (fixed / hue step), **Hue step (°)** slider shifts item fill+border and optional arrow segments. Patch bumped.
+
+### 2026-08-20 – Loop chart upright circular arrows
+Default (non-rotated) loop layout draws ring arrows as circular arcs on one shared radius through the gaps between upright boxes, matching the rotate-items ring style. Patch bumped.
+
+### 2026-08-20 – Loop chart visual-style shadow clip
+Visual-style **Shadow** on loop charts no longer clips at the shell: `preserveShellHalo` / `svgOverflowVisible` when `node.shadow` is on (same pattern as interactive halo). Patch bumped.
+
 ### 2026-08-20 – Loop chart thick arrowheads
 Loop arrow shafts end before the head (butt caps, shaft inset) and heads scale with `arrowWidth` so width 5 no longer shows a round cap through the tip. Patch bumped.
 

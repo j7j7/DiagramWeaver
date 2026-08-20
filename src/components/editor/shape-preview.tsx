@@ -8,7 +8,7 @@ import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecG
 import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultGanttChartSpec, defaultLoopChartSpec, defaultLineChartSpec, defaultPaletteGridChartNodeProps, defaultPaletteGanttChartNodeProps, defaultPaletteLoopChartNodeProps, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
 import { buildGridChartLayout } from '@/lib/grid-chart-layout';
 import { buildGanttChartLayout } from '@/lib/gantt-chart-layout';
-import { buildLoopChartLayout, formatLoopArrowHeadPoints, loopItemRotateTransform } from '@/lib/loop-chart-layout';
+import { buildLoopChartLayout, formatLoopRingChevronPoints, loopItemRotateTransform } from '@/lib/loop-chart-layout';
 import {
   barChartWantsRoundedColumnEnds,
   barColumnAutoRoundRadius,
@@ -1218,20 +1218,16 @@ export function ShapePreview({
             strokeWidth={sw}
             vectorEffect="non-scaling-stroke"
           />
-          {layout.loopArrows.map((arrow, i) => (
-            <g key={`sp-loop-arc-${i}`}>
-              <path d={arrow.d} fill="none" stroke={layout.arrowColor} strokeWidth={layout.arrowWidth} strokeLinecap="butt" />
-              <polygon
-                points={formatLoopArrowHeadPoints(
-                  arrow.head.x,
-                  arrow.head.y,
-                  arrow.head.angle,
-                  layout.arrowHeadSize
-                )}
-                fill={layout.arrowColor}
-              />
-            </g>
-          ))}
+          {layout.loopRing ? (
+            <circle
+              cx={layout.loopRing.cx}
+              cy={layout.loopRing.cy}
+              r={layout.loopRing.r}
+              fill="none"
+              stroke={layout.loopRing.color}
+              strokeWidth={layout.arrowWidth}
+            />
+          ) : null}
           {layout.spokes.map((spoke, i) => (
             <line key={`sp-loop-sp-${i}`} x1={spoke.x1} y1={spoke.y1} x2={spoke.x2} y2={spoke.y2} stroke={layout.inwardArrowColor} strokeWidth={layout.arrowWidth * 0.9} strokeDasharray="3 2" />
           ))}
@@ -1248,6 +1244,19 @@ export function ShapePreview({
               stroke={item.border}
               strokeWidth={1}
               transform={loopItemRotateTransform(item)}
+            />
+          ))}
+          {layout.loopArrows.map((arrow, i) => (
+            <polygon
+              key={`sp-loop-head-${i}`}
+              points={formatLoopRingChevronPoints(
+                arrow.head.x,
+                arrow.head.y,
+                arrow.head.angle,
+                arrow.headSize,
+                layout.arrowWidth
+              )}
+              fill={arrow.color}
             />
           ))}
         </svg>
