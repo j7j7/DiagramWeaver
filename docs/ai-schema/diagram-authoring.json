@@ -576,16 +576,18 @@
         },
         "arrow": {
           "type": "generic.chart.arrow",
-          "role": "Segmented circular process arrows: square node, variable wedges with labels, clockwise or anticlockwise flow. arrowStyle chevron|triangle|overlap. colorMode same|hint|hue-step.",
+          "role": "Segmented circular process arrows: square node, variable wedges with labels, clockwise or anticlockwise flow. arrowStyle chevron|triangle|overlap. colorMode same|hint|hue-step. segmentFillStyle solid|gradient (gradient follows each arc: segmentFillStart at the tail, segmentFill at the head).",
           "chart": {
             "kind": "arrow",
             "arrowStyle": "chevron",
             "direction": "clockwise",
             "colorMode": "hue-step",
+            "segmentFillStyle": "solid",
             "segmentFill": "#4f46e5",
             "hueStepDeg": 51,
             "innerRatio": 0.52,
             "gapDeg": 3,
+            "segmentBorderWidth": 0,
             "items": [
               {
                 "id": "s1",
@@ -597,7 +599,7 @@
               }
             ]
           },
-          "items": "Variable length (2–16). Text sits in each wedge. hint tints one fill; hue-step rotates hue per segment."
+          "items": "Variable length (2–16). Text sits in each wedge. hint tints one fill; hue-step rotates hue per segment. Optional segmentBorder + segmentBorderWidth (0–8) outlines each wedge. segmentFillStyle gradient blends segmentFillStart (tail) to segmentFill (head) along the arc. Rounded overlap always uses gapDeg 0 (segments touch)."
         }
       },
       "seriesFill": "fillStyle none|solid|gradient; gradientColors [start,end]; labelColor on slices."

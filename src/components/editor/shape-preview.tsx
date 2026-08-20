@@ -11,6 +11,12 @@ import { buildGanttChartLayout } from '@/lib/gantt-chart-layout';
 import { buildLoopChartLayout, formatLoopRingChevronPoints, loopItemRotateTransform } from '@/lib/loop-chart-layout';
 import { buildArrowChartLayout } from '@/lib/arrow-chart-layout';
 import {
+  ArrowChartSegmentGradientDefs,
+  ArrowChartTailBorderMaskDefs,
+  ArrowSegmentGradientLayer,
+  arrowTailBorderMaskId,
+} from '@/components/diagram/shapes/arrow-chart-segment-paint';
+import {
   barChartWantsRoundedColumnEnds,
   barColumnAutoRoundRadius,
   barColumnClipPathHorizontal,
@@ -267,6 +273,7 @@ export function ShapePreview({
   const labelTextShadow = [textOutlineShadow, textEffectsShadow].filter(Boolean).join(', ') || undefined;
   const gradientId = useId();
   const borderGradientId = useId();
+  const arrowGradId = `dw-arw-pv-${useId().replace(/:/g, "")}`;
   const isPlainRectangle = type === 'generic.object.rectangle' || type?.endsWith('.rectangle');
   const isDefaultRectanglePreview =
     isPlainRectangle &&
@@ -1283,6 +1290,20 @@ export function ShapePreview({
       const ringW = layout.rOuter - layout.rInner;
       return (
         <svg {...commonSvgProps} viewBox={`0 0 ${layout.vbW} ${layout.vbH}`} preserveAspectRatio="xMidYMid meet">
+          <ArrowChartSegmentGradientDefs
+            items={layout.items}
+            ringW={ringW}
+            vbW={layout.vbW}
+            vbH={layout.vbH}
+            idBase={arrowGradId}
+          />
+          <ArrowChartTailBorderMaskDefs
+            items={layout.items}
+            idBase={arrowGradId}
+            borderW={borderW}
+            vbW={layout.vbW}
+            vbH={layout.vbH}
+          />
           <rect
             x={body.x}
             y={body.y}
@@ -1297,6 +1318,7 @@ export function ShapePreview({
           />
           {bodyOrder.map((item) => {
             const strokeArc = item.paint === "stroke-arc";
+            const gradient = item.fillStyle === "gradient";
             return (
               <g key={`sp-arrow-${item.id}`}>
                 {strokeArc && borderW > 0 ? (
@@ -1309,19 +1331,76 @@ export function ShapePreview({
                     strokeLinejoin="round"
                   />
                 ) : null}
-                <path
-                  d={item.path}
-                  fill={strokeArc ? "none" : item.fill}
-                  stroke={strokeArc ? item.fill : "none"}
-                  strokeWidth={strokeArc ? ringW : undefined}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
+                {gradient ? (
+                  <ArrowSegmentGradientLayer
+                    item={item}
+                    idBase={arrowGradId}
+                    layer="body"
+                    cx={layout.cx}
+                    cy={layout.cy}
+                    rFan={layout.rFan}
+                    clockwise={layout.clockwise}
+                  />
+                ) : (
+                  <path
+                    d={item.path}
+                    fill={strokeArc ? "none" : item.fill}
+                    stroke={strokeArc ? item.fill : "none"}
+                    strokeWidth={strokeArc ? ringW : undefined}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                )}
               </g>
             );
           })}
+          {borderW > 0
+            ? bodyOrder.map((item) =>
+                item.paint === "fill" ? (
+                  <path
+                    key={`sp-arrow-b-${item.id}`}
+                    d={item.bodyBorder ?? item.path}
+                    fill="none"
+                    stroke={borderColor}
+                    strokeWidth={borderW}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                ) : null
+              )
+            : null}
+          {borderW > 0
+            ? bodyOrder.map((item) =>
+                item.tailBorder ? (
+                  <path
+                    key={`sp-arrow-tail-b-${item.id}`}
+                    d={item.tailBorder}
+                    mask={`url(#${arrowTailBorderMaskId(arrowGradId, item.id)})`}
+                    fill="none"
+                    stroke={borderColor}
+                    strokeWidth={borderW}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                ) : null
+              )
+            : null}
           {layout.items.map((item) => {
             const strokeArc = item.paint === "stroke-arc";
+            if (item.fillStyle === "gradient") {
+              return (
+                <ArrowSegmentGradientLayer
+                  key={`sp-arrow-head-${item.id}`}
+                  item={item}
+                  idBase={arrowGradId}
+                  layer="head"
+                  cx={layout.cx}
+                  cy={layout.cy}
+                  rFan={layout.rFan}
+                  clockwise={layout.clockwise}
+                />
+              );
+            }
             return (
               <path
                 key={`sp-arrow-head-${item.id}`}
@@ -1334,21 +1413,6 @@ export function ShapePreview({
               />
             );
           })}
-          {borderW > 0
-            ? bodyOrder.map((item) =>
-                item.paint === "fill" ? (
-                  <path
-                    key={`sp-arrow-b-${item.id}`}
-                    d={item.path}
-                    fill="none"
-                    stroke={borderColor}
-                    strokeWidth={borderW}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                ) : null
-              )
-            : null}
           {borderW > 0
             ? layout.items.map((item) =>
                 item.paint === "fill" ? (

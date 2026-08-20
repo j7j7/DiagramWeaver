@@ -149,7 +149,8 @@ function simplifyChart(chart: NodeChartSpec): NodeChartSpec {
     case "loop":
       return chart;
     case "arrow":
-      return chart;
+      if (chart.segmentFillStyle !== "gradient") return chart;
+      return { ...chart, segmentFillStyle: "solid" as const };
     case "pie":
       return { ...chart, series: chart.series.map(simplifyChartSlice) };
     case "bar":

@@ -21,6 +21,7 @@ import {
   ARROW_GAP_DEG_DEFAULT,
   ARROW_GAP_DEG_MAX,
   ARROW_GAP_DEG_MIN,
+  ARROW_GAP_DEG_OVERLAP,
   ARROW_INNER_RATIO_DEFAULT,
   ARROW_INNER_RATIO_MAX,
   ARROW_INNER_RATIO_MIN,
@@ -31,9 +32,12 @@ import {
   ARROW_SEGMENT_BORDER_WIDTH_MAX,
   ARROW_SEGMENT_BORDER_WIDTH_MIN,
   ARROW_SEGMENT_FILL,
+  defaultArrowSegmentFillStart,
   normalizeArrowItems,
   resolveArrowColorMode,
   resolveArrowDirection,
+  resolveArrowFillStyle,
+  resolveArrowGapDeg,
   resolveArrowHueStepDeg,
   resolveArrowStyle,
 } from "@/lib/arrow-chart-layout";
@@ -61,15 +65,16 @@ export function ArrowChartDataFields({ chart, isReadOnly, onPatch }: ArrowChartD
   const arrowStyle = resolveArrowStyle(chart);
   const direction = resolveArrowDirection(chart);
   const colorMode = resolveArrowColorMode(chart);
+  const fillStyle = resolveArrowFillStyle(chart);
   const hueStepDeg = resolveArrowHueStepDeg(chart);
+  const segmentFill = chart.segmentFill?.trim() || ARROW_SEGMENT_FILL;
+  const segmentFillStart = chart.segmentFillStart?.trim() || defaultArrowSegmentFillStart(segmentFill);
   const innerRatio =
     typeof chart.innerRatio === "number" && Number.isFinite(chart.innerRatio)
       ? Math.min(ARROW_INNER_RATIO_MAX, Math.max(ARROW_INNER_RATIO_MIN, chart.innerRatio))
       : ARROW_INNER_RATIO_DEFAULT;
-  const gapDeg =
-    typeof chart.gapDeg === "number" && Number.isFinite(chart.gapDeg)
-      ? Math.min(ARROW_GAP_DEG_MAX, Math.max(ARROW_GAP_DEG_MIN, chart.gapDeg))
-      : ARROW_GAP_DEG_DEFAULT;
+  const gapDeg = resolveArrowGapDeg(chart);
+  const gapSliderVisible = arrowStyle !== "overlap";
   const borderWidth =
     typeof chart.segmentBorderWidth === "number" && Number.isFinite(chart.segmentBorderWidth)
       ? Math.min(
@@ -94,6 +99,7 @@ export function ArrowChartDataFields({ chart, isReadOnly, onPatch }: ArrowChartD
                   ...chart,
                   kind: "arrow",
                   arrowStyle: v === "overlap" || v === "triangle" ? v : "chevron",
+                  ...(v === "overlap" ? { gapDeg: ARROW_GAP_DEG_OVERLAP } : {}),
                 })
               }
             >
@@ -155,29 +161,31 @@ export function ArrowChartDataFields({ chart, isReadOnly, onPatch }: ArrowChartD
             disabled={isReadOnly}
           />
         </div>
-        <div className="space-y-2 pt-3">
-          <div className="flex justify-between gap-2">
-            <Label className="text-xs">Gap (°)</Label>
-            <span className="text-xs tabular-nums text-muted-foreground">{gapDeg.toFixed(1)}</span>
+        {gapSliderVisible ? (
+          <div className="space-y-2 pt-3">
+            <div className="flex justify-between gap-2">
+              <Label className="text-xs">Gap (°)</Label>
+              <span className="text-xs tabular-nums text-muted-foreground">{gapDeg.toFixed(1)}</span>
+            </div>
+            <Slider
+              value={[gapDeg]}
+              onValueChange={(v) =>
+                onPatch({
+                  ...chart,
+                  kind: "arrow",
+                  gapDeg: Math.min(
+                    ARROW_GAP_DEG_MAX,
+                    Math.max(ARROW_GAP_DEG_MIN, v[0] ?? ARROW_GAP_DEG_DEFAULT)
+                  ),
+                })
+              }
+              min={ARROW_GAP_DEG_MIN}
+              max={ARROW_GAP_DEG_MAX}
+              step={0.1}
+              disabled={isReadOnly}
+            />
           </div>
-          <Slider
-            value={[gapDeg]}
-            onValueChange={(v) =>
-              onPatch({
-                ...chart,
-                kind: "arrow",
-                gapDeg: Math.min(
-                  ARROW_GAP_DEG_MAX,
-                  Math.max(ARROW_GAP_DEG_MIN, v[0] ?? ARROW_GAP_DEG_DEFAULT)
-                ),
-              })
-            }
-            min={ARROW_GAP_DEG_MIN}
-            max={ARROW_GAP_DEG_MAX}
-            step={0.1}
-            disabled={isReadOnly}
-          />
-        </div>
+        ) : null}
         <div className="flex items-center gap-2 pt-3">
           <Switch
             checked={borderOn}
@@ -199,7 +207,7 @@ export function ArrowChartDataFields({ chart, isReadOnly, onPatch }: ArrowChartD
               <ColorPicker
                 value={chart.segmentBorder?.trim() || ARROW_SEGMENT_BORDER}
                 onChange={(v) => onPatch({ ...chart, kind: "arrow", segmentBorder: v })}
-                showAlpha
+                showAlpha={false}
               />
             </div>
             <div className="space-y-2">
@@ -236,11 +244,31 @@ export function ArrowChartDataFields({ chart, isReadOnly, onPatch }: ArrowChartD
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label className="text-[10px] text-muted-foreground">Segment fill</Label>
-            <ColorPicker
-              value={chart.segmentFill?.trim() || ARROW_SEGMENT_FILL}
-              onChange={(v) => onPatch({ ...chart, kind: "arrow", segmentFill: v })}
-              showAlpha
-            />
+            <Select
+              value={fillStyle}
+              disabled={isReadOnly}
+              onValueChange={(v) => {
+                if (v === "gradient") {
+                  onPatch({
+                    ...chart,
+                    kind: "arrow",
+                    segmentFillStyle: "gradient",
+                    segmentFillStart:
+                      chart.segmentFillStart?.trim() || defaultArrowSegmentFillStart(segmentFill),
+                  });
+                  return;
+                }
+                onPatch({ ...chart, kind: "arrow", segmentFillStyle: "solid" });
+              }}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="solid">Solid</SelectItem>
+                <SelectItem value="gradient">Gradient</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-[10px] text-muted-foreground">Colour mode</Label>
@@ -266,6 +294,35 @@ export function ArrowChartDataFields({ chart, isReadOnly, onPatch }: ArrowChartD
             </Select>
           </div>
         </div>
+        {fillStyle === "gradient" ? (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Start (tail)</Label>
+              <ColorPicker
+                value={segmentFillStart}
+                onChange={(v) => onPatch({ ...chart, kind: "arrow", segmentFillStart: v })}
+                showAlpha={false}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">End (head)</Label>
+              <ColorPicker
+                value={segmentFill}
+                onChange={(v) => onPatch({ ...chart, kind: "arrow", segmentFill: v })}
+                showAlpha={false}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3 space-y-1">
+            <Label className="text-[10px] text-muted-foreground">Fill colour</Label>
+            <ColorPicker
+              value={segmentFill}
+              onChange={(v) => onPatch({ ...chart, kind: "arrow", segmentFill: v })}
+              showAlpha={false}
+            />
+          </div>
+        )}
         {colorMode === "hue-step" ? (
           <div className="space-y-2 pt-3">
             <div className="flex justify-between gap-2">

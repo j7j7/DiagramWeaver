@@ -1,6 +1,7 @@
 import type {
   ArrowChartColorMode,
   ArrowChartDirection,
+  ArrowChartFillStyle,
   ArrowChartItem,
   ArrowChartStyle,
   DiagramNodeData,
@@ -21,6 +22,7 @@ export const ARROW_INNER_RATIO_DEFAULT = 0.52;
 export const ARROW_GAP_DEG_MIN = 0.4;
 export const ARROW_GAP_DEG_MAX = 14;
 export const ARROW_GAP_DEG_DEFAULT = 3;
+export const ARROW_GAP_DEG_OVERLAP = 0;
 export const ARROW_SEGMENT_BORDER = "#ffffff";
 export const ARROW_SEGMENT_BORDER_WIDTH_MIN = 0;
 export const ARROW_SEGMENT_BORDER_WIDTH_MAX = 8;
@@ -40,14 +42,20 @@ export interface ArrowLayoutItem {
   title: string;
   subtitle: string;
   fill: string;
+  fillStart: string;
+  fillStyle: ArrowChartFillStyle;
   textColor: string;
   titleFont: number;
   subtitleFont: number;
   path: string;
   headOverlay: string;
   headBorder: string;
+  bodyBorder?: string;
+  tailBorder?: string;
   headRim: string;
   paint: ArrowSegmentPaint;
+  gradFrom: number;
+  gradTo: number;
 }
 
 export interface ArrowChartLayout {
@@ -57,6 +65,7 @@ export interface ArrowChartLayout {
   cy: number;
   rOuter: number;
   rInner: number;
+  rFan: number;
   clockwise: boolean;
   arrowStyle: ArrowChartStyle;
   items: ArrowLayoutItem[];
@@ -117,6 +126,26 @@ export function resolveArrowColorMode(
   return "same";
 }
 
+export function resolveArrowFillStyle(
+  chart: Pick<NodeChartSpecArrow, "segmentFillStyle">
+): ArrowChartFillStyle {
+  return chart.segmentFillStyle === "gradient" ? "gradient" : "solid";
+}
+
+export function resolveArrowGapDeg(
+  chart: Pick<NodeChartSpecArrow, "gapDeg" | "arrowStyle">
+): number {
+  if (resolveArrowStyle(chart) === "overlap") return ARROW_GAP_DEG_OVERLAP;
+  if (typeof chart.gapDeg === "number" && Number.isFinite(chart.gapDeg)) {
+    return Math.min(ARROW_GAP_DEG_MAX, Math.max(ARROW_GAP_DEG_MIN, chart.gapDeg));
+  }
+  return ARROW_GAP_DEG_DEFAULT;
+}
+
+export function defaultArrowSegmentFillStart(end: string): string {
+  return lerpColors(end, "#ffffff", 0.5);
+}
+
 function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
@@ -146,25 +175,46 @@ function hintFill(base: string, index: number, count: number): string {
   return lerpColors(dark, light, t);
 }
 
-function segmentFillFor(
-  item: ArrowChartItem,
+function applyColorMode(
+  base: string,
   index: number,
   count: number,
-  base: string,
   mode: ArrowChartColorMode,
   hueStepDeg: number
 ): string {
-  const explicit = item.fill?.trim();
-  if (explicit) return explicit;
   if (mode === "hue-step") return shiftHueOfColor(base, index * hueStepDeg);
   if (mode === "hint") return hintFill(base, index, count);
   return base;
+}
+
+function segmentColorsFor(
+  item: ArrowChartItem,
+  index: number,
+  count: number,
+  baseEnd: string,
+  baseStart: string,
+  mode: ArrowChartColorMode,
+  hueStepDeg: number,
+  fillStyle: ArrowChartFillStyle
+): { fill: string; fillStart: string; fillStyle: ArrowChartFillStyle } {
+  const explicit = item.fill?.trim();
+  if (explicit) return { fill: explicit, fillStart: explicit, fillStyle: "solid" };
+  const fill = applyColorMode(baseEnd, index, count, mode, hueStepDeg);
+  const fillStart = applyColorMode(baseStart, index, count, mode, hueStepDeg);
+  return { fill, fillStart, fillStyle };
 }
 
 export function arrowItemRotation(angle: number, clockwise: boolean): number {
   let rotation = clockwise ? angle + Math.PI / 2 : angle - Math.PI / 2;
   if (Math.cos(rotation) < 0) rotation += Math.PI;
   return rotation;
+}
+
+/** First segment centre angle; slight CCW offset so the top wedge reads level on screen. */
+export function arrowChartRingStartAngle(itemCount: number): number {
+  const n = Math.max(1, itemCount);
+  const span = (Math.PI * 2) / n;
+  return -Math.PI / 2 - span / 8;
 }
 
 export function arrowSegmentSlotIndexFromAngle(
@@ -174,7 +224,7 @@ export function arrowSegmentSlotIndexFromAngle(
 ): number {
   const n = Math.max(1, count);
   const twoPi = Math.PI * 2;
-  const start = -Math.PI / 2;
+  const start = arrowChartRingStartAngle(n);
   let a = (angle - start) % twoPi;
   if (a < 0) a += twoPi;
   if (!clockwise) a = (twoPi - a) % twoPi;
@@ -209,22 +259,18 @@ export function buildArrowChartLayout(
   const dir = clockwise ? 1 : -1;
   const arrowStyle = resolveArrowStyle(chart);
   const colorMode = resolveArrowColorMode(chart);
+  const fillStyle = resolveArrowFillStyle(chart);
   const hueStepDeg = resolveArrowHueStepDeg(chart);
   const baseFill = chart.segmentFill?.trim() || ARROW_SEGMENT_FILL;
-  const gapDeg = clamp(
-    typeof chart.gapDeg === "number" && Number.isFinite(chart.gapDeg)
-      ? chart.gapDeg
-      : ARROW_GAP_DEG_DEFAULT,
-    ARROW_GAP_DEG_MIN,
-    ARROW_GAP_DEG_MAX
-  );
+  const baseFillStart = chart.segmentFillStart?.trim() || defaultArrowSegmentFillStart(baseFill);
+  const gapDeg = resolveArrowGapDeg(chart);
   const span = (Math.PI * 2) / n;
   const gapRad = (gapDeg * Math.PI) / 180;
   const bodySpan = Math.max(span * 0.35, span - gapRad);
   const halfBody = bodySpan / 2;
   const chevronAng = clamp((thickness * 0.62) / Math.max(rMid, 1), 0.06, halfBody * 0.55);
   const flare = arrowStyle === "triangle" ? thickness * 0.2 : 0;
-  const startAngle = -Math.PI / 2;
+  const startAngle = arrowChartRingStartAngle(n);
   const titleFont = clamp(thickness * 0.22, 9, 16);
   const subtitleFont = clamp(titleFont * 0.72, 7, 12);
   const textH = clamp(thickness * 0.62, 22, 64);
@@ -250,7 +296,19 @@ export function buildArrowChartLayout(
       chevronAng,
       flare,
     });
-    const fill = segmentFillFor(item, i, n, baseFill, colorMode, hueStepDeg);
+    const colors = segmentColorsFor(
+      item,
+      i,
+      n,
+      baseFill,
+      baseFillStart,
+      colorMode,
+      hueStepDeg,
+      fillStyle
+    );
+    const midFill = colors.fillStyle === "gradient"
+      ? lerpColors(colors.fillStart, colors.fill, 0.5)
+      : colors.fill;
     const textAngle = angle + dir * textBias;
     const tx = cx + rMid * Math.cos(textAngle);
     const ty = cy + rMid * Math.sin(textAngle);
@@ -267,15 +325,21 @@ export function buildArrowChartLayout(
       textH,
       title: item.title,
       subtitle: item.subtitle ?? "",
-      fill,
-      textColor: item.textColor?.trim() || chart.segmentTextColor?.trim() || autoTextColor(fill),
+      fill: colors.fill,
+      fillStart: colors.fillStart,
+      fillStyle: colors.fillStyle,
+      textColor: item.textColor?.trim() || chart.segmentTextColor?.trim() || autoTextColor(midFill),
       titleFont,
       subtitleFont,
       path: built.path,
       headOverlay: built.headOverlay,
       headBorder: built.headBorder,
+      bodyBorder: built.bodyBorder,
+      tailBorder: built.tailBorder,
       headRim: built.headRim,
       paint: built.paint,
+      gradFrom: built.gradFrom,
+      gradTo: built.gradTo,
     };
   });
 
@@ -298,6 +362,7 @@ export function buildArrowChartLayout(
     cy,
     rOuter,
     rInner,
+    rFan: rOuter + flare + 8,
     clockwise,
     arrowStyle,
     items,

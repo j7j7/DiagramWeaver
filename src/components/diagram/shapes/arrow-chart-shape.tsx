@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useId, useMemo, useRef, useState } from "react";
 import type { DiagramNodeData, NodeChartSpecArrow, RichTextRun } from "@/lib/types";
 import { useGlobalProperties, useGlobalVariableContext } from "@/components/diagram/global-properties-context";
 import { labelToRuns, normalizeRuns } from "@/lib/rich-text";
@@ -20,6 +20,12 @@ import { SvgShapeBase } from "./svg-shape-base";
 import { getShapeStyles, getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 import { getHighlightAnimStyleForNode, mergeCardShellHighlightStyle } from "@/lib/highlight-anim";
+import {
+  ArrowChartSegmentGradientDefs,
+  ArrowChartTailBorderMaskDefs,
+  ArrowSegmentGradientLayer,
+  arrowTailBorderMaskId,
+} from "./arrow-chart-segment-paint";
 
 type EditSlot = { kind: "title"; id: string } | { kind: "subtitle"; id: string };
 
@@ -74,6 +80,7 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
   const globalProperties = useGlobalProperties();
   const layout = useMemo(() => buildArrowChartLayout(node, chartBase), [node, chartBase]);
   const { body } = layout;
+  const gradIdBase = `dw-arw-${useId().replace(/:/g, "")}`;
   const canEdit = !isReadOnly && Boolean(onArrowItemTextChange);
   const canReorder = arrowInteractive && Boolean(onMoveArrowItem);
   const [edit, setEdit] = useState<EditSlot | null>(null);
@@ -283,6 +290,20 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
   const svgContent = (
     <>
       {gradDefs}
+      <ArrowChartSegmentGradientDefs
+        items={layout.items}
+        ringW={ringW}
+        vbW={layout.vbW}
+        vbH={layout.vbH}
+        idBase={gradIdBase}
+      />
+      <ArrowChartTailBorderMaskDefs
+        items={layout.items}
+        idBase={gradIdBase}
+        borderW={borderW}
+        vbW={layout.vbW}
+        vbH={layout.vbH}
+      />
       <rect
         x={body.x}
         y={body.y}
@@ -299,6 +320,8 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
       {bodyOrder.map((item) => {
         const dim = dragFrom === item.index || reorderTarget === item.index;
         const strokeArc = item.paint === "stroke-arc";
+        const gradient = item.fillStyle === "gradient";
+        const dimOp = dim ? 0.72 : 1;
         return (
           <g key={`seg-${item.id}`}>
             {strokeArc && borderW > 0 ? (
@@ -309,18 +332,30 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
                 strokeWidth={ringW + 2 * borderW}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                opacity={dim ? 0.72 : 1}
+                opacity={dimOp}
                 pointerEvents="none"
+              />
+            ) : null}
+            {gradient ? (
+              <ArrowSegmentGradientLayer
+                item={item}
+                idBase={gradIdBase}
+                layer="body"
+                cx={layout.cx}
+                cy={layout.cy}
+                rFan={layout.rFan}
+                clockwise={layout.clockwise}
+                opacity={dimOp}
               />
             ) : null}
             <path
               d={item.path}
-              fill={strokeArc ? "none" : item.fill}
-              stroke={strokeArc ? item.fill : "none"}
+              fill={strokeArc ? "none" : gradient ? "transparent" : item.fill}
+              stroke={strokeArc ? (gradient ? "transparent" : item.fill) : "none"}
               strokeWidth={strokeArc ? ringW : undefined}
               strokeLinejoin="round"
               strokeLinecap="round"
-              opacity={dim ? 0.72 : 1}
+              opacity={gradient ? 1 : dimOp}
               style={{ cursor: canReorder ? "grab" : canEdit ? "text" : undefined }}
               onPointerDown={onSegPointerDown(item.index)}
               onPointerMove={onSegPointerMove}
@@ -338,28 +373,12 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
           </g>
         );
       })}
-      {layout.items.map((item) => {
-        const strokeArc = item.paint === "stroke-arc";
-        return (
-          <path
-            key={`head-${item.id}`}
-            d={item.headOverlay}
-            fill={strokeArc ? "none" : item.fill}
-            stroke={strokeArc ? item.fill : "none"}
-            strokeWidth={strokeArc ? ringW : undefined}
-            strokeLinecap={strokeArc ? "round" : undefined}
-            strokeLinejoin={strokeArc ? "round" : undefined}
-            opacity={dragFrom === item.index || reorderTarget === item.index ? 0.72 : 1}
-            pointerEvents="none"
-          />
-        );
-      })}
       {borderW > 0
         ? bodyOrder.map((item) =>
             item.paint === "fill" ? (
               <path
                 key={`seg-b-${item.id}`}
-                d={item.path}
+                d={item.bodyBorder ?? item.path}
                 fill="none"
                 stroke={borderColor}
                 strokeWidth={borderW}
@@ -371,6 +390,57 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
             ) : null
           )
         : null}
+      {borderW > 0
+        ? bodyOrder.map((item) =>
+            item.tailBorder ? (
+              <path
+                key={`tail-b-${item.id}`}
+                d={item.tailBorder}
+                mask={`url(#${arrowTailBorderMaskId(gradIdBase, item.id)})`}
+                fill="none"
+                stroke={borderColor}
+                strokeWidth={borderW}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                opacity={dragFrom === item.index || reorderTarget === item.index ? 0.72 : 1}
+                pointerEvents="none"
+              />
+            ) : null
+          )
+        : null}
+      {layout.items.map((item) => {
+        const strokeArc = item.paint === "stroke-arc";
+        const gradient = item.fillStyle === "gradient";
+        const dimOp = dragFrom === item.index || reorderTarget === item.index ? 0.72 : 1;
+        if (gradient) {
+          return (
+            <ArrowSegmentGradientLayer
+              key={`head-${item.id}`}
+              item={item}
+              idBase={gradIdBase}
+              layer="head"
+              cx={layout.cx}
+              cy={layout.cy}
+              rFan={layout.rFan}
+              clockwise={layout.clockwise}
+              opacity={dimOp}
+            />
+          );
+        }
+        return (
+          <path
+            key={`head-${item.id}`}
+            d={item.headOverlay}
+            fill={strokeArc ? "none" : item.fill}
+            stroke={strokeArc ? item.fill : "none"}
+            strokeWidth={strokeArc ? ringW : undefined}
+            strokeLinecap={strokeArc ? "round" : undefined}
+            strokeLinejoin={strokeArc ? "round" : undefined}
+            opacity={dimOp}
+            pointerEvents="none"
+          />
+        );
+      })}
       {borderW > 0
         ? layout.items.map((item) =>
             item.paint === "fill" ? (

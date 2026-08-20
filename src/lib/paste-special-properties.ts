@@ -204,6 +204,8 @@ function mergeChartColour(target: NodeChartSpec, source: NodeChartSpec): NodeCha
   }
   if (t.kind === "arrow" && source.kind === "arrow") {
     if (source.segmentFill !== undefined) t.segmentFill = source.segmentFill;
+    if (source.segmentFillStart !== undefined) t.segmentFillStart = source.segmentFillStart;
+    if (source.segmentFillStyle !== undefined) t.segmentFillStyle = source.segmentFillStyle;
     if (source.segmentTextColor !== undefined) t.segmentTextColor = source.segmentTextColor;
     if (source.segmentBorder !== undefined) t.segmentBorder = source.segmentBorder;
     if (source.segmentBorderWidth !== undefined) t.segmentBorderWidth = source.segmentBorderWidth;
@@ -345,6 +347,7 @@ function mergeChartProperties(target: NodeChartSpec, source: NodeChartSpec): Nod
     if (source.arrowStyle !== undefined) t.arrowStyle = source.arrowStyle;
     if (source.direction !== undefined) t.direction = source.direction;
     if (source.colorMode !== undefined) t.colorMode = source.colorMode;
+    if (source.segmentFillStyle !== undefined) t.segmentFillStyle = source.segmentFillStyle;
     if (source.hueStepDeg !== undefined) t.hueStepDeg = source.hueStepDeg;
     if (source.innerRatio !== undefined) t.innerRatio = source.innerRatio;
     if (source.gapDeg !== undefined) t.gapDeg = source.gapDeg;

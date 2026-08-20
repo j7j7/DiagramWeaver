@@ -2,6 +2,30 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-21 – Arrow chart head border open seam
+Head border paths stay open (no closing radial `iB → oB` chord) so segment borders do not draw a line across the wedge; overlap junctions rely on paint order (body borders → head fill → head border) and tail-only masks. Patch bumped.
+
+### 2026-08-21 – Arrow chart overlap head border seam
+Head border paths close the back radial seam (`iB → oB`) so the white outline stays visible where a wedge overlaps the next segment. Ring-arc body borders draw before head fills (unmasked); only tail-notch borders mask out the previous head (fill punch, no extra stroke). Patch bumped.
+
+### 2026-08-21 – Arrow chart tail notch borders
+Tail/back segment borders subtract the previous wedge head from their mask; ring-arc body borders use the same mask so nothing bleeds under overlap. Patch bumped.
+
+### 2026-08-21 – Arrow chart ring level offset
+Ring layout applies an eighth-segment CCW rotation so the top wedge reads level (was quarter-segment; trimmed after feedback). Patch bumped.
+
+### 2026-08-21 – Arrow chart overlap gap + wedge borders
+Rounded overlap forces **gap 0°** (slider hidden). Chevron/triangle segment borders stroke ring arcs only (not tail notches) so borders stay clean at small gaps. Patch bumped.
+
+### 2026-08-21 – Arrow chart overlap border arcs
+Overlap segment borders stroke inner/outer ring arcs and the head cap only (not the tucked tail semicircle), so white outlines stay clean at segment junctions. Patch bumped.
+
+### 2026-08-21 – Arrow chart overlap thick ring
+Rounded overlap segments are filled annular wedges with semicircular end caps (not round-capped strokes), so inner/outer edges stay circular when the hole is smaller than ~53%. Patch bumped.
+
+### 2026-08-21 – Arrow chart segment gradient
+Segment fill can be **solid** or a **gradient** from tail (`segmentFillStart`) to head (`segmentFill`). The blend is angular around the ring centre so it follows each arc, including chevron/triangle tips. Colour mode (same / hint / hue-step) still applies to both stops. Patch bumped.
+
 ### 2026-08-20 – Arrow chart chevron/triangle fill
 Chevron and triangle wedges are one closed path (point + matching notch) for fill and stroke, so colour no longer spills past the outline. Gap sits between arrows instead of overlapping neighbours. Patch bumped.
 

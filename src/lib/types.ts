@@ -430,6 +430,7 @@ export interface ArrowChartItem {
 export type ArrowChartStyle = "chevron" | "overlap" | "triangle";
 export type ArrowChartDirection = "clockwise" | "anticlockwise";
 export type ArrowChartColorMode = "same" | "hint" | "hue-step";
+export type ArrowChartFillStyle = "solid" | "gradient";
 
 /** Segmented circular process arrows (`generic.chart.arrow`). */
 export interface NodeChartSpecArrow {
@@ -441,7 +442,12 @@ export interface NodeChartSpecArrow {
   direction?: ArrowChartDirection;
   /** `same` = one fill; `hint` = lightness ramp; `hue-step` = hue shift per segment. */
   colorMode?: ArrowChartColorMode;
+  /** `solid` = one fill; `gradient` = tail `segmentFillStart` → head `segmentFill`. Omitted = solid. */
+  segmentFillStyle?: ArrowChartFillStyle;
+  /** Head / end colour of each segment (colour A). */
   segmentFill?: string;
+  /** Tail / start colour when `segmentFillStyle` is `gradient` (colour B). */
+  segmentFillStart?: string;
   segmentTextColor?: string;
   /** Degrees added per segment when `colorMode` is `hue-step` (1–360; default Themes menu step). */
   hueStepDeg?: number;
