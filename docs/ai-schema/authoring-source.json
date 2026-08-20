@@ -306,18 +306,25 @@
             "arrowStyle": "chevron",
             "direction": "clockwise",
             "colorMode": "hue-step",
-            "segmentFillStyle": "solid",
-            "segmentFill": "#4f46e5",
+            "segmentFillStyle": "gradient",
+            "segmentFill": "#8d89e1",
+            "segmentFillStart": "#c0beef",
+            "segmentBorder": "#f7f7f7",
             "hueStepDeg": 51,
             "innerRatio": 0.52,
             "gapDeg": 3,
+            "startAngleDeg": 0,
             "segmentBorderWidth": 0,
             "items": [
               { "id": "s1", "title": "Plan" },
-              { "id": "s2", "title": "Build" }
+              { "id": "s2", "title": "Design" },
+              { "id": "s3", "title": "Build" },
+              { "id": "s4", "title": "Test" },
+              { "id": "s5", "title": "Launch" },
+              { "id": "s6", "title": "Review" }
             ]
           },
-          "items": "Variable length (2–16). Text sits in each wedge. hint tints one fill; hue-step rotates hue per segment. Optional segmentBorder + segmentBorderWidth (0–8) outlines each wedge. segmentFillStyle gradient blends segmentFillStart (tail) to segmentFill (head) along the arc. Rounded overlap always uses gapDeg 0 (segments touch)."
+          "items": "Variable length (2–16). Text sits in each wedge. hint tints one fill; hue-step rotates hue per segment. Optional startAngleDeg (−45…+45) fine-tunes ring rotation. Optional segmentBorder + segmentBorderWidth (0–8) outlines each wedge. segmentFillStyle gradient blends segmentFillStart (tail) to segmentFill (head) along the arc. Rounded overlap always uses gapDeg 0 (segments touch)."
         }
       },
       "seriesFill": "fillStyle none|solid|gradient; gradientColors [start,end]; labelColor on slices."

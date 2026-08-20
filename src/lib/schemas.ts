@@ -473,6 +473,7 @@ const NodeChartArrowSchema = z.object({
   hueStepDeg: z.number().min(1).max(360).optional(),
   innerRatio: z.number().min(0.28).max(0.72).optional(),
   gapDeg: z.number().min(0).max(14).optional(),
+  startAngleDeg: z.number().min(-45).max(45).optional(),
   segmentBorder: z.string().optional(),
   segmentBorderWidth: z.number().min(0).max(8).optional(),
 });

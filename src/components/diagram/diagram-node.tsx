@@ -1952,6 +1952,8 @@ function DiagramNodeInner({
           {...shapeProps}
           node={arrowNode}
           isReadOnly={isReadOnly}
+          highlightAnimStaggerIndex={highlightAnimStaggerIndex}
+          highlightAnimStaggerCount={highlightAnimStaggerCount}
           arrowInteractive={arrowInteractive}
           onArrowDragSessionChange={arrowDragSession}
           onMoveArrowItem={
@@ -4541,12 +4543,16 @@ function DiagramNodeInner({
                       isTimelineNode && "pointer-events-none",
                     )}
                     data-dw-highlight-anim={
-                      highlightAnimStyle && highlightPulseUsesShapeSilhouette && !isCardNode ? 'true' : undefined
+                      highlightAnimStyle && highlightPulseUsesShapeSilhouette && !isCardNode && !isArrowChartNode
+                        ? 'true'
+                        : undefined
                     }
                     style={{
                       width: '100%',
                       height: '100%',
-                      ...(highlightAnimStyle && highlightPulseUsesShapeSilhouette && !isCardNode ? highlightAnimStyle : {}),
+                      ...(highlightAnimStyle && highlightPulseUsesShapeSilhouette && !isCardNode && !isArrowChartNode
+                        ? highlightAnimStyle
+                        : {}),
                     }}
                   >
                     {renderShape()}

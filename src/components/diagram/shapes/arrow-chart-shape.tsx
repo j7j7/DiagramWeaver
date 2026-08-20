@@ -13,13 +13,14 @@ import {
   arrowItemRotateTransform,
   arrowSegmentSlotIndexFromAngle,
   buildArrowChartLayout,
+  resolveArrowStartAngleDeg,
   type ArrowLayoutItem,
 } from "@/lib/arrow-chart-layout";
 import { defaultArrowChartSpec } from "@/lib/chart-node";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getShapeStyles, getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
-import { getHighlightAnimStyleForNode, mergeCardShellHighlightStyle } from "@/lib/highlight-anim";
+import { getHighlightAnimStyleForNode } from "@/lib/highlight-anim";
 import {
   ArrowChartSegmentGradientDefs,
   ArrowChartTailBorderMaskDefs,
@@ -60,6 +61,8 @@ interface ArrowChartShapeProps {
     plainText: string,
     runs: RichTextRun[]
   ) => void;
+  highlightAnimStaggerIndex?: number;
+  highlightAnimStaggerCount?: number;
 }
 
 export function ArrowChartShape(props: ArrowChartShapeProps) {
@@ -70,6 +73,8 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
     onArrowDragSessionChange,
     onMoveArrowItem,
     onArrowItemTextChange,
+    highlightAnimStaggerIndex,
+    highlightAnimStaggerCount,
     ...svgBaseProps
   } = props;
   const { node, slideColorTransition } = svgBaseProps;
@@ -121,19 +126,32 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
     borderStyle === "gradient" ? strokeRef : (nodeAny.borderColor as string) || "#e5e7eb";
   const strokeWidth = borderStyle === "none" ? 0 : Number(nodeAny.borderWidth) || 1;
   const strokeDasharray = borderStyle === "dotted" ? "4 3" : undefined;
-  const shellHighlightStyle = getHighlightAnimStyleForNode(
-    node as DiagramNodeData & { x: number; y: number },
-    {
-      isLineNode: false,
-      isDuplicateDragPreview: false,
-      positionX: node.x ?? 0,
-      positionY: node.y ?? 0,
-      roundedShellGlow: true,
-    }
+  const segmentHighlightStyle = useMemo(
+    () =>
+      getHighlightAnimStyleForNode(node as DiagramNodeData & { x: number; y: number }, {
+        isLineNode: false,
+        isDuplicateDragPreview: false,
+        positionX: node.x ?? 0,
+        positionY: node.y ?? 0,
+        highlightAnimStaggerIndex,
+        highlightAnimStaggerCount,
+        pulseFollowsShapeSilhouette: true,
+      }),
+    [
+      node,
+      highlightAnimStaggerIndex,
+      highlightAnimStaggerCount,
+      nodeAny.highlightAnim,
+      nodeAny.highlightAnimMode,
+      nodeAny.highlightAnimDurationSec,
+      nodeAny.highlightAnimIntervalSec,
+      nodeAny.highlightAnimGlowColor,
+      nodeAny.highlightAnimGlowIntensity,
+    ]
   );
   const shellBorderRadius = `${Math.max(0, body.rx)}px`;
   const hasVisualShadow = getShapeStyles(node).shadow;
-  const preserveShellHalo = arrowInteractive || !!shellHighlightStyle || hasVisualShadow;
+  const preserveShellHalo = arrowInteractive || !!segmentHighlightStyle || hasVisualShadow;
 
   const runsFor = (plain: string, rich?: RichTextRun[]) => {
     const resolved = rich?.length
@@ -241,7 +259,12 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
     const pt = svgUserPointFromClient(svg, clientX, clientY);
     if (!pt) return;
     const angle = Math.atan2(pt.y - layout.cy, pt.x - layout.cx);
-    const target = arrowSegmentSlotIndexFromAngle(angle, layout.items.length, layout.clockwise);
+    const target = arrowSegmentSlotIndexFromAngle(
+      angle,
+      layout.items.length,
+      layout.clockwise,
+      resolveArrowStartAngleDeg(chartBase)
+    );
     drag.target = target;
     setReorderTarget(target);
   };
@@ -317,6 +340,10 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
         strokeDasharray={strokeDasharray}
         vectorEffect="non-scaling-stroke"
       />
+      <g
+        data-dw-highlight-anim={segmentHighlightStyle ? "true" : undefined}
+        style={segmentHighlightStyle}
+      >
       {bodyOrder.map((item) => {
         const dim = dragFrom === item.index || reorderTarget === item.index;
         const strokeArc = item.paint === "stroke-arc";
@@ -474,6 +501,7 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
             ) : null
           )
         : null}
+      </g>
       {layout.items.map((item, i) => {
         const hasSub = Boolean(item.subtitle.trim());
         const titleH = hasSub ? item.textH * 0.55 : item.textH;
@@ -513,12 +541,10 @@ export function ArrowChartShape(props: ArrowChartShapeProps) {
   return (
     <div
       data-dw-arrow-chart-shell=""
-      data-dw-highlight-anim={shellHighlightStyle ? "true" : undefined}
       className="relative box-border h-full w-full"
       style={{
         borderRadius: shellBorderRadius,
         overflow: preserveShellHalo ? "visible" : "hidden",
-        ...mergeCardShellHighlightStyle(shellHighlightStyle, undefined),
       }}
     >
       <SvgShapeBase

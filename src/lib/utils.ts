@@ -123,7 +123,8 @@ export function isHighlightPulseShapeSilhouetteType(type: string | undefined): b
   if (!type) return false
   /** Donut segments are pure SVG alpha; frame `box-shadow` reads as a full rectangle (hole glows). */
   if (type === 'generic.chart.ring' || type.endsWith('.chart.ring')) return true
-  if (type === 'generic.chart.arrow' || type.endsWith('.chart.arrow')) return true
+  /** Arrow chart applies segment-only glow inside `arrow-chart-shape.tsx`. */
+  if (type === 'generic.chart.arrow' || type.endsWith('.chart.arrow')) return false
   if (!type.startsWith('generic.object.')) return false
   if (isConnectorLineNodeType(type)) return false
   if (isTimelineNodeType(type)) return false

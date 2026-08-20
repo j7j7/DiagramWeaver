@@ -15,7 +15,7 @@ import { buildArrowSegmentPath, type ArrowSegmentPaint } from "@/lib/arrow-chart
 export const ARROW_MIN_ITEMS = 2;
 export const ARROW_MAX_ITEMS = 16;
 export const ARROW_CHART_DEFAULT_SIDE = 480;
-export const ARROW_SEGMENT_FILL = "#4f46e5";
+export const ARROW_SEGMENT_FILL = "#8d89e1";
 export const ARROW_INNER_RATIO_MIN = 0.28;
 export const ARROW_INNER_RATIO_MAX = 0.72;
 export const ARROW_INNER_RATIO_DEFAULT = 0.52;
@@ -23,6 +23,9 @@ export const ARROW_GAP_DEG_MIN = 0.4;
 export const ARROW_GAP_DEG_MAX = 14;
 export const ARROW_GAP_DEG_DEFAULT = 3;
 export const ARROW_GAP_DEG_OVERLAP = 0;
+export const ARROW_START_ANGLE_DEG_MIN = -45;
+export const ARROW_START_ANGLE_DEG_MAX = 45;
+export const ARROW_START_ANGLE_DEG_DEFAULT = 0;
 export const ARROW_SEGMENT_BORDER = "#ffffff";
 export const ARROW_SEGMENT_BORDER_WIDTH_MIN = 0;
 export const ARROW_SEGMENT_BORDER_WIDTH_MAX = 8;
@@ -142,6 +145,18 @@ export function resolveArrowGapDeg(
   return ARROW_GAP_DEG_DEFAULT;
 }
 
+export function resolveArrowStartAngleDeg(
+  chart: Pick<NodeChartSpecArrow, "startAngleDeg">
+): number {
+  if (typeof chart.startAngleDeg === "number" && Number.isFinite(chart.startAngleDeg)) {
+    return Math.min(
+      ARROW_START_ANGLE_DEG_MAX,
+      Math.max(ARROW_START_ANGLE_DEG_MIN, chart.startAngleDeg)
+    );
+  }
+  return ARROW_START_ANGLE_DEG_DEFAULT;
+}
+
 export function defaultArrowSegmentFillStart(end: string): string {
   return lerpColors(end, "#ffffff", 0.5);
 }
@@ -166,6 +181,19 @@ function hexLuminance(input: string): number {
 
 function autoTextColor(fill: string): string {
   return hexLuminance(fill) < 0.55 ? "#f8fafc" : "#1e2937";
+}
+
+/** One label colour for all segments (chart → node text → contrast vs base fill). */
+export function resolveArrowSegmentTextColor(
+  chart: Pick<NodeChartSpecArrow, "segmentTextColor" | "segmentFill">,
+  node: Pick<DiagramNodeData, "textColor">
+): string {
+  const fromChart = chart.segmentTextColor?.trim();
+  if (fromChart) return fromChart;
+  const fromNode = node.textColor?.trim();
+  if (fromNode) return fromNode;
+  const baseFill = chart.segmentFill?.trim() || ARROW_SEGMENT_FILL;
+  return autoTextColor(baseFill);
 }
 
 function hintFill(base: string, index: number, count: number): string {
@@ -211,20 +239,22 @@ export function arrowItemRotation(angle: number, clockwise: boolean): number {
 }
 
 /** First segment centre angle; slight CCW offset so the top wedge reads level on screen. */
-export function arrowChartRingStartAngle(itemCount: number): number {
+export function arrowChartRingStartAngle(itemCount: number, startAngleOffsetDeg = 0): number {
   const n = Math.max(1, itemCount);
   const span = (Math.PI * 2) / n;
-  return -Math.PI / 2 - span / 8;
+  const offsetRad = (startAngleOffsetDeg * Math.PI) / 180;
+  return -Math.PI / 2 - span / 8 + offsetRad;
 }
 
 export function arrowSegmentSlotIndexFromAngle(
   angle: number,
   count: number,
-  clockwise: boolean
+  clockwise: boolean,
+  startAngleOffsetDeg = 0
 ): number {
   const n = Math.max(1, count);
   const twoPi = Math.PI * 2;
-  const start = arrowChartRingStartAngle(n);
+  const start = arrowChartRingStartAngle(n, startAngleOffsetDeg);
   let a = (angle - start) % twoPi;
   if (a < 0) a += twoPi;
   if (!clockwise) a = (twoPi - a) % twoPi;
@@ -233,7 +263,7 @@ export function arrowSegmentSlotIndexFromAngle(
 }
 
 export function buildArrowChartLayout(
-  node: Pick<DiagramNodeData, "width" | "height" | "cornerRadius">,
+  node: Pick<DiagramNodeData, "width" | "height" | "cornerRadius" | "textColor">,
   chart: NodeChartSpecArrow
 ): ArrowChartLayout {
   const side = arrowChartSquareSide(node.width, node.height);
@@ -264,13 +294,14 @@ export function buildArrowChartLayout(
   const baseFill = chart.segmentFill?.trim() || ARROW_SEGMENT_FILL;
   const baseFillStart = chart.segmentFillStart?.trim() || defaultArrowSegmentFillStart(baseFill);
   const gapDeg = resolveArrowGapDeg(chart);
+  const startAngleDeg = resolveArrowStartAngleDeg(chart);
   const span = (Math.PI * 2) / n;
   const gapRad = (gapDeg * Math.PI) / 180;
   const bodySpan = Math.max(span * 0.35, span - gapRad);
   const halfBody = bodySpan / 2;
   const chevronAng = clamp((thickness * 0.62) / Math.max(rMid, 1), 0.06, halfBody * 0.55);
   const flare = arrowStyle === "triangle" ? thickness * 0.2 : 0;
-  const startAngle = arrowChartRingStartAngle(n);
+  const startAngle = arrowChartRingStartAngle(n, startAngleDeg);
   const titleFont = clamp(thickness * 0.22, 9, 16);
   const subtitleFont = clamp(titleFont * 0.72, 7, 12);
   const textH = clamp(thickness * 0.62, 22, 64);
@@ -279,6 +310,7 @@ export function buildArrowChartLayout(
     arrowStyle === "overlap"
       ? halfBody * 0.1
       : Math.min(halfBody * 0.34, chevronAng * 0.68);
+  const segmentTextColor = resolveArrowSegmentTextColor(chart, node);
 
   const items: ArrowLayoutItem[] = itemsIn.map((item, i) => {
     const angle = startAngle + i * dir * span;
@@ -306,9 +338,6 @@ export function buildArrowChartLayout(
       hueStepDeg,
       fillStyle
     );
-    const midFill = colors.fillStyle === "gradient"
-      ? lerpColors(colors.fillStart, colors.fill, 0.5)
-      : colors.fill;
     const textAngle = angle + dir * textBias;
     const tx = cx + rMid * Math.cos(textAngle);
     const ty = cy + rMid * Math.sin(textAngle);
@@ -328,7 +357,7 @@ export function buildArrowChartLayout(
       fill: colors.fill,
       fillStart: colors.fillStart,
       fillStyle: colors.fillStyle,
-      textColor: item.textColor?.trim() || chart.segmentTextColor?.trim() || autoTextColor(midFill),
+      textColor: item.textColor?.trim() || segmentTextColor,
       titleFont,
       subtitleFont,
       path: built.path,

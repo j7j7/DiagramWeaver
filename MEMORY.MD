@@ -2,6 +2,18 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-21 – Arrow chart default style
+Palette drop / reset defaults: gradient segments (`#c0beef` → `#8d89e1`), hue-step 51°, dark labels `#212121`, shadow on, square corners, constant white glow (intensity 0.32). Patch bumped.
+
+### 2026-08-21 – Arrow chart segment glow
+Visual styling glow follows wedge geometry only (SVG segment group with alpha drop-shadow), not the rounded chart shell or background rect. Patch bumped.
+
+### 2026-08-21 – Arrow chart label colour
+Segment labels use one resolved colour (`segmentTextColor` → node `textColor` → contrast vs base fill) instead of per-segment auto contrast, so hue-step/hint rings no longer mix white and dark text. Patch bumped.
+
+### 2026-08-21 – Arrow chart start angle adjust
+Chart data modal **Ring** section adds **Start angle adjust (°)** slider (−45…+45) on `startAngleDeg`, rotating the ring on top of the auto level offset so the top wedge can read level for any segment count. Patch bumped.
+
 ### 2026-08-21 – Arrow chart head border open seam
 Head border paths stay open (no closing radial `iB → oB` chord) so segment borders do not draw a line across the wedge; overlap junctions rely on paint order (body borders → head fill → head border) and tail-only masks. Patch bumped.
 

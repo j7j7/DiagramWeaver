@@ -39,7 +39,11 @@ import {
   resolveArrowFillStyle,
   resolveArrowGapDeg,
   resolveArrowHueStepDeg,
+  resolveArrowStartAngleDeg,
   resolveArrowStyle,
+  ARROW_START_ANGLE_DEG_DEFAULT,
+  ARROW_START_ANGLE_DEG_MAX,
+  ARROW_START_ANGLE_DEG_MIN,
 } from "@/lib/arrow-chart-layout";
 import { deleteArrowItemAt, insertArrowItemAt } from "@/lib/arrow-chart-ops";
 
@@ -74,6 +78,7 @@ export function ArrowChartDataFields({ chart, isReadOnly, onPatch }: ArrowChartD
       ? Math.min(ARROW_INNER_RATIO_MAX, Math.max(ARROW_INNER_RATIO_MIN, chart.innerRatio))
       : ARROW_INNER_RATIO_DEFAULT;
   const gapDeg = resolveArrowGapDeg(chart);
+  const startAngleDeg = resolveArrowStartAngleDeg(chart);
   const gapSliderVisible = arrowStyle !== "overlap";
   const borderWidth =
     typeof chart.segmentBorderWidth === "number" && Number.isFinite(chart.segmentBorderWidth)
@@ -186,6 +191,35 @@ export function ArrowChartDataFields({ chart, isReadOnly, onPatch }: ArrowChartD
             />
           </div>
         ) : null}
+        <div className="space-y-2 pt-3">
+          <div className="flex justify-between gap-2">
+            <Label className="text-xs">Start angle adjust (°)</Label>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {startAngleDeg > 0 ? "+" : ""}
+              {startAngleDeg.toFixed(1)}°
+            </span>
+          </div>
+          <Slider
+            value={[startAngleDeg]}
+            onValueChange={(v) =>
+              onPatch({
+                ...chart,
+                kind: "arrow",
+                startAngleDeg: Math.min(
+                  ARROW_START_ANGLE_DEG_MAX,
+                  Math.max(
+                    ARROW_START_ANGLE_DEG_MIN,
+                    v[0] ?? ARROW_START_ANGLE_DEG_DEFAULT
+                  )
+                ),
+              })
+            }
+            min={ARROW_START_ANGLE_DEG_MIN}
+            max={ARROW_START_ANGLE_DEG_MAX}
+            step={0.5}
+            disabled={isReadOnly}
+          />
+        </div>
         <div className="flex items-center gap-2 pt-3">
           <Switch
             checked={borderOn}

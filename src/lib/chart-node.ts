@@ -589,7 +589,11 @@ export function defaultArrowChartSpec(): NodeChartSpecArrow {
     arrowStyle: "chevron",
     direction: "clockwise",
     colorMode: "hue-step",
-    segmentFill: "#4f46e5",
+    segmentFillStyle: "gradient",
+    segmentFill: "#8d89e1",
+    segmentFillStart: "#c0beef",
+    segmentBorder: "#f7f7f7",
+    segmentBorderWidth: 0,
     hueStepDeg: 51,
     items: [
       arrowItem("Plan"),
@@ -615,13 +619,17 @@ export function defaultPaletteArrowChartNodeProps(): Partial<DiagramNodeData> {
     lineColor: "#4b5563",
     lineWidth: 1.25,
     lineOpacity: 1,
-    shadow: false,
-    textColor: "#f8fafc",
+    shadow: true,
+    textColor: "#212121",
     textOpacity: 1,
     fontFamily: "Inter, system-ui, sans-serif",
     gradientAngle: 180,
     textJustify: "center",
-    cornerRadius: 0.08,
+    cornerRadius: 0,
+    highlightAnim: true,
+    highlightAnimMode: "constant",
+    highlightAnimGlowColor: "#ffffff",
+    highlightAnimGlowIntensity: 0.32,
   } as Partial<DiagramNodeData>;
 }
 

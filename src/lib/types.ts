@@ -455,6 +455,8 @@ export interface NodeChartSpecArrow {
   innerRatio?: number;
   /** Angular gap between segments in degrees (0.4–14; omitted ~3). */
   gapDeg?: number;
+  /** Extra ring rotation in degrees (−45–45; omitted 0) on top of the auto level offset. */
+  startAngleDeg?: number;
   /** Outline around each wedge. Omitted = off. */
   segmentBorder?: string;
   /** SVG viewBox units (0–8). Omitted or 0 = no border. */
