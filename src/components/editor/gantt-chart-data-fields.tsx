@@ -19,9 +19,11 @@ import { newChartSliceId } from "@/lib/chart-node";
 import {
   clampGanttCols,
   clampGanttSubdivisions,
+  GANTT_AXIS_COLOR,
   GANTT_GATE_BAR_BORDER,
   GANTT_GATE_BAR_FILL,
   GANTT_GATE_LABEL,
+  GANTT_GRID_LINE_COLOR,
   GANTT_LABEL_CHIP_FILL,
   GANTT_PHASE_LABEL,
   GANTT_TASK_BAR_BORDER,
@@ -30,7 +32,7 @@ import {
   normalizeGanttBars,
   normalizeGanttRows,
 } from "@/lib/gantt-chart-layout";
-import { insertGanttRowAt } from "@/lib/gantt-chart-ops";
+import { insertGanttRowAt, resizeGanttColumnCount, resetGanttChartToMinimal, resetGanttColumnWeights } from "@/lib/gantt-chart-ops";
 
 function toSwatchHex(value: string | undefined, fallback: string): string {
   const raw = (value?.trim() || fallback).trim();
@@ -52,17 +54,20 @@ function GanttColorSwatch({
   fallback,
   onChange,
   title,
+  size = "md",
 }: {
   value?: string;
   fallback: string;
   onChange: (color: string) => void;
   title: string;
+  size?: "sm" | "md";
 }) {
   const hex = toSwatchHex(value, fallback);
+  const dim = size === "sm" ? "h-7 w-7" : "h-8 w-8";
   return (
-    <label className="relative h-8 w-8 shrink-0 cursor-pointer" title={title}>
+    <label className={cn("relative shrink-0 cursor-pointer", dim)} title={title}>
       <span
-        className="block h-8 w-8 rounded-md border border-border"
+        className={cn("block rounded-md border border-border", dim)}
         style={{ background: value?.trim() || fallback }}
       />
       <input
@@ -98,12 +103,37 @@ export function GanttChartDataFields({
   const taskText = chart.taskLabelColor?.trim() || GANTT_TASK_LABEL;
   const phaseText = chart.phaseLabelColor?.trim() || GANTT_PHASE_LABEL;
   const gateText = chart.gateLabelColor?.trim() || GANTT_GATE_LABEL;
-  const axisText = chart.axisColor?.trim() || "#64748b";
+  const columnText = chart.axisColor?.trim() || GANTT_AXIS_COLOR;
+  const gridLineColor = chart.gridLineColor?.trim() || GANTT_GRID_LINE_COLOR;
 
   return (
     <div className={cn("space-y-4", isReadOnly && "pointer-events-none opacity-75")}>
       <div className="rounded-md border border-border bg-sky-50/50 p-3 dark:bg-background">
-        <Label className="mb-2 block text-sm font-semibold">Timeline</Label>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <Label className="text-sm font-semibold">Timeline</Label>
+          <div className="flex flex-wrap gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-[11px]"
+              disabled={isReadOnly}
+              onClick={() => onPatch(resetGanttChartToMinimal())}
+            >
+              Reset
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-[11px]"
+              disabled={isReadOnly}
+              onClick={() => onPatch(resetGanttColumnWeights(chart))}
+            >
+              Equal column widths
+            </Button>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label className="text-[10px] text-muted-foreground">Columns</Label>
@@ -112,12 +142,7 @@ export function GanttChartDataFields({
               min={1}
               max={24}
               value={cols}
-              onChange={(e) => {
-                const nextCols = clampGanttCols(Number(e.target.value));
-                const nextTitles = titles.slice(0, nextCols);
-                while (nextTitles.length < nextCols) nextTitles.push("Month");
-                onPatch({ ...chart, kind: "gantt", cols: nextCols, columnTitles: nextTitles });
-              }}
+              onChange={(e) => onPatch(resizeGanttColumnCount(chart, Number(e.target.value)))}
             />
           </div>
           <div className="space-y-1">
@@ -213,20 +238,20 @@ export function GanttChartDataFields({
             </div>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <Label className="text-[10px] text-muted-foreground">Section chip</Label>
+            <Label className="text-[10px] text-muted-foreground">Section Background</Label>
             <GanttColorSwatch
               value={chart.taskChipFill}
               fallback={GANTT_LABEL_CHIP_FILL}
-              title="Task section chip"
+              title="Section background"
               onChange={(v) => onPatch({ ...chart, kind: "gantt", taskChipFill: v })}
             />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <Label className="text-[10px] text-muted-foreground">Task text</Label>
+            <Label className="text-[10px] text-muted-foreground">Section Text</Label>
             <GanttColorSwatch
               value={chart.taskLabelColor}
               fallback={GANTT_TASK_LABEL}
-              title="Task label text"
+              title="Section label text"
               onChange={(v) => onPatch({ ...chart, kind: "gantt", taskLabelColor: v })}
             />
           </div>
@@ -249,12 +274,21 @@ export function GanttChartDataFields({
             />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <Label className="text-[10px] text-muted-foreground">Month text</Label>
+            <Label className="text-[10px] text-muted-foreground">Column Text</Label>
             <GanttColorSwatch
               value={chart.axisColor}
-              fallback="#64748b"
-              title="Timeline / month text"
+              fallback={GANTT_AXIS_COLOR}
+              title="Column title text"
               onChange={(v) => onPatch({ ...chart, kind: "gantt", axisColor: v })}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-[10px] text-muted-foreground">Grid lines</Label>
+            <GanttColorSwatch
+              value={chart.gridLineColor}
+              fallback={GANTT_GRID_LINE_COLOR}
+              title="Timeline grid lines"
+              onChange={(v) => onPatch({ ...chart, kind: "gantt", gridLineColor: v })}
             />
           </div>
         </div>
@@ -286,89 +320,81 @@ export function GanttChartDataFields({
         </div>
         <div className="space-y-2">
           {rows.map((row, i) => (
-            <div key={row.id} className="space-y-1 rounded-md border border-transparent">
-              <div className="flex items-center gap-2">
-                <Select
-                  value={row.kind}
-                  onValueChange={(v) => {
-                    const kind = v === "phase" ? "phase" : "task";
-                    onPatch({
-                      ...chart,
-                      kind: "gantt",
-                      rows: rows.map((r, idx) => (idx === i ? { ...r, kind } : r)),
-                    });
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-[92px] text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[100]">
-                    <SelectItem value="phase">Phase</SelectItem>
-                    <SelectItem value="task">Task</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  className="h-8 text-xs"
-                  value={row.label}
-                  onChange={(e) =>
-                    onPatch({
-                      ...chart,
-                      kind: "gantt",
-                      rows: rows.map((r, idx) => (idx === i ? { ...r, label: e.target.value } : r)),
-                    })
-                  }
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 shrink-0 p-0"
-                  disabled={rows.length <= 1}
-                  onClick={() => {
-                    const nextRows = rows.filter((_, idx) => idx !== i);
-                    onPatch({
-                      ...chart,
-                      kind: "gantt",
-                      rows: nextRows,
-                      bars: bars.filter((b) => b.rowId !== row.id),
-                    });
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <div className="flex items-center gap-3 pl-0.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground">Section</span>
-                  <GanttColorSwatch
-                    value={row.chipFill}
-                    fallback={row.kind === "task" ? chipFill : "#f8f9fa"}
-                    title={`${row.label || "Row"} section colour`}
-                    onChange={(v) =>
-                      onPatch({
-                        ...chart,
-                        kind: "gantt",
-                        rows: rows.map((r, idx) => (idx === i ? { ...r, chipFill: v } : r)),
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground">Text</span>
-                  <GanttColorSwatch
-                    value={row.labelColor}
-                    fallback={row.kind === "phase" ? phaseText : taskText}
-                    title={`${row.label || "Row"} text colour`}
-                    onChange={(v) =>
-                      onPatch({
-                        ...chart,
-                        kind: "gantt",
-                        rows: rows.map((r, idx) => (idx === i ? { ...r, labelColor: v } : r)),
-                      })
-                    }
-                  />
-                </div>
-              </div>
+            <div key={row.id} className="flex items-center gap-1.5">
+              <Select
+                value={row.kind}
+                onValueChange={(v) => {
+                  const kind = v === "phase" ? "phase" : "task";
+                  onPatch({
+                    ...chart,
+                    kind: "gantt",
+                    rows: rows.map((r, idx) => (idx === i ? { ...r, kind } : r)),
+                  });
+                }}
+              >
+                <SelectTrigger className="h-8 w-[84px] shrink-0 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[100]">
+                  <SelectItem value="phase">Phase</SelectItem>
+                  <SelectItem value="task">Task</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                className="h-8 min-w-0 flex-1 text-xs"
+                value={row.label}
+                onChange={(e) =>
+                  onPatch({
+                    ...chart,
+                    kind: "gantt",
+                    rows: rows.map((r, idx) => (idx === i ? { ...r, label: e.target.value } : r)),
+                  })
+                }
+              />
+              <GanttColorSwatch
+                size="sm"
+                value={row.chipFill}
+                fallback={row.kind === "task" ? chipFill : "#f8f9fa"}
+                title="Section"
+                onChange={(v) =>
+                  onPatch({
+                    ...chart,
+                    kind: "gantt",
+                    rows: rows.map((r, idx) => (idx === i ? { ...r, chipFill: v } : r)),
+                  })
+                }
+              />
+              <GanttColorSwatch
+                size="sm"
+                value={row.labelColor}
+                fallback={row.kind === "phase" ? phaseText : taskText}
+                title="Text"
+                onChange={(v) =>
+                  onPatch({
+                    ...chart,
+                    kind: "gantt",
+                    rows: rows.map((r, idx) => (idx === i ? { ...r, labelColor: v } : r)),
+                  })
+                }
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 shrink-0 p-0"
+                disabled={rows.length <= 1}
+                onClick={() => {
+                  const nextRows = rows.filter((_, idx) => idx !== i);
+                  onPatch({
+                    ...chart,
+                    kind: "gantt",
+                    rows: nextRows,
+                    bars: bars.filter((b) => b.rowId !== row.id),
+                  });
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
           ))}
         </div>
@@ -408,154 +434,144 @@ export function GanttChartDataFields({
           {bars.map((bar) => {
             const isGate = (bar.variant ?? "task") === "gate";
             return (
-              <div key={bar.id} className="space-y-1">
-                <div className="grid grid-cols-[1fr_56px_56px_84px_28px] items-center gap-1.5">
-                  <Select
-                    value={bar.rowId}
-                    onValueChange={(v) =>
-                      onPatch({
-                        ...chart,
-                        kind: "gantt",
-                        bars: bars.map((b) => (b.id === bar.id ? { ...b, rowId: v } : b)),
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100]">
-                      {rows
-                        .filter((r) => r.kind === "task")
-                        .map((r) => (
-                          <SelectItem key={r.id} value={r.id}>
-                            {r.label || "Task"}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    className="h-8 text-xs"
-                    type="number"
-                    step={0.25}
-                    min={0}
-                    max={cols}
-                    value={bar.start}
-                    onChange={(e) =>
-                      onPatch({
-                        ...chart,
-                        kind: "gantt",
-                        bars: bars.map((b) =>
-                          b.id === bar.id ? { ...b, start: Number(e.target.value) } : b
-                        ),
-                      })
-                    }
-                  />
-                  <Input
-                    className="h-8 text-xs"
-                    type="number"
-                    step={0.25}
-                    min={0}
-                    max={cols}
-                    value={bar.end}
-                    onChange={(e) =>
-                      onPatch({
-                        ...chart,
-                        kind: "gantt",
-                        bars: bars.map((b) =>
-                          b.id === bar.id ? { ...b, end: Number(e.target.value) } : b
-                        ),
-                      })
-                    }
-                  />
-                  <Select
-                    value={bar.variant ?? "task"}
-                    onValueChange={(v) =>
-                      onPatch({
-                        ...chart,
-                        kind: "gantt",
-                        bars: bars.map((b) =>
-                          b.id === bar.id
-                            ? {
-                                ...b,
-                                variant: v === "gate" ? "gate" : "task",
-                                label: v === "gate" ? b.label || "GATE" : b.label,
-                              }
-                            : b
-                        ),
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100]">
-                      <SelectItem value="task">Task</SelectItem>
-                      <SelectItem value="gate">Gate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() =>
-                      onPatch({
-                        ...chart,
-                        kind: "gantt",
-                        bars: bars.filter((b) => b.id !== bar.id),
-                      })
-                    }
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground">Fill</span>
-                    <GanttColorSwatch
-                      value={bar.fill}
-                      fallback={isGate ? gateFill : taskFill}
-                      title="Bar fill"
-                      onChange={(v) =>
-                        onPatch({
-                          ...chart,
-                          kind: "gantt",
-                          bars: bars.map((b) => (b.id === bar.id ? { ...b, fill: v } : b)),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground">Border</span>
-                    <GanttColorSwatch
-                      value={bar.border}
-                      fallback={isGate ? gateBorder : taskBorder}
-                      title="Bar border"
-                      onChange={(v) =>
-                        onPatch({
-                          ...chart,
-                          kind: "gantt",
-                          bars: bars.map((b) => (b.id === bar.id ? { ...b, border: v } : b)),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground">Text</span>
-                    <GanttColorSwatch
-                      value={bar.labelColor}
-                      fallback={isGate ? gateText : axisText}
-                      title="Bar text"
-                      onChange={(v) =>
-                        onPatch({
-                          ...chart,
-                          kind: "gantt",
-                          bars: bars.map((b) => (b.id === bar.id ? { ...b, labelColor: v } : b)),
-                        })
-                      }
-                    />
-                  </div>
-                </div>
+              <div key={bar.id} className="flex items-center gap-1.5">
+                <Select
+                  value={bar.rowId}
+                  onValueChange={(v) =>
+                    onPatch({
+                      ...chart,
+                      kind: "gantt",
+                      bars: bars.map((b) => (b.id === bar.id ? { ...b, rowId: v } : b)),
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-8 min-w-0 flex-1 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100]">
+                    {rows
+                      .filter((r) => r.kind === "task")
+                      .map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.label || "Task"}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="h-8 w-[72px] shrink-0 px-1.5 text-xs"
+                  type="number"
+                  step={0.25}
+                  min={0}
+                  max={cols}
+                  value={bar.start}
+                  onChange={(e) =>
+                    onPatch({
+                      ...chart,
+                      kind: "gantt",
+                      bars: bars.map((b) =>
+                        b.id === bar.id ? { ...b, start: Number(e.target.value) } : b
+                      ),
+                    })
+                  }
+                />
+                <Input
+                  className="h-8 w-[72px] shrink-0 px-1.5 text-xs"
+                  type="number"
+                  step={0.25}
+                  min={0}
+                  max={cols}
+                  value={bar.end}
+                  onChange={(e) =>
+                    onPatch({
+                      ...chart,
+                      kind: "gantt",
+                      bars: bars.map((b) =>
+                        b.id === bar.id ? { ...b, end: Number(e.target.value) } : b
+                      ),
+                    })
+                  }
+                />
+                <Select
+                  value={bar.variant ?? "task"}
+                  onValueChange={(v) =>
+                    onPatch({
+                      ...chart,
+                      kind: "gantt",
+                      bars: bars.map((b) =>
+                        b.id === bar.id
+                          ? {
+                              ...b,
+                              variant: v === "gate" ? "gate" : "task",
+                              label: v === "gate" ? b.label || "GATE" : b.label,
+                            }
+                          : b
+                      ),
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-8 w-[76px] shrink-0 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100]">
+                    <SelectItem value="task">Task</SelectItem>
+                    <SelectItem value="gate">Gate</SelectItem>
+                  </SelectContent>
+                </Select>
+                <GanttColorSwatch
+                  size="sm"
+                  value={bar.fill}
+                  fallback={isGate ? gateFill : taskFill}
+                  title="Fill"
+                  onChange={(v) =>
+                    onPatch({
+                      ...chart,
+                      kind: "gantt",
+                      bars: bars.map((b) => (b.id === bar.id ? { ...b, fill: v } : b)),
+                    })
+                  }
+                />
+                <GanttColorSwatch
+                  size="sm"
+                  value={bar.border}
+                  fallback={isGate ? gateBorder : taskBorder}
+                  title="Border"
+                  onChange={(v) =>
+                    onPatch({
+                      ...chart,
+                      kind: "gantt",
+                      bars: bars.map((b) => (b.id === bar.id ? { ...b, border: v } : b)),
+                    })
+                  }
+                />
+                <GanttColorSwatch
+                  size="sm"
+                  value={bar.labelColor}
+                  fallback={isGate ? gateText : columnText}
+                  title="Text"
+                  onChange={(v) =>
+                    onPatch({
+                      ...chart,
+                      kind: "gantt",
+                      bars: bars.map((b) => (b.id === bar.id ? { ...b, labelColor: v } : b)),
+                    })
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 p-0"
+                  onClick={() =>
+                    onPatch({
+                      ...chart,
+                      kind: "gantt",
+                      bars: bars.filter((b) => b.id !== bar.id),
+                    })
+                  }
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             );
           })}

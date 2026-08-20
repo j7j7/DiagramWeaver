@@ -410,6 +410,7 @@ const NodeChartGanttSchema = z.object({
   phaseLabelColor: z.string().optional(),
   taskLabelColor: z.string().optional(),
   taskChipFill: z.string().optional(),
+  labelColWidth: z.number().positive().optional(),
 });
 
 const NodeChartSpecSchema = z.discriminatedUnion("kind", [

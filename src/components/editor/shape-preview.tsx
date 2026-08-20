@@ -1175,6 +1175,9 @@ export function ShapePreview({
           {layout.monthLines.map((ln, i) => (
             <line key={`sp-gantt-mo-${i}`} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} stroke={layout.gridLineColor} strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
           ))}
+          {layout.rowGridLines.map((ln, i) => (
+            <line key={`sp-gantt-rg-${i}`} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} stroke={layout.gridLineColorLight} strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
+          ))}
           {layout.layoutRows.map((row) =>
             row.chip ? (
               <rect key={`sp-gantt-chip-${row.id}`} x={row.chip.x} y={row.chip.y} width={row.chip.w} height={row.chip.h} rx={4} fill={row.chipFill} />

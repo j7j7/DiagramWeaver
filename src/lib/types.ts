@@ -366,6 +366,8 @@ export interface NodeChartSpecGantt {
   phaseLabelColor?: string;
   taskLabelColor?: string;
   taskChipFill?: string;
+  /** Section label column width in viewBox px (drag to resize). */
+  labelColWidth?: number;
 }
 
 /** Chart configuration on a node (`generic.chart.*`). */

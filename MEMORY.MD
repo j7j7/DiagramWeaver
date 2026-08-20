@@ -2,6 +2,36 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-20 – Gantt modal bars inline colours
+Bars panel: row, start/end, variant, Fill/Border/Text swatches (tooltips only), and delete on one line. Patch bumped.
+
+### 2026-08-20 – Gantt modal rows and bars layout
+Rows panel: type, label, Section/Text colour swatches (tooltips only), and delete on one line; bar start/end fields widened so values fit beside spinners. Patch bumped.
+
+### 2026-08-20 – Gantt horizontal grid line colour
+Horizontal row grid lines follow **Grid lines** colour at 20% lighter; drawn at every row boundary when timeline lines are on (replaces hard-coded phase separators). Patch bumped.
+
+### 2026-08-20 – Gantt section column resize (fixed width)
+Section-label drag resizes **`labelColWidth`** only; the node width stays fixed and timeline columns reflow in the remaining plot area. Patch bumped.
+
+### 2026-08-20 – Gantt section column resize
+Drag the boundary between the section-label column and the timeline (same affordance as timeline column dividers) to resize **`labelColWidth`**; timeline columns keep their pixel width while the node grows or shrinks. Patch bumped.
+
+### 2026-08-20 – Gantt legend text alignment
+Legend labels share the swatch vertical band so text sits on the same line as each icon. Patch bumped.
+
+### 2026-08-20 – Gantt modal reset
+Chart data modal **Reset** restores a minimal gantt: one column (`column`), one phase row (`phase`), one task row (`row`), one bar (`task`); clears custom colours and track weights. Patch bumped.
+
+### 2026-08-20 – Gantt structure chrome overlays
+Gantt charts now show the same **add/delete row/column** and reorder grip overlays as grid charts when selected (`preserveShellHalo` + shared **`GridChartStructureChrome`**). Patch bumped.
+
+### 2026-08-20 – Gantt legend and colour labels
+Legend row is **centered** horizontally. Default colours panel renames: **Section Background**, **Section Text**, **Column Text**; phase/column text defaults swapped; section chip fill lightened; **Grid lines** swatch added (`gridLineColor`). Patch bumped.
+
+### 2026-08-20 – Gantt column add and equal widths
+Adding timeline columns from the chart data modal now extends **`columnWeights`** (average width per new column) and widens the node so existing columns keep their size. Canvas **+ column** uses the same weight logic. **Equal column widths** button on the modal clears custom column weights. Patch bumped.
+
 ### 2026-08-19 – Gantt bar resize snaps to half ticks
 Dragging a bar’s start/end snaps at **half the week-tick step** (twice as many points as the visible grid). Moving a bar still uses week ticks. Patch bumped.
 

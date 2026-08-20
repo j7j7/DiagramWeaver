@@ -1075,11 +1075,11 @@ export function DiagramEditorInner({
               }));
               setChartDataEditorModal({ visible: false, x: 0, y: 0, itemId: '' });
             }}
-            onPatchChart={(nodeId, chart) => {
+            onPatchChart={(nodeId, chart, nodePatch) => {
               setDiagramData((prev: DiagramData) => ({
                 ...prev,
                 nodes: prev.nodes?.map((n: DiagramNodeData) =>
-                  n.id === nodeId ? { ...n, chart } : n
+                  n.id === nodeId ? { ...n, ...nodePatch, chart } : n
                 ) ?? [],
               }));
             }}

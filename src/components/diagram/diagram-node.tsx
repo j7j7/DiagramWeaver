@@ -162,6 +162,7 @@ import {
   patchGanttColumnTitle,
   patchGanttRowLabel,
 } from "@/lib/gantt-chart-ops";
+import { ganttGrowWidthForAddedColumns } from "@/lib/gantt-chart-layout";
 import { gridChartCellRunsCentered } from "@/lib/grid-chart-rich-node";
 import { readThemeMenuHueStepDegFromStorage } from "@/lib/theme-menu-hue-step";
 
@@ -1733,7 +1734,12 @@ function DiagramNodeInner({
               ? (atCol) => {
                   const c = node.chart;
                   if (c?.kind !== "gantt") return;
-                  patchGantt(insertGanttColumnAt(c, atCol));
+                  const next = insertGanttColumnAt(c, atCol);
+                  onUpdate({
+                    ...node,
+                    width: ganttGrowWidthForAddedColumns(node, c, 1),
+                    chart: next,
+                  });
                 }
               : undefined
           }
@@ -1743,6 +1749,15 @@ function DiagramNodeInner({
                   const c = node.chart;
                   if (c?.kind !== "gantt") return;
                   onUpdate({ ...node, width, chart: { ...c, columnWeights } });
+                }
+              : undefined
+          }
+          onLabelColResize={
+            onUpdate && ganttInteractive
+              ? ({ labelColWidth }) => {
+                  const c = node.chart;
+                  if (c?.kind !== "gantt") return;
+                  onUpdate({ ...node, chart: { ...c, labelColWidth } });
                 }
               : undefined
           }

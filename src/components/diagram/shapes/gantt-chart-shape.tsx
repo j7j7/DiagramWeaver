@@ -17,6 +17,7 @@ import {
   TRACK_EDGE_HIT_PAD,
 } from "@/lib/grid-chart-layout";
 import {
+  ganttLabelColWidthFromPointer,
   buildGanttChartLayout,
   GANTT_BAR_FONT,
   GANTT_GATE_BAR_BORDER,
@@ -76,6 +77,7 @@ interface GanttChartShapeProps {
   onInsertGanttRow?: (atRow: number) => void;
   onInsertGanttColumn?: (atCol: number) => void;
   onColumnTrackResize?: (payload: { columnWeights: number[]; width: number }) => void;
+  onLabelColResize?: (payload: { labelColWidth: number }) => void;
   onRowTrackResize?: (payload: { rowWeights: number[]; height: number }) => void;
   onGanttFitHeight?: (height: number) => void;
   onGanttBarChange?: (barId: string, start: number, end: number) => void;
@@ -103,6 +105,7 @@ export function GanttChartShape(props: GanttChartShapeProps) {
     onInsertGanttRow,
     onInsertGanttColumn,
     onColumnTrackResize,
+    onLabelColResize,
     onRowTrackResize,
     onGanttFitHeight,
     onGanttBarChange,
@@ -130,6 +133,7 @@ export function GanttChartShape(props: GanttChartShapeProps) {
   const [edit, setEdit] = useState<EditSlot | null>(null);
   const [editRuns, setEditRuns] = useState<RichTextRun[]>([]);
   const [hoveredCol, setHoveredCol] = useState<number | null>(null);
+  const [hoveredLabelCol, setHoveredLabelCol] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [rowReorderTarget, setRowReorderTarget] = useState<number | null>(null);
   const rowReorderRef = useRef<{
@@ -162,6 +166,7 @@ export function GanttChartShape(props: GanttChartShapeProps) {
     axis: "x" | "y" | null;
   } | null>(null);
   const colDragRef = useRef<{ index: number; frozen: number[] } | null>(null);
+  const labelColDragRef = useRef(false);
   const rowDragRef = useRef<{ index: number; frozen: number[] } | null>(null);
 
   const resolveRuns = useCallback(
@@ -467,6 +472,11 @@ export function GanttChartShape(props: GanttChartShapeProps) {
     }
   );
   const shellBorderRadius = `${Math.max(0, body.rx)}px`;
+  const preserveShellHalo = ganttInteractive || !!shellHighlightStyle;
+  const canStructureChrome =
+    ganttInteractive &&
+    !isReadOnly &&
+    !!(onDeleteGanttRow || onDeleteGanttColumn || onMoveGanttRow || onMoveGanttColumn);
 
   const svgContent = (
     <>
@@ -510,15 +520,15 @@ export function GanttChartShape(props: GanttChartShapeProps) {
             vectorEffect="non-scaling-stroke"
           />
         ))}
-        {layout.phaseSeps.map((ln, i) => (
+        {layout.rowGridLines.map((ln, i) => (
           <line
-            key={`ph-${i}`}
+            key={`rg-${i}`}
             x1={ln.x1}
             y1={ln.y1}
             x2={ln.x2}
             y2={ln.y2}
-            stroke="#e5e7eb"
-            strokeWidth={1}
+            stroke={layout.gridLineColorLight}
+            strokeWidth={0.9}
             vectorEffect="non-scaling-stroke"
           />
         ))}
@@ -758,9 +768,9 @@ export function GanttChartShape(props: GanttChartShapeProps) {
                 {renderText({
                   key: `leg-t-${item.kind}`,
                   x: sw.x + sw.w + 6,
-                  y: layout.legend!.y - 2,
-                  w: item.kind === "gate" ? 150 : 70,
-                  h: layout.legend!.h,
+                  y: sw.y,
+                  w: item.labelWidth,
+                  h: sw.h,
                   runs: labelRuns,
                   slot: { kind: "legend", which: item.kind },
                   color: layout.axisColor,
@@ -771,6 +781,55 @@ export function GanttChartShape(props: GanttChartShapeProps) {
               </g>
             );
           })
+        : null}
+      {ganttInteractive && onLabelColResize
+        ? (() => {
+            const hitW = Math.max(6, TRACK_EDGE_HIT_PAD * 2);
+            const pad = layout.titlePadX;
+            return (
+              <rect
+                key="label-col-boundary"
+                x={plot.x - hitW / 2}
+                y={plot.y}
+                width={hitW}
+                height={plot.h}
+                fill={hoveredLabelCol ? "rgba(59,130,246,0.18)" : "transparent"}
+                style={{ cursor: "col-resize", touchAction: "none" }}
+                onPointerEnter={() => setHoveredLabelCol(true)}
+                onPointerLeave={() => setHoveredLabelCol(false)}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  labelColDragRef.current = true;
+                  onGanttDragSessionChange?.(true);
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                }}
+                onPointerMove={(e) => {
+                  if (!labelColDragRef.current) return;
+                  const svg = e.currentTarget.ownerSVGElement;
+                  if (!svg) return;
+                  const pt = svgUserPointFromClient(svg, e.clientX, 0);
+                  if (!pt) return;
+                  const labelColWidth = ganttLabelColWidthFromPointer(
+                    pt.x,
+                    body.x,
+                    layout.body.w,
+                    pad
+                  );
+                  onLabelColResize({ labelColWidth });
+                }}
+                onPointerUp={(e) => {
+                  labelColDragRef.current = false;
+                  onGanttDragSessionChange?.(false);
+                  try {
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+              />
+            );
+          })()
         : null}
       {ganttInteractive && onColumnTrackResize && layout.cols > 1
         ? layout.colBoundaries.map((b) => {
@@ -901,7 +960,7 @@ export function GanttChartShape(props: GanttChartShapeProps) {
           />
         )
         : null}
-      {ganttInteractive ? (
+      {canStructureChrome && layout.structure ? (
         <GridChartStructureChrome
           layout={layout}
           canInteract
@@ -924,7 +983,7 @@ export function GanttChartShape(props: GanttChartShapeProps) {
       className="relative box-border h-full w-full"
       style={{
         borderRadius: shellBorderRadius,
-        overflow: ganttInteractive ? "visible" : "hidden",
+        overflow: preserveShellHalo ? "visible" : "hidden",
         ...mergeCardShellHighlightStyle(shellHighlightStyle, undefined),
       }}
     >
@@ -937,6 +996,7 @@ export function GanttChartShape(props: GanttChartShapeProps) {
         frostedClipRectInViewBox={{ x: body.x, y: body.y, w: body.w, h: body.h, rx: body.rx, ry: body.ry }}
         slideColorTransition={slideColorTransition}
         svgOverflowVisible={ganttInteractive}
+        preserveShellHalo={preserveShellHalo}
         svgContent={svgContent}
       />
     </div>

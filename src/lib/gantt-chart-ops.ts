@@ -38,6 +38,25 @@ function remapBarsInsertColumn(bars: GanttChartBar[], atCol: number): GanttChart
   }));
 }
 
+function extendGanttColumnWeights(
+  prev: number[] | undefined,
+  oldCols: number,
+  newCols: number
+): number[] {
+  if (newCols <= 0) return [];
+  if (newCols === oldCols && prev?.length === oldCols) {
+    return prev.map((w) => (typeof w === "number" && Number.isFinite(w) && w > 0 ? w : 1));
+  }
+  if (prev?.length === oldCols) {
+    const avg = prev.reduce((a, b) => a + b, 0) / oldCols;
+    if (newCols > oldCols) {
+      return [...prev, ...Array.from({ length: newCols - oldCols }, () => avg)];
+    }
+    return prev.slice(0, newCols);
+  }
+  return resizeGridTrackWeights(newCols, oldCols, prev);
+}
+
 function remapBarsDeleteColumn(bars: GanttChartBar[], atCol: number, colsBefore: number): GanttChartBar[] {
   const next: GanttChartBar[] = [];
   for (const bar of bars) {
@@ -161,6 +180,70 @@ export function insertGanttRowAt(
   };
 }
 
+export function resizeGanttColumnCount(
+  chart: NodeChartSpecGantt,
+  nextColsRaw: number
+): NodeChartSpecGantt {
+  const oldCols = clampGanttCols(chart.cols);
+  const cols = clampGanttCols(nextColsRaw);
+  const rows = normalizeGanttRows(chart.rows);
+  if (cols === oldCols) return chart;
+
+  const titles = [...(chart.columnTitles ?? [])];
+  while (titles.length < oldCols) titles.push("");
+  const nextTitles = titles.slice(0, cols);
+  while (nextTitles.length < cols) nextTitles.push("Month");
+
+  const rich = [...(chart.richColumnTitles ?? [])];
+  while (rich.length < oldCols) rich.push(undefined);
+  const nextRich = rich.slice(0, cols);
+  while (nextRich.length < cols) nextRich.push(undefined);
+
+  return {
+    ...chart,
+    kind: "gantt",
+    cols,
+    columnTitles: nextTitles,
+    richColumnTitles: nextRich,
+    columnWeights: extendGanttColumnWeights(chart.columnWeights, oldCols, cols),
+    bars: normalizeGanttBars(chart.bars, rows, cols),
+  };
+}
+
+/** Remove custom column track weights so all timeline columns share space equally. */
+export function resetGanttColumnWeights(chart: NodeChartSpecGantt): NodeChartSpecGantt {
+  const { columnWeights: _c, ...rest } = chart;
+  return { ...rest, kind: "gantt" };
+}
+
+/** Minimal starter chart: one column, one phase row, one task row, one task bar. */
+export function resetGanttChartToMinimal(): NodeChartSpecGantt {
+  const phase: GanttChartRow = { id: newChartSliceId(), kind: "phase", label: "phase" };
+  const row: GanttChartRow = { id: newChartSliceId(), kind: "task", label: "row" };
+  return {
+    kind: "gantt",
+    cols: 1,
+    columnTitles: ["column"],
+    rows: [phase, row],
+    bars: [
+      {
+        id: newChartSliceId(),
+        rowId: row.id,
+        start: 0,
+        end: 1,
+        variant: "task",
+        label: "task",
+      },
+    ],
+    subdivisions: 4,
+    showGridLines: true,
+    showLegend: true,
+    legendGateLabel: "Gate",
+    legendTaskLabel: "task",
+    legendPhaseLabel: "phase",
+  };
+}
+
 export function insertGanttColumnAt(chart: NodeChartSpecGantt, atCol: number): NodeChartSpecGantt {
   const cols = clampGanttCols(chart.cols);
   const rows = normalizeGanttRows(chart.rows);
@@ -172,6 +255,14 @@ export function insertGanttColumnAt(chart: NodeChartSpecGantt, atCol: number): N
   const rich = [...(chart.richColumnTitles ?? [])];
   while (rich.length < cols) rich.push(undefined);
   rich.splice(at, 0, undefined);
+  const prev = chart.columnWeights;
+  const columnWeights =
+    prev?.length === cols
+      ? (() => {
+          const avg = prev.reduce((a, b) => a + b, 0) / cols;
+          return [...prev.slice(0, at), avg, ...prev.slice(at)];
+        })()
+      : extendGanttColumnWeights(prev, cols, cols + 1);
   return {
     ...chart,
     kind: "gantt",
@@ -179,7 +270,7 @@ export function insertGanttColumnAt(chart: NodeChartSpecGantt, atCol: number): N
     columnTitles: titles,
     richColumnTitles: rich,
     bars: remapBarsInsertColumn(normalizeGanttBars(chart.bars, rows, cols), at),
-    columnWeights: resizeGridTrackWeights(cols + 1, cols, chart.columnWeights),
+    columnWeights,
   };
 }
 

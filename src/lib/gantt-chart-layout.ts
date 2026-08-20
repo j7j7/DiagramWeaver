@@ -8,6 +8,7 @@ import type {
 import { getPlainTextFromRuns } from "@/lib/rich-text";
 import { newChartSliceId } from "@/lib/grid-chart-layout";
 import {
+  gridChartTrackPixelSizesFromEdges,
   normalizeGridTrackWeights,
   type GridChartHandleRect,
   type GridChartStructureChrome,
@@ -20,15 +21,22 @@ export const GANTT_MAX_COLS = 24;
 export const GANTT_MIN_ROWS = 1;
 export const GANTT_MAX_ROWS = 24;
 export const GANTT_MIN_BAR_SPAN = 0.12;
+export const GANTT_MIN_LABEL_COL_W = 64;
+export const GANTT_MAX_LABEL_COL_W = 280;
 
 export const GANTT_TASK_BAR_FILL = "#c5cdd4";
 export const GANTT_TASK_BAR_BORDER = "#8b95a1";
 export const GANTT_GATE_BAR_FILL = "#ffe4d6";
 export const GANTT_GATE_BAR_BORDER = "#ff8c66";
 export const GANTT_GATE_LABEL = "#e86a3d";
-export const GANTT_PHASE_LABEL = "#9aa3b2";
+/** Phase row label default (swapped with column text for clearer hierarchy). */
+export const GANTT_PHASE_LABEL = "#64748b";
+/** Task row / section label default. */
 export const GANTT_TASK_LABEL = "#2d333b";
-export const GANTT_LABEL_CHIP_FILL = "#e8eaed";
+export const GANTT_LABEL_CHIP_FILL = "#f1f5f9";
+/** Timeline column title and legend label default (swapped with phase text). */
+export const GANTT_AXIS_COLOR = "#9aa3b2";
+export const GANTT_GRID_LINE_COLOR = "#cbd5e1";
 
 const GRID_CHROME_LEFT = 52;
 const GRID_CHROME_TOP = 56;
@@ -83,12 +91,14 @@ export interface GanttChartLayout {
   bars: GanttLayoutBar[];
   weekLines: { x1: number; y1: number; x2: number; y2: number }[];
   monthLines: { x1: number; y1: number; x2: number; y2: number }[];
-  phaseSeps: { x1: number; y1: number; x2: number; y2: number }[];
+  rowGridLines: { x1: number; y1: number; x2: number; y2: number }[];
   colBoundaries: GridChartTrackBoundary[];
   rowBoundaries: GridChartRowBoundary[];
   axisColor: string;
   titleColor: string;
   gridLineColor: string;
+  /** Horizontal row lines: same hue as {@link gridLineColor}, mixed 20% toward white. */
+  gridLineColorLight: string;
   titlePadX: number;
   requiredNodeHeight: number;
   legend: {
@@ -99,6 +109,7 @@ export interface GanttChartLayout {
       kind: "gate" | "task" | "phase";
       label: string;
       x: number;
+      labelWidth: number;
       swatch: { x: number; y: number; w: number; h: number };
     }>;
   } | null;
@@ -108,6 +119,34 @@ export interface GanttChartLayout {
 export const GANTT_TASK_FONT = 11;
 export const GANTT_PHASE_FONT = 8;
 export const GANTT_BAR_FONT = 10;
+
+/** Mix grid line colour toward white (`amount` = 0.2 → 20% lighter). */
+export function ganttGridLineColorLight(color: string, amount = 0.2): string {
+  const raw = color.trim();
+  let r: number;
+  let g: number;
+  let b: number;
+  const hex6 = /^#([0-9a-fA-F]{6})$/;
+  const hex3 = /^#([0-9a-fA-F]{3})$/;
+  const rgb = raw.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (hex6.test(raw)) {
+    r = parseInt(raw.slice(1, 3), 16);
+    g = parseInt(raw.slice(3, 5), 16);
+    b = parseInt(raw.slice(5, 7), 16);
+  } else if (hex3.test(raw)) {
+    r = parseInt(raw[1]! + raw[1]!, 16);
+    g = parseInt(raw[2]! + raw[2]!, 16);
+    b = parseInt(raw[3]! + raw[3]!, 16);
+  } else if (rgb) {
+    r = Number(rgb[1]);
+    g = Number(rgb[2]);
+    b = Number(rgb[3]);
+  } else {
+    return color;
+  }
+  const mix = (c: number) => Math.min(255, Math.round(c + (255 - c) * amount));
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
 
 function ganttTextLineCount(
   plain: string,
@@ -167,6 +206,41 @@ export function clampGanttCols(n: number | undefined): number {
 
 export function clampGanttSubdivisions(n: number | undefined): number {
   return clampInt(n, 4, 1, 8);
+}
+
+/** Left section column width (viewBox px); falls back to ~28% of body width. */
+export function resolveGanttLabelColWidth(
+  bodyW: number,
+  chart: Pick<NodeChartSpecGantt, "labelColWidth">
+): number {
+  const fallback = Math.max(
+    GANTT_MIN_LABEL_COL_W,
+    Math.min(GANTT_MAX_LABEL_COL_W, bodyW * 0.28)
+  );
+  const stored = chart.labelColWidth;
+  if (typeof stored === "number" && Number.isFinite(stored) && stored > 0) {
+    return Math.max(GANTT_MIN_LABEL_COL_W, Math.min(GANTT_MAX_LABEL_COL_W, stored));
+  }
+  return fallback;
+}
+
+/**
+ * Pointer drag for the section-label / timeline boundary within a fixed chart width.
+ * Timeline columns reflow in the remaining plot width; the node does not resize.
+ */
+export function ganttLabelColWidthFromPointer(
+  pointerX: number,
+  bodyLeft: number,
+  bodyW: number,
+  pad: number,
+  minPlotW = 8
+): number {
+  const maxLabelW = Math.max(
+    GANTT_MIN_LABEL_COL_W,
+    Math.min(GANTT_MAX_LABEL_COL_W, bodyW - pad * 2 - minPlotW)
+  );
+  let labelColWidth = pointerX - bodyLeft - pad;
+  return Math.max(GANTT_MIN_LABEL_COL_W, Math.min(maxLabelW, labelColWidth));
 }
 
 export function normalizeGanttRows(rows: GanttChartRow[] | undefined): GanttChartRow[] {
@@ -303,6 +377,22 @@ function buildStructureChrome(
   };
 }
 
+/** Grow node width when adding timeline columns so existing columns keep their pixel width. */
+export function ganttGrowWidthForAddedColumns(
+  node: { width?: number; height?: number },
+  chart: NodeChartSpecGantt,
+  addedCount: number
+): number {
+  if (addedCount <= 0) return Math.max(40, node.width ?? 640);
+  const layout = buildGanttChartLayout(
+    { id: "", type: "generic.chart.gantt", width: node.width, height: node.height },
+    chart
+  );
+  const sizes = gridChartTrackPixelSizesFromEdges(layout.columnEdges);
+  const avg = sizes.reduce((a, b) => a + b, 0) / Math.max(1, sizes.length);
+  return Math.max(40, Math.round((node.width ?? layout.body.w) + avg * addedCount));
+}
+
 export function buildGanttChartLayout(
   node: DiagramNodeData & { width?: number; height?: number },
   chart: NodeChartSpecGantt,
@@ -330,7 +420,8 @@ export function buildGanttChartLayout(
   const titleBand = titleText ? Math.min(26, h * 0.1) : 0;
   const colTitleBand = hasColTitles ? Math.min(22, h * 0.08) : 8;
   const legendBand = showLegend ? Math.min(36, h * 0.1) : 0;
-  const labelW = Math.max(96, Math.min(188, w * 0.28));
+  const maxLabelW = Math.max(GANTT_MIN_LABEL_COL_W, Math.min(GANTT_MAX_LABEL_COL_W, w - pad * 2 - 8));
+  const labelW = Math.min(maxLabelW, resolveGanttLabelColWidth(w, chart));
   const plotX = half + labelW + pad;
   const plotY = half + titleBand + colTitleBand + pad * 0.6;
   const plotW = Math.max(8, w - labelW - pad * 2);
@@ -372,9 +463,10 @@ export function buildGanttChartLayout(
       rowEdges.push(y);
     }
   }
-  const axisColor = chart.axisColor?.trim() || "#64748b";
+  const axisColor = chart.axisColor?.trim() || GANTT_AXIS_COLOR;
   const titleColor = chart.titleColor?.trim() || "#4b5563";
-  const gridLineColor = chart.gridLineColor?.trim() || "rgba(148,163,184,0.45)";
+  const gridLineColor = chart.gridLineColor?.trim() || GANTT_GRID_LINE_COLOR;
+  const gridLineColorLight = ganttGridLineColorLight(gridLineColor, 0.2);
   const phaseColor = chart.phaseLabelColor?.trim() || GANTT_PHASE_LABEL;
   const taskLabelColor = chart.taskLabelColor?.trim() || GANTT_TASK_LABEL;
   const defaultChipFill = chart.taskChipFill?.trim() || GANTT_LABEL_CHIP_FILL;
@@ -465,11 +557,11 @@ export function buildGanttChartLayout(
     });
   }
 
-  const phaseSeps: GanttChartLayout["phaseSeps"] = [];
-  for (let i = 1; i < rowCount; i++) {
-    if (rowsIn[i]?.kind === "phase" || rowsIn[i - 1]?.kind === "phase") {
+  const rowGridLines: GanttChartLayout["rowGridLines"] = [];
+  if (chart.showGridLines !== false) {
+    for (let i = 1; i < rowCount; i++) {
       const y = rowEdges[i]!;
-      phaseSeps.push({
+      rowGridLines.push({
         x1: half + pad * 0.5,
         y1: y,
         x2: half + w - pad * 0.5,
@@ -504,29 +596,42 @@ export function buildGanttChartLayout(
     const fontSize = Math.min(10, Math.max(7, legendBand * 0.32));
     const sw = 22;
     const sh = 10;
-    const gap = 18;
-    const startX = half + pad;
-    const items: NonNullable<GanttChartLayout["legend"]>["items"] = [
+    const textGap = 6;
+    const itemGap = 18;
+    const legendLabels: Array<{ kind: "gate" | "task" | "phase"; label: string }> = [
       {
         kind: "gate",
         label: chart.legendGateLabel?.trim() || "Design review - critical gate",
-        x: startX,
-        swatch: { x: startX, y: y + 2, w: sw, h: sh },
       },
-      {
-        kind: "task",
-        label: chart.legendTaskLabel?.trim() || "Task",
-        x: startX + 168,
-        swatch: { x: startX + 168, y: y + 2, w: sw, h: sh },
-      },
-      {
-        kind: "phase",
-        label: chart.legendPhaseLabel?.trim() || "Phase",
-        x: startX + 248,
-        swatch: { x: startX + 248, y: y + 2, w: sw, h: sh },
-      },
+      { kind: "task", label: chart.legendTaskLabel?.trim() || "Task" },
+      { kind: "phase", label: chart.legendPhaseLabel?.trim() || "Phase" },
     ];
-    void gap;
+    const legendLabelWidth = (label: string, kind: "gate" | "task" | "phase") => {
+      const min = kind === "gate" ? 80 : 32;
+      const max = kind === "gate" ? 200 : 80;
+      const avg = fontSize * 0.56;
+      return Math.min(max, Math.max(min, label.length * avg));
+    };
+    const itemWidths = legendLabels.map(
+      ({ label, kind }) => sw + textGap + legendLabelWidth(label, kind)
+    );
+    const totalW = itemWidths.reduce((a, b) => a + b, 0) + itemGap * (legendLabels.length - 1);
+    let x = half + (w - totalW) / 2;
+    const items: NonNullable<GanttChartLayout["legend"]>["items"] = legendLabels.map(
+      ({ kind, label }, i) => {
+        const swatchX = x;
+        const labelWidth = legendLabelWidth(label, kind);
+        const item = {
+          kind,
+          label,
+          x: swatchX,
+          labelWidth,
+          swatch: { x: swatchX, y: y + 2, w: sw, h: sh },
+        };
+        x += itemWidths[i]! + itemGap;
+        return item;
+      }
+    );
     legend = { y, h: legendBand, fontSize, items };
   }
 
@@ -579,12 +684,13 @@ export function buildGanttChartLayout(
     bars,
     weekLines,
     monthLines,
-    phaseSeps,
+    rowGridLines,
     colBoundaries,
     rowBoundaries,
     axisColor,
     titleColor,
     gridLineColor,
+    gridLineColorLight,
     titlePadX: pad,
     requiredNodeHeight,
     legend,

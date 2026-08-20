@@ -81,6 +81,7 @@ import {
   resolveGridCellPadPx,
 } from "@/lib/grid-chart-layout";
 import { GanttChartDataFields } from "@/components/editor/gantt-chart-data-fields";
+import { clampGanttCols, ganttGrowWidthForAddedColumns } from "@/lib/gantt-chart-layout";
 
 type ChartModalSectionTint = "muted" | "amber" | "emerald" | "purple" | "sky" | "teal";
 
@@ -410,7 +411,11 @@ interface ChartDataEditorModalProps {
   node: DiagramNodeData | null;
   onSave: (nodeId: string, chart: NodeChartSpec) => void;
   /** Apply chart changes without closing the modal (e.g. reset track sizes). */
-  onPatchChart?: (nodeId: string, chart: NodeChartSpec) => void;
+  onPatchChart?: (
+    nodeId: string,
+    chart: NodeChartSpec,
+    nodePatch?: Partial<Pick<DiagramNodeData, "width" | "height">>
+  ) => void;
   isReadOnly?: boolean;
   globalProperties?: Record<string, string>;
   globalVariableContext?: import("@/lib/builtin-global-variables").GlobalVariableContext;
@@ -2837,7 +2842,18 @@ export function ChartDataEditorModal({
                 isReadOnly={isReadOnly}
                 onPatch={(next) => {
                   if (!node?.id || !onPatchChart || isReadOnly) return;
-                  onPatchChart(node.id, next);
+                  const prevChart =
+                    node.chart?.kind === "gantt"
+                      ? (node.chart as NodeChartSpecGantt)
+                      : defaultGanttChartSpec();
+                  const prevCols = clampGanttCols(prevChart.cols);
+                  const nextCols = clampGanttCols(next.cols);
+                  const added = nextCols - prevCols;
+                  const nodePatch =
+                    added > 0
+                      ? { width: ganttGrowWidthForAddedColumns(node, prevChart, added) }
+                      : undefined;
+                  onPatchChart(node.id, next, nodePatch);
                 }}
               />
             ) : null}
