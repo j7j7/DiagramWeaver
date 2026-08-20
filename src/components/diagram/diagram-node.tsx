@@ -96,6 +96,7 @@ import {
   GridChartShape,
   GanttChartShape,
   LoopChartShape,
+  ArrowChartShape,
   ProgressBarShape,
   TimelineBarShape,
   SegmentedRectangleShape,
@@ -164,6 +165,7 @@ import {
   patchGanttRowLabel,
 } from "@/lib/gantt-chart-ops";
 import { moveLoopItem, patchLoopHub, patchLoopItem } from "@/lib/loop-chart-ops";
+import { moveArrowItem, patchArrowItem } from "@/lib/arrow-chart-ops";
 import { ganttGrowWidthForAddedColumns } from "@/lib/gantt-chart-layout";
 import { gridChartCellRunsCentered } from "@/lib/grid-chart-rich-node";
 import { readThemeMenuHueStepDegFromStorage } from "@/lib/theme-menu-hue-step";
@@ -1929,6 +1931,54 @@ function DiagramNodeInner({
           }
         />
       );
+    } else if (nodeType === "generic.chart.arrow" || nodeType?.endsWith(".chart.arrow")) {
+      const arrowNode =
+        isDraggingCornerRadius && localCornerRadius !== null
+          ? { ...visualNode, cornerRadius: localCornerRadius }
+          : visualNode;
+      const arrowInteractive = isSelected && !isReadOnly && !isMultiSelected;
+      const arrowDragSession = !isReadOnly
+        ? (active: boolean) => {
+            chartValueDragInteractionRef.current = active;
+            onChartValueDragSessionChange?.(active);
+          }
+        : undefined;
+      const patchArrow = (next: import("@/lib/types").NodeChartSpecArrow) => {
+        if (!onUpdate) return;
+        onUpdate({ ...node, chart: next });
+      };
+      return (
+        <ArrowChartShape
+          {...shapeProps}
+          node={arrowNode}
+          isReadOnly={isReadOnly}
+          arrowInteractive={arrowInteractive}
+          onArrowDragSessionChange={arrowDragSession}
+          onMoveArrowItem={
+            onUpdate && arrowInteractive
+              ? (fromIndex, toIndex) => {
+                  const c = node.chart;
+                  if (c?.kind !== "arrow") return;
+                  patchArrow(moveArrowItem(c, fromIndex, toIndex));
+                }
+              : undefined
+          }
+          onArrowItemTextChange={
+            onUpdate && !isReadOnly
+              ? (itemId, field, plainText, runs) => {
+                  const c = node.chart;
+                  if (c?.kind !== "arrow") return;
+                  const norm = normalizeRuns(runs);
+                  if (field === "title") {
+                    patchArrow(patchArrowItem(c, itemId, { title: plainText, richTitle: norm }));
+                  } else {
+                    patchArrow(patchArrowItem(c, itemId, { subtitle: plainText, richSubtitle: norm }));
+                  }
+                }
+              : undefined
+          }
+        />
+      );
     } else if (nodeType === 'generic.chart.line') {
       return (
         <LineChartShape
@@ -2050,7 +2100,8 @@ function DiagramNodeInner({
         node.chart?.kind !== "ring" &&
         node.chart?.kind !== "grid" &&
         node.chart?.kind !== "gantt" &&
-        node.chart?.kind !== "loop")
+        node.chart?.kind !== "loop" &&
+        node.chart?.kind !== "arrow")
     ) {
       return (
         <PieChartShape
@@ -2623,6 +2674,9 @@ function DiagramNodeInner({
     node.type === "generic.chart.gantt" || node.type?.endsWith(".chart.gantt");
   const isLoopChartNode =
     node.type === "generic.chart.loop" || node.type?.endsWith(".chart.loop");
+  const isArrowChartNode =
+    node.type === "generic.chart.arrow" || node.type?.endsWith(".chart.arrow");
+  const isSquareChartNode = isLoopChartNode || isArrowChartNode;
   const isCardNode = isCardNodeType(node.type);
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
    const isMindmapCardNode = isMindmapNodeType(node.type);
@@ -2633,7 +2687,7 @@ function DiagramNodeInner({
      isRoundedRectangleNode ||
      isGridChartNode ||
      isGanttChartNode ||
-     isLoopChartNode ||
+     isSquareChartNode ||
      isTextBoxHeadingNode ||
      mindmapBodyRounded ||
      isCardNode;
@@ -3089,7 +3143,7 @@ function DiagramNodeInner({
     const minWidth = isRichTextBoxLike ? 40 : isShapeNode ? 20 : 80;
     const minHeight = isRichTextBoxLike ? 40 : isShapeNode ? 20 : 40;
     const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
-    const isSquareLockedNode = isKiteNode || isLoopChartNode;
+    const isSquareLockedNode = isKiteNode || isSquareChartNode;
     
     let newX: number | undefined;
     let newY: number | undefined;
@@ -4298,7 +4352,7 @@ function DiagramNodeInner({
       data-perf-shadow-suppressed={suppressShadowsDuringCanvasDrag ? "true" : undefined}
       data-dw-card-node={isCardNode ? "true" : undefined}
       data-dw-highlight-anim={
-        highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode && !isLoopChartNode
+        highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode && !isSquareChartNode
           ? "true"
           : undefined
       }
@@ -4312,7 +4366,7 @@ function DiagramNodeInner({
         spineLikeNode ||
           isGridChartNode ||
           isGanttChartNode ||
-          isLoopChartNode ||
+          isSquareChartNode ||
           (isIconNode && Boolean((node as DiagramNodeData).iconBevel)) ||
           isCardNode
           ? "overflow-visible"
@@ -4321,7 +4375,7 @@ function DiagramNodeInner({
         node.highlightAnim &&
         !isDuplicateDragPreview &&
         !spineLikeNode &&
-        (highlightPulseUsesShapeSilhouette || isCardNode || isGridChartNode || isGanttChartNode || isLoopChartNode)
+        (highlightPulseUsesShapeSilhouette || isCardNode || isGridChartNode || isGanttChartNode || isSquareChartNode)
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
@@ -4404,7 +4458,7 @@ function DiagramNodeInner({
         ...(spineLikeNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
-        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode && !isLoopChartNode
+        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette && !isCardNode && !isGridChartNode && !isGanttChartNode && !isSquareChartNode
           ? highlightAnimStyle
           : {}),
         // Layer show/hide animation (opacity, transition, transform)

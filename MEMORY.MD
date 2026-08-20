@@ -2,6 +2,27 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-20 – Arrow chart chevron/triangle fill
+Chevron and triangle wedges are one closed path (point + matching notch) for fill and stroke, so colour no longer spills past the outline. Gap sits between arrows instead of overlapping neighbours. Patch bumped.
+
+### 2026-08-20 – Arrow chart chevron border + label shift
+Chevron/triangle segment borders stroke the inner/outer arcs and the head only, so the overlapping V no longer doubles with the next notch. Labels sit further toward the arrowhead. Patch bumped.
+
+### 2026-08-21 – Arrow chart head border seam
+Chevron/triangle head borders use an open outline path (no closing chord) so the segment border does not draw a line across the wedge. Patch bumped.
+
+### 2026-08-21 – Arrow chart chevron borders + label bias
+Chevron/triangle borders use a fill pass then a separate stroke pass (body, then head overlay on top) so junctions stay clean. Segment labels shift along the flow toward the arrow head. Patch bumped.
+
+### 2026-08-20 – Arrow chart segment borders + overlap
+Chart data **Segment borders** (colour + width) outlines each wedge. Rounded overlap is a round-capped ring stroke so the hole stays circular and each head sits on the next tail without inner notches or wrap slivers. Patch bumped.
+
+### 2026-08-20 – Arrow chart heads on next tail
+Each arrowhead is painted above the following wedge (Design on Build, Build on Test, …, last on first) so the tip sits on the next tail all the way around. Patch bumped.
+
+### 2026-08-20 – Arrow chart
+New **Arrow chart** in Generic → Object (`generic.chart.arrow`, `chart.kind: 'arrow'`): segmented ring with labels in each wedge, clockwise or anticlockwise, variable segment count. Arrow types **chevron** / **triangle** / **rounded overlap**. Colours **same** / **hint** (lightness ramp) / **hue difference**. Square node like loop. Palette **`arrow-chart.svg`**. Layout in **`arrow-chart-layout.ts`** / **`arrow-chart-paths.ts`** / **`arrow-chart-ops.ts`**. Patch bumped.
+
 ### 2026-08-20 – Loop ring chevron markers
 Gap arrowheads sit at arc midpoints, point clockwise along the ring tangent, and use a wider chevron matched to stroke width (segment-junction style). Patch bumped.
 

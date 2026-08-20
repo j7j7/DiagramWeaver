@@ -38,7 +38,7 @@
     "slug": "resource display name, spaces to hyphens, lower-case (e.g. 'EC2 Instance' → ec2-instance)",
     "remaps": [
       "generic text 'Text Box Heading' → generic.object.text-box-heading",
-      "generic object pie/bar/line/ring/grid/gantt/loop chart → generic.chart.{pie|bar|line|ring|grid|gantt|loop}",
+      "generic object pie/bar/line/ring/grid/gantt/loop/arrow chart → generic.chart.{pie|bar|line|ring|grid|gantt|loop|arrow}",
       "generic cards → generic.card.{template-id}",
       "generic borders → generic.border.{template-id}",
       "Lucide palette → generic.icon.{iconName slug} plus iconType lucide and iconName PascalCase",
@@ -121,6 +121,10 @@
         "generic.chart.loop": [
           520,
           520
+        ],
+        "generic.chart.arrow": [
+          480,
+          480
         ],
         "generic.object.uml-class": [
           120,
@@ -569,6 +573,31 @@
             ]
           },
           "items": "Variable length (1–16). Layout places items evenly around the circle. spokeLabel is the optional inward-arrow caption. showInwardArrows false hides hub spokes. rotateItems true turns boxes tangent to the ring with circular pie-slice arrows. arrowWidth (0.5–6 SVG units) sets loop and inward arrow stroke thickness."
+        },
+        "arrow": {
+          "type": "generic.chart.arrow",
+          "role": "Segmented circular process arrows: square node, variable wedges with labels, clockwise or anticlockwise flow. arrowStyle chevron|triangle|overlap. colorMode same|hint|hue-step.",
+          "chart": {
+            "kind": "arrow",
+            "arrowStyle": "chevron",
+            "direction": "clockwise",
+            "colorMode": "hue-step",
+            "segmentFill": "#4f46e5",
+            "hueStepDeg": 51,
+            "innerRatio": 0.52,
+            "gapDeg": 3,
+            "items": [
+              {
+                "id": "s1",
+                "title": "Plan"
+              },
+              {
+                "id": "s2",
+                "title": "Build"
+              }
+            ]
+          },
+          "items": "Variable length (2–16). Text sits in each wedge. hint tints one fill; hue-step rotates hue per segment."
         }
       },
       "seriesFill": "fillStyle none|solid|gradient; gradientColors [start,end]; labelColor on slices."
@@ -722,8 +751,8 @@
   ],
   "generatedAt": "2026-08-20",
   "catalogs": {
-    "typeCount": 2432,
-    "enabledTypeCount": 2135,
+    "typeCount": 2433,
+    "enabledTypeCount": 2136,
     "providers": [
       {
         "id": "alibabacloud",
@@ -1227,7 +1256,7 @@
         "id": "generic",
         "name": "Generic",
         "enabled": true,
-        "typeCount": 86,
+        "typeCount": 87,
         "categories": [
           {
             "id": "text",
@@ -1237,7 +1266,7 @@
           {
             "id": "object",
             "name": "Object",
-            "count": 32
+            "count": 33
           },
           {
             "id": "cards",
@@ -1820,6 +1849,12 @@
       {
         "type": "generic.chart.loop",
         "name": "Loop chart",
+        "family": "chart",
+        "category": "object"
+      },
+      {
+        "type": "generic.chart.arrow",
+        "name": "Arrow chart",
         "family": "chart",
         "category": "object"
       },
@@ -7071,6 +7106,40 @@
                 "title": "Act",
                 "subtitle": "work ships",
                 "spokeLabel": "OUTCOMES"
+              }
+            ]
+          }
+        },
+        {
+          "id": "cycle-arrows",
+          "type": "generic.chart.arrow",
+          "x": 640,
+          "y": 760,
+          "width": 480,
+          "height": 480,
+          "sizeMode": "custom",
+          "chart": {
+            "kind": "arrow",
+            "arrowStyle": "chevron",
+            "direction": "clockwise",
+            "colorMode": "hue-step",
+            "segmentFill": "#4f46e5",
+            "items": [
+              {
+                "id": "a1",
+                "title": "Plan"
+              },
+              {
+                "id": "a2",
+                "title": "Build"
+              },
+              {
+                "id": "a3",
+                "title": "Launch"
+              },
+              {
+                "id": "a4",
+                "title": "Review"
               }
             ]
           }

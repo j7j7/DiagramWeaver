@@ -416,6 +416,45 @@ export interface NodeChartSpecLoop {
   arrowWidth?: number;
 }
 
+/** One wedge on an arrow chart (`generic.chart.arrow`). */
+export interface ArrowChartItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  richTitle?: RichTextRun[];
+  richSubtitle?: RichTextRun[];
+  fill?: string;
+  textColor?: string;
+}
+
+export type ArrowChartStyle = "chevron" | "overlap" | "triangle";
+export type ArrowChartDirection = "clockwise" | "anticlockwise";
+export type ArrowChartColorMode = "same" | "hint" | "hue-step";
+
+/** Segmented circular process arrows (`generic.chart.arrow`). */
+export interface NodeChartSpecArrow {
+  kind: "arrow";
+  items: ArrowChartItem[];
+  /** Segment end geometry. Omitted = chevron. */
+  arrowStyle?: ArrowChartStyle;
+  /** Flow around the ring. Omitted = clockwise. */
+  direction?: ArrowChartDirection;
+  /** `same` = one fill; `hint` = lightness ramp; `hue-step` = hue shift per segment. */
+  colorMode?: ArrowChartColorMode;
+  segmentFill?: string;
+  segmentTextColor?: string;
+  /** Degrees added per segment when `colorMode` is `hue-step` (1–360; default Themes menu step). */
+  hueStepDeg?: number;
+  /** Hole size as a fraction of outer radius (0.28–0.72; omitted ~0.52). */
+  innerRatio?: number;
+  /** Angular gap between segments in degrees (0.4–14; omitted ~3). */
+  gapDeg?: number;
+  /** Outline around each wedge. Omitted = off. */
+  segmentBorder?: string;
+  /** SVG viewBox units (0–8). Omitted or 0 = no border. */
+  segmentBorderWidth?: number;
+}
+
 /** Chart configuration on a node (`generic.chart.*`). */
 export type NodeChartSpec =
   | NodeChartSpecPie
@@ -424,7 +463,8 @@ export type NodeChartSpec =
   | NodeChartSpecRing
   | NodeChartSpecGrid
   | NodeChartSpecGantt
-  | NodeChartSpecLoop;
+  | NodeChartSpecLoop
+  | NodeChartSpecArrow;
 
 /**
  * Card silhouette for `generic.object.timeline` / `generic.object.mind-map-node`; `type` stays timeline/mind-map.

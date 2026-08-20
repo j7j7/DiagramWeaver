@@ -4,11 +4,12 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath, boundingBoxFromSvgPolygonPointsString } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss, getTextOutlineShadowCss } from '@/lib/text-styling';
-import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecGantt, NodeChartSpecLoop, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
-import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultGanttChartSpec, defaultLoopChartSpec, defaultLineChartSpec, defaultPaletteGridChartNodeProps, defaultPaletteGanttChartNodeProps, defaultPaletteLoopChartNodeProps, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
+import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecGantt, NodeChartSpecLoop, NodeChartSpecArrow, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
+import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultGanttChartSpec, defaultLoopChartSpec, defaultArrowChartSpec, defaultLineChartSpec, defaultPaletteGridChartNodeProps, defaultPaletteGanttChartNodeProps, defaultPaletteLoopChartNodeProps, defaultPaletteArrowChartNodeProps, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
 import { buildGridChartLayout } from '@/lib/grid-chart-layout';
 import { buildGanttChartLayout } from '@/lib/gantt-chart-layout';
 import { buildLoopChartLayout, formatLoopRingChevronPoints, loopItemRotateTransform } from '@/lib/loop-chart-layout';
+import { buildArrowChartLayout } from '@/lib/arrow-chart-layout';
 import {
   barChartWantsRoundedColumnEnds,
   barColumnAutoRoundRadius,
@@ -1259,6 +1260,125 @@ export function ShapePreview({
               fill={arrow.color}
             />
           ))}
+        </svg>
+      );
+    }
+
+    if (type === 'generic.chart.arrow' || chart?.kind === 'arrow') {
+      const spec: NodeChartSpecArrow =
+        chart?.kind === 'arrow' ? chart : defaultArrowChartSpec();
+      const previewNode = {
+        id: "preview-arrow",
+        type: "generic.chart.arrow",
+        width: displayWidth,
+        height: displayHeight,
+        ...defaultPaletteArrowChartNodeProps(),
+      } as import("@/lib/types").DiagramNodeData;
+      const layout = buildArrowChartLayout(previewNode, spec);
+      const { body } = layout;
+      const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      const bodyOrder = [...layout.items].reverse();
+      const borderW = layout.segmentBorderWidth;
+      const borderColor = layout.segmentBorder;
+      const ringW = layout.rOuter - layout.rInner;
+      return (
+        <svg {...commonSvgProps} viewBox={`0 0 ${layout.vbW} ${layout.vbH}`} preserveAspectRatio="xMidYMid meet">
+          <rect
+            x={body.x}
+            y={body.y}
+            width={body.w}
+            height={body.h}
+            rx={body.rx}
+            ry={body.ry}
+            fill={effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={sw}
+            vectorEffect="non-scaling-stroke"
+          />
+          {bodyOrder.map((item) => {
+            const strokeArc = item.paint === "stroke-arc";
+            return (
+              <g key={`sp-arrow-${item.id}`}>
+                {strokeArc && borderW > 0 ? (
+                  <path
+                    d={item.path}
+                    fill="none"
+                    stroke={borderColor}
+                    strokeWidth={ringW + 2 * borderW}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ) : null}
+                <path
+                  d={item.path}
+                  fill={strokeArc ? "none" : item.fill}
+                  stroke={strokeArc ? item.fill : "none"}
+                  strokeWidth={strokeArc ? ringW : undefined}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              </g>
+            );
+          })}
+          {layout.items.map((item) => {
+            const strokeArc = item.paint === "stroke-arc";
+            return (
+              <path
+                key={`sp-arrow-head-${item.id}`}
+                d={item.headOverlay}
+                fill={strokeArc ? "none" : item.fill}
+                stroke={strokeArc ? item.fill : "none"}
+                strokeWidth={strokeArc ? ringW : undefined}
+                strokeLinecap={strokeArc ? "round" : undefined}
+                strokeLinejoin={strokeArc ? "round" : undefined}
+              />
+            );
+          })}
+          {borderW > 0
+            ? bodyOrder.map((item) =>
+                item.paint === "fill" ? (
+                  <path
+                    key={`sp-arrow-b-${item.id}`}
+                    d={item.path}
+                    fill="none"
+                    stroke={borderColor}
+                    strokeWidth={borderW}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                ) : null
+              )
+            : null}
+          {borderW > 0
+            ? layout.items.map((item) =>
+                item.paint === "fill" ? (
+                  <path
+                    key={`sp-arrow-head-b-${item.id}`}
+                    d={item.headBorder}
+                    fill="none"
+                    stroke={borderColor}
+                    strokeWidth={borderW}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                ) : null
+              )
+            : null}
+          {borderW > 0
+            ? layout.items.map((item) =>
+                item.paint === "stroke-arc" ? (
+                  <path
+                    key={`sp-arrow-rim-${item.id}`}
+                    d={item.headRim}
+                    fill="none"
+                    stroke={borderColor}
+                    strokeWidth={borderW}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                ) : null
+              )
+            : null}
         </svg>
       );
     }

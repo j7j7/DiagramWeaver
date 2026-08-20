@@ -25,6 +25,7 @@ import type {
   NodeChartSpecGrid,
   NodeChartSpecGantt,
   NodeChartSpecLoop,
+  NodeChartSpecArrow,
   ChartGridCell,
 } from "@/lib/types";
 import { getPlainTextFromRuns, labelToRuns } from "@/lib/rich-text";
@@ -36,6 +37,7 @@ import {
   defaultGridChartSpec,
   defaultGanttChartSpec,
   defaultLoopChartSpec,
+  defaultArrowChartSpec,
   defaultLineChartSpec,
   defaultPieChartSpec,
   defaultRingChartSpec,
@@ -84,6 +86,7 @@ import {
 } from "@/lib/grid-chart-layout";
 import { GanttChartDataFields } from "@/components/editor/gantt-chart-data-fields";
 import { LoopChartDataFields } from "@/components/editor/loop-chart-data-fields";
+import { ArrowChartDataFields } from "@/components/editor/arrow-chart-data-fields";
 import { clampGanttCols, ganttGrowWidthForAddedColumns } from "@/lib/gantt-chart-layout";
 
 type ChartModalSectionTint = "muted" | "amber" | "emerald" | "purple" | "sky" | "teal";
@@ -550,6 +553,7 @@ export function ChartDataEditorModal({
       const isGrid = node.type === "generic.chart.grid" || chart?.kind === "grid";
       const isGantt = node.type === "generic.chart.gantt" || chart?.kind === "gantt";
       const isLoop = node.type === "generic.chart.loop" || chart?.kind === "loop";
+      const isArrow = node.type === "generic.chart.arrow" || chart?.kind === "arrow";
       const isBar = node.type === "generic.chart.bar" || chart?.kind === "bar";
       const isLine = node.type === "generic.chart.line" || chart?.kind === "line";
       const isRing = node.type === "generic.chart.ring" || chart?.kind === "ring";
@@ -605,6 +609,10 @@ export function ChartDataEditorModal({
       }
 
       if (isLoop) {
+        return;
+      }
+
+      if (isArrow) {
         return;
       }
 
@@ -1072,6 +1080,7 @@ export function ChartDataEditorModal({
     const isGrid = node.type === "generic.chart.grid" || node.chart?.kind === "grid";
     const isGantt = node.type === "generic.chart.gantt" || node.chart?.kind === "gantt";
     const isLoop = node.type === "generic.chart.loop" || node.chart?.kind === "loop";
+    const isArrow = node.type === "generic.chart.arrow" || node.chart?.kind === "arrow";
     const isBar = node.type === "generic.chart.bar" || node.chart?.kind === "bar";
     const isLine = node.type === "generic.chart.line" || node.chart?.kind === "line";
     const isRing = node.type === "generic.chart.ring" || node.chart?.kind === "ring";
@@ -1371,6 +1380,14 @@ export function ChartDataEditorModal({
       return;
     }
 
+    if (isArrow) {
+      const spec =
+        node.chart?.kind === "arrow" ? node.chart : defaultArrowChartSpec();
+      onSave(node.id, spec);
+      onClose();
+      return;
+    }
+
     if (isGrid) {
       const cols = Math.min(24, Math.max(1, Math.round(gridCols)));
       const rows = Math.min(24, Math.max(1, Math.round(gridRows)));
@@ -1650,6 +1667,8 @@ export function ChartDataEditorModal({
     !!node && (node.type === "generic.chart.gantt" || node.chart?.kind === "gantt");
   const isLoopModal =
     !!node && (node.type === "generic.chart.loop" || node.chart?.kind === "loop");
+  const isArrowModal =
+    !!node && (node.type === "generic.chart.arrow" || node.chart?.kind === "arrow");
   const isCartesianModal = isBarModal || isLineModal;
 
   return (
@@ -2890,6 +2909,20 @@ export function ChartDataEditorModal({
                 }}
               />
             ) : null}
+            {isArrowModal ? (
+              <ArrowChartDataFields
+                chart={
+                  node?.chart?.kind === "arrow"
+                    ? (node.chart as NodeChartSpecArrow)
+                    : defaultArrowChartSpec()
+                }
+                isReadOnly={isReadOnly}
+                onPatch={(next) => {
+                  if (!node?.id || !onPatchChart || isReadOnly) return;
+                  onPatchChart(node.id, next);
+                }}
+              />
+            ) : null}
             {isGridModal ? (
               <>
                 <ChartModalSection title="Grid layout" tint="sky">
@@ -3354,7 +3387,7 @@ export function ChartDataEditorModal({
                 </ChartModalSection>
               </>
             ) : null}
-            {!isCartesianModal && !isRingModal && !isGridModal && !isGanttModal && !isLoopModal ? (
+            {!isCartesianModal && !isRingModal && !isGridModal && !isGanttModal && !isLoopModal && !isArrowModal ? (
               <>
             <ChartModalSection title="Slice outline & options" tint="muted">
               <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>

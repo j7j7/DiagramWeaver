@@ -33,6 +33,7 @@ function paletteType(provider, category, name) {
       "grid-chart": "generic.chart.grid",
       "gantt-chart": "generic.chart.gantt",
       "loop-chart": "generic.chart.loop",
+      "arrow-chart": "generic.chart.arrow",
     };
     if (charts[slug]) return charts[slug];
   }

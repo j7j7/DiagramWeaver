@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 64,
+  "totalResources": 65,
   "categories": {
     "text": {
       "name": "Text",
@@ -61,6 +61,11 @@
         {
           "name": "Loop chart",
           "file": "loop-chart.svg",
+          "type": "shape"
+        },
+        {
+          "name": "Arrow chart",
+          "file": "arrow-chart.svg",
           "type": "shape"
         },
         {

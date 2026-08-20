@@ -450,6 +450,31 @@ const NodeChartLoopSchema = z.object({
   arrowWidth: z.number().min(0.5).max(6).optional(),
 });
 
+const ArrowChartItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  subtitle: z.string().optional(),
+  richTitle: z.array(RichTextRunSchema).optional(),
+  richSubtitle: z.array(RichTextRunSchema).optional(),
+  fill: z.string().optional(),
+  textColor: z.string().optional(),
+});
+
+const NodeChartArrowSchema = z.object({
+  kind: z.literal("arrow"),
+  items: z.array(ArrowChartItemSchema).max(16),
+  arrowStyle: z.enum(["chevron", "overlap", "triangle"]).optional(),
+  direction: z.enum(["clockwise", "anticlockwise"]).optional(),
+  colorMode: z.enum(["same", "hint", "hue-step"]).optional(),
+  segmentFill: z.string().optional(),
+  segmentTextColor: z.string().optional(),
+  hueStepDeg: z.number().min(1).max(360).optional(),
+  innerRatio: z.number().min(0.28).max(0.72).optional(),
+  gapDeg: z.number().min(0.4).max(14).optional(),
+  segmentBorder: z.string().optional(),
+  segmentBorderWidth: z.number().min(0).max(8).optional(),
+});
+
 const NodeChartSpecSchema = z.discriminatedUnion("kind", [
   NodeChartPieSchema,
   NodeChartRingSchema,
@@ -458,6 +483,7 @@ const NodeChartSpecSchema = z.discriminatedUnion("kind", [
   NodeChartGridSchema,
   NodeChartGanttSchema,
   NodeChartLoopSchema,
+  NodeChartArrowSchema,
 ]);
 
 function normalizeChartField(chart: unknown): unknown {
@@ -478,6 +504,7 @@ function normalizeChartField(chart: unknown): unknown {
   if (c.kind === "grid") return chart;
   if (c.kind === "gantt") return chart;
   if (c.kind === "loop") return chart;
+  if (c.kind === "arrow") return chart;
   const series = c.series;
   if (
     Array.isArray(series) &&

@@ -100,6 +100,10 @@ export function chartSegmentCountForStagger(node: DiagramNodeData): number {
     const items = (c as { items?: unknown[] }).items;
     return Array.isArray(items) ? items.length + 1 : 1;
   }
+  if (c.kind === "arrow") {
+    const items = (c as { items?: unknown[] }).items;
+    return Array.isArray(items) ? items.length : 0;
+  }
   return 0;
 }
 

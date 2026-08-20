@@ -65,7 +65,7 @@ export function getClipboardTemplateNode(c: PasteSpecialClipboardLike | null): D
 }
 
 export type PastePropertyFamily =
-  | { kind: "chart"; chartKind: "pie" | "bar" | "line" | "ring" | "grid" | "gantt" | "loop" }
+  | { kind: "chart"; chartKind: "pie" | "bar" | "line" | "ring" | "grid" | "gantt" | "loop" | "arrow" }
   | { kind: "card"; templateId: string }
   | { kind: "connectorLine" }
   | { kind: "timeline" }
@@ -75,7 +75,7 @@ export type PastePropertyFamily =
   | { kind: "icon" }
   | { kind: "resourceLabel" };
 
-function chartKindFromType(type: string): "pie" | "bar" | "line" | "ring" | "grid" | "gantt" | "loop" | null {
+function chartKindFromType(type: string): "pie" | "bar" | "line" | "ring" | "grid" | "gantt" | "loop" | "arrow" | null {
   if (type === "generic.chart.pie" || type.endsWith(".chart.pie")) return "pie";
   if (type === "generic.chart.bar" || type.endsWith(".chart.bar")) return "bar";
   if (type === "generic.chart.line" || type.endsWith(".chart.line")) return "line";
@@ -83,6 +83,7 @@ function chartKindFromType(type: string): "pie" | "bar" | "line" | "ring" | "gri
   if (type === "generic.chart.grid" || type.endsWith(".chart.grid")) return "grid";
   if (type === "generic.chart.gantt" || type.endsWith(".chart.gantt")) return "gantt";
   if (type === "generic.chart.loop" || type.endsWith(".chart.loop")) return "loop";
+  if (type === "generic.chart.arrow" || type.endsWith(".chart.arrow")) return "arrow";
   return null;
 }
 
@@ -199,6 +200,22 @@ function mergeChartColour(target: NodeChartSpec, source: NodeChartSpec): NodeCha
     if (source.gridColor !== undefined) t.gridColor = source.gridColor;
     if (source.axisColor !== undefined) t.axisColor = source.axisColor;
     mergeBarLineSeriesColour(t, source);
+    return t;
+  }
+  if (t.kind === "arrow" && source.kind === "arrow") {
+    if (source.segmentFill !== undefined) t.segmentFill = source.segmentFill;
+    if (source.segmentTextColor !== undefined) t.segmentTextColor = source.segmentTextColor;
+    if (source.segmentBorder !== undefined) t.segmentBorder = source.segmentBorder;
+    if (source.segmentBorderWidth !== undefined) t.segmentBorderWidth = source.segmentBorderWidth;
+    if (source.colorMode !== undefined) t.colorMode = source.colorMode;
+    if (source.hueStepDeg !== undefined) t.hueStepDeg = source.hueStepDeg;
+    const n = Math.min(t.items.length, source.items.length);
+    for (let i = 0; i < n; i++) {
+      const src = source.items[i];
+      const row = t.items[i];
+      if (src.fill !== undefined) row.fill = src.fill;
+      if (src.textColor !== undefined) row.textColor = src.textColor;
+    }
     return t;
   }
   return t;
@@ -322,6 +339,16 @@ function mergeChartProperties(target: NodeChartSpec, source: NodeChartSpec): Nod
     if (source.itemHueStepDeg !== undefined) t.itemHueStepDeg = source.itemHueStepDeg;
     if (source.arrowColorMode !== undefined) t.arrowColorMode = source.arrowColorMode;
     if (source.arrowWidth !== undefined) t.arrowWidth = source.arrowWidth;
+    return t;
+  }
+  if (t.kind === "arrow" && source.kind === "arrow") {
+    if (source.arrowStyle !== undefined) t.arrowStyle = source.arrowStyle;
+    if (source.direction !== undefined) t.direction = source.direction;
+    if (source.colorMode !== undefined) t.colorMode = source.colorMode;
+    if (source.hueStepDeg !== undefined) t.hueStepDeg = source.hueStepDeg;
+    if (source.innerRatio !== undefined) t.innerRatio = source.innerRatio;
+    if (source.gapDeg !== undefined) t.gapDeg = source.gapDeg;
+    if (source.segmentBorderWidth !== undefined) t.segmentBorderWidth = source.segmentBorderWidth;
     return t;
   }
   return t;

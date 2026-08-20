@@ -628,6 +628,8 @@ function ResourceBrowserInner({
                     ? 'generic.chart.gantt'
                     : slug === 'loop-chart'
                       ? 'generic.chart.loop'
+                      : slug === 'arrow-chart'
+                        ? 'generic.chart.arrow'
                     : null;
       const type = chartType ?? `generic.object.${slug}`;
       return (

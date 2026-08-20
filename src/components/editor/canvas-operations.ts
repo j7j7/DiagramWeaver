@@ -67,7 +67,8 @@ import {
   defaultPaletteGridChartNodeProps,
   defaultPaletteGanttChartNodeProps,
   defaultPaletteLoopChartNodeProps,
-  isLoopChartNodeType,
+  defaultPaletteArrowChartNodeProps,
+  isSquareChartNodeType,
 } from "@/lib/chart-node";
 // Zones removed - no zone layout
 
@@ -219,6 +220,7 @@ export function useCanvasOperations({
           itemType !== "generic.chart.grid" &&
           itemType !== "generic.chart.gantt" &&
           itemType !== "generic.chart.loop" &&
+          itemType !== "generic.chart.arrow" &&
           !isFromScratchPad &&
           !borderTemplateId;
         const randomBuiltInTheme = shouldApplyShapeTheme ? pickRandomBuiltInTheme() : null;
@@ -272,6 +274,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.grid' ? snapDimensionToGrid(500, 40) :
              itemType === 'generic.chart.gantt' ? snapDimensionToGrid(680, 40) :
              itemType === 'generic.chart.loop' ? snapDimensionToGrid(520, 40) :
+             itemType === 'generic.chart.arrow' ? snapDimensionToGrid(480, 40) :
              borderTemplate ? borderTemplate.defaultWidth :
              cardTemplate ? cardTemplate.defaultWidth :
              60
@@ -296,6 +299,7 @@ export function useCanvasOperations({
              itemType === 'generic.chart.grid' ? snapDimensionToGrid(180, 40) :
              itemType === 'generic.chart.gantt' ? snapDimensionToGrid(400, 40) :
              itemType === 'generic.chart.loop' ? snapDimensionToGrid(520, 40) :
+             itemType === 'generic.chart.arrow' ? snapDimensionToGrid(480, 40) :
              borderTemplate ? borderTemplate.defaultHeight :
              cardTemplate ? cardTemplate.defaultHeight :
              60
@@ -410,6 +414,9 @@ export function useCanvasOperations({
           ...(itemType === "generic.chart.loop" && !isFromScratchPad && {
             ...defaultPaletteLoopChartNodeProps(),
           }),
+          ...(itemType === "generic.chart.arrow" && !isFromScratchPad && {
+            ...defaultPaletteArrowChartNodeProps(),
+          }),
           ...(borderTemplateId && !isFromScratchPad && {
             ...defaultBorderPaletteNodeProps(borderTemplateId),
             border: createInitialBorderSpec(borderTemplateId),
@@ -512,7 +519,7 @@ export function useCanvasOperations({
           const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
           let finalWidth = snapDimensionToGrid(Math.max(minWidth, newWidth), minWidth);
           let finalHeight = snapDimensionToGrid(Math.max(minHeight, newHeight), minHeight);
-          if (isKiteNode || isLoopChartNodeType(node.type)) {
+          if (isKiteNode || isSquareChartNodeType(node.type)) {
             const size = Math.max(finalWidth, finalHeight);
             finalWidth = size;
             finalHeight = size;
@@ -574,7 +581,7 @@ export function useCanvasOperations({
           let newWidth = snapDimensionToGrid(originalWidth * scaleX, minWidth);
           let newHeight = snapDimensionToGrid(originalHeight * scaleY, minHeight);
           const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
-          if (isKiteNode || isLoopChartNodeType(node.type)) {
+          if (isKiteNode || isSquareChartNodeType(node.type)) {
             const size = Math.max(newWidth, newHeight);
             newWidth = size;
             newHeight = size;

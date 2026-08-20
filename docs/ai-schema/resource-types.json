@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-08-20",
-  "count": 2432,
+  "count": 2433,
   "types": [
     [
       "alibabacloud.analytics.dataworks",
@@ -14285,6 +14285,14 @@
     [
       "generic.chart.loop",
       "Loop chart",
+      "generic",
+      "object",
+      "chart",
+      1
+    ],
+    [
+      "generic.chart.arrow",
+      "Arrow chart",
       "generic",
       "object",
       "chart",

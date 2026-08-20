@@ -11,9 +11,11 @@ import type {
   NodeChartSpecGrid,
   NodeChartSpecGantt,
   NodeChartSpecLoop,
+  NodeChartSpecArrow,
   ChartGridCell,
   GanttChartRow,
   LoopChartItem,
+  ArrowChartItem,
   RichTextRun,
 } from "@/lib/types";
 import {
@@ -142,6 +144,15 @@ export function isGanttChartNodeType(nodeType: string | undefined): boolean {
 
 export function isLoopChartNodeType(nodeType: string | undefined): boolean {
   return nodeType === "generic.chart.loop" || !!nodeType?.endsWith(".chart.loop");
+}
+
+export function isArrowChartNodeType(nodeType: string | undefined): boolean {
+  return nodeType === "generic.chart.arrow" || !!nodeType?.endsWith(".chart.arrow");
+}
+
+/** Loop and arrow charts stay square so the ring stays circular. */
+export function isSquareChartNodeType(nodeType: string | undefined): boolean {
+  return isLoopChartNodeType(nodeType) || isArrowChartNodeType(nodeType);
 }
 
 /** Non-negative chart datum rounded to at most 2 decimal places. */
@@ -563,6 +574,57 @@ export function defaultPaletteLoopChartNodeProps(): Partial<DiagramNodeData> {
   } as Partial<DiagramNodeData>;
 }
 
+function arrowItem(title: string, subtitle?: string): ArrowChartItem {
+  return {
+    id: newChartSliceId(),
+    title,
+    ...(subtitle ? { subtitle } : {}),
+  };
+}
+
+/** Sample arrow ring matching the Generic → Object palette preview. */
+export function defaultArrowChartSpec(): NodeChartSpecArrow {
+  return {
+    kind: "arrow",
+    arrowStyle: "chevron",
+    direction: "clockwise",
+    colorMode: "hue-step",
+    segmentFill: "#4f46e5",
+    hueStepDeg: 51,
+    items: [
+      arrowItem("Plan"),
+      arrowItem("Design"),
+      arrowItem("Build"),
+      arrowItem("Test"),
+      arrowItem("Launch"),
+      arrowItem("Review"),
+    ],
+  };
+}
+
+/** Palette drop defaults for `generic.chart.arrow` (fixed styling, no random theme). */
+export function defaultPaletteArrowChartNodeProps(): Partial<DiagramNodeData> {
+  return {
+    borderStyle: "none",
+    borderColor: "#e5e7eb",
+    borderWidth: 1,
+    backgroundStyle: "none",
+    backgroundColor: "#ffffff",
+    backgroundColors: ["#ffffff", "#f8fafc"],
+    lineStyle: "solid",
+    lineColor: "#4b5563",
+    lineWidth: 1.25,
+    lineOpacity: 1,
+    shadow: false,
+    textColor: "#f8fafc",
+    textOpacity: 1,
+    fontFamily: "Inter, system-ui, sans-serif",
+    gradientAngle: 180,
+    textJustify: "center",
+    cornerRadius: 0.08,
+  } as Partial<DiagramNodeData>;
+}
+
 /** Palette / drop default chart payload from node `type`. */
 export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeChartSpec {
   if (nodeType === "generic.chart.bar") return randomBarChartSpec();
@@ -573,6 +635,8 @@ export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeC
     return defaultGanttChartSpec();
   if (nodeType === "generic.chart.loop" || nodeType?.endsWith(".chart.loop"))
     return defaultLoopChartSpec();
+  if (nodeType === "generic.chart.arrow" || nodeType?.endsWith(".chart.arrow"))
+    return defaultArrowChartSpec();
   if (nodeType === "generic.chart.ring" || nodeType?.endsWith(".chart.ring"))
     return defaultRingChartSpec();
   return defaultPieChartSpec();

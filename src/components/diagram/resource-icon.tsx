@@ -121,6 +121,43 @@ function ChartPaletteLoopGlyph(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function ChartPaletteArrowGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        fill="currentColor"
+        opacity={0.9}
+        d="M12 3.2 A8.8 8.8 0 0 1 19.62 7.6 L17.2 9.02 A5.4 5.4 0 0 0 12 6.6 L12.9 4.05 Z"
+      />
+      <path
+        fill="currentColor"
+        opacity={0.7}
+        d="M19.85 8.05 A8.8 8.8 0 0 1 19.85 15.95 L17.35 14.5 A5.4 5.4 0 0 0 17.35 9.5 Z"
+      />
+      <path
+        fill="currentColor"
+        opacity={0.52}
+        d="M19.62 16.4 A8.8 8.8 0 0 1 12 20.8 L12.9 19.95 A5.4 5.4 0 0 0 17.2 14.98 Z"
+      />
+      <path
+        fill="currentColor"
+        opacity={0.38}
+        d="M11.1 20.8 A8.8 8.8 0 0 1 4.38 16.4 L6.8 14.98 A5.4 5.4 0 0 0 11.1 19.4 L10.2 20.8 Z"
+      />
+      <path
+        fill="currentColor"
+        opacity={0.28}
+        d="M4.15 15.95 A8.8 8.8 0 0 1 4.15 8.05 L6.65 9.5 A5.4 5.4 0 0 0 6.65 14.5 Z"
+      />
+      <path
+        fill="currentColor"
+        opacity={0.18}
+        d="M4.38 7.6 A8.8 8.8 0 0 1 11.1 3.2 L10.2 4.05 A5.4 5.4 0 0 0 6.8 9.02 Z"
+      />
+    </svg>
+  );
+}
+
 function ChartPaletteGanttGlyph(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
@@ -942,6 +979,9 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   }
   if (type === "generic.chart.loop") {
     return <ChartPaletteLoopGlyph {...props} />;
+  }
+  if (type === "generic.chart.arrow") {
+    return <ChartPaletteArrowGlyph {...props} />;
   }
 
   if (type?.startsWith("generic.border.")) {

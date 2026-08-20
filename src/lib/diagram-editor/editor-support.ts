@@ -622,6 +622,8 @@ export function createPaletteItem(
     provider === "generic" && category === "object" && derivedSlug === "gantt-chart";
   const isLoopChartPalette =
     provider === "generic" && category === "object" && derivedSlug === "loop-chart";
+  const isArrowChartPalette =
+    provider === "generic" && category === "object" && derivedSlug === "arrow-chart";
   const isCardPalette = provider === "generic" && category === "cards";
   const isBorderPalette = provider === "generic" && category === "borders";
   return {
@@ -641,6 +643,8 @@ export function createPaletteItem(
                   ? "generic.chart.gantt"
                   : isLoopChartPalette
                     ? "generic.chart.loop"
+                    : isArrowChartPalette
+                      ? "generic.chart.arrow"
                 : isBorderPalette
                 ? `generic.border.${derivedSlug}`
                 : isCardPalette

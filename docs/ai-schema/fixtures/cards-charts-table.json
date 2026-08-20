@@ -146,6 +146,28 @@
           { "id": "act", "title": "Act", "subtitle": "work ships", "spokeLabel": "OUTCOMES" }
         ]
       }
+    },
+    {
+      "id": "cycle-arrows",
+      "type": "generic.chart.arrow",
+      "x": 640,
+      "y": 760,
+      "width": 480,
+      "height": 480,
+      "sizeMode": "custom",
+      "chart": {
+        "kind": "arrow",
+        "arrowStyle": "chevron",
+        "direction": "clockwise",
+        "colorMode": "hue-step",
+        "segmentFill": "#4f46e5",
+        "items": [
+          { "id": "a1", "title": "Plan" },
+          { "id": "a2", "title": "Build" },
+          { "id": "a3", "title": "Launch" },
+          { "id": "a4", "title": "Review" }
+        ]
+      }
     }
   ],
   "connections": []
