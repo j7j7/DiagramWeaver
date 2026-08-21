@@ -34,6 +34,12 @@ import {
 } from "@/lib/gantt-chart-layout";
 import { insertGanttRowAt, resizeGanttColumnCount, resetGanttChartToMinimal, resetGanttColumnWeights } from "@/lib/gantt-chart-ops";
 
+function ganttRowSelectAbbrev(label: string | undefined, maxChars = 3): string {
+  const trimmed = (label ?? "").trim();
+  if (!trimmed) return "—";
+  return trimmed.slice(0, maxChars);
+}
+
 function toSwatchHex(value: string | undefined, fallback: string): string {
   const raw = (value?.trim() || fallback).trim();
   if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw;
@@ -433,6 +439,10 @@ export function GanttChartDataFields({
         <div className="space-y-2">
           {bars.map((bar) => {
             const isGate = (bar.variant ?? "task") === "gate";
+            const taskRows = rows.filter((r) => r.kind === "task");
+            const barRow = taskRows.find((r) => r.id === bar.rowId);
+            const rowAbbrev = ganttRowSelectAbbrev(barRow?.label);
+            const rowTitle = barRow?.label?.trim() || "Task row";
             return (
               <div key={bar.id} className="flex items-center gap-1.5">
                 <Select
@@ -445,21 +455,22 @@ export function GanttChartDataFields({
                     })
                   }
                 >
-                  <SelectTrigger className="h-8 min-w-0 flex-1 text-xs">
-                    <SelectValue />
+                  <SelectTrigger
+                    className="h-8 w-12 shrink-0 px-1.5 text-sm font-medium tabular-nums"
+                    title={rowTitle}
+                  >
+                    <SelectValue>{rowAbbrev}</SelectValue>
                   </SelectTrigger>
                   <SelectContent className="z-[100]">
-                    {rows
-                      .filter((r) => r.kind === "task")
-                      .map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.label || "Task"}
-                        </SelectItem>
-                      ))}
+                    {taskRows.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.label.trim() || "Task"}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Input
-                  className="h-8 w-[72px] shrink-0 px-1.5 text-xs"
+                  className="h-8 w-[58px] shrink-0 px-1 text-[11px] tabular-nums"
                   type="number"
                   step={0.25}
                   min={0}
@@ -476,7 +487,7 @@ export function GanttChartDataFields({
                   }
                 />
                 <Input
-                  className="h-8 w-[72px] shrink-0 px-1.5 text-xs"
+                  className="h-8 w-[58px] shrink-0 px-1 text-[11px] tabular-nums"
                   type="number"
                   step={0.25}
                   min={0}

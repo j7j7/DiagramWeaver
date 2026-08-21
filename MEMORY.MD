@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-21 – Gantt modal bar row picker
+Bars panel row select shows the first **3** characters of the task row label in a fixed **w-12** trigger (`text-sm`); dropdown lists full row names only. Start/end fields narrowed (`58px`, `11px`). Full label on trigger hover. Patch bumped.
+
 ### 2026-08-21 – Ring object shape
 New palette shape **`generic.object.ring`**: circle-based annulus with adjustable **Hole size** (5–95% of outer radius) in Visual styling. SVG annulus alpha drives highlight/glow (hole stays clear); frosted and mesh gradient clip to the ring. Palette asset `public/resources/generic/object/ring.svg`. Patch bumped.
 
