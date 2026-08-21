@@ -373,6 +373,7 @@ function applySizeAspect(source: DiagramNodeData, target: DiagramNodeData): Diag
     "nodeSize",
     "labelWidth",
     "cornerRadius",
+    "ringHoleRatio",
     "borderWidth",
     "lineThickness",
     "timelineCardW",

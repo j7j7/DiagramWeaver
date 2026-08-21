@@ -32,6 +32,7 @@ export function supportsDiagramMeshGradient(nodeType: string | undefined): boole
     "rectangle",
     "rounded-rectangle",
     "circle",
+    "ring",
     "triangle",
     "star",
     "hexagon",

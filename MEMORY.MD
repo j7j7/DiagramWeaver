@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-21 – Ring object shape
+New palette shape **`generic.object.ring`**: circle-based annulus with adjustable **Hole size** (5–95% of outer radius) in Visual styling. SVG annulus alpha drives highlight/glow (hole stays clear); frosted and mesh gradient clip to the ring. Palette asset `public/resources/generic/object/ring.svg`. Patch bumped.
+
 ### 2026-08-21 – Arrow chart default style
 Palette drop / reset defaults: gradient segments (`#c0beef` → `#8d89e1`), hue-step 51°, dark labels `#212121`, shadow on, square corners, constant white glow (intensity 0.32). Patch bumped.
 

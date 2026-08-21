@@ -29,6 +29,7 @@ export const SWAPPABLE_OBJECT_SHAPE_OPTIONS = [
   { kind: "rectangle", label: "Rectangle" },
   { kind: "square", label: "Square" },
   { kind: "circle", label: "Circle" },
+  { kind: "ring", label: "Ring" },
   { kind: "point", label: "Point" },
   { kind: "triangle", label: "Triangle" },
   { kind: "hexagon", label: "Hexagon" },
@@ -235,6 +236,10 @@ function stripPyramidFields(n: DiagramNodeData): void {
   delete (n as DiagramNodeData & { pyramidLabelsFollowFirstSection?: unknown }).pyramidLabelsFollowFirstSection;
 }
 
+function stripRingFields(n: DiagramNodeData): void {
+  delete (n as DiagramNodeData & { ringHoleRatio?: unknown }).ringHoleRatio;
+}
+
 function stripProgressHeading(n: DiagramNodeData): void {
   delete n.progressPercent;
   delete n.progressShowPercent;
@@ -313,6 +318,7 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
   stripTimelineBarFields(next);
   stripSegmentedRectangleFields(next);
   stripPyramidFields(next);
+  stripRingFields(next);
   clearIconResourceFields(next);
 
   if (newKind === "timeline-bar") {
@@ -411,6 +417,13 @@ export function swapDiagramNodeObjectKind(node: DiagramNodeData, newKind: Swappa
     if (umlName && !(next.label ?? "").trim()) {
       next.label = umlName;
     }
+  }
+
+  if (newKind === "ring") {
+    next.ringHoleRatio =
+      typeof node.ringHoleRatio === "number" && Number.isFinite(node.ringHoleRatio)
+        ? node.ringHoleRatio
+        : undefined;
   }
 
   if (newKind === "progress-bar") {

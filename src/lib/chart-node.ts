@@ -25,6 +25,7 @@ import {
   normalizeGridChartCells,
   resizeGridTrackWeights,
 } from "@/lib/grid-chart-layout";
+import { fullAnnulusPath } from "@/lib/ring-shape";
 
 export {
   DEFAULT_PIE_SLICE_COLORS,
@@ -1061,23 +1062,6 @@ function clampRingBaselineInner(chartInner: number | undefined): number {
   );
 }
 
-/** Full donut (closed annulus): two semicircular arcs outer + complementary inner hole. */
-function fullAnnulusPath(
-  cx: number,
-  cy: number,
-  rOuter: number,
-  rInner: number
-): string {
-  return [
-    `M ${cx - rOuter} ${cy}`,
-    `A ${rOuter} ${rOuter} 0 1 1 ${cx + rOuter} ${cy}`,
-    `A ${rOuter} ${rOuter} 0 1 1 ${cx - rOuter} ${cy}`,
-    `M ${cx - rInner} ${cy}`,
-    `A ${rInner} ${rInner} 0 1 0 ${cx + rInner} ${cy}`,
-    `A ${rInner} ${rInner} 0 1 0 ${cx - rInner} ${cy}`,
-    "Z",
-  ].join(" ");
-}
 
 function donutWedgePath(
   cx: number,

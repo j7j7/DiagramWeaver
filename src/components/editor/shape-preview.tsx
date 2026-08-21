@@ -4,6 +4,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath, boundingBoxFromSvgPolygonPointsString } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss, getTextOutlineShadowCss } from '@/lib/text-styling';
+import { clampRingHoleRatio, fullAnnulusPath } from '@/lib/ring-shape';
 import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecGrid, NodeChartSpecGantt, NodeChartSpecLoop, NodeChartSpecArrow, NodeChartSpecLine, NodeChartSpecRing, PyramidDirection, MeshGradientPoint } from '@/lib/types';
 import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultGridChartSpec, defaultGanttChartSpec, defaultLoopChartSpec, defaultArrowChartSpec, defaultLineChartSpec, defaultPaletteGridChartNodeProps, defaultPaletteGanttChartNodeProps, defaultPaletteLoopChartNodeProps, defaultPaletteArrowChartNodeProps, defaultRingChartSpec, ringSlicesForSvg } from '@/lib/chart-node';
 import { buildGridChartLayout } from '@/lib/grid-chart-layout';
@@ -126,6 +127,7 @@ interface ShapePreviewProps {
   shadow?: boolean;
   roundedEdges?: boolean;
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full
+  ringHoleRatio?: number;
   headingBackgroundColor?: string;
   headingBackgroundStyle?: 'gradient' | 'solid';
   chart?: NodeChartSpec;
@@ -182,6 +184,7 @@ export function ShapePreview({
   shadow = false,
   roundedEdges = false,
   cornerRadius = 0.2,
+  ringHoleRatio,
   headingBackgroundColor: headingBgColorProp,
   headingBackgroundStyle: headingBgStyleProp,
   chart,
@@ -1724,6 +1727,86 @@ export function ShapePreview({
                 );
               })
             : null}
+        </svg>
+      );
+    }
+
+    // Ring
+    if (
+      type === 'generic.object.ring' ||
+      (type?.endsWith('.ring') && !type.includes('.chart.ring'))
+    ) {
+      const rOuter = (Math.min(displayWidth, displayHeight) / 2) - (borderStyle === 'none' ? 0 : strokeWidth / 2);
+      const holeRatio = clampRingHoleRatio(ringHoleRatio);
+      const rInner = Math.max(0, rOuter * holeRatio);
+      const cx = displayWidth / 2;
+      const cy = displayHeight / 2;
+      const annulusD = fullAnnulusPath(cx, cy, Math.max(0, rOuter), rInner);
+      const coords = getGradientCoordinates(gradientAngle);
+
+      if (effectiveBackgroundStyle === 'mesh_gradient') {
+        const meshUid = `sp-ring-${gradientId.replace(/:/g, '')}`;
+        const side = 2 * Math.max(0, rOuter);
+        const ix = cx - rOuter;
+        const iy = cy - rOuter;
+        const { defs: mgDefs, fillClipGroup } = clippedMeshGradientSvg({
+          uidBase: meshUid,
+          innerX: ix,
+          innerY: iy,
+          innerW: side,
+          innerH: side,
+          baseColor: effectiveBackgroundColor,
+          points: meshGradientPoints ?? [],
+          clipPathChildren: <path fillRule="evenodd" d={annulusD} />,
+        });
+        return (
+          <svg {...commonSvgProps}>
+            <defs>
+              {borderStyle === 'gradient' && (
+                <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
+                  <stop offset="0%" stopColor={borderColorArray[0]} />
+                  <stop offset="100%" stopColor={borderColorArray[1]} />
+                </linearGradient>
+              )}
+            </defs>
+            {mgDefs}
+            {fillClipGroup}
+            <path
+              d={annulusD}
+              fillRule="evenodd"
+              fill="none"
+              stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+              strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+              strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            />
+          </svg>
+        );
+      }
+
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <path
+            d={annulusD}
+            fillRule="evenodd"
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+          />
         </svg>
       );
     }

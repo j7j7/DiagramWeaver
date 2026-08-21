@@ -61,6 +61,7 @@
         "generic.object.rounded-rectangle": [80, 50],
         "generic.object.square": [60, 60],
         "generic.object.circle": [60, 60],
+        "generic.object.ring": [60, 60],
         "generic.object.point": [20, 20],
         "generic.text.textbox": [240, 80],
         "generic.chart.pie": [190, 190],

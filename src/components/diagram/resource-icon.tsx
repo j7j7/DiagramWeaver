@@ -1027,7 +1027,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
 
   // Handle shape types (exclude icon/emoji - those use Lucide/emoji above)
   if (!type.startsWith('generic.icon.') && !type.startsWith('generic.emoji.') &&
-      (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') ||
+      (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') || type?.endsWith('.ring') ||
       type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.mind-map-node') || type?.endsWith('.progress-bar') || type?.endsWith('.timeline-bar') || type?.endsWith('.segmented-rectangle') || type?.endsWith('.pyramid') || type?.endsWith('.text-box-heading') ||       type?.endsWith('.triangle') ||
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.timeline') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
@@ -1051,6 +1051,15 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         return (
           <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
             <circle cx="12" cy="12" r="10" />
+          </svg>
+        );
+      case 'ring':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
+            <path
+              fillRule="evenodd"
+              d="M12 2a10 10 0 1 1-.001 0M12 7.5a4.5 4.5 0 1 0 .001 0Z"
+            />
           </svg>
         );
       case 'triangle':

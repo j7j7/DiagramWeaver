@@ -645,6 +645,7 @@ export const DiagramNodeDataSchema = z.object({
   ignoreConnectionAvoidance: z.boolean().optional(), // Orthogonal connectors may cross this shape
   borderWidth: z.number().optional(), // Border thickness for shapes
   cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle / progress-bar: 0=straight, 1=full round
+  ringHoleRatio: z.number().min(0.05).max(0.95).optional(),
   progressPercent: z.number().min(0).max(100).optional(),
   progressShowPercent: z.boolean().optional(),
   progressTrackStyle: z.enum(['solid', 'gradient']).optional(),
@@ -1142,6 +1143,7 @@ export const DiagramNodeItemSchema = z.object({
   ignoreConnectionAvoidance: z.boolean().optional(), // Orthogonal connectors may cross this shape
   borderWidth: z.number().optional(), // Border thickness for shapes
   cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle / progress-bar: 0=straight, 1=full round
+  ringHoleRatio: z.number().min(0.05).max(0.95).optional(),
   progressPercent: z.number().min(0).max(100).optional(),
   progressShowPercent: z.boolean().optional(),
   progressTrackStyle: z.enum(['solid', 'gradient']).optional(),

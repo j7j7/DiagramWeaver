@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
+import { fullAnnulusPath } from "@/lib/ring-shape";
 
 // Helper function to get gradient CSS with angle
 export const getGradientWithAngle = (colors: string[], angle: number = 135) => {
@@ -701,6 +702,47 @@ export function getFrostedCircleClipPathCss(
   const cyPx = ty + (c.cy - vbY) * s;
   const rPx = c.r * s;
   return `circle(${rPx}px at ${cxPx}px ${cyPx}px)`;
+}
+
+/**
+ * CSS `clip-path: path(evenodd, …)` so frosted inline layers match a transparent SVG annulus fill.
+ */
+export function getFrostedAnnulusClipPathCss(
+  viewBox: string,
+  annulus: { cx: number; cy: number; rOuter: number; rInner: number },
+  width: number,
+  height: number,
+  preserveAspectRatio: string | undefined
+): string | undefined {
+  const { vbX, vbY, vbW, vbH } = parseViewBoxString(viewBox);
+  if (vbW <= 0 || vbH <= 0 || width <= 0 || height <= 0) return undefined;
+  if (!(annulus.rOuter > 0) || !(annulus.rInner >= 0)) return undefined;
+
+  const ar = (preserveAspectRatio ?? "xMidYMid meet").trim().toLowerCase();
+  let cxPx: number;
+  let cyPx: number;
+  let rOuterPx: number;
+  let rInnerPx: number;
+
+  if (ar === "none") {
+    const scaleX = width / vbW;
+    const scaleY = height / vbH;
+    cxPx = (annulus.cx - vbX) * scaleX;
+    cyPx = (annulus.cy - vbY) * scaleY;
+    rOuterPx = annulus.rOuter * Math.min(scaleX, scaleY);
+    rInnerPx = annulus.rInner * Math.min(scaleX, scaleY);
+  } else {
+    const s = Math.min(width / vbW, height / vbH);
+    const tx = (width - vbW * s) / 2;
+    const ty = (height - vbH * s) / 2;
+    cxPx = tx + (annulus.cx - vbX) * s;
+    cyPx = ty + (annulus.cy - vbY) * s;
+    rOuterPx = annulus.rOuter * s;
+    rInnerPx = annulus.rInner * s;
+  }
+
+  const d = fullAnnulusPath(cxPx, cyPx, rOuterPx, rInnerPx);
+  return `path(evenodd, '${d}')`;
 }
 
 /**

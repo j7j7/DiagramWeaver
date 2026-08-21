@@ -2,6 +2,7 @@ import type { DiagramNodeData } from "@/lib/types";
 import { isCardNodeType } from "@/lib/card-utils";
 import { isBorderNodeType } from "@/lib/border-utils";
 import { objectKindSuffixFromNodeType } from "@/lib/shape-type-swap";
+import { clampRingHoleRatio } from "@/lib/ring-shape";
 import { parsePoints, getPolygonViewBoxAndPoints } from "@/components/diagram/shapes/shape-utils";
 import {
   nodeBoundingBoxForFit,
@@ -137,6 +138,17 @@ function vectorPathLocalPolygons(node: DiagramNodeData): ClipPolygon[] {
   return groupClipRingsToPolygons(clipRings);
 }
 
+function ringLocalPolygon(w: number, h: number, holeRatio: number | undefined): ClipPolygon {
+  const outer = circleLocalRing(w, h);
+  const ratio = clampRingHoleRatio(holeRatio);
+  const innerW = w * ratio;
+  const innerH = h * ratio;
+  const ox = (w - innerW) / 2;
+  const oy = (h - innerH) / 2;
+  const inner = circleLocalRing(innerW, innerH).map(([x, y]) => [x + ox, y + oy] as ClipPair);
+  return [outer, inner];
+}
+
 function primitiveLocalRing(node: DiagramNodeData, kind: string): ClipRing | null {
   const { w, h } = nodeDimensions(node);
   const borderStyle = node.borderStyle ?? "solid";
@@ -209,6 +221,13 @@ export function nodeToCanvasPolygons(node: DiagramNodeData): ClipMultiPolygon {
     return out;
   }
 
+  if (kind === "ring") {
+    const { w, h } = nodeDimensions(node);
+    const localPoly = ringLocalPolygon(w, h, node.ringHoleRatio);
+    out.push(localPoly.map((ring) => localToCanvasRing(ring, node)));
+    return out;
+  }
+
   const localRing = primitiveLocalRing(node, kind);
   if (!localRing || localRing.length < 4) return out;
 
@@ -262,6 +281,7 @@ export const BOOLEAN_ELIGIBLE_KINDS = new Set([
   "square",
   "rounded-rectangle",
   "circle",
+  "ring",
   "triangle",
   "hexagon",
   "pentagon",

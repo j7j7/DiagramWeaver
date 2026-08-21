@@ -3132,6 +3132,11 @@ export function ContextToolbar({
                     (selectedItem as any)?.type === 'generic.object.pyramid' ||
                     (selectedItem as any)?.type?.endsWith?.('.pyramid')
                   }
+                  isRing={
+                    (selectedItem as any)?.type === 'generic.object.ring' ||
+                    ((selectedItem as any)?.type?.endsWith?.('.ring') &&
+                      !(selectedItem as any)?.type?.includes?.('.chart.ring'))
+                  }
                   isCardNode={isCardNodeType((selectedItem as DiagramNodeData)?.type)}
                   cardTemplateId={selectedCardTemplateId}
                   cardElements={selectedCardNodeElements}

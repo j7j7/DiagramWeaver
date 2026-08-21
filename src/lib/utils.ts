@@ -123,6 +123,8 @@ export function isHighlightPulseShapeSilhouetteType(type: string | undefined): b
   if (!type) return false
   /** Donut segments are pure SVG alpha; frame `box-shadow` reads as a full rectangle (hole glows). */
   if (type === 'generic.chart.ring' || type.endsWith('.chart.ring')) return true
+  /** Object ring uses annulus SVG alpha so glow respects the hole. */
+  if (type === 'generic.object.ring' || type.endsWith('.object.ring')) return true
   /** Arrow chart applies segment-only glow inside `arrow-chart-shape.tsx`. */
   if (type === 'generic.chart.arrow' || type.endsWith('.chart.arrow')) return false
   if (!type.startsWith('generic.object.')) return false
@@ -145,6 +147,7 @@ export function isShapeNodeType(nodeType: string): boolean {
   return nodeType === 'generic.object.timeline' ||
          nodeType === 'generic.object.square' ||
          nodeType === 'generic.object.circle' ||
+         nodeType === 'generic.object.ring' ||
          nodeType === 'generic.object.point' ||
          nodeType === 'generic.object.rectangle' ||
          nodeType === 'generic.object.uml-class' ||
@@ -171,6 +174,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType === 'generic.object.vector-path' ||
          nodeType?.endsWith('.square') ||
          nodeType?.endsWith('.circle') ||
+         (nodeType?.endsWith('.ring') && !nodeType.includes('.chart.ring')) ||
          nodeType?.endsWith('.point') ||
          nodeType?.endsWith('.rectangle') ||
          nodeType?.endsWith('.rounded-rectangle') ||

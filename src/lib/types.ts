@@ -632,6 +632,9 @@ export interface DiagramNodeData {
   segmentedRectangleHueStepDeg?: number;
   segmentedRectangleLabelsFollowFirstSection?: boolean;
 
+  /** Ring (`generic.object.ring`): inner hole as fraction of outer radius (0.05–0.95). */
+  ringHoleRatio?: number;
+
   /** Progress bar (`generic.object.progress-bar`): completed amount 0–100 */
   progressPercent?: number;
   /** Progress bar: show numeric percent on the bar (default true) */

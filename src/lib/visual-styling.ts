@@ -44,6 +44,8 @@ export interface VisualStyling {
   borderWidth?: number; // Border thickness
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   cornerRadius?: number; // Rounded-rectangle & progress-bar only: 0=straight, 1=full pill
+  /** Ring (`generic.object.ring`): inner hole as fraction of outer radius */
+  ringHoleRatio?: number;
   /** Progress bar: 0–100 */
   progressPercent?: number;
   progressShowPercent?: boolean;
@@ -304,6 +306,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     borderWidth: node.borderWidth,
     roundedEdges: (node as any).roundedEdges,
     cornerRadius: (node as any).cornerRadius,
+    ringHoleRatio: (node as any).ringHoleRatio,
     progressPercent: (node as any).progressPercent,
     progressShowPercent: (node as any).progressShowPercent,
     progressFillStyle: (node as any).progressFillStyle,
@@ -432,6 +435,7 @@ export function applyVisualStylingToNode(
     borderWidth: styling.borderWidth ?? node.borderWidth,
     roundedEdges: styling.roundedEdges ?? (node as any).roundedEdges,
     cornerRadius: styling.cornerRadius !== undefined ? styling.cornerRadius : (node as any).cornerRadius,
+    ringHoleRatio: styling.ringHoleRatio !== undefined ? styling.ringHoleRatio : (node as any).ringHoleRatio,
     progressPercent: styling.progressPercent !== undefined ? styling.progressPercent : (node as any).progressPercent,
     progressShowPercent:
       styling.progressShowPercent !== undefined ? styling.progressShowPercent : (node as any).progressShowPercent,

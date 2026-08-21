@@ -27,6 +27,11 @@ import {
   HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
   highlightGlowApproxHaloPx,
 } from "@/lib/highlight-anim";
+import {
+  RING_HOLE_RATIO_DEFAULT,
+  RING_HOLE_RATIO_MAX,
+  RING_HOLE_RATIO_MIN,
+} from "@/lib/ring-shape";
 import { ChevronDown, Palette, RotateCcw, Shuffle, X } from "lucide-react";
 import { CARD_ICON_PLACEMENTS, CARD_ICON_SIZE_MODES } from "@/lib/card-icon-layout";
 import type { CardIconPlacement, CardIconSizeMode } from "@/lib/card-types";
@@ -411,6 +416,8 @@ interface VisualStylingPanelProps {
   isSegmentedRectangle?: boolean;
   /** When true, shows segmented pyramid layout controls */
   isPyramid?: boolean;
+  /** When true, shows ring hole-size control */
+  isRing?: boolean;
   /** When true, shows heading strip color (text-box-heading only) */
   isTextBoxHeading?: boolean;
   /** When true, shows profile card region styling (top fill, text segments). */
@@ -562,7 +569,7 @@ function IconBevelMatchColorPreview({
   );
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange: onStylingChangeProp, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRasterIconFilterStyling = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, onCardElementStyleChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, bulletListUseItemIcons, onBulletListUseItemIconsChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange: onStylingChangeProp, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRasterIconFilterStyling = false, showIconTileStyling = false, showCardIconPlacement = false, showIconBevel = false, iconBevelSampleNode, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, supportsMeshGradientBackground = false, isProgressBar = false, isTimelineBar = false, isSegmentedRectangle = false, isPyramid = false, isRing = false, isTextBoxHeading = false, isCardProfile = false, isCardNode = false, cardTemplateId, cardElements, onCardElementsChange, onCardElementStyleChange, agendaRowThemeHue, onAgendaRowThemeHueChange, agendaDividersEnabled, onAgendaDividersEnabledChange, bulletListItemThemeHue, onBulletListItemThemeHueChange, bulletListUseItemIcons, onBulletListUseItemIconsChange, isBorderNode = false, borderTemplateId, border, onBorderChange, footer }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -2427,7 +2434,25 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     handlePropertyChange={handlePropertyChange}
                     onStylingChange={applyStylingChange}
                   />
-                  {isRoundedRectangle && !isProgressBar && !isTimelineBar && !isSegmentedRectangle && !isPyramid && (
+                  {isRing ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-sm text-muted-foreground">Hole size</Label>
+                        <span className="w-12 text-right tabular-nums text-xs text-muted-foreground">
+                          {Math.round((styling.ringHoleRatio ?? RING_HOLE_RATIO_DEFAULT) * 100)}%
+                        </span>
+                      </div>
+                      <Slider
+                        min={RING_HOLE_RATIO_MIN}
+                        max={RING_HOLE_RATIO_MAX}
+                        step={0.01}
+                        value={[styling.ringHoleRatio ?? RING_HOLE_RATIO_DEFAULT]}
+                        onValueChange={([v]) => handlePropertyChange("ringHoleRatio", v, true)}
+                        className="w-full"
+                      />
+                    </div>
+                  ) : null}
+                  {isRoundedRectangle && !isProgressBar && !isTimelineBar && !isSegmentedRectangle && !isPyramid && !isRing && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-2">
                         <Label className="text-sm text-muted-foreground">Corner radius</Label>

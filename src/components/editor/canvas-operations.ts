@@ -146,6 +146,7 @@ export function useCanvasOperations({
       // Exclude icon/emoji types - generic.icon.star is Lucide icon, not polygon shape
       const isShapeResource = !isIconOrEmojiType(itemType) && (itemType === 'generic.object.square' ||
                                 itemType === 'generic.object.circle' ||
+                                itemType === 'generic.object.ring' ||
                                 itemType === 'generic.object.point' ||
                                 itemType === 'generic.object.rectangle' ||
                                 itemType === 'generic.object.rounded-rectangle' ||
@@ -176,6 +177,7 @@ export function useCanvasOperations({
                                 isConnectorLineNodeType(itemType) ||
                                 itemType?.endsWith('.square') ||
                                 itemType?.endsWith('.circle') ||
+                                (itemType?.endsWith('.ring') && !itemType.includes('.chart.ring')) ||
                                 itemType?.endsWith('.point') ||
                                 itemType?.endsWith('.rectangle') ||
                                 itemType?.endsWith('.rounded-rectangle') ||

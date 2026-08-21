@@ -36,6 +36,7 @@ export function getShapeEdgeBounds(shapeType: string | undefined): ShapeEdgeBoun
 
   switch (suffix) {
     case 'circle':
+    case 'ring':
       // viewBox 60x60, center (30,30), radius ~29. Top (30,1), Bottom (30,59), Left (1,30), Right (59,30)
       return { topY: 1, bottomY: 59, leftX: 1, rightX: 59, viewBoxW: 60, viewBoxH: 60 };
 

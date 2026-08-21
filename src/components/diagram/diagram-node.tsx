@@ -71,6 +71,7 @@ import {
   RoundedRectangleShape,
   TextBoxHeadingShape,
   CircleShape,
+  RingShape,
   PointShape,
   KiteShape,
   TriangleShape,
@@ -1353,6 +1354,8 @@ function DiagramNodeInner({
           ? { ...visualNode, vectorPath: { rings: localVectorRings } }
           : visualNode;
       return <VectorPathShape {...shapeProps} node={vpathNode} localRings={localVectorRings} />;
+    } else if (nodeType === 'generic.object.ring' || (nodeType?.endsWith('.ring') && !nodeType.includes('.chart.ring'))) {
+      return <RingShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.circle' || nodeType?.endsWith('.circle')) {
       return <CircleShape {...shapeProps} />;
     } else if (nodeType === 'generic.chart.bar') {

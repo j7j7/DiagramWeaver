@@ -8,6 +8,7 @@ export { SegmentedRectangleShape } from './segmented-rectangle';
 export { PyramidShape } from './pyramid-shape';
 export { TextBoxHeadingShape } from './text-box-heading';
 export { CircleShape } from './circle';
+export { RingShape } from './ring';
 export { PointShape } from './point';
 export { KiteShape } from './kite';
 export { TriangleShape } from './triangle';

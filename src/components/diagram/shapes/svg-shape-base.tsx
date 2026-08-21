@@ -4,7 +4,7 @@ import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { ShapeWrapper } from "./shape-wrapper";
-import { getFrostedCircleClipPathCss, getShapeStyles, parseViewBoxString } from "./shape-utils";
+import { getFrostedAnnulusClipPathCss, getFrostedCircleClipPathCss, getShapeStyles, parseViewBoxString } from "./shape-utils";
 
 interface SvgShapeBaseProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -50,6 +50,11 @@ interface SvgShapeBaseProps {
    * (same coordinate space as the SVG root). Ignored if `frostedClipPathOverride` is set.
    */
   frostedClipCircleInViewBox?: { cx: number; cy: number; r: number };
+  /**
+   * When `backgroundStyle === 'frosted'`, clip inline glass to this annulus in viewBox units.
+   * Ignored if `frostedClipPathOverride` is set.
+   */
+  frostedClipAnnulusInViewBox?: { cx: number; cy: number; rOuter: number; rInner: number };
   /** Root SVG pointer-events (`none` lets events pass except on descendants with explicit hit targets). */
   svgPointerEvents?: React.CSSProperties["pointerEvents"];
   /** Allow handles/UI drawn outside the viewBox (e.g. grid row/column chrome). */
@@ -73,6 +78,7 @@ export function SvgShapeBase({
   frostedClipRectInViewBox,
   frostedClipPathOverride,
   frostedClipCircleInViewBox,
+  frostedClipAnnulusInViewBox,
   svgPointerEvents,
   preserveShellHalo,
   borderRadius,
@@ -92,6 +98,14 @@ export function SvgShapeBase({
   let frostedGlassClipPath: string | undefined;
   if (nodeAny.backgroundStyle === "frosted" && frostedClipPathOverride) {
     frostedGlassClipPath = frostedClipPathOverride;
+  } else if (nodeAny.backgroundStyle === "frosted" && frostedClipAnnulusInViewBox) {
+    frostedGlassClipPath = getFrostedAnnulusClipPathCss(
+      viewBox,
+      frostedClipAnnulusInViewBox,
+      width,
+      height,
+      preserveAspectRatio
+    );
   } else if (nodeAny.backgroundStyle === "frosted" && frostedClipCircleInViewBox) {
     frostedGlassClipPath = getFrostedCircleClipPathCss(
       viewBox,
