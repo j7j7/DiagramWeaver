@@ -363,40 +363,20 @@ export function ConnectionContextModal({
             {fromLabel} → {toLabel}
           </h3>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {onConnectionReverse && !isReadOnly && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5 px-2.5 text-xs"
-                  onClick={() => onConnectionReverse(connection.from, connection.to, connId)}
-                  aria-label="Reverse connection direction"
-                >
-                  <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
-                  Reverse
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Swap start and end nodes</TooltipContent>
-            </Tooltip>
-          )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 shrink-0"
-                data-skip-modal-initial-focus
-                onClick={onClose}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Close</TooltipContent>
-          </Tooltip>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 shrink-0"
+              data-skip-modal-initial-focus
+              onClick={onClose}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Close</TooltipContent>
+        </Tooltip>
       </div>
       <div className="max-h-[min(78vh,640px)] overflow-y-auto">
         <div className="p-4 space-y-3">
@@ -482,29 +462,51 @@ export function ConnectionContextModal({
             </div>
 
             <div className="space-y-2.5 min-w-0 border-l border-border pl-3">
-              {onConnectionDisconnect && !isReadOnly && (
-                <div className="flex justify-end pb-0.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 gap-1.5 px-2.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => {
-                          onConnectionDisconnect(connection.from, connection.to, connId);
-                          onClose();
-                        }}
-                        aria-label="Delete connection"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                        Delete
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" align="end">
-                      Remove this connection from the diagram
-                    </TooltipContent>
-                  </Tooltip>
+              {(onConnectionReverse || onConnectionDisconnect) && !isReadOnly && (
+                <div className="flex justify-end gap-1.5 pb-0.5">
+                  {onConnectionReverse && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 px-2.5 text-xs"
+                          onClick={() => onConnectionReverse(connection.from, connection.to, connId)}
+                          aria-label="Reverse connection direction"
+                        >
+                          <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
+                          Reverse
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="end">
+                        Swap start and end nodes
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {onConnectionDisconnect && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 px-2.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => {
+                            onConnectionDisconnect(connection.from, connection.to, connId);
+                            onClose();
+                          }}
+                          aria-label="Delete connection"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                          Delete
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="end">
+                        Remove this connection from the diagram
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
               )}
               <div className="space-y-1.5">

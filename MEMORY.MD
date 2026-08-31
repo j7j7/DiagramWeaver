@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-31 – README feature sync
+**`README.md`**: documented chart types (**Gantt**, **Loop**, **Arrow**), ring object, timeline/timeline-bar, mind map, vector paths, UML class, status icons, user-defined objects, new card templates (**Framed Heading**, **Icon Border**, **Element feature**), connection reverse/label edit/custom routes/edge anchors, selection highlight + overlap click-through, history browser, viewport culling, dot grid + ruler guides, component sidebar modes, mesh gradient + icon styling/bevel, presentation slide copy/paste + thumbnails, paste special, interaction recorder, PWA install, AI schema, and export capture improvements. No app-code patch bump.
+
 ### 2026-08-31 – Connection modal reverse
 **`ConnectionContextModal`** header **Reverse** swaps **`from`/`to`** (not just arrow): **`reverseDiagramConnectionEndpoints`** in **`editor-support`** also swaps preferred attach edges, edge positions, and waypoint order; **`handleConnectionReverse`** in **`diagram-editor`** applies via **`applyConnectionUpdates`** and refreshes modal state. Patch bumped.
 
