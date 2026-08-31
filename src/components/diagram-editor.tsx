@@ -1934,6 +1934,36 @@ export default function DiagramEditor() {
     [setDiagramData],
   );
 
+  /** Edit → Remove Default Icon Labels: clear palette-default labels/info on icon tiles only. */
+  const handleStripDefaultIconLabels = React.useCallback(async () => {
+    const { stripDefaultIconLabelsFromDiagram } = await import("@/lib/strip-default-icon-labels");
+    const { diagram: nextDiagram, clearedCount } = await stripDefaultIconLabelsFromDiagram(
+      currentDiagramData,
+    );
+    if (clearedCount === 0) {
+      toast({
+        title: "No default labels found",
+        description: "Icon labels that differ from the palette name were left unchanged.",
+      });
+      return;
+    }
+    recordDiagramReplace(nextDiagram);
+    setCurrentDiagramData(nextDiagram);
+    if (selectedItem?.itemType === "node") {
+      const updated = nextDiagram.nodes.find((n) => n.id === selectedItem.id);
+      if (updated) {
+        setSelectedItem({ ...selectedItem, ...updated, itemType: "node" } as SelectedItem);
+      }
+    }
+    toast({
+      title: "Default icon labels removed",
+      description:
+        clearedCount === 1
+          ? "Cleared 1 icon’s default label."
+          : `Cleared ${clearedCount} icons’ default labels.`,
+    });
+  }, [currentDiagramData, selectedItem, setCurrentDiagramData, setSelectedItem, toast]);
+
   /** Apply tag, description (`info`), and/or plain toolbar **label** to every selected node and zone (multi-select). */
   const handleBulkMetadataUpdate = React.useCallback(
     (patch: { tag?: string; info?: string; label?: string }) => {
@@ -5997,6 +6027,7 @@ export default function DiagramEditor() {
         selectedItemIds={selectedItemIds}
         handleItemUpdate={handleItemUpdate}
         handleBulkMetadataUpdate={handleBulkMetadataUpdate}
+        handleStripDefaultIconLabels={handleStripDefaultIconLabels}
         startConnecting={startConnecting}
         handleItemDelete={handleItemDelete}
         connectorLineFocusedVertex={connectorLineFocusedVertex}

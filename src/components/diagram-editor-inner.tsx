@@ -127,6 +127,7 @@ export function DiagramEditorInner({
   selectedItemIds,
   handleItemUpdate,
   handleBulkMetadataUpdate,
+  handleStripDefaultIconLabels,
   startConnecting,
   handleItemDelete,
   connectorLineFocusedVertex,
@@ -586,6 +587,7 @@ export function DiagramEditorInner({
                     onCardElementSelect={onCardElementSelect}
                     onItemUpdate={handleItemUpdate}
                     onBulkMetadataUpdate={handleBulkMetadataUpdate}
+                    onStripDefaultIconLabels={handleStripDefaultIconLabels}
                     onConnect={startConnecting}
                     onDisconnect={disconnectSelected}
                     onDelete={() => {

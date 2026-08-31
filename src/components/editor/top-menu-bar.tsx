@@ -222,6 +222,8 @@ interface TopMenuBarProps {
   onItemUpdate?: (updatedItem: SelectedItem) => void;
   /** Multi-select: apply tag / description (`info`) / plain label to all selected nodes and zones. */
   onBulkMetadataUpdate?: (patch: { tag?: string; info?: string; label?: string }) => void;
+  /** Edit → Remove Default Icon Labels (palette-default label/info only). */
+  onStripDefaultIconLabels?: () => void;
   onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onDelete?: () => void;
@@ -376,6 +378,7 @@ export function TopMenuBar({
   onCardElementSelect,
   onItemUpdate,
   onBulkMetadataUpdate,
+  onStripDefaultIconLabels,
   onConnect,
   onDisconnect,
   onDelete,
@@ -821,6 +824,19 @@ export function TopMenuBar({
                       Enable Read-Only Mode
                     </>
                   )}
+                </MenubarItem>
+              </>
+            )}
+            {onStripDefaultIconLabels && (
+              <>
+                {(onToggleReadOnly !== undefined ||
+                  onUndo ||
+                  onRedo ||
+                  onFitToView ||
+                  onCurrentDiagramDataUpdate) && <MenubarSeparator />}
+                <MenubarItem onClick={onStripDefaultIconLabels} disabled={isReadOnly}>
+                  <Type className="mr-2 h-4 w-4" />
+                  Remove Default Icon Labels
                 </MenubarItem>
               </>
             )}

@@ -272,6 +272,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 ### Other
 
 - **Tutorial**: In-app tutorial overlay (File → Start Tutorial)
+- **Remove Default Icon Labels**: Edit menu — clears icon/resource labels that still match the palette default (and matching auto `info`); customized labels are kept. Separate from Options **Disable Default Text Labels** (which only affects new drops)
 - **Interaction recorder**: Help menu — record canvas interactions and replay with semantic overlays (pointer, drag, context menu, panel edits)
 - **Paste special**: After **Copy**, context menu **Paste special** applies only **Size**, **Colour**, **Text**, or **Properties** from the clipboard template onto the current selection (no new objects; family-matched)
 - **PWA install**: **Help → Install app…** for minimal installable web app (HTTPS or localhost)
