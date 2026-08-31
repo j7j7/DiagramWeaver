@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-31 – First slide strip tooltip
+Presentation strip hover tooltip for slide 1 uses the slide title (same as later slides) instead of the hardcoded “Main diagram (slide 1)…” copy. Patch bumped.
+
 ### 2026-08-31 – File Load opens a new tab
 **File → Load** (JSON / Mermaid) opens the diagram in a **new tab** via **`createTab`** (same as Examples) instead of overwriting the active tab; embedded presentations are seeded on **`presentationStateByTabRef`** for the new tab id. **`createTab`** now returns the new tab id. Patch bumped.
 

@@ -37,7 +37,6 @@ function SlideStripItem({
 }: SlideStripItemProps) {
   const ref = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const isPrimary = index === 0;
   const [isEditing, setIsEditing] = React.useState(false);
   const [editValue, setEditValue] = React.useState('');
   const editingRef = React.useRef(false);
@@ -109,11 +108,7 @@ function SlideStripItem({
         isDragging && 'opacity-50',
       )}
       onClick={onSelect}
-      title={
-        isPrimary
-          ? 'Main diagram (slide 1). Drag here to make a snapshot the main diagram, or drag to reorder.'
-          : slide.title || `Slide ${index + 1}`
-      }
+      title={slide.title || `Slide ${index + 1}`}
     >
       <div className="relative w-full shrink-0 overflow-hidden rounded-md border bg-muted">
         {/* PNG uses per-slide tight fit; strip is 16:9 — stretch to fill frame (minor skew if PNG aspect differs). */}
