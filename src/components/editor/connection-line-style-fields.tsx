@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Info, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,27 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { DiagramConnectionData } from "@/lib/types";
-import { isUseSourceLineColorOn } from "@/lib/connection-line-style";
+import { clampConnectionLineWidth, isUseSourceLineColorOn } from "@/lib/connection-line-style";
+import { cn } from "@/lib/utils";
+
+/** Native steppers steal space on short inputs and block clearing/retyping values. */
+const NUMBER_INPUT_NO_SPINNER =
+  "[appearance:textfield] [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
+const DEFAULT_LINE_WIDTH = 2.5;
+
+function formatLineWidth(w: number): string {
+  const n = Number.isFinite(w) ? w : DEFAULT_LINE_WIDTH;
+  return String(n);
+}
+
+function parseLineWidthDraft(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === "") return null;
+  const parsed = parseFloat(trimmed);
+  if (!Number.isFinite(parsed)) return null;
+  return clampConnectionLineWidth(parsed);
+}
 
 export interface ConnectionLineStyleFieldsProps {
   liveConnection: DiagramConnectionData;
@@ -53,12 +73,23 @@ export function ConnectionLineStyleFields({
   debounceColorMs = 0,
 }: ConnectionLineStyleFieldsProps) {
   const colorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** null = show live value; string = draft while typing (allows empty field). */
+  const [lineWidthDraft, setLineWidthDraft] = useState<string | null>(null);
+  const [lineWidthEndDraft, setLineWidthEndDraft] = useState<string | null>(null);
+
+  const liveLineWidth = liveConnection.lineWidth ?? DEFAULT_LINE_WIDTH;
+  const liveLineWidthEnd = liveConnection.lineWidthEnd ?? liveConnection.lineWidth ?? DEFAULT_LINE_WIDTH;
 
   useEffect(() => {
     return () => {
       if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    setLineWidthDraft(null);
+    setLineWidthEndDraft(null);
+  }, [connectionId, from, to]);
 
   const flushColorTimeout = () => {
     if (colorDebounceRef.current) {
@@ -84,14 +115,39 @@ export function ConnectionLineStyleFields({
   const lineWidthLocked = liveConnection.lineWidthLock !== false;
   const colorLocked = liveConnection.colorLock !== false;
 
+  const commitLineWidthDraft = (field: "start" | "end") => {
+    const raw = field === "start" ? lineWidthDraft : lineWidthEndDraft;
+    if (field === "start") setLineWidthDraft(null);
+    else setLineWidthEndDraft(null);
+    if (raw === null) return;
+    const next = parseLineWidthDraft(raw);
+    if (next === null) return;
+    if (field === "start") {
+      if (next !== liveLineWidth) {
+        onConnectionUpdate(from, to, { lineWidth: next }, connectionId);
+      }
+    } else if (next !== liveLineWidthEnd) {
+      onConnectionUpdate(from, to, { lineWidthEnd: next }, connectionId);
+    }
+  };
+
+  const blurNumberInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
   const toggleLineWidthLock = () => {
+    setLineWidthDraft(null);
+    setLineWidthEndDraft(null);
     if (lineWidthLocked) {
       onConnectionUpdate(
         from,
         to,
         {
           lineWidthLock: false,
-          lineWidthEnd: liveConnection.lineWidthEnd ?? liveConnection.lineWidth ?? 2.5,
+          lineWidthEnd: liveConnection.lineWidthEnd ?? liveConnection.lineWidth ?? DEFAULT_LINE_WIDTH,
         },
         connectionId
       );
@@ -149,12 +205,11 @@ export function ConnectionLineStyleFields({
                 type="number"
                 min={1}
                 max={50}
-                value={(liveConnection.lineWidth || 2.5).toString()}
-                onChange={(e) => {
-                  const width = Math.max(1, Math.min(50, parseFloat(e.target.value) || 2.5));
-                  onConnectionUpdate(from, to, { lineWidth: width }, connectionId);
-                }}
-                className="h-8 w-[4.25rem] text-xs text-center shrink-0"
+                value={lineWidthDraft ?? formatLineWidth(liveLineWidth)}
+                onChange={(e) => setLineWidthDraft(e.target.value)}
+                onBlur={() => commitLineWidthDraft("start")}
+                onKeyDown={blurNumberInput}
+                className={cn("h-8 w-[4.25rem] text-xs text-center shrink-0", NUMBER_INPUT_NO_SPINNER)}
                 disabled={isReadOnly}
                 title="Line thickness (1–50 px)"
               />
@@ -168,12 +223,11 @@ export function ConnectionLineStyleFields({
                   type="number"
                   min={1}
                   max={50}
-                  value={(liveConnection.lineWidth ?? 2.5).toString()}
-                  onChange={(e) => {
-                    const width = Math.max(1, Math.min(50, parseFloat(e.target.value) || 2.5));
-                    onConnectionUpdate(from, to, { lineWidth: width }, connectionId);
-                  }}
-                  className="h-8 w-[3.75rem] text-xs text-center shrink-0"
+                  value={lineWidthDraft ?? formatLineWidth(liveLineWidth)}
+                  onChange={(e) => setLineWidthDraft(e.target.value)}
+                  onBlur={() => commitLineWidthDraft("start")}
+                  onKeyDown={blurNumberInput}
+                  className={cn("h-8 w-[3.75rem] text-xs text-center shrink-0", NUMBER_INPUT_NO_SPINNER)}
                   disabled={isReadOnly}
                   title="Start thickness (1–50 px)"
                 />
@@ -184,12 +238,11 @@ export function ConnectionLineStyleFields({
                   type="number"
                   min={1}
                   max={50}
-                  value={(liveConnection.lineWidthEnd ?? liveConnection.lineWidth ?? 2.5).toString()}
-                  onChange={(e) => {
-                    const width = Math.max(1, Math.min(50, parseFloat(e.target.value) || 2.5));
-                    onConnectionUpdate(from, to, { lineWidthEnd: width }, connectionId);
-                  }}
-                  className="h-8 w-[3.75rem] text-xs text-center shrink-0"
+                  value={lineWidthEndDraft ?? formatLineWidth(liveLineWidthEnd)}
+                  onChange={(e) => setLineWidthEndDraft(e.target.value)}
+                  onBlur={() => commitLineWidthDraft("end")}
+                  onKeyDown={blurNumberInput}
+                  className={cn("h-8 w-[3.75rem] text-xs text-center shrink-0", NUMBER_INPUT_NO_SPINNER)}
                   disabled={isReadOnly}
                   title="End thickness (1–50 px)"
                 />
