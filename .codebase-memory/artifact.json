@@ -1,11 +1,11 @@
 {
     "schema_version": 1,
-    "commit": "eae408bc10d4ff33ea6af3a5f1e41bf7ba41484d",
-    "indexed_at": "2026-08-31T07:01:41Z",
+    "commit": "3db2c54c63a74324a50d7dbba1554d9258fdf29a",
+    "indexed_at": "2026-08-31T07:20:36Z",
     "project": "Users-j7-Documents-Code-Github-DiagramWeaver",
     "nodes": 8242,
-    "edges": 23124,
-    "original_size": 27525120,
-    "compressed_size": 4982683,
+    "edges": 23098,
+    "original_size": 27394048,
+    "compressed_size": 4981373,
     "compression_level": 3
 }

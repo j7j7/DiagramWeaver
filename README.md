@@ -197,7 +197,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 ### Export & Persistence
 
 - **Export PNG/GIF**: Viewport export via html-to-image; GIF supports animated connection lines (duration, FPS, background). PNG/GIF hide selection chrome and freeze connection animation markers as static shapes for clean captures
-- **Save/Load**: JSON file save and load (JSON + .mmd/.mermaid)
+- **Save/Load**: JSON file save and load (JSON + .mmd/.mermaid). **File → Load** opens the file in a **new tab** (does not overwrite the current tab); same for File → Examples
 - **Copy Viewer URL**: Shareable URL for read-only viewer
 - **Examples**: Built-in example diagrams (File → Examples)
 

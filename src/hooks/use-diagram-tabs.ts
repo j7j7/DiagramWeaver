@@ -319,7 +319,7 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
       userDefinedObjectEdit?: TabState['userDefinedObjectEdit'];
       /** When true, do not show the "New Tab" toast (e.g. fallback tab after tutorial completes). */
       silent?: boolean;
-    }) => {
+    }): string => {
       const tabNumber = tabs.length + 1;
       const tabName = options?.name || `Diagram ${tabNumber}`;
       const newTab: TabState = {
@@ -331,6 +331,7 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
       if (!options?.silent) {
         onToast({ title: 'New Tab', description: `${newTab.name} created.` });
       }
+      return newTab.id;
     },
     [tabs.length, onToast, createNewTab],
   );

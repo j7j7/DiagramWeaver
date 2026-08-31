@@ -3218,23 +3218,34 @@ export default function DiagramEditor() {
           }
           completeData.connections = ensureConnectionIds(completeData.connections || []);
 
-          setDiagramData({ nodes: [], connections: [], groupings: [] });
           absorbDiagramUserDefinedObjects(completeData, { notifyEachCreated: true });
-          setTimeout(() => {
-            setDiagramData(completeData);
-            setSelectedItem(null);
-            setPresentationDecks(loadedPresentations.decks);
-            setActivePresentationDeckId(loadedPresentations.activeDeckId);
-            const loadDeck =
-              loadedPresentations.decks.find((d) => d.id === loadedPresentations.activeDeckId) ??
-              loadedPresentations.decks[0];
-            setActivePresentationSlideId(loadDeck?.slides[0]?.id ?? null);
-            setSelectedPresentationSlideIds(new Set());
-            setPresentationMasterDiagram(safeClone(completeData));
-            updateActiveTab({ name: getFilenameStem(file.name), hasUnsavedPresentations: false });
-            toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
-            setTimeout(() => editorRef.current?.fitToView(), 100);
-          }, 0);
+
+          const tabName = getFilenameStem(file.name);
+          const loadDeck =
+            loadedPresentations.decks.find((d) => d.id === loadedPresentations.activeDeckId) ??
+            loadedPresentations.decks[0];
+          const loadSlideId = loadDeck?.slides[0]?.id ?? null;
+
+          // Open in a new tab (do not overwrite the current diagram), matching File → Examples.
+          const newTabId = createTab({
+            name: tabName,
+            diagramData: completeData,
+            silent: true,
+          });
+          presentationStateByTabRef.current[newTabId] = {
+            decks: loadedPresentations.decks,
+            activeDeckId: loadedPresentations.activeDeckId,
+            activeSlideId: loadSlideId,
+            selectedSlideIds: [],
+            masterDiagram: safeClone(completeData),
+            draftDiagram: null,
+          };
+          setSelectedItem(null);
+          toast({
+            title: 'Diagram Loaded',
+            description: `"${tabName}" opened in a new tab.`,
+          });
+          setTimeout(() => editorRef.current?.fitToView(), 100);
         } catch (error) {
           const message = error instanceof Error ? error.message : "An unknown error occurred";
           const stack = error instanceof Error ? error.stack : undefined;

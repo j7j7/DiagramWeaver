@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-31 – File Load opens a new tab
+**File → Load** (JSON / Mermaid) opens the diagram in a **new tab** via **`createTab`** (same as Examples) instead of overwriting the active tab; embedded presentations are seeded on **`presentationStateByTabRef`** for the new tab id. **`createTab`** now returns the new tab id. Patch bumped.
+
 ### 2026-08-31 – Edit: Remove Default Icon Labels
 **Edit → Remove Default Icon Labels** clears palette-default **label** (and matching auto **info**, e.g. `Name from aws`) on icon/resource tiles only; customized labels stay. Uses **`stripDefaultIconLabelsFromDiagram`** (`strip-default-icon-labels.ts`) with catalog + Lucide/emoji name lookup. Distinct from Options **Disable Default Text Labels** (future drops). Patch bumped.
 
