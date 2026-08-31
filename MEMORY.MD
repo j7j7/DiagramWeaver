@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-31 – Connection modal text size/position inputs
+Text size and text position number fields buffer while typing (can clear then type), commit on blur/Enter, and hide native spinner arrows. Patch bumped.
+
 ### 2026-08-31 – First slide strip tooltip
 Presentation strip hover tooltip for slide 1 uses the slide title (same as later slides) instead of the hardcoded “Main diagram (slide 1)…” copy. Patch bumped.
 

@@ -10,7 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import type { DiagramConnectionData, DiagramData } from "@/lib/types";
-import { resolveBezierConnectionPaint, type ConnectionEndpointOutline, clampConnectionTextFontSize, DEFAULT_CONNECTION_TEXT_FONT_SIZE } from "@/lib/connection-line-style";
+import { resolveBezierConnectionPaint, type ConnectionEndpointOutline, clampConnectionTextFontSize } from "@/lib/connection-line-style";
 import { ConnectionAnimationControls } from "@/components/editor/connection-animation-controls";
 import { ConnectionLineStyleFields } from "@/components/editor/connection-line-style-fields";
 import { getOptimalConnectionPoints } from "@/components/diagram/bezier-connection";
@@ -19,6 +19,11 @@ import {
   collectObstacles,
   seedOrthogonalCustomRouteWaypoints,
 } from "@/lib/orthogonal-routing";
+import { cn } from "@/lib/utils";
+
+/** Native steppers steal space on short inputs and block clearing/retyping values. */
+const NUMBER_INPUT_NO_SPINNER =
+  "[appearance:textfield] [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
 interface ConnectionContextModalProps {
   x: number;
@@ -55,6 +60,9 @@ export function ConnectionContextModal({
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [localConnectionText, setLocalConnectionText] = useState("");
+  /** null = show live value; string = draft while typing (allows empty field). */
+  const [textSizeDraft, setTextSizeDraft] = useState<string | null>(null);
+  const [textPositionDraft, setTextPositionDraft] = useState<string | null>(null);
 
   const connId = connection.id;
   const liveConnection = diagramData?.connections?.find((c) =>
@@ -85,6 +93,13 @@ export function ConnectionContextModal({
     if (visible) setLocalConnectionText(connectionText);
   }, [visible, connId, connectionText]);
 
+  useEffect(() => {
+    if (visible) {
+      setTextSizeDraft(null);
+      setTextPositionDraft(null);
+    }
+  }, [visible, connId]);
+
   const commitConnectionText = (valueFromDom?: string) => {
     const value = valueFromDom ?? localConnectionText;
     if (value !== connectionText) {
@@ -100,16 +115,46 @@ export function ConnectionContextModal({
   };
 
   const handleTextPositionChange = (value: number) => {
+    setTextPositionDraft(null);
     onConnectionUpdate(connection.from, connection.to, { textPosition: value }, connId);
   };
 
   const handleTextFontSizeChange = (value: number) => {
+    setTextSizeDraft(null);
     onConnectionUpdate(
       connection.from,
       connection.to,
       { textFontSize: clampConnectionTextFontSize(value) },
       connId,
     );
+  };
+
+  const commitTextSizeDraft = () => {
+    const raw = textSizeDraft;
+    setTextSizeDraft(null);
+    if (raw === null) return;
+    const trimmed = raw.trim();
+    if (trimmed === "") return;
+    const parsed = parseInt(trimmed, 10);
+    if (!Number.isFinite(parsed)) return;
+    const next = clampConnectionTextFontSize(parsed);
+    if (next !== textFontSize) {
+      onConnectionUpdate(connection.from, connection.to, { textFontSize: next }, connId);
+    }
+  };
+
+  const commitTextPositionDraft = () => {
+    const raw = textPositionDraft;
+    setTextPositionDraft(null);
+    if (raw === null) return;
+    const trimmed = raw.trim();
+    if (trimmed === "") return;
+    const parsed = parseInt(trimmed, 10);
+    if (!Number.isFinite(parsed)) return;
+    const next = Math.max(0, Math.min(100, parsed));
+    if (next !== textPosition) {
+      onConnectionUpdate(connection.from, connection.to, { textPosition: next }, connId);
+    }
   };
 
   const handleLineStyleChange = (style: "bezier" | "orthogonal") => {
@@ -548,13 +593,16 @@ export function ConnectionContextModal({
                   />
                   <Input
                     type="number"
-                    value={textFontSize}
-                    onChange={(e) =>
-                      handleTextFontSizeChange(
-                        Math.max(8, Math.min(48, parseInt(e.target.value) || DEFAULT_CONNECTION_TEXT_FONT_SIZE))
-                      )
-                    }
-                    className="h-8 w-14 text-xs text-center shrink-0"
+                    value={textSizeDraft ?? String(textFontSize)}
+                    onChange={(e) => setTextSizeDraft(e.target.value)}
+                    onBlur={commitTextSizeDraft}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    className={cn("h-8 w-14 text-xs text-center shrink-0", NUMBER_INPUT_NO_SPINNER)}
                     min={8}
                     max={48}
                     disabled={isReadOnly}
@@ -579,13 +627,16 @@ export function ConnectionContextModal({
                   />
                   <Input
                     type="number"
-                    value={textPosition}
-                    onChange={(e) =>
-                      handleTextPositionChange(
-                        Math.max(0, Math.min(100, parseInt(e.target.value) || 50))
-                      )
-                    }
-                    className="h-8 w-14 text-xs text-center shrink-0"
+                    value={textPositionDraft ?? String(textPosition)}
+                    onChange={(e) => setTextPositionDraft(e.target.value)}
+                    onBlur={commitTextPositionDraft}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    className={cn("h-8 w-14 text-xs text-center shrink-0", NUMBER_INPUT_NO_SPINNER)}
                     min={0}
                     max={100}
                   />
