@@ -2,6 +2,9 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-08-31 – Connection modal reverse
+**`ConnectionContextModal`** header **Reverse** swaps **`from`/`to`** (not just arrow): **`reverseDiagramConnectionEndpoints`** in **`editor-support`** also swaps preferred attach edges, edge positions, and waypoint order; **`handleConnectionReverse`** in **`diagram-editor`** applies via **`applyConnectionUpdates`** and refreshes modal state. Patch bumped.
+
 ### 2026-08-21 – Gantt modal bar row picker
 Bars panel row select shows the first **3** characters of the task row label in a fixed **w-12** trigger (`text-sm`); dropdown lists full row names only. Start/end fields narrowed (`58px`, `11px`). Full label on trigger hover. Patch bumped.
 

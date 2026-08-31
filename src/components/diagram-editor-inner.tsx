@@ -153,6 +153,7 @@ export function DiagramEditorInner({
   handleConnectionWaypointRemove,
   handleConnectionWaypointMove,
   handleConnectionContextMenu,
+  handleConnectionReverse,
   connectionContextModal,
   setConnectionContextModal,
   umlClassEditorModal,
@@ -1191,6 +1192,7 @@ export function DiagramEditorInner({
             connection={connectionContextModal.connection}
             diagramData={diagramData}
             onConnectionUpdate={handleConnectionUpdate}
+            onConnectionReverse={handleConnectionReverse}
             onConnectionDisconnect={disconnectConnection}
             onConnectionWaypointAdd={handleConnectionWaypointAdd}
             onConnectionWaypointRemove={handleConnectionWaypointRemove}

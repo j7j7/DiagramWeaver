@@ -28,6 +28,7 @@ interface ConnectionContextModalProps {
   connection: DiagramConnectionData;
   diagramData: DiagramData;
   onConnectionUpdate: (from: string, to: string, updates: Record<string, unknown>, connectionId?: string) => void;
+  onConnectionReverse?: (from: string, to: string, connectionId?: string) => void;
   onConnectionAnimationBulkApply?: (sourceId: string, direction: 'outbound' | 'inbound', animation: DiagramConnectionData['animation']) => void;
   onConnectionDisconnect?: (from: string, to: string, connectionId?: string) => void;
   onConnectionWaypointAdd?: (from: string, to: string, connectionId?: string) => void;
@@ -43,6 +44,7 @@ export function ConnectionContextModal({
   connection,
   diagramData,
   onConnectionUpdate,
+  onConnectionReverse,
   onConnectionAnimationBulkApply,
   onConnectionDisconnect,
   onConnectionWaypointAdd,
@@ -361,20 +363,40 @@ export function ConnectionContextModal({
             {fromLabel} → {toLabel}
           </h3>
         </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 shrink-0"
-              data-skip-modal-initial-focus
-              onClick={onClose}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Close</TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-1 shrink-0">
+          {onConnectionReverse && !isReadOnly && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-2.5 text-xs"
+                  onClick={() => onConnectionReverse(connection.from, connection.to, connId)}
+                  aria-label="Reverse connection direction"
+                >
+                  <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
+                  Reverse
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Swap start and end nodes</TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 shrink-0"
+                data-skip-modal-initial-focus
+                onClick={onClose}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Close</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
       <div className="max-h-[min(78vh,640px)] overflow-y-auto">
         <div className="p-4 space-y-3">

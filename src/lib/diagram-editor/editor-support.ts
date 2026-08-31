@@ -450,6 +450,33 @@ export function canCompressLayerReplaceToVisibleIds(
 }
 
 /**
+ * Swap a connection's start and end in diagram JSON: `from`/`to`, preferred
+ * attach edges, edge positions, and waypoint order. Arrow flags stay
+ * destination-relative (`toArrow` still means the new `to`).
+ */
+export function reverseDiagramConnectionEndpoints(
+  conn: DiagramConnectionData,
+): DiagramConnectionData {
+  const next: DiagramConnectionData = {
+    ...conn,
+    from: conn.to,
+    to: conn.from,
+    fromPreferredExit: conn.toPreferredEntry,
+    toPreferredEntry: conn.fromPreferredExit,
+    fromEdgePosition: conn.toEdgePosition,
+    toEdgePosition: conn.fromEdgePosition,
+  };
+  if (next.fromPreferredExit === undefined) delete next.fromPreferredExit;
+  if (next.toPreferredEntry === undefined) delete next.toPreferredEntry;
+  if (next.fromEdgePosition === undefined) delete next.fromEdgePosition;
+  if (next.toEdgePosition === undefined) delete next.toEdgePosition;
+  if (conn.waypoints && conn.waypoints.length > 0) {
+    next.waypoints = [...conn.waypoints].reverse();
+  }
+  return next;
+}
+
+/**
  * Strip default values from a connection object for compact delta storage.
  * Safe to round-trip: the renderer and clampConnectionAnimation fill in defaults on load.
  */

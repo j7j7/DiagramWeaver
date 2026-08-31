@@ -125,6 +125,7 @@ import {
   collectConnectSourceIdsFromDiagram,
   getSelectionIdKind,
   connectionIdsFromSelectionSet,
+  reverseDiagramConnectionEndpoints,
   clearPendingConnectionWindowState,
   safeClone,
   blankSlideVisibleFromMaster,
@@ -3298,6 +3299,8 @@ export default function DiagramEditor() {
     from: string,
     to: string,
     updates: {
+      from?: string;
+      to?: string;
       text?: string;
       color?: string;
       textPosition?: number;
@@ -3311,8 +3314,10 @@ export default function DiagramEditor() {
       smoothCorners?: boolean;
       curvature?: number;
       fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+      fromEdgePosition?: number;
       fromArrow?: boolean;
       toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+      toEdgePosition?: number;
       toArrow?: boolean;
       arrow?: boolean;
       centerEdgeAnchors?: boolean;
@@ -3851,6 +3856,60 @@ export default function DiagramEditor() {
       setConnectionContextModal({ visible: true, x: e.clientX, y: e.clientY, connection });
     },
     [pauseConnectionAnimationsForOverlayUi],
+  );
+
+  const handleConnectionReverse = React.useCallback(
+    (from: string, to: string, connectionId?: string) => {
+      const connections = currentDiagramData.connections ?? [];
+      let currentConn: DiagramConnectionData | undefined;
+      let currentIdx = -1;
+      for (let i = 0; i < connections.length; i++) {
+        const conn = connections[i] as DiagramConnectionData;
+        if (connectionId) {
+          if (conn.id === connectionId || stableDiagramConnectionId(conn, i) === connectionId) {
+            currentConn = conn;
+            currentIdx = i;
+            break;
+          }
+        } else if (conn.from === from && conn.to === to) {
+          currentConn = conn;
+          currentIdx = i;
+          break;
+        }
+      }
+      if (!currentConn || currentIdx < 0) return;
+
+      const effectiveConnId =
+        connectionId ?? currentConn.id ?? stableDiagramConnectionId(currentConn, currentIdx);
+      const reversed = reverseDiagramConnectionEndpoints(currentConn);
+      applyConnectionUpdates(
+        from,
+        to,
+        {
+          from: reversed.from,
+          to: reversed.to,
+          fromPreferredExit: reversed.fromPreferredExit,
+          toPreferredEntry: reversed.toPreferredEntry,
+          fromEdgePosition: reversed.fromEdgePosition,
+          toEdgePosition: reversed.toEdgePosition,
+          waypoints: reversed.waypoints,
+        },
+        effectiveConnId,
+      );
+
+      setConnectionContextModal((prev) => {
+        if (!prev.connection) return prev;
+        const prevStable =
+          prev.connection.id ??
+          stableDiagramConnectionId(prev.connection, connections.indexOf(currentConn!));
+        const matches = effectiveConnId
+          ? prev.connection.id === effectiveConnId || prevStable === effectiveConnId
+          : prev.connection.from === from && prev.connection.to === to;
+        if (!matches) return prev;
+        return { ...prev, connection: reversed };
+      });
+    },
+    [currentDiagramData.connections, applyConnectionUpdates],
   );
 
   const handleNew = () => {
@@ -5964,6 +6023,7 @@ export default function DiagramEditor() {
         handleConnectionWaypointRemove={handleConnectionWaypointRemove}
         handleConnectionWaypointMove={handleConnectionWaypointMove}
         handleConnectionContextMenu={handleConnectionContextMenu}
+        handleConnectionReverse={handleConnectionReverse}
         connectionContextModal={connectionContextModal}
         setConnectionContextModal={setConnectionContextModal}
         umlClassEditorModal={umlClassEditorModal}
